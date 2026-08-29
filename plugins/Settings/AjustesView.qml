@@ -450,8 +450,11 @@ FadeIn {
                     spacing: 12
                     topPadding: 2
                     bottomPadding: 20
-                    leftPadding: 2
-                    rightPadding: 2
+                    //  A little air on each side: the sliders of the theme
+                    //  pages draw their handle past the row's bounds, and
+                    // with only 2 px it touched the edge of the view.
+                    leftPadding: 12
+                    rightPadding: 12
 
                     Repeater {
                         model: vista.contenido
