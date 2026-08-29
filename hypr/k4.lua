@@ -52,7 +52,9 @@ hl.bind(mod .. " + I",           hl.dsp.exec_cmd(k4 .. "togglePanel"))
 -- X era el no-molestar de noctalia; k4 no tiene DND por IPC todavía y se
 -- asoma el panel de notificaciones, que es lo más parecido.
 hl.bind(mod .. " + X",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
-hl.bind(mod .. " + N",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
+-- Y el acento grave, que a la izquierda del 1 está muy a mano. N no: se
+-- reserva para lo que sea en la configuración de rukh.
+hl.bind(mod .. " + `",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
 hl.bind(mod .. " + A",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
 -- Limpiar notificaciones, en las teclas de siempre. (k4 no distingue activa
 -- de historial: clearNotifications se lo lleva todo.)
@@ -73,10 +75,10 @@ hl.bind(mod .. " + V",           hl.dsp.exec_cmd(k4 .. "clipboard"))
 hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd(k4 .. "clipboard"))
 -- B es el gestor de contraseñas (rbw) en la configuración de rukh: sin ata.
 -- hl.bind(mod .. " + B",           hl.dsp.exec_cmd(k4 .. "files"))
--- La chuleta, en K a secas y también en F1: la tecla de «ayuda» de toda la
--- vida (antes del fork, hyprland.conf del usuario la daba a un guion propio
--- que leía la sintaxis clásica — con configuración en Lua ya no valía).
-hl.bind(mod .. " + K",           hl.dsp.exec_cmd(k4 .. "keys"))
+-- La chuleta, solo en F1: la tecla de «ayuda» de toda la vida (antes del
+-- fork, hyprland.conf del usuario la daba a un guion propio que leía la
+-- sintaxis clásica — con configuración en Lua ya no valía). K no: la quiere
+-- la configuración de rukh para moverse entre ventanas.
 hl.bind(mod .. " + F1",          hl.dsp.exec_cmd(k4 .. "keys"))
 hl.bind(mod .. " + L",           hl.dsp.exec_cmd(k4 .. "lock"))
 -- Sesión por ambos caminos: el ALT+C de k4 y el CTRL+ALT+E de siempre.
