@@ -64,6 +64,14 @@ let
   #  binary the bar itself runs under.
   quickshell = cfg.package.quickshell;
 
+  #  The template in play: yours when set, the package's otherwise.
+  fuente =
+    if cfg.hyprland.template != null then cfg.hyprland.template
+    else "${cfg.package}/share/k4/hypr/k4.lua";
+  fuenteConf =
+    if cfg.hyprland.template != null then cfg.hyprland.template
+    else "${cfg.package}/share/k4/hypr/k4.conf";
+
   #  hypr/k4.conf (or k4.lua) with @RAIZ@ resolved. Order matters: the
   #  exec-once line embeds @RAIZ@ itself, so it goes before the blanket
   #  substitution.
@@ -82,7 +90,7 @@ let
         mirror
         "${quickshell}/bin/quickshell ipc"
       ]
-      (builtins.readFile "${cfg.package}/share/k4/${path}");
+      (builtins.readFile path);
 in
 {
   options.programs.k4 = {
@@ -118,6 +126,25 @@ in
           Has no effect on hand-written configurations.
         '';
       };
+
+      template = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = ''
+          Your own Hyprland template instead of the package's
+          (share/k4/hypr/k4.lua for the Lua flavor, k4.conf otherwise).
+          Rendered as the flavor-appropriate file, with the same
+          substitutions applied: @RAIZ@ → the writable mirror,
+          `quickshell ipc` → the absolute binary, and the exec-once hook
+          rewritten to the wrapper.
+
+          The point of the option: keybinds are machine taste, and the
+          Hyprland Lua API accumulates binds instead of replacing them,
+          so a colliding key must be removed from the template — editing
+          upstream's template for that puts your layout in a public repo.
+          Keep a fork's template upstream-pure and carry the layout here.
+        '';
+      };
     };
   };
 
@@ -130,16 +157,16 @@ in
     xdg.configFile = lib.mkIf cfg.hyprland.writeConfig (
       if hypr.enable && hyprIsLua then
         {
-          "hypr/config/k4.lua".text = substituteTemplate "hypr/k4.lua";
+          "hypr/config/k4.lua".text = substituteTemplate fuente;
         }
       else if hypr.enable then
         {
-          "hypr/k4.conf".text = substituteTemplate "hypr/k4.conf";
+          "hypr/k4.conf".text = substituteTemplate fuenteConf;
         }
       else
         {
-          "hypr/k4.conf".text = substituteTemplate "hypr/k4.conf";
-          "hypr/config/k4.lua".text = substituteTemplate "hypr/k4.lua";
+          "hypr/k4.conf".text = substituteTemplate fuenteConf;
+          "hypr/config/k4.lua".text = substituteTemplate fuente;
         }
     );
 
