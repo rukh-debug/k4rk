@@ -1,6 +1,6 @@
-//  Reproductor: carátula, pista, línea de tiempo arrastrable y transporte.
-//  Se activa al pasar el ratón si hay algo sonando, ganándole al reloj, y se
-//  asoma solo unos segundos cuando cambia la canción.
+//  Player: cover art, track, draggable timeline and transport. Activates on
+//  hover when something is playing — beating the clock — and peeks for a few
+//  seconds whenever the track changes.
 
 import QtQuick
 import K4 as K4
@@ -23,24 +23,24 @@ K4Plugin {
     closeOnClickOutside: false
 
 
-    //  Al pasar el ratón —lo de siempre— y además durante el asomo.
+    //  On hover — as always — and also for the duration of the peek.
     //
-    //  El asomo NO pide `isPlaying`: al cambiar de pista hay reproductores que
-    //  pasan un instante por «parado», y con la condición compartida el asomo
-    //  se moría en ese parpadeo justo al empezar.
+    //  The peek does NOT ask for `isPlaying`: on a track change some players
+    //  pass through "stopped" for an instant, and with the condition shared
+    //  the peek died in that flicker right as it started.
     active: habilitado
         && ((Island.hovered && Media.isPlaying) || asomando)
 
-    //  ── asomarse al cambiar de canción ───────────────────────────
+    //  ── peeking when the track changes ───────────────────────────
     //
-    //  Antes solo salía al pasar el ratón, así que era lo único del sistema que
-    //  no tenía forma de pedir la island por su cuenta: con la barra escondida,
-    //  una canción nueva no se la enteraba nadie. El aviso y el volumen
-    //  sí salen solos; esto faltaba.
+    //  Before, it only came out on hover, so it was the one thing in the
+    //  system with no way to claim the island on its own: with the bar
+    //  hidden, nobody learned about a new song. The notification and the
+    //  volume HUD already come out on their own; this was missing.
     //
-    //  La pista se identifica por lo que se LEE —título y artista— y no por el
-    //  `xesam:trackid`: hay reproductores que no lo publican, y los navegadores
-    //  lo cambian sin que cambie la canción.
+    //  The track is identified by what is READ — title and artist — and not
+    //  by `xesam:trackid`: some players never publish it, and browsers
+    //  change it without the song changing.
     property bool asomarAlCambiar: true
     property bool asomando: false
 
@@ -52,13 +52,13 @@ K4Plugin {
 
     property string pistaPrevia: ""
 
-    //  Y se deja POSAR antes de comparar, que esto no es un detalle: los
-    //  metadatos de MPRIS llegan A TROZOS. Medido con un reproductor de prueba:
-    //  primero aparece el título y un instante después el artista, así que la
-    //  cadena cambia DOS veces por una sola canción — y la segunda vez ya había
-    //  una anterior no vacía, o sea que parecía un cambio de pista. Se asomaba
-    //  con la primera canción de la sesión, que es exactamente lo que el guardia
-    //  de abajo existe para evitar.
+    //  And it is left to SETTLE before comparing, and this is no small
+    //  detail: MPRIS metadata arrives IN PIECES. Measured with a test
+    //  player: the title shows up first and the artist an instant later,
+    //  so the string changes TWICE for a single track — and the second
+    //  time there was already a non-empty previous one, so it looked like
+    //  a track change. It peeked on the session's first song, which is
+    //  exactly what the guard below exists to prevent.
     onPistaChanged: posarTimer.restart()
 
     Timer {
@@ -69,11 +69,11 @@ K4Plugin {
             self.pistaPrevia = self.pista
             if (!self.asomarAlCambiar || !self.habilitado)
                 return
-            //  Hacen falta las DOS: que haya una nueva y que hubiera otra antes.
-            //  Al arrancar la barra con música puesta lo que llega no es un
-            //  cambio de canción sino el descubrimiento de que la había, y
-            //  asomarse ahí sería saludar en cada inicio de sesión. Lo mismo al
-            //  cerrar el reproductor.
+            //  BOTH are needed: that there is a new one, and that there was
+            //  one before. When the bar starts with music already playing,
+            //  what arrives is not a track change but the discovery that
+            //  there was one, and peeking there would mean greeting every
+            //  login. Same when the player closes.
             if (self.pista.length === 0 || antes.length === 0
                     || antes === self.pista)
                 return
@@ -82,16 +82,16 @@ K4Plugin {
         }
     }
 
-    //  Lo justo para leer título y artista y volver a lo tuyo.
+    //  Just long enough to read title and artist and get back to your thing.
     Timer {
         id: asomoTimer
         interval: 3200
         onTriggered: self.asomando = false
     }
 
-    //  Y que ESC lo quite, como cualquier otra cosa que ocupe la island. Con el
-    //  ratón encima no cierra nada, que ahí manda el hover: es el mismo
-    //  comportamiento de siempre.
+    //  And ESC takes it away, like anything else occupying the island. With
+    //  the mouse on top it closes nothing — hover rules there: same behavior
+    //  as always.
     function close() { self.asomando = false }
 
     K4.Ajustes {
@@ -120,31 +120,32 @@ K4Plugin {
         }
     }
 
-    // el centro de control y la bandeja; los inyecta el host
+    // the control center and the tray; the host injects them
     property var panel: null
     property var tray: null
 
-    //  Las píldoras de los plugins también cuentan: sin ellas en la suma, una
-    //  campana de agente empujaba el grupo de la derecha sobre el título de la
-    //  canción. Mismo problema que tenía el reloj, y misma explicación larga
-    //  está allí.
-    //  Asomándose, lo justo para un título: alto de píldora y algo más ancho
-    //  que ella. Lo demás no se pinta, así que pedirlo sería dejar un hueco.
+    //  The plugin chips count too: without them in the sum, an agent bell
+    //  pushed the right-hand group over the song title. Same problem the
+    //  clock had — the long explanation lives there.
+    //  Peeking: just enough for a title — pill height and a bit wider than
+    //  the pill. Nothing else is painted, so asking for more would leave a
+    //  gap.
     islandWidth: asomando ? 300
         : 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
         + Indicadores.anchoAproximado
-    // crece para dejar sitio a las notificaciones recientes
-    //  El base ya lleva sus márgenes de 14 arriba y abajo. La tira añade lo que
-    //  mide más el espaciado de 13 del reparto y los 2 de su propio topMargin.
+    // grows to make room for the recent notifications
+    //  The base already carries its 14 px margins top and bottom. The strip
+    //  adds what it measures plus the 13 of the layout spacing and the 2 of
+    //  its own topMargin.
     readonly property int alturaTira: Settings.notificationsOnHover
         ? Notifs.stripHeight(3) : 0
-    //  Asomándose, solo la fila de la pista: 44 px de carátula más sus dos
-    //  márgenes de 14. El resto —línea de tiempo, transporte, notificaciones—
-    //  lo esconde la vista, así que pedir más sería dejar un hueco negro.
+    //  Peeking, only the track row: 44 px of cover art plus its two 14 px
+    //  margins. The rest — timeline, transport, notifications — is hidden by
+    //  the view, so asking for more would leave a black gap.
     //
-    //  Existe porque el asomo con el alto entero era insufrible: un vídeo
-    //  tonto de treinta segundos abría media island, y cada vez que cambiaba
-    //  de pista otra vez. Enterarse de qué suena no necesita el mando entero.
+    //  This exists because the full-height peek was unbearable: a silly
+    //  thirty-second video opened half the island, and again on every track
+    //  change. Learning what is playing does not need the whole remote.
     islandHeight: asomando ? Theme.baseHeight
         : (Media.hasTimeline ? 140 : 115)
           + (alturaTira > 0 ? alturaTira + 15 : 0)
@@ -152,14 +153,15 @@ K4Plugin {
     view: Component {
         PlayerView {
             panel: self.panel; tray: self.tray
-            //  Sin esto la vista no sabe si es un asomo y sale entera.
+            //  Without this the view cannot tell it is a peek and comes out
+            //  in full.
             plugin: self
         }
     }
 
-    //  Y si te acercas, deja de ser un asomo: se despliega entero y se queda
-    //  mientras tengas el ratón encima, que es lo que ya hacía al pasar por la
-    //  píldora. Acercarse es pedirlo.
+    //  And if you come close, it stops being a peek: it deploys in full and
+    //  stays while the mouse is on top — which is what passing over the pill
+    //  already did. Coming close is asking for it.
     Connections {
         target: Island
         function onHoveredChanged() {
