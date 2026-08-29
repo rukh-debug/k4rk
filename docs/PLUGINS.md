@@ -234,7 +234,7 @@ Item {
     required property var plugin
     K4.Etiqueta {
         anchors.centerIn: parent
-        text: K4.Idioma.t("Hola desde un plugin de fuera")
+        text: "Hello from an external plugin"
     }
 }
 ```
@@ -384,7 +384,6 @@ bar's directory, not yours.
 | `K4.Estela` | the house caret, with the trail k4term leaves — use it as `cursorDelegate` |
 | `K4.Aparicion` | enters with a fade instead of popping |
 | `K4.FocoInicial` | moves the cursor to your text field on open |
-| `K4.Idioma` | `t()` and `f()` — with no dictionary they return the text as is |
 | `K4.Guardado` | your state as JSON, in YOUR directory, with `cargado`/`guardar` |
 | `K4.Ipc` | your IPC target (`k4.<id>`) |
 | `K4.Process` | external processes — requires the `procesos` permission |
@@ -430,7 +429,6 @@ And the live system data:
 | `K4.Escritorios` | which ones exist and which one you are on | — |
 | `K4.Portapapeles` | the history — **just reading already requires** `portapapeles` | `portapapeles` |
 | `K4.Reloj` | the time, from the bar's single clock | — |
-| `K4.Huella` | the user's personal footprint, AGGREGATED (Steam library, package inventory) — double-keyed: your `datos-personales` permission AND the user turning each source on in Settings, everything off by default | `datos-personales` |
 
 The line is drawn by the effect, not the module: looking at the volume does
 nothing to anyone, raising it does. The clipboard goes the other way
@@ -500,9 +498,9 @@ had to learn a new place for every plugin.
 ```qml
 K4.Ajustes {
     plugin: "hola"
-    grupo: K4.Idioma.t("Hola")
-    opciones: [{ id: "saludar", nombre: K4.Idioma.t("Saludar al abrir"),
-                 desc: K4.Idioma.t("Si no, solo enseña el contador"),
+    grupo: "Hello"
+    opciones: [{ id: "saludar", nombre: "Greet on open",
+                 desc: "Otherwise just show the counter",
                  glifo: 0xF1821 }]
     valores: ({ saludar: self.saludar })
     onCambiado: function (id, valor) { self.saludar = valor; self.apuntar() }
@@ -517,13 +515,13 @@ A switch per option is the default; `tipo` unlocks the other two:
 
 ```qml
 opciones: [
-    { id: "modelo", tipo: "eleccion", nombre: K4.Idioma.t("Modelo"),
-      desc: K4.Idioma.t("Con cuál contesta"), glifo: 0xF06A9,
-      alternativas: [{ codigo: "rapido", nombre: K4.Idioma.t("Rápido") },
-                     { codigo: "capaz",  nombre: K4.Idioma.t("Capaz") }] },
+    { id: "modelo", tipo: "eleccion", nombre: "Model",
+      desc: "Which one answers", glifo: 0xF06A9,
+      alternativas: [{ codigo: "rapido", nombre: "Fast" },
+                     { codigo: "capaz",  nombre: "Capable" }] },
     { id: "clave", tipo: "texto", secreto: true,
-      nombre: K4.Idioma.t("Clave de API"),
-      desc: K4.Idioma.t("Se guarda donde tú digas; la barra no la retiene"),
+      nombre: "API key",
+      desc: "Saved wherever you say; the bar does not keep it",
       pista: "sk-…", glifo: 0xF0306 }
 ]
 ```
@@ -557,7 +555,7 @@ K4.Lanzador {
     plugin: "hola"
     onBuscando: function (texto) {
         resultados = texto.length < 2 ? []
-            : [{ id: "abrir", titulo: K4.Idioma.t("Abrir Hola"), desc: "…" }]
+            : [{ id: "abrir", titulo: "Open Hello", desc: "…" }]
     }
     onElegido: function (id) { self.abierto = true }
 }
@@ -667,7 +665,6 @@ The manifest declares what you use; the bar checks it **before listing**:
 | `medios` | `K4.Medios.alternarPausa`, `.siguiente`, `.anterior`, `.buscar` |
 | `notificaciones` | `K4.Notificaciones.limpiar` |
 | `portapapeles` | `K4.Portapapeles` — **even just reading it** |
-| `datos-personales` | `K4.Huella` — **just naming it**: there is no innocent read of personal data |
 
 All nine, and note where the line falls: `ponerVolumen` is watched and
 `K4.Audio` is not, because looking at the volume does nothing to anyone and

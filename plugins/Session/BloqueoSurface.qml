@@ -49,7 +49,7 @@ K4.SuperficieBloqueo {
 
             IslandLabel {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Clock.date.toLocaleTimeString(Idioma.locale, "HH:mm")
+                text: Clock.date.toLocaleTimeString(Qt.locale(), "HH:mm")
                 color: Theme.ink
                 font.pixelSize: 92
                 font.weight: Font.Light
@@ -57,7 +57,7 @@ K4.SuperficieBloqueo {
 
             IslandLabel {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Clock.date.toLocaleDateString(Idioma.locale, "dddd, d 'de' MMMM")
+                text: Clock.date.toLocaleDateString(Qt.locale(), "dddd, d MMMM")
                 color: Theme.muted
                 font.pixelSize: 17
             }
@@ -159,7 +159,7 @@ K4.SuperficieBloqueo {
                         IslandLabel {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: clave.text.length === 0 && !auth.ocupado
-                            text: Idioma.t("Contraseña")
+                            text: "Password"
                             color: Theme.dim
                             font.pixelSize: 15
                         }
@@ -192,9 +192,9 @@ K4.SuperficieBloqueo {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 text: auth.mensaje.length > 0 ? auth.mensaje
-                    : (auth.motivo === "demasiados-intentos" ? Idioma.t("Demasiados intentos")
-                       : auth.motivo === "sin-pam" ? Idioma.t("No se pudo hablar con PAM")
-                       : auth.motivo.length > 0 ? Idioma.t("Contraseña incorrecta") : "")
+                    : (auth.motivo === "demasiados-intentos" ? "Too many attempts"
+                       : auth.motivo === "sin-pam" ? "Could not talk to PAM"
+                       : auth.motivo.length > 0 ? "Wrong password" : "")
                 color: Theme.red
                 font.pixelSize: 12
                 opacity: auth.mensaje.length > 0 ? 1 : 0
@@ -213,7 +213,7 @@ K4.SuperficieBloqueo {
             anchors.bottomMargin: 34
             horizontalAlignment: Text.AlignHCenter
             visible: auth.fallos >= 3
-            text: Idioma.t("¿No entras? Ctrl+Alt+F2 abre una consola de texto donde iniciar sesión.")
+            text: "Locked out? Ctrl+Alt+F2 opens a text console to log in."
             color: Theme.dim
             font.pixelSize: 11
         }

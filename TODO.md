@@ -1,5 +1,27 @@
 # TODO
 
+## Comments: Spanish to English, one directory at a time
+
+The interface is English now; the comments still speak Spanish. Every
+folder — core/, services/, widgets/, plugins/, tools/, the scripts —
+carries prose comments in the old voice, and they are worth keeping:
+most of them explain WHY, not what. This is a translation sweep, not a
+rewrite.
+
+- One directory (or plugin) per commit, so a review can read it. Start
+  with `services/` — the most commented — then `core/`, `widgets/`,
+  `plugins/` one at a time, `tools/` and the shell scripts last.
+- Translate, never summarize. The long «why» blocks are the asset; a
+  sentence stays a sentence, a list stays a list.
+- Identifiers stay Spanish (`abrir()`, `posicionBarra`, the IPC verbs):
+  they are API names, and renaming them is its own project, not part of
+  this sweep.
+- Runtime data stays as designed: keys, paths, output labels that tools
+  read back. Only prose moves.
+- After each directory, run the checks — `tools/plugins.py`,
+  `tools/api.py`, `tools/guia.py` — and diff with `git diff --check`.
+  Comments only, but cheap to prove nothing else moved.
+
 ## Agentes: per-provider toggles + more providers
 
 NOT implemented yet — this is the plan, nothing more.

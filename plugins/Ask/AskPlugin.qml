@@ -13,7 +13,7 @@ K4Plugin {
     id: self
 
     name: "ask"
-    title: Idioma.t("Preguntar")
+    title: "Ask"
     priority: 90
     active: habilitado && open
     grabKeyboard: true
@@ -151,7 +151,7 @@ K4Plugin {
     //  conversación entera.
     function close() {
         if (messages.length > 0) {
-            Modulos.minimizar("ask", Idioma.t("Pregunta"),
+            Modulos.minimizar("ask", "Ask",
                               resumenConversacion(), Theme.ico.ask.codePointAt(0))
         }
         open = false
@@ -243,7 +243,7 @@ K4Plugin {
                 if (list[i].role === "assistant" || list[i].role === "error") {
                     const t = (list[i].role === "assistant"
                                && list[i].text.length > 0)
-                        ? list[i].text : Idioma.t("Aquí la tienes:")
+                        ? list[i].text : "Here it is:"
                     list[i] = { role: "assistant", text: t, imagen: ruta }
                     self.messages = list
                     if (self.status === "error")
@@ -366,7 +366,7 @@ K4Plugin {
                 //  Apartada mientras pensaba: avisar de que ya está, que para
                 //  eso se apartó — para no quedarse mirando.
                 if (!self.open)
-                    K4.Sistema.avisar(Idioma.t("Respuesta lista"),
+                    K4.Sistema.avisar("Answer ready",
                                       self.resumenConversacion(), false)
             }
 

@@ -185,21 +185,21 @@ Item {
     //  Lo que no se ve por ningún lado. Un renglón por gesto, sin adornos:
     //  esto es una chuleta, no documentación.
     readonly property var gestos: [
-        [Idioma.t("Doble clic en un rótulo"), Idioma.t("escribirlo sobre el vídeo")],
-        [Idioma.t("Arrastrar sobre el vídeo"), Idioma.t("dibujar un zoom")],
-        [Idioma.t("Rueda sobre el vídeo"), Idioma.t("nivel del zoom")],
-        [Idioma.t("Soltar un fichero en la línea"), Idioma.t("lo añade donde caiga")],
-        [Idioma.t("Ctrl + rueda en la línea"), Idioma.t("acercar hasta ×60")],
-        [Idioma.t("Ctrl + clic en un bloque"), Idioma.t("coger varios")],
-        [Idioma.t("Esquina de un trozo"), Idioma.t("fundido · doble clic lo quita")],
-        [Idioma.t("Clic derecho en un bloque"), Idioma.t("fotograma clave")],
-        ["S", Idioma.t("cortar lo elegido por el cabezal")],
-        ["M", Idioma.t("marcador")],
-        ["← →", Idioma.t("un fotograma · con Ctrl, un segundo")],
-        [Idioma.t("Espacio"), Idioma.t("reproducir")],
-        ["Ctrl + C / V / X", Idioma.t("copiar, pegar, cortar")],
-        ["Supr", Idioma.t("quitar lo elegido")],
-        ["Esc", Idioma.t("soltar la herramienta o la selección")]
+        ["Double-click a caption", "write it over the video"],
+        ["Drag over the video", "draw a zoom"],
+        ["Wheel over the video", "zoom level"],
+        ["Drop a file on the timeline", "adds it wherever it lands"],
+        ["Ctrl + wheel on the timeline", "zoom up to ×60"],
+        ["Ctrl + click a block", "pick several"],
+        ["Corner of a clip", "fade · double-click removes it"],
+        ["Right-click a block", "keyframe"],
+        ["S", "split the selection at the playhead"],
+        ["M", "marker"],
+        ["← →", "one frame · with Ctrl, one second"],
+        ["Space", "play"],
+        ["Ctrl + C / V / X", "copy, paste, cut"],
+        ["Supr", "remove the selection"],
+        ["Esc", "drop the tool or the selection"]
     ]
 
     //  Cuánto avanza una flecha.
@@ -292,30 +292,30 @@ Item {
     //  cuarto.
     readonly property string tituloSel: {
         if (Editor.clipSel)
-            return Idioma.t("Trozo ") + (Editor.tramoDe(Editor.idSel) + 1)
+            return "Clip " + (Editor.tramoDe(Editor.idSel) + 1)
                    + "/" + Editor.tramos.length
         if (Editor.capaSel) {
-            if (Editor.capaSel.tipo === "texto")  return Idioma.t("Rótulo")
+            if (Editor.capaSel.tipo === "texto")  return "Caption"
             //  «Audio» a secas no dice cuál, y con tres capas de audio en el
             //  montaje —el sistema, el micro y una locución— la cabecera era
             //  la misma para las tres. El nombre de verdad lo sabe el Editor.
             if (Editor.capaSel.tipo === "audio")
                 return Editor.nombreCapa(Editor.capaSel)
-            if (Editor.capaSel.tipo === "video")  return Idioma.t("Vídeo encima")
+            if (Editor.capaSel.tipo === "video")  return "Video on top"
             if (Editor.capaSel.tipo === "zona")   return Editor.nombreCapa(Editor.capaSel)
             if (Editor.capaSel.tipo === "forma")  return Editor.nombreCapa(Editor.capaSel)
-            return Idioma.t("Imagen")
+            return "Image"
         }
         if (momento)
-            return Idioma.t("Momento ") + momento.id
-        return Idioma.t("Sin selección")
+            return "Moment " + momento.id
+        return "Nothing selected"
     }
 
     readonly property string detalleSel: {
         if (Editor.clipSel)
             return Editor.clipSel.desde.toFixed(1) + " → "
                    + Editor.clipSel.hasta.toFixed(1) + " s "
-                   + Idioma.t("del original")
+                   + "of the original"
         if (Editor.capaSel) {
             //  Una zona no tiene fichero que enseñar: lo suyo es su ventana.
             if (Editor.capaSel.tipo === "zona")
@@ -356,9 +356,8 @@ Item {
 
             IslandLabel {
                 text: Editor.momentos.length === 0
-                    ? Idioma.t("Editor")
-                    : Idioma.f(Idioma.t("%1 momentos de zoom"),
-                               String(Editor.momentos.length))
+                    ? "Editor"
+                    : `${String(Editor.momentos.length)} zoom moments`
                 color: Theme.ink
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -438,7 +437,7 @@ Item {
                     }
 
                     ToolTip.visible: hovered.hovered && !activeFocus
-                    ToolTip.text: Idioma.t("Pulsa para ponerle nombre al montaje")
+                    ToolTip.text: "Click to name the edit"
                     HoverHandler { id: hovered }
                 }
 
@@ -772,7 +771,7 @@ Item {
                             IslandLabel {
                                 id: pista
                                 anchors.centerIn: parent
-                                text: Idioma.t("Arrastra el zoom sobre el vídeo · Esc")
+                                text: "Drag the zoom over the video · Esc"
                                 color: Theme.ink
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
@@ -1052,10 +1051,10 @@ Item {
 
                         Repeater {
                             model: [
-                                { texto: Idioma.t("Antes"),   icono: 0xF0141, accion: "antes" },
-                                { texto: Idioma.t("Después"), icono: 0xF0142, accion: "despues" },
-                                { texto: Idioma.t("Menos"),   icono: 0xF034A, accion: "menos" },
-                                { texto: Idioma.t("Más"),     icono: 0xF034B, accion: "mas" }
+                                { texto: "Before",   icono: 0xF0141, accion: "antes" },
+                                { texto: "After", icono: 0xF0142, accion: "despues" },
+                                { texto: "Less",   icono: 0xF034A, accion: "menos" },
+                                { texto: "More",     icono: 0xF034B, accion: "mas" }
                             ]
 
                             delegate: Rectangle {
@@ -1134,7 +1133,7 @@ Item {
                             }
 
                             IslandLabel {
-                                text: Idioma.t("Quitar")
+                                text: "Remove"
                                 font.pixelSize: 10
                             }
                         }
@@ -1287,7 +1286,7 @@ Item {
                 visible: view.enVentana && Editor.estado !== "renderizando"
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                text: Idioma.t("espacio reproduce · ←→ salta · ↑↓ momento · mayús+←→ lo mueve · +− nivel")
+                text: "space plays · ←→ jumps · ↑↓ moment · shift+←→ moves it · +− level"
                 color: Theme.dim
                 font.pixelSize: 9
                 Layout.leftMargin: 6
@@ -1402,7 +1401,7 @@ Item {
                 IslandLabel {
                     id: renderTexto
                     anchors.centerIn: parent
-                    text: Idioma.t("Renderizar")
+                    text: "Render"
                     color: Theme.ink
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
@@ -1455,7 +1454,7 @@ Item {
                 spacing: 8
 
                 IslandLabel {
-                    text: Idioma.t("Cerrar el proyecto")
+                    text: "Close the project"
                     color: Theme.ink
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -1463,30 +1462,28 @@ Item {
 
                 IslandLabel {
                     Layout.fillWidth: true
-                    text: Idioma.f(
-                        Idioma.t("Lo editado se guarda solo en %1. Puedes cerrarlo así o deshacer todo lo de esta sesión."),
-                        Editor.rutaPlan.split("/").pop())
+                    text: `Your edits are saved on their own in ${Editor.rutaPlan.split("/").pop()}. You can close it like this, or undo everything from this session.`
                     color: Theme.muted
                     font.pixelSize: 10
                     wrapMode: Text.WordWrap
                 }
 
                 BotonAccion {
-                    texto: Idioma.t("Guardar y cerrar")
+                    texto: "Save and close"
                     icono: 0xF0193                      // md-content_save
                     activo: true
                     onPulsado: view.plugin.cerrarProyecto()
                 }
 
                 BotonAccion {
-                    texto: Idioma.t("Deshacer los cambios de esta sesión")
+                    texto: "Undo this session's changes"
                     icono: 0xF054C                      // md-undo
                     peligro: true
                     onPulsado: view.plugin.cerrarDescartando()
                 }
 
                 BotonAccion {
-                    texto: Idioma.t("Seguir editando")
+                    texto: "Keep editing"
                     icono: 0xF0156                      // md-close
                     onPulsado: view.plugin.preguntandoCierre = false
                 }
@@ -1518,7 +1515,7 @@ Item {
 
             IslandLabel {
                 Layout.bottomMargin: 6
-                text: Idioma.t("Gestos y atajos")
+                text: "Gestures and shortcuts"
                 color: Theme.ink
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
@@ -1551,7 +1548,7 @@ Item {
 
             IslandLabel {
                 Layout.topMargin: 8
-                text: Idioma.t("Pulsa en cualquier sitio para cerrar")
+                text: "Click anywhere to close"
                 color: Theme.dim
                 font.pixelSize: 10
             }

@@ -63,14 +63,14 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: entrada.text.length === 0
-                    text: Idioma.t("Buscar atajo, tecla o acción…")
+                    text: "Search shortcut, key or action…"
                     color: Theme.dim
                     font.pixelSize: 15
                 }
             }
 
             IslandLabel {
-                text: view.plugin.count + Idioma.t(" de ") + Atajos.lista.length
+                text: view.plugin.count + " of " + Atajos.lista.length
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -105,12 +105,11 @@ FadeIn {
                 readonly property bool abreSeccion: index === 0
                     || view.plugin.lista[index - 1].seccion !== modelData.seccion
 
-                // Lo que hace, traducido: la frase —que trae «%1» donde toque—
-                // y el detalle por separado, que se traduce si está en el
-                // diccionario y pasa tal cual si es una orden o un modo.
+                // What the shortcut does: the phrase carries «%1» where the
+                // detail goes — a command, a mode, a direction.
                 readonly property string haceTexto: modelData.detalle
-                    ? Idioma.f(Idioma.t(modelData.hace), Idioma.t(modelData.detalle))
-                    : Idioma.t(modelData.hace)
+                    ? modelData.hace.replace("%1", modelData.detalle)
+                    : modelData.hace
 
                 width: ListView.view.width
                 spacing: 0
@@ -121,7 +120,7 @@ FadeIn {
                     verticalAlignment: Text.AlignBottom
                     leftPadding: 4
                     bottomPadding: 3
-                    text: Idioma.t(fila.modelData.seccion)
+                    text: fila.modelData.seccion
                     color: Theme.dim
                     font.pixelSize: 9
                     font.capitalization: Font.AllUppercase
@@ -201,7 +200,7 @@ FadeIn {
             Layout.fillWidth: true
             visible: view.plugin.count === 0
             text: Atajos.cargado
-                ? Idioma.t("Ningún atajo coincide") : Idioma.t("Leyendo la configuración…")
+                ? "No shortcut matches" : "Reading the configuration…"
             color: Theme.muted
             font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter

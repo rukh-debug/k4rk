@@ -93,12 +93,6 @@ function apuntar() {
 Prefer it over raw `K4.Fichero` for plugin state: the path, the directory
 and the load signal are handled for you.
 
-## Spanish first, translated everywhere: `K4.Idioma`
-
-Wrap every user-facing string in `K4.Idioma.t("…")` and format with
-`K4.Idioma.f("%1 things", n)`. Source strings are Spanish; `en.json` and
-friends translate, and missing entries fall back to the original.
-
 ## Processes: `K4.Process`
 
 `K4.Process` wraps an external process and provides two output modes:
@@ -306,7 +300,7 @@ K4.Lanzador {
     plugin: "hola"
     onBuscando: function (texto) {
         resultados = texto.length < 2 ? []
-            : [{ id: "abrir", titulo: K4.Idioma.t("Abrir Hola"), desc: "…" }]
+            : [{ id: "abrir", titulo: "Open Hello", desc: "…" }]
     }
     onElegido: function (id) { self.abierto = true }
 }
@@ -339,24 +333,6 @@ K4.Lanzador {
   springs back on timeout, `soltar(id)`, or disable.
 
 `ejemplos/efectos/` has every piece working, hand included.
-
-## Personal data: `K4.Huella`
-
-Aggregated slices of the user's real life, under a **double key**: the
-plugin declares the `datos-personales` manifest permission (just naming
-`K4.Huella` demands it) AND the user enables each source individually in
-Settings → "Datos personales" — everything off by default. Aggregation
-happens in the python readers (`tools/huella.py`) before anything touches
-QML, and forgetting is immediate.
-
-Shipped sources: `steam` (`{ juegos, minutos, titulos }`) and `paquetes`
-(`{ total, ultimaActualizacion }`). Check `K4.Huella.activa("steam")`
-before reading — without both keys you get empty objects, never errors.
-
-Planned next, same rules: focus time per app, local git rhythm, browser
-domains (never URLs), shell binaries (never arguments). Hard red lines
-that no permission opens: keylogging, notification or file contents,
-mic/camera content — only a binary "in use" indicator.
 
 ## Current boundaries
 

@@ -9,7 +9,7 @@ K4Plugin {
     id: self
 
     name: "keys"
-    title: Idioma.t("Atajos")
+    title: "Shortcuts"
     priority: 65
     active: habilitado && (open || closing)
     viewLoaded: open

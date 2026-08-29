@@ -13,7 +13,7 @@ K4Plugin {
     id: self
 
     name: "launcher"
-    title: Idioma.t("Lanzador")
+    title: "Launcher"
     priority: 80
     // sigue ocupando la island mientras se encoge, pero ya sin contenido
     active: habilitado && (open || closing)

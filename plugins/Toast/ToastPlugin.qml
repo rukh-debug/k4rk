@@ -11,7 +11,7 @@ K4Plugin {
     id: self
 
     name: "toast"
-    title: Idioma.t("Notificación")
+    title: "Notification"
 
     //  59 y no 70, que es lo que hace que la lista de abajo y la prioridad
     //  digan lo MISMO. `enReposo` ya declaraba a quién puede relevar el toast

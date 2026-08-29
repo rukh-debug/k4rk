@@ -86,7 +86,7 @@ FadeIn {
                             anchors.fill: parent
                             verticalAlignment: Text.AlignVCenter
                             visible: entrada.text.length === 0
-                            text: Idioma.t("Buscar aplicaciones")
+                            text: "Search applications"
                             color: Theme.dim
                             font.pixelSize: 16
                         }
@@ -235,16 +235,14 @@ FadeIn {
                 IslandLabel {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    text: K4.Idioma.t("Elige qué actualizar")
+                    text: "Choose what to update"
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     color: Theme.ink
                 }
 
                 IslandLabel {
-                    text: K4.Idioma.f(K4.Idioma.t("%1 de %2 marcadas"),
-                                      String(Paquetes.marcadas),
-                                      String(Paquetes.pendientes))
+                    text: `${String(Paquetes.marcadas)} of ${String(Paquetes.pendientes)} selected`
                     color: Theme.muted
                     font.pixelSize: 11
                 }
@@ -386,18 +384,15 @@ FadeIn {
 
                     IslandLabel {
                         text: Paquetes.comprobando
-                            ? K4.Idioma.t("Buscando actualizaciones…")
+                            ? "Checking for updates…"
                             : Paquetes.pendientesRepo < 0
-                            ? K4.Idioma.t("Actualizaciones sin comprobar")
+                            ? "Updates not checked yet"
                             : Paquetes.pendientes === 0
-                            ? K4.Idioma.t("El sistema está al día")
-                            : K4.Idioma.f(
-                                K4.Idioma.t("%1 actualizaciones (%2)"),
-                                String(Paquetes.pendientes),
-                                Math.max(0, Paquetes.pendientesRepo)
+                            ? "The system is up to date"
+                            : `${String(Paquetes.pendientes)} updates (${Math.max(0, Paquetes.pendientesRepo)
                                     + " repos · "
                                     + Math.max(0, Paquetes.pendientesAur)
-                                    + " AUR")
+                                    + " AUR"})`
                         color: Paquetes.pendientes > 0 ? Theme.ink
                                                           : Theme.muted
                         font.pixelSize: 11
@@ -446,9 +441,8 @@ FadeIn {
                         id: actualizarTexto
                         anchors.centerIn: parent
                         text: Paquetes.marcadas < Paquetes.pendientes
-                            ? K4.Idioma.f(K4.Idioma.t("Actualizar %1"),
-                                          String(Paquetes.marcadas))
-                            : K4.Idioma.t("Actualizar")
+                            ? `Update ${String(Paquetes.marcadas)}`
+                            : "Update"
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                         color: Paquetes.marcadas === 0 ? Theme.dim : Theme.ink

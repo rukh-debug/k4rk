@@ -18,8 +18,6 @@ import QtQuick
 QtObject {
     //  El Theme de core/: colores, fuentes, geometría.
     property var tema: null
-    //  El servicio de traducción: t(), f(), codigo.
-    property var idioma: null
     //  El servicio de indicadores de la píldora.
     property var indicadores: null
 
@@ -40,9 +38,6 @@ QtObject {
     //  barra que no son suyos, y el estado de la island.
     property var enganches: null
     property var isla: null
-
-    //  La huella: datos personales agregados, con doble llave.
-    property var huella: null
 
     //  Qué terminal hay instalada y dónde conviene correr las cosas. Lo sabe
     //  el servicio, y sin esto un plugin tendría que adivinarlo.

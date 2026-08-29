@@ -44,31 +44,31 @@ FadeIn {
 
         const falta = segundos * 1000 - reloj.getTime()
         if (falta <= 0)
-            return Idioma.t("reiniciando")
+            return "restarting"
 
         const min = Math.round(falta / 60000)
         if (min < 60)
-            return Idioma.f("en %1 min", min)
+            return `in ${min} min`
 
         const horas = Math.floor(min / 60)
         if (horas < 24) {
             const resto = min % 60
             return resto
-                ? Idioma.f("en %1 h %2 min", horas, resto)
-                : Idioma.f("en %1 h", horas)
+                ? `in ${horas} h ${resto} min`
+                : `in ${horas} h`
         }
 
         const dias = Math.round(horas / 24)
-        return dias === 1 ? Idioma.t("en 1 día")
-                          : Idioma.f("en %1 días", dias)
+        return dias === 1 ? "in 1 day"
+                          : `in ${dias} days`
     }
 
     //  Los días por su nombre, y en el idioma de la barra. `Qt.formatDate` los
     //  saca en el del sistema, que aquí ponía «Sun» en medio de una interfaz
     //  en español. Empieza en domingo porque así los numera `getDay()`.
     readonly property var nombresDia: [
-        Idioma.t("dom"), Idioma.t("lun"), Idioma.t("mar"), Idioma.t("mié"),
-        Idioma.t("jue"), Idioma.t("vie"), Idioma.t("sáb")
+        "Sun", "Mon", "Tue", "Wed",
+        "Thu", "Fri", "Sat"
     ]
 
     //  El día y la hora del reinicio. Se dice como lo diría uno: «hoy» y
@@ -89,9 +89,9 @@ FadeIn {
         const dias = Math.round((suyo.getTime() - nuestro.getTime()) / 86400000)
 
         if (dias <= 0)
-            return Idioma.f("hoy %1", hora)
+            return `today ${hora}`
         if (dias === 1)
-            return Idioma.f("mañana %1", hora)
+            return `tomorrow ${hora}`
         if (dias < 7)
             return view.nombresDia[d.getDay()] + " " + hora
         //  Tan lejos no llega ninguna ventana de hoy, pero si mañana aparece
@@ -104,22 +104,22 @@ FadeIn {
     //  contador en vivo.
     function frescura(segundos, reloj) {
         if (!segundos)
-            return Idioma.t("sin fecha")
+            return "no date"
 
         const min = Math.round((reloj.getTime() - segundos * 1000) / 60000)
         if (min < 1)
-            return Idioma.t("ahora mismo")
+            return "just now"
         if (min < 60)
-            return Idioma.f("hace %1 min", min)
+            return `${min} min ago`
 
         const horas = Math.round(min / 60)
         if (horas < 24)
-            return horas === 1 ? Idioma.t("hace 1 h")
-                               : Idioma.f("hace %1 h", horas)
+            return horas === 1 ? "1 h ago"
+                               : `${horas} h ago`
 
         const dias = Math.round(horas / 24)
-        return dias === 1 ? Idioma.t("hace 1 día")
-                          : Idioma.f("hace %1 días", dias)
+        return dias === 1 ? "1 day ago"
+                          : `${dias} days ago`
     }
 
     ColumnLayout {
@@ -144,14 +144,14 @@ FadeIn {
             }
 
             IslandLabel {
-                text: Idioma.t("Agentes")
+                text: "Agents"
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
             }
 
             IslandLabel {
-                text: Idioma.t("lo que llevas gastado de cada cupo")
+                text: "how much of each quota you have spent"
                 color: Theme.dim
                 font.pixelSize: 10
                 elide: Text.ElideRight
@@ -208,7 +208,7 @@ FadeIn {
 
                         IslandLabel {
                             visible: !!tarjeta.modelData.creditos
-                            text: Idioma.t("créditos ") + (tarjeta.modelData.creditos || "")
+                            text: "credits " + (tarjeta.modelData.creditos || "")
                             color: Theme.dim
                             font.pixelSize: 9
                         }
@@ -222,7 +222,7 @@ FadeIn {
                         //  vivo» sería ruido en la fila.
                         IslandLabel {
                             visible: tarjeta.modelData.fuente === "cache"
-                            text: Idioma.t("caché")
+                            text: "cached"
                             color: Theme.dim
                             font.pixelSize: 9
                         }
@@ -240,7 +240,7 @@ FadeIn {
                         visible: !tarjeta.limites.length
                         Layout.fillWidth: true
                         Layout.preferredHeight: 20
-                        text: Idioma.t("Sin datos todavía — úsalo una vez y aparecerán")
+                        text: "No data yet — use it once and it will show up"
                         color: Theme.dim
                         font.pixelSize: 10
                         verticalAlignment: Text.AlignVCenter
@@ -332,8 +332,8 @@ FadeIn {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             text: !view.plugin.cargado
-                ? Idioma.t("Mirando…")
-                : Idioma.t("No hay ningún CLI de agentes instalado")
+                ? "Looking…"
+                : "No agent CLI is installed"
             color: Theme.dim
             font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter

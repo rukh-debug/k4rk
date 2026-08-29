@@ -13,7 +13,7 @@ eso sin preguntar no se le hace a nadie: `comprobar` dice qué falta y el editor
 enseña el mandato exacto para que lo pongas tú.
 
 Los motivos y las claves son en español pero NO son texto para el usuario: el
-QML los traduce con Idioma.t().
+QML los escribe con `Motivos.porque()`.
 """
 import argparse, json, os, re, shutil, subprocess, sys
 

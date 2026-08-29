@@ -12,7 +12,7 @@ ColumnLayout {
     spacing: 4
 
     IslandLabel {
-        text: Idioma.t("Fundidos")
+        text: "Fades"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -21,9 +21,9 @@ ColumnLayout {
 
     Repeater {
         model: [
-            { cual: "entrada", nombre: Idioma.t("Al entrar") },
-            { cual: "salida",  nombre: Idioma.t("Al salir") },
-            { cual: "entre",   nombre: Idioma.t("En los cortes") }
+            { cual: "entrada", nombre: "On entry" },
+            { cual: "salida",  nombre: "On exit" },
+            { cual: "entre",   nombre: "On the cuts" }
         ]
 
         delegate: RowLayout {
@@ -104,7 +104,7 @@ ColumnLayout {
     //  necesita la mezcla la entrega el trozo anterior.
     IslandLabel {
         visible: Editor.tramos.length > 1
-        text: Idioma.t("Transición en los cortes")
+        text: "Transition at the cuts"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -119,10 +119,10 @@ ColumnLayout {
 
         Repeater {
             model: [
-                { id: "",           nombre: Idioma.t("Corte") },
-                { id: "encadenado", nombre: Idioma.t("Fundir") },
-                { id: "deslizar",   nombre: Idioma.t("Deslizar") },
-                { id: "barrido",    nombre: Idioma.t("Barrer") }
+                { id: "",           nombre: "Cut" },
+                { id: "encadenado", nombre: "Fade" },
+                { id: "deslizar",   nombre: "Slide" },
+                { id: "barrido",    nombre: "Wipe" }
             ]
 
             delegate: Rectangle {
@@ -165,7 +165,7 @@ ColumnLayout {
 
         IslandLabel {
             Layout.preferredWidth: 58
-            text: Idioma.t("Duración")
+            text: "Duration"
             color: Theme.muted
             font.pixelSize: 9
         }

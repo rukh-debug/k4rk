@@ -60,9 +60,6 @@ PERMISOS = {
     "notificaciones": re.compile(r"\bK4\.Notificaciones\.limpiar\b"),
     "portapapeles": re.compile(r"\bK4\.Portapapeles\b"),
     "sonido": re.compile(r"\bK4\.Sonido\b"),
-    #  La huella entera con solo nombrarla: en datos personales no hay
-    #  lectura inocente.
-    "datos-personales": re.compile(r"\bK4\.Huella\b"),
 }
 
 #  Y QUÉ ES cada plugin: dónde se dibuja y por dónde se le llama.
@@ -743,7 +740,7 @@ class Traido:
     """Lo que sale de traerse un repo y mirarlo: un plugin válido, o el porqué.
 
     El `motivo` es un CÓDIGO y el dato va en `detalle`, para que la frase la
-    escriba quien sabe en qué idioma está el usuario. Ver `Idioma.porque()`.
+    escriba quien sabe cómo se cuenta. Ver `Motivos.porque()`.
     """
 
     def __init__(self, ok, motivo="", carpeta=None, item=None, commit="",

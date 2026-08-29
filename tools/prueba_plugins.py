@@ -194,16 +194,6 @@ def prueba_comentario_no_delata():
           v["cargable"], True)
 
 
-def prueba_huella_exige_permiso():
-    d = carpeta("curioso", manifiesto_base("curioso"),
-                {"Plugin.qml":
-                 "Item { property var j: K4.Huella.steam.juegos }\n"})
-    v = plugins.validar_carpeta(d, set(), HOST)
-    igual("nombrar K4.Huella sin datos-personales no carga",
-          v["cargable"], False)
-    contiene("y el motivo lo dice", v["dice"], "datos-personales")
-
-
 def prueba_portapapeles_delata_al_leer():
     d = carpeta("fisgon", manifiesto_base("fisgon"),
                 {"Plugin.qml":
@@ -535,8 +525,8 @@ def prueba_json_examinar_dice_por_que_no():
     with DestinoAparte("examen-malo"):
         d = dice(plugins.json_examinar, str(repo), None, "0" * 40)
         igual("no cuela", d["ok"], False)
-        #  Un código, no una frase: la frase la escribe la barra en el idioma
-        #  del usuario. Ver `Idioma.porque()`.
+        #  Un código, no una frase: la frase la escribe la barra.
+        #  Ver `Motivos.porque()`.
         igual("y dice cuál es el problema", d["motivo"], "sin-commit")
         contiene("con el commit en el detalle", d["detalle"], "000000000000")
 

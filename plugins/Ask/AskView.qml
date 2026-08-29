@@ -133,7 +133,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: Idioma.t("Preguntar")
+                text: "Ask"
                 color: Theme.muted
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
@@ -272,7 +272,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: view.plugin.status === "thinking" ? Idioma.t("pensando…") : "esc"
+                text: view.plugin.status === "thinking" ? "thinking…" : "esc"
                 color: Theme.dim
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
@@ -505,7 +505,7 @@ FadeIn {
             IslandLabel {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: view.plugin.query.length === 0
-                text: view.plugin.messages.length > 0 ? Idioma.t("Sigue preguntando…") : Idioma.t("Pregunta lo que quieras…")
+                text: view.plugin.messages.length > 0 ? "Keep asking…" : "Ask anything…"
                 color: Theme.dim
                 font.pixelSize: view.plugin.messages.length > 0 ? 15 : 19
             }

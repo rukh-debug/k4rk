@@ -130,10 +130,10 @@ Singleton {
         }
         const script = "yay -Syu --ignore=" + fuera.join(",")
             + " && notify-send -a 'Actualizar' '"
-            + Idioma.t("Sistema al día") + " ("
-            + fuera.length + " " + Idioma.t("dejadas para luego") + ")'"
+            + "System up to date" + " ("
+            + fuera.length + " " + "left for later" + ")'"
             + " || { notify-send -a 'Actualizar' -u critical '"
-            + Idioma.t("La actualización falló") + "';"
+            + "The update failed" + "';"
             + Consola.cierre + " }"
         Consola.ejecutar(script)
         comprobadoEn = 0
@@ -142,9 +142,9 @@ Singleton {
     function actualizarTodo() {
         const script = "yay -Syu"
             + " && notify-send -a 'Actualizar' '"
-            + Idioma.t("Sistema al día") + "'"
+            + "System up to date" + "'"
             + " || { notify-send -a 'Actualizar' -u critical '"
-            + Idioma.t("La actualización falló") + "';"
+            + "The update failed" + "';"
             + Consola.cierre + " }"
         Consola.ejecutar(script)
         comprobadoEn = 0

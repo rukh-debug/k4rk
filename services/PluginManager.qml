@@ -129,8 +129,8 @@ Singleton {
 
     function motivoDelRequisito(m) {
         return m && m.requiere === "k4term-isla"
-            ? Idioma.t("necesita k4term con su sesión de isla")
-            : Idioma.t("necesita k4term instalado")
+            ? "needs k4term with its island session"
+            : "needs k4term installed"
     }
 
     //  Cuando `Consola` termina de mirar qué hay, se revisa a quién le falta
@@ -528,7 +528,7 @@ Singleton {
         .filter(function (m) { return m.configurable !== false })
         .map(function (m) {
             const error = errores[m.id] || ""
-            let desc = Idioma.t("Activar o desactivar este plugin")
+            let desc = "Turn this plugin on or off"
             if (m.externo) {
                 desc = m.description || "Plugin de usuario"
                 if (m.permisos && m.permisos.length > 0)
@@ -538,14 +538,14 @@ Singleton {
             if (m.cargable === false)
                 //  `porque()` y no el motivo pelado: el guion devuelve un
                 //  código y esta línea la lee el usuario en su idioma.
-                desc = Idioma.porque(m.motivo || "no-cargable", m.detalle)
+                desc = Motivos.porque(m.motivo || "no-cargable", m.detalle)
             else if (sinRequisito)
                 desc = motivoDelRequisito(m)
             else if (error.length > 0)
                 desc = error
             return { id: "plugin_" + m.id,
                      pluginId: m.id,
-                     nombre: Idioma.t(m.title || m.id)
+                     nombre: (m.title || m.id)
                          + (m.externo ? "  ·  " + (m.version || "") : ""),
                      desc: desc,
                      error: (m.cargable === false || sinRequisito) ? "fijo"
@@ -573,7 +573,7 @@ Singleton {
                      //  idioma de origen. Esta lista alimenta tanto la portada
                      //  como sus accesos directos, así que se traducen antes
                      //  de publicarla y reaccionan al cambio de idioma.
-                     nombre: Idioma.t(m.title || m.id),
+                     nombre: (m.title || m.id),
                      imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
                      glifo: m.icono ? parseInt(m.icono, 16) : 0xF0431,
                      externo: m.externo === true,
@@ -996,9 +996,9 @@ Singleton {
             //  haya escrito en stderr, y si tampoco hay, al menos el código.
             const bien = codigo === 0 && d && d.ok
             const motivo = (d && d.motivo)
-                ? Idioma.porque(d.motivo, d.detalle)
+                ? Motivos.porque(d.motivo, d.detalle)
                 : (manager._queja
-                   || Idioma.f("El guion terminó con el código %1", codigo))
+                   || `The script exited with code ${codigo}`)
 
             if (que === "buscar") {
                 if (bien)

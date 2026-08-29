@@ -13,7 +13,7 @@ K4Plugin {
     id: self
 
     name: "system"
-    title: Idioma.t("Sistema")
+    title: "System"
     priority: 62
     active: habilitado && (open || closing)
     viewLoaded: open

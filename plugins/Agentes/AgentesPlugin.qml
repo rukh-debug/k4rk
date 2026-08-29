@@ -24,7 +24,7 @@ K4Plugin {
     id: self
 
     name: "agentes"
-    title: Idioma.t("Agentes")
+    title: "Agents"
     priority: 63
     active: habilitado && abierto
 
@@ -230,16 +230,16 @@ K4Plugin {
 
     K4.Ajustes {
         plugin: "agentes"
-        grupo: Idioma.t("Agentes")
+        grupo: "Agents"
         opciones: [
-            { id: "enVivo", nombre: Idioma.t("Preguntar al servidor"),
-              desc: Idioma.t("Tu uso real, al momento. Apagado se lee la caché de la herramienta, que va con horas de retraso"),
+            { id: "enVivo", nombre: "Ask the server",
+              desc: "Your real usage, right now. Off, it reads the tool's cache, which lags by hours",
               glifo: 0xF06F2 },
-            { id: "avisar", nombre: Idioma.t("Avisar cuando aprieta"),
-              desc: Idioma.t("Un porcentaje en la píldora cuando el límite más apurado pasa del umbral"),
+            { id: "avisar", nombre: "Warn when it gets tight",
+              desc: "A percentage on the pill when the tightest limit crosses the threshold",
               glifo: 0xF0026 },
-            { id: "umbral", tipo: "eleccion", nombre: Idioma.t("Umbral del aviso"),
-              desc: Idioma.t("A partir de cuánto gastado merece la pena enterarse"),
+            { id: "umbral", tipo: "eleccion", nombre: "Warning threshold",
+              desc: "How much spent is worth hearing about",
               glifo: 0xF029A,
               alternativas: [{ codigo: "70", nombre: "70%" },
                              { codigo: "85", nombre: "85%" },
@@ -277,8 +277,8 @@ K4Plugin {
                 && ["agentes", "claude", "codex", "limites", "límites", "cupo",
                     "gasto", "ia"].some(p => p.indexOf(t) === 0)
             resultados = pega
-                ? [{ id: "abrir", titulo: Idioma.t("Agentes"),
-                     desc: Idioma.t("Los límites de Claude y Codex") }]
+                ? [{ id: "abrir", titulo: "Agents",
+                     desc: "Claude and Codex limits" }]
                 : []
         }
         onElegido: function (id) {

@@ -21,7 +21,7 @@ K4.Plugin {
     id: self
 
     name: "apps"
-    title: Idioma.t("Aplicaciones")
+    title: "Applications"
     priority: 72
     active: abierto
     grabKeyboard: abierto
@@ -132,7 +132,7 @@ K4.Plugin {
                     //  un icono del escritorio, y ninguna aplicación de la
                     //  barra tiene uno: salían todas sin icono.
                     return { id: a.id, titulo: a.nombre,
-                             desc: K4.Idioma.t("Aplicación de la barra"),
+                             desc: "Bar application",
                              imagen: a.imagen, glifo: a.glifo }
                 })
         }

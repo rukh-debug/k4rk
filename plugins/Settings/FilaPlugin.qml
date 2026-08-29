@@ -281,7 +281,7 @@ Rectangle {
             IslandLabel {
                 Layout.fillWidth: true
                 visible: fila.suGrupo !== null && !fila.encendido
-                text: Idioma.t("Enciéndelo para ver sus ajustes")
+                text: "Turn it on to see its settings"
                 color: Theme.dim
                 font.pixelSize: 10
             }

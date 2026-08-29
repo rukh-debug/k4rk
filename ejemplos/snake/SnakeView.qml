@@ -45,15 +45,13 @@ Item {
             spacing: 18
 
             K4.Etiqueta {
-                text: K4.Idioma.f(K4.Idioma.t("Puntos %1"),
-                                  vista.plugin.puntos)
+                text: `Score ${vista.plugin.puntos}`
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
             }
 
             K4.Etiqueta {
-                text: K4.Idioma.f(K4.Idioma.t("Récord %1"),
-                                  vista.plugin.record)
+                text: `Best ${vista.plugin.record}`
                 color: K4.Tema.apagado
                 font.pixelSize: 13
             }
@@ -110,8 +108,7 @@ Item {
                     K4.Etiqueta {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: vista.plugin.muerto
-                            ? K4.Idioma.f(K4.Idioma.t("Fin · %1 puntos"),
-                                          vista.plugin.puntos)
+                            ? `End · ${vista.plugin.puntos} points`
                             : "Snake"
                         font.pixelSize: 18
                         font.weight: Font.Bold
@@ -119,7 +116,7 @@ Item {
 
                     K4.Etiqueta {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: K4.Idioma.t("Espacio para jugar · flechas o WASD")
+                        text: "Space to play · arrows or WASD"
                         color: K4.Tema.apagado
                         font.pixelSize: 11
                     }

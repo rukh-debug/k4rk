@@ -126,7 +126,7 @@ Rectangle {
             IslandLabel {
                 text: opcion.armada
                     ? (opcion.modelData.nombreArmado
-                       || Idioma.t("¿Seguro? Esto no se puede deshacer"))
+                       || "Are you sure? This cannot be undone")
                     : opcion.modelData.nombre
                 color: opcion.armada ? Theme.red : Theme.ink
                 font.pixelSize: 12
@@ -154,7 +154,7 @@ Rectangle {
         //  fila entera reintenta.
         IslandLabel {
             visible: opcion.modelData.error === "recargable"
-            text: Idioma.t("reintentar")
+            text: "retry"
             color: Theme.blue
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter
@@ -178,7 +178,7 @@ Rectangle {
             //  lado del botón rojo.
             IslandLabel {
                 visible: opcion.armada
-                text: Idioma.t("cancelar")
+                text: "cancel"
                 color: Theme.muted
                 font.pixelSize: 10
 
@@ -208,8 +208,8 @@ Rectangle {
                     id: etiquetaAccion
                     anchors.centerIn: parent
                     text: opcion.armada
-                        ? (opcion.modelData.confirmar || Idioma.t("Sí"))
-                        : (opcion.modelData.accion || Idioma.t("Hacerlo"))
+                        ? (opcion.modelData.confirmar || "Yes")
+                        : (opcion.modelData.accion || "Do it")
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
                 }

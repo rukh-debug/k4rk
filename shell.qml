@@ -132,7 +132,6 @@ Scope {
         //  copia entera de services/, ver api/K4/Puente.qml— así que el host
         //  les inyecta aquí lo que necesitan.
         K4.Puente.tema = Theme
-        K4.Puente.idioma = Idioma
         K4.Puente.indicadores = Indicadores
         K4.Puente.audio = Audio
         K4.Puente.medios = Media
@@ -144,7 +143,6 @@ Scope {
         K4.Puente.reloj = Clock
         K4.Puente.enganches = Enganches
         K4.Puente.isla = Island
-        K4.Puente.huella = Huella
         K4.Puente.consola = Consola
 
         void Audio.volume
@@ -155,7 +153,6 @@ Scope {
         void Clock.date
         void Workspaces.list
         void Tray.count
-        void Idioma.cargado
         void Settings.cargado
         void PluginManager.cargado
         void Clipboard.cargado
@@ -280,6 +277,33 @@ Scope {
             readonly property var pluginVisible: root.activePlugin
                 && (root.activePlugin.name === "idle" || esPantallaActiva)
                 ? root.activePlugin : idlePlugin
+
+            //  ── click outside closes, like Escape ─────────────────────
+            //
+            //  A deployed view — the control center, the launcher — closes
+            //  with Escape; the pointer deserves the same gesture. While one
+            //  is showing HERE, the surface grows to cover the screen (see
+            //  `targetHeight`) and the input mask includes the catcher (see
+            //  `mask`), so a tap outside the island lands on us and closes
+            //  the view through the same `close()` door Escape uses.
+            //
+            //  The click is SPENT on closing — it does not reach what is
+            //  underneath. That is the trade, and the right one: the user
+            //  asked for the view to go away, not for the link behind it.
+            //  Anyone who prefers pass-through turns it off in Ajustes.
+            //
+            //  Only the screen showing the view, only views that want it
+            //  (`closeOnClickOutside`) and that somebody opened — the ones
+            //  nobody asked for (`transitorio`) would eat clicks meant for
+            //  other things. And never while the island is stood aside:
+            //  a system dialog deserves every click it gets.
+            readonly property bool cerrarConClicFuera: Settings.cerrarConClicFuera
+                && esPantallaActiva
+                && !Island.apartada
+                && root.activePlugin.closeOnClickOutside
+                && !root.activePlugin.transitorio
+                && root.activePlugin.islandHeight > Theme.baseHeight
+
             //  ── la barra apartada de UNA pantalla ─────────────────────
             //
             //  `activePlugin` es uno solo y global: gana el de más prioridad y
@@ -517,8 +541,17 @@ Scope {
             //  ese margen los píxeles desplazados se recortan contra el borde
             //  de la superficie. Crece al empezar el gesto y el encogido lo
             //  recoge el mismo temporizador de siempre.
-            readonly property int targetHeight: Math.min(Theme.maxIslandHeight,
-                panelWindow.altoIsla + 2 + (island.gestoEnCurso ? 44 : 0))
+            //  Screen-tall while the outside-click catcher is on (see
+            //  `cerrarConClicFuera`): a tap outside the island can only be
+            //  caught if there is surface under it. Same one-shot resize
+            //  discipline as the island growth — the surface jumps once when
+            //  the view opens and shrinks once (after the usual pause) when
+            //  it closes; the input mask, not the surface size, is what lets
+            //  clicks through in between.
+            readonly property int targetHeight: panelWindow.cerrarConClicFuera
+                ? panelWindow.screen.height
+                : Math.min(Theme.maxIslandHeight,
+                    panelWindow.altoIsla + 2 + (island.gestoEnCurso ? 44 : 0))
             property int surfaceHeight: targetHeight
 
             onTargetHeightChanged: {
@@ -558,10 +591,49 @@ Scope {
             mask: Region {
                 item: Island.apartada ? null : island
 
+                //  The catcher's region: with a view open, the whole surface
+                //  takes input — including the parts no island covers — so
+                //  the outside tap has somewhere to land. See `cazaClics`.
+                Region {
+                    item: panelWindow.cerrarConClicFuera ? cazaClics : null
+                    intersection: Intersection.Combine
+                }
+
                 Region {
                     item: (Island.apartada || panelWindow.sinBarra
                            || !panelWindow.seEsconde) ? null : filo
                     intersection: Intersection.Combine
+                }
+            }
+
+            //  ── the catcher: what the outside tap falls on ─────────────
+            //
+            //  No visuals and no cost; it exists so that a tap outside the
+            //  island, with a view open, is received instead of lost. It is
+            //  declared BEFORE `filo` and the island on purpose: they stack
+            //  above it, so the island keeps every click aimed at it — and a
+            //  tap on its transparent wings closes, which is right: that is
+            //  the shell's own empty part.
+            //
+            //  Not `visible: false` — hidden items get no mouse. When nothing
+            //  is open, the MASK (not visibility) keeps this inert: outside
+            //  the input region nothing arrives here.
+            Item {
+                id: cazaClics
+                anchors.fill: parent
+
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    gesturePolicy: TapHandler.ReleaseWithinBounds
+                    onTapped: {
+                        //  Escape's own door, not a shortcut around it:
+                        //  whatever the view does on close — stay put for its
+                        //  exit animation, hand the island over — keeps
+                        //  working exactly the same.
+                        const p = panelWindow.pluginVisible
+                        if (p && typeof p.close === "function")
+                            p.close()
+                    }
                 }
             }
 

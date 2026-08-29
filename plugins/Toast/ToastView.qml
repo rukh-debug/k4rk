@@ -62,7 +62,7 @@ FadeIn {
                     //  dentro empujaba la banda entera hacia abajo.
                     text: view.notification
                         ? view.notification.summary.replace(/\s*\n\s*/g, " ")
-                        : Idioma.t("Notificación")
+                        : "Notification"
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight

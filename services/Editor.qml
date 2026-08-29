@@ -587,7 +587,7 @@ Singleton {
         const info = infoBanda(b)
         return info && info.nombre
             ? info.nombre
-            : Idioma.t("Capa ") + (b - primeraBandaLibre + 1)
+            : "Layer " + (b - primeraBandaLibre + 1)
     }
 
     function crearBanda(nombre) {
@@ -1460,7 +1460,7 @@ Singleton {
         const nueva = {
             id: nuevoIdCapa(),
             tipo: "texto",
-            texto: Idioma.t("Escribe aquí"),
+            texto: "Type here",
             t0: a,
             t1: b,
             banda: bandaParaNueva(a, b),
@@ -1487,20 +1487,20 @@ Singleton {
             return ""
         if (c.tipo === "texto") {
             const t = String(c.texto || "").trim()
-            return t.length > 0 ? t : Idioma.t("Rótulo")
+            return t.length > 0 ? t : "Caption"
         }
         if (c.tipo === "forma")
-            return c.modo === "circulo" ? Idioma.t("Círculo")
-                 : c.modo === "marco"   ? Idioma.t("Marco")
-                                        : Idioma.t("Flecha")
+            return c.modo === "circulo" ? "Circle"
+                 : c.modo === "marco"   ? "Frame"
+                                        : "Arrow"
         // Una zona no tiene fichero: lo que la distingue es qué le hace.
         if (c.tipo === "zona")
-            return c.modo === "pixelado" ? Idioma.t("Pixelado")
-                 : c.modo === "foco"     ? Idioma.t("Foco")
-                                         : Idioma.t("Desenfoque")
+            return c.modo === "pixelado" ? "Pixelate"
+                 : c.modo === "foco"     ? "Focus"
+                                         : "Blur"
         if (c.tipo === "censura")
-            return c.modo === "pitido" ? Idioma.t("Pitido")
-                                       : Idioma.t("Silenciado")
+            return c.modo === "pitido" ? "Beep"
+                                       : "Muted"
 
         //  Una capa de audio se llamaba como su FICHERO, y eso no distingue
         //  nada donde más falta hace: «separar el audio» saca dos capas del
@@ -1517,7 +1517,7 @@ Singleton {
             //  Una locución se llama por lo que es y no `locucion-2.m4a`.
             const loc = String(c.ruta || "").match(/locucion-(\d+)\.m4a$/)
             if (loc)
-                return Idioma.t("Locución") + " " + loc[1]
+                return "Voice-over" + " " + loc[1]
             //  Y lo demás, el fichero sin la extensión: en un chip, «.mp3» no
             //  aporta y quita sitio al nombre.
             const f = String(c.ruta || "").split("/").pop()
@@ -1950,7 +1950,10 @@ Singleton {
         }
         faltaTranscripcion = ""
         estadoTranscripcion = "extrayendo"
-        procesos.transcribir(rutaVideo, Idioma.codigo || "es", carpetaAdjunta)
+        //  Whisper wants a two-letter language code; the system locale is
+        //  the best guess now that the bar itself is English-only.
+        procesos.transcribir(rutaVideo, Qt.locale().name.split("_")[0] || "en",
+                             carpetaAdjunta)
     }
 
     //  La carpeta que acompaña al plan, donde van los ficheros que hace falta
@@ -3369,10 +3372,10 @@ Singleton {
         }
         const piezas = []
         if (Number(marcadores[0].t) > 2)
-            piezas.push("00:00 " + Idioma.t("Inicio"))
+            piezas.push("00:00 " + "Start")
         for (let i = 0; i < marcadores.length; ++i)
             piezas.push(sello(marcadores[i].t) + " "
-                        + (marcadores[i].nombre || Idioma.t("Capítulo")))
+                        + (marcadores[i].nombre || "Chapter"))
         return piezas.join("\n")
     }
 

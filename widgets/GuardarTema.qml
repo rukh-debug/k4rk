@@ -36,8 +36,8 @@ RowLayout {
 
     IslandLabel {
         text: guardar.puesto
-            ? Idioma.t("Guardado en config/k4-theme.lua · sobrevive al reinicio")
-            : Idioma.t("Aplicado solo en esta sesión · pulsa Guardar para que persista")
+            ? "Saved to config/k4-theme.lua · survives restarts"
+            : "Applied to this session only · press Save to keep it"
         color: Theme.muted
         font.pixelSize: 10
         Layout.alignment: Qt.AlignVCenter
@@ -58,7 +58,7 @@ RowLayout {
         IslandLabel {
             id: etiqueta
             anchors.centerIn: parent
-            text: Idioma.t("Guardar")
+            text: "Save"
             font.pixelSize: 11
             font.weight: Font.DemiBold
         }

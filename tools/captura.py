@@ -12,7 +12,8 @@ que hubo en este repo, todo el manejo de error es `code === 0`, así que cancela
 una selección y que reviente la captura son indistinguibles.
 
 Los motivos son CLAVES, no frases: los guiones de Python no pasan por el
-traductor, así que el texto que lee el usuario lo pone el QML con Idioma.t().
+traductor, así que el texto que lee el usuario lo pone el QML con
+`Motivos.porque()`.
 """
 import argparse, json, os, shutil, subprocess, sys, time
 

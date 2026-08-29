@@ -25,7 +25,7 @@ K4Plugin {
     id: self
 
     name: "ssh"
-    title: Idioma.t("Servidores")
+    title: "Servers"
     //  Como el portapapeles: se pide a propósito, así que manda sobre lo que
     //  esté puesto.
     priority: 82
@@ -63,20 +63,20 @@ K4Plugin {
         : camposTodos.filter(function (c) { return c.id !== "contrasena" })
 
     readonly property var camposTodos: [
-        { id: "alias",      nombre: Idioma.t("Nombre"),     ayuda: Idioma.t("como lo vas a llamar"),          suyo: false },
-        { id: "host",       nombre: Idioma.t("Máquina"),    ayuda: Idioma.t("dominio o IP"),                  suyo: false },
-        { id: "usuario",    nombre: Idioma.t("Usuario"),    ayuda: Idioma.t("vacío = el tuyo"),               suyo: false },
+        { id: "alias",      nombre: "Name",     ayuda: "what you are going to call it",          suyo: false },
+        { id: "host",       nombre: "Typewriter",    ayuda: "domain or IP",                  suyo: false },
+        { id: "usuario",    nombre: "User",    ayuda: "empty = yours",               suyo: false },
         //  La contraseña no va ni al `ssh_config` ni a `hosts.json`: esos dos
         //  se abren y se copian sin pensar. Vive en `claves.json` con 600, y
         //  en la ficha se enseña con puntos salvo que pidas verla (ctrl+O).
-        { id: "contrasena", nombre: Idioma.t("Contraseña"), ayuda: Idioma.t("si entra con contraseña en vez de con clave"), suyo: false, secreto: true },
-        { id: "puerto",     nombre: Idioma.t("Puerto"),     ayuda: Idioma.t("vacío = 22"),                    suyo: false },
-        { id: "clave",      nombre: Idioma.t("Clave"),      ayuda: Idioma.t("ruta de la privada, si no la de siempre"), suyo: false },
-        { id: "salto",      nombre: Idioma.t("Salto"),      ayuda: Idioma.t("pasar por otro servidor (ProxyJump)"), suyo: false },
-        { id: "etiquetas",  nombre: Idioma.t("Etiquetas"),  ayuda: Idioma.t("separadas por espacios, para buscar"), suyo: true },
-        { id: "alConectar", nombre: Idioma.t("Al entrar"),  ayuda: Idioma.t("un mandato que se teclea al conectar"), suyo: true },
-        { id: "tinte",      nombre: Idioma.t("Color"),      ayuda: Idioma.t("rojo, ámbar, verde, azul, morado — para saber dónde estás"), suyo: true },
-        { id: "tuneles",    nombre: Idioma.t("Túneles"),    ayuda: Idioma.t("8080:localhost:80 · socks:1080 · R:9000:localhost:9000"), suyo: true }
+        { id: "contrasena", nombre: "Password", ayuda: "if it logs in with a password instead of a key", suyo: false, secreto: true },
+        { id: "puerto",     nombre: "Port",     ayuda: "empty = 22",                    suyo: false },
+        { id: "clave",      nombre: "Key",      ayuda: "path to the private key, if not the usual one", suyo: false },
+        { id: "salto",      nombre: "Jump",      ayuda: "go through another server (ProxyJump)", suyo: false },
+        { id: "etiquetas",  nombre: "Tags",  ayuda: "space separated, for searching", suyo: true },
+        { id: "alConectar", nombre: "On entry",  ayuda: "a command typed on connecting", suyo: true },
+        { id: "tinte",      nombre: "Colour",      ayuda: "red, amber, green, blue, purple — so you know where you are", suyo: true },
+        { id: "tuneles",    nombre: "Tunnels",    ayuda: "8080:localhost:80 · socks:1080 · R:9000:localhost:9000", suyo: true }
     ]
 
     //  Si la contraseña se enseña o va con puntos. Se apaga al abrir la ficha

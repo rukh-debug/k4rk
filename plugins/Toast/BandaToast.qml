@@ -81,7 +81,7 @@ K4.Ventana {
 
                 IslandLabel {
                     text: ventana.aviso ? ventana.aviso.summary
-                                        : Idioma.t("Notificación")
+                                        : "Notification"
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight

@@ -76,7 +76,6 @@ not be declared inside the view.
 | `K4.Pildora` | Small indicators in the folded pill |
 | `K4.Sonido` | Short sound effect (permission `sonido`) |
 | `K4.Tema` | Palette, fonts, island geometry — and `tintar()` to tint the bar's ambience |
-| `K4.Idioma` | Translation: `t()` and `f()` |
 | `K4.Guardado` | Plugin state as JSON, in its own directory |
 | `K4.Etiqueta` | Text with the bar's defaults |
 | `K4.Glifo` | Nerd Font glyph |
@@ -100,7 +99,7 @@ not be declared inside the view.
 | `K4.Portapapeles` | Clipboard history (reading needs `portapapeles`) |
 | `K4.Reloj` | The bar's single clock |
 | `K4.Ajustes` | Your own settings inside the bar's Settings — switches, choices, free text (`secreto` for keys) |
-| `K4.Huella` | Aggregated personal data (Steam, packages), double-keyed: `datos-personales` permission + per-source user opt-in |
+
 | `K4.Lanzador` | Contribute results to the launcher |
 | `K4.Isla` | Island state: open, occupant, maximum height — plus `rect`/`rectEn()`/`posicion` (geometry, per screen) — `efecto()` (shake, push, tug) and `colocar()` (slide along the edge) |
 

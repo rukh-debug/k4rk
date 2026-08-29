@@ -18,7 +18,7 @@ K4Plugin {
     id: self
 
     name: "hyprtheme"
-    title: Idioma.t("Tema de Hyprland")
+    title: "Hyprland theme"
     //  Sin `active`, sin `view` y sin teclado: este plugin ya NO se dibuja.
     //
     //  Tenía su propia pantalla con cuatro pestañas —color, ventanas, efectos y
@@ -495,8 +495,8 @@ K4Plugin {
         onArrancado: { self.eligiendo = true; Island.abrirDialogo() }
         onTerminado: { self.eligiendo = false; Island.cerrarDialogo() }
         command: ["zenity", "--file-selection", "--multiple", "--separator=\n",
-                  "--title=" + Idioma.t("Elegir fondo"),
-                  "--file-filter=" + Idioma.t("Fondos")
+                  "--title=" + "Choose a background",
+                  "--file-filter=" + "Backgrounds"
                   + " | *.jpg *.jpeg *.png *.webp *.avif *.gif *.apng"
                   + " *.mp4 *.webm *.mkv *.mov *.m4v"]
 

@@ -88,7 +88,7 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: entrada.text.length === 0
-                    text: Idioma.t("Buscar un servidor, o escribir usuario@máquina")
+                    text: "Search for a server, or type user@host"
                     color: Theme.dim
                     font.pixelSize: 15
                 }
@@ -134,7 +134,7 @@ FadeIn {
 
             IslandLabel {
                 text: vista.plugin.cuantos + (vista.plugin.cuantos === 1
-                    ? Idioma.t(" servidor") : Idioma.t(" servidores"))
+                    ? " server" : " servers")
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -217,7 +217,7 @@ FadeIn {
 
                             IslandLabel {
                                 text: fila.modelData.rapido
-                                    ? Idioma.t("Conectar a ") + fila.modelData.host
+                                    ? "Connect to " + fila.modelData.host
                                     : fila.modelData.alias
                                 color: Theme.ink
                                 font.pixelSize: 14
@@ -256,7 +256,7 @@ FadeIn {
                                 const m = fila.modelData
                                 const usuario = m.usuario ? m.usuario + "@" : ""
                                 const puerto = m.puerto && m.puerto !== "22" ? ":" + m.puerto : ""
-                                const salto = m.salto ? "  ·  " + Idioma.t("por ") + m.salto : ""
+                                const salto = m.salto ? "  ·  " + "by " + m.salto : ""
                                 return usuario + m.host + puerto + salto
                             }
                             color: Theme.muted
@@ -281,7 +281,7 @@ FadeIn {
                         IslandLabel {
                             id: guardar
                             anchors.centerIn: parent
-                            text: Idioma.t("Guardar")
+                            text: "Save"
                             font.pixelSize: 10
                             font.weight: Font.DemiBold
                         }
@@ -326,7 +326,7 @@ FadeIn {
 
             IslandLabel {
                 visible: vista.plugin.sinClaves
-                text: Idioma.t("No tienes ninguna clave: ctrl+K la crea y la manda al servidor")
+                text: "You have no key: ctrl+K creates one and sends it to the server"
                 color: Theme.yellow
                 font.pixelSize: 10
                 Layout.fillWidth: true
@@ -334,7 +334,7 @@ FadeIn {
 
             IslandLabel {
                 visible: !vista.plugin.sinClaves
-                text: Idioma.t("intro conecta · shift+intro ventana · ctrl+E edita · ctrl+F favorito · ctrl+G agentes · ctrl+I integración · supr borra")
+                text: "enter connects · shift+enter window · ctrl+E edit · ctrl+F favourite · ctrl+G agents · ctrl+I integration · del removes"
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.fillWidth: true
@@ -370,8 +370,8 @@ FadeIn {
 
             IslandLabel {
                 text: vista.plugin.borrador.original
-                    ? Idioma.t("Editar ") + vista.plugin.borrador.original
-                    : Idioma.t("Servidor nuevo")
+                    ? "Edit " + vista.plugin.borrador.original
+                    : "New server"
                 color: Theme.ink
                 font.pixelSize: 15
                 Layout.fillWidth: true
@@ -390,7 +390,7 @@ FadeIn {
                 IslandLabel {
                     id: estrella
                     anchors.centerIn: parent
-                    text: (vista.plugin.borrador.favorito ? "★ " : "☆ ") + Idioma.t("favorito")
+                    text: (vista.plugin.borrador.favorito ? "★ " : "☆ ") + "favourite"
                     color: vista.plugin.borrador.favorito ? Theme.yellow : Theme.muted
                     font.pixelSize: 10
                 }
@@ -538,14 +538,14 @@ FadeIn {
             spacing: 8
 
             IslandLabel {
-                text: Idioma.t("intro guarda · esc cancela · ↑↓ o tab cambia de campo")
+                text: "enter saves · esc cancels · ↑↓ or tab moves between fields"
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.fillWidth: true
             }
 
             IslandLabel {
-                text: Idioma.t("lo de arriba va a ~/.ssh/config")
+                text: "the above goes into ~/.ssh/config"
                 color: Theme.dim
                 font.pixelSize: 10
             }

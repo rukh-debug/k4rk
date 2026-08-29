@@ -7,12 +7,17 @@ import "../../services"
 
 K4Plugin {
     name: "volume"
-    title: Idioma.t("Volumen")
+    title: "Volume"
     priority: 40
     active: habilitado && Audio.overlayOpen
 
     islandWidth: 240
     islandHeight: 40
+
+    //  Never in the way of a click: this HUD shows up uninvited — media keys,
+    //  a mixer — and the pointer is usually busy somewhere else when it does.
+    //  See `closeOnClickOutside` in the plugin contract.
+    closeOnClickOutside: false
 
     view: Component { VolumeView {} }
 }

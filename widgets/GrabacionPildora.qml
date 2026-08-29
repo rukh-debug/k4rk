@@ -50,7 +50,7 @@ Item {
 
         IslandLabel {
             text: Captura.estado === "cerrando"
-                ? Idioma.t("cerrando…") : Captura.duracionTexto
+                ? "closing…" : Captura.duracionTexto
             color: Theme.muted
             font.pixelSize: 11
             font.weight: Font.Medium

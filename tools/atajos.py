@@ -77,27 +77,25 @@ RE_ALIAS = re.compile(r'^\s*local\s+(\w+)\s*=\s*.*\b%s\b')
 # `local k4 = "quickshell ipc -p " .. raiz .. "/shell.qml call k4 "`
 RE_LOCAL_EXPR = re.compile(r'^\s*local\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$')
 
-# Lo que hace cada despachador. La frase es la clave de traducción — el
-# español es el idioma de origen en todo k4 — y la vista la pasa por
-# Idioma.t(): quien traduce añade la entrada a traducciones/<idioma>.json y
-# aquí no se toca nada. Los que no estén salen con su nombre limpio, que
-# sigue diciendo bastante.
+# What each dispatcher does. The phrase carries «%1» where the detail goes;
+# the view fills it in. Unknown dispatchers come out with their clean name,
+# which still says plenty.
 VERBOS = {
-    "window.close": "Cerrar la ventana",
-    "window.fullscreen": "Pantalla completa",
-    "window.float": "Flotar o anclar la ventana",
-    "window.move": "Mover la ventana",
-    "window.resize": "Redimensionar",
-    "window.cycle_next": "Siguiente ventana",
-    "window.pin": "Fijar la ventana",
-    "window.pseudo": "Modo pseudo",
-    "focus": "Cambiar el foco",
-    "workspace": "Ir al espacio de trabajo",
-    "layout": "Cambiar la disposición",
-    "global": "Evento global de la barra",
-    "exit": "Salir de Hyprland",
-    "kill": "Matar una ventana",
-    "exec_cmd": "",              # se resuelve con el propio comando
+    "window.close": "Close the window",
+    "window.fullscreen": "Fullscreen",
+    "window.float": "Float or tile the window",
+    "window.move": "Move the window",
+    "window.resize": "Resize",
+    "window.cycle_next": "Next window",
+    "window.pin": "Pin the window",
+    "window.pseudo": "Pseudo mode",
+    "focus": "Change focus",
+    "workspace": "Go to workspace",
+    "layout": "Change layout",
+    "global": "Bar global event",
+    "exit": "Exit Hyprland",
+    "kill": "Kill a window",
+    "exec_cmd": "",              # resolved from the command itself
 }
 
 
@@ -206,14 +204,11 @@ def hasta_cierre(texto):
 
 
 def describir(accion, vals):
-    """(frase, detalle): la frase es traducible, el detalle va detrás.
+    """(frase, detalle): the phrase carries «%1» where the detail goes.
 
-    La frase lleva «%1» donde toque el detalle —una orden, un modo, una
-    dirección— para que la vista la traduzca entera con Idioma.f() y rellene
-    después. El detalle se traduce aparte con Idioma.t(): lo que no esté en el
-    diccionario pasa tal cual, que es justo lo que quieren las órdenes y los
-    nombres de modo, y lo que quieren traducido los pocos que son frases
-    («el número», «en este monitor»).
+    The view fills %1 with `detalle` — an order, a mode, a direction. The
+    detail passes through as-is: that is exactly right for commands and mode
+    names, which are literals.
     """
     accion = accion.strip().rstrip(")").strip()
 
@@ -256,7 +251,7 @@ def describir(accion, vals):
         if orden.startswith("noctalia msg "):
             return "noctalia · %1", orden[len("noctalia msg "):].strip()
         if orden.startswith("uwsm app -- "):
-            return "Abrir %1", orden[len("uwsm app -- "):].strip()
+            return "Open %1", orden[len("uwsm app -- "):].strip()
         # Una orden cualquiera se enseña tal cual: es literalmente lo que se
         # ejecuta, y traducirla sería mentir sobre la orden.
         return orden[:70], ""
@@ -277,9 +272,9 @@ def describir(accion, vals):
     # no dice nada: la combinación ya enseña el rango. Y una tabla Lua que
     # asoma por el corte —`{ x = delta[1]`— tampoco: más vale sin detalle.
     if detalle in ("i", "key"):
-        detalle = "el número"
+        detalle = "the number"
     elif detalle.startswith("m~"):
-        detalle = "en este monitor"
+        detalle = "on this monitor"
     elif detalle.startswith("{"):
         detalle = ""
 

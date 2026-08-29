@@ -43,17 +43,17 @@ K4.Plugin {
     //  yo; la barra solo pregunta y avisa.
     property var misAjustes: K4.Ajustes {
         plugin: "hola"
-        grupo: K4.Idioma.t("Hola")
+        grupo: "Hello"
         opciones: [
-            { id: "saludar", nombre: K4.Idioma.t("Saludar al abrir"),
-              desc: K4.Idioma.t("Si no, solo enseña el contador"),
+            { id: "saludar", nombre: "Greet on open",
+              desc: "Otherwise just show the counter",
               glifo: 0xF1821 },
             //  Un campo libre: aquí un nombre; en un plugin de verdad, la
             //  URL de un servicio o —con `secreto: true`— su clave.
             { id: "aQuien", tipo: "texto",
-              nombre: K4.Idioma.t("A quién saludar"),
-              desc: K4.Idioma.t("Sale en el saludo de la island"),
-              pista: K4.Idioma.t("el mundo"), glifo: 0xF17C4 }
+              nombre: "Who to greet",
+              desc: "Shows up in the island greeting",
+              pista: "the world", glifo: 0xF17C4 }
         ]
         valores: ({ saludar: self.saludar, aQuien: self.aQuien })
         onCambiado: function (id, valor) {
@@ -71,8 +71,8 @@ K4.Plugin {
         onBuscando: function (texto) {
             const t = texto.trim().toLowerCase()
             resultados = (t.length >= 2 && "hola".indexOf(t) === 0)
-                ? [{ id: "abrir", titulo: K4.Idioma.t("Abrir Hola"),
-                     desc: K4.Idioma.t("El plugin de ejemplo") }]
+                ? [{ id: "abrir", titulo: "Open Hello",
+                     desc: "The example plugin" }]
                 : []
         }
         onElegido: function (id) { if (id === "abrir") self.abierto = true }

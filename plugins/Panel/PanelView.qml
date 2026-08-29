@@ -39,11 +39,11 @@ FadeIn {
             }
 
             IslandLabel {
-                text: view.plugin.tab === "notifications" ? Idioma.t("Notificaciones")
-                    : view.plugin.tab === "wifi" ? Idioma.t("Wi‑Fi")
-                    : view.plugin.tab === "bluetooth" ? Idioma.t("Bluetooth")
-                    : view.plugin.tab === "sonido" ? Idioma.t("Sonido")
-                    : Idioma.t("Centro de control")
+                text: view.plugin.tab === "notifications" ? "Notifications"
+                    : view.plugin.tab === "wifi" ? "Wi‑Fi"
+                    : view.plugin.tab === "bluetooth" ? "Bluetooth"
+                    : view.plugin.tab === "sonido" ? "Sound"
+                    : "Control centre"
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
@@ -74,7 +74,7 @@ FadeIn {
 
                     IslandLabel {
                         id: clearAllLabel
-                        text: Idioma.t("Borrar todo")
+                        text: "Clear all"
                         color: clearAllMouse.containsMouse ? Theme.ink : Theme.muted
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
@@ -204,9 +204,9 @@ FadeIn {
                             Layout.fillWidth: true
                             Layout.fillHeight: false
 
-                            IslandLabel { text: Idioma.t("Wi‑Fi"); font.pixelSize: 12; font.weight: Font.DemiBold }
+                            IslandLabel { text: "Wi‑Fi"; font.pixelSize: 12; font.weight: Font.DemiBold }
                             IslandLabel {
-                                text: Wifi.activada ? Wifi.name : Idioma.t("Desactivado")
+                                text: Wifi.activada ? Wifi.name : "Disabled"
                                 color: Theme.muted
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
@@ -270,11 +270,11 @@ FadeIn {
                             Layout.fillWidth: true
                             Layout.fillHeight: false
 
-                            IslandLabel { text: Idioma.t("Bluetooth"); font.pixelSize: 12; font.weight: Font.DemiBold }
+                            IslandLabel { text: "Bluetooth"; font.pixelSize: 12; font.weight: Font.DemiBold }
                             IslandLabel {
                                 text: Bt.adapter
-                                    ? (Bt.adapter.enabled ? Idioma.t("Activado") : Idioma.t("Desactivado"))
-                                    : Idioma.t("Sin adaptador")
+                                    ? (Bt.adapter.enabled ? "Enabled" : "Disabled")
+                                    : "No adapter"
                                 color: Theme.muted
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
@@ -314,14 +314,14 @@ FadeIn {
                         Layout.fillHeight: false
                         spacing: 8
 
-                        IslandLabel { text: Idioma.t("Sonido"); font.pixelSize: 12; font.weight: Font.DemiBold }
+                        IslandLabel { text: "Sound"; font.pixelSize: 12; font.weight: Font.DemiBold }
                         Item { Layout.fillWidth: true }
                         IslandLabel {
                             //  Qué aparato suena, que es lo que se viene a
                             //  mirar aquí; el volumen ya lo dice la barra.
                             text: Audio.salidaActiva
                                 ? Audio.nombreDe(Audio.salidaActiva)
-                                : (Audio.muted ? Idioma.t("Silenciado") : Audio.volume + "%")
+                                : (Audio.muted ? "Muted" : Audio.volume + "%")
                             color: Theme.muted
                             font.pixelSize: 11
                             elide: Text.ElideRight
@@ -415,7 +415,7 @@ FadeIn {
                     IslandLabel {
                         Layout.fillWidth: true
                         text: Media.hasPlayer && Media.activePlayer.trackTitle.length > 0
-                            ? Media.activePlayer.trackTitle : Idioma.t("Nada en reproducción")
+                            ? Media.activePlayer.trackTitle : "Nothing playing"
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
@@ -650,7 +650,7 @@ FadeIn {
                 IslandLabel {
                     anchors.centerIn: parent
                     visible: Notifs.tracked.values.length === 0
-                    text: Idioma.t("Sin notificaciones")
+                    text: "No notifications"
                     color: Theme.muted
                     font.pixelSize: 12
                 }

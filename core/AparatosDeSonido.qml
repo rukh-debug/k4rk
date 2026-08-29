@@ -31,8 +31,8 @@ ColumnLayout {
     //  que cambia es a quién se le pide ser el predeterminado.
     Repeater {
         model: [
-            { titulo: Idioma.t("Salida"), entrada: false },
-            { titulo: Idioma.t("Entrada"), entrada: true }
+            { titulo: "Output", entrada: false },
+            { titulo: "Input", entrada: true }
         ]
 
         delegate: ColumnLayout {
@@ -57,7 +57,7 @@ ColumnLayout {
 
             IslandLabel {
                 visible: grupo.listaAparatos.length === 0
-                text: Idioma.t("Nada enchufado")
+                text: "Nothing plugged in"
                 color: Theme.dim
                 font.pixelSize: 11
             }
@@ -134,7 +134,7 @@ ColumnLayout {
                             //  saturado.
                             IslandLabel {
                                 visible: fila.base > 0 && fila.volumen > fila.base
-                                text: "+" + fila.db.toFixed(0) + Idioma.t(" dB de más")
+                                text: "+" + fila.db.toFixed(0) + " dB over"
                                 color: fila.esActivo ? Theme.yellow : Theme.dim
                                 font.pixelSize: 9
                             }

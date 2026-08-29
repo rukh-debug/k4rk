@@ -288,7 +288,7 @@ K4.PorPantalla {
                         width: Math.min(implicitWidth, parent.width - 16)
                         elide: Text.ElideRight
                         text: presa.v ? presa.v.titulo
-                                      : Idioma.t("toda la pantalla")
+                                      : "the whole screen"
                         color: Theme.ink
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
@@ -439,7 +439,7 @@ K4.PorPantalla {
                 IslandLabel {
                     id: ayuda
                     anchors.centerIn: parent
-                    text: Idioma.t("clic captura lo señalado · arrastra para recortar · tab recorre · esc cancela")
+                    text: "click captures what is highlighted · drag to crop · tab cycles · esc cancels"
                     color: Theme.muted
                     font.pixelSize: 11
                 }
@@ -458,7 +458,7 @@ K4.PorPantalla {
                 IslandLabel {
                     id: ayuda2
                     anchors.centerIn: parent
-                    text: Idioma.t("intro captura · flechas mueven · mayús+flechas redimensionan · esc cancela")
+                    text: "enter captures · arrows move · shift+arrows resize · esc cancels"
                     color: Theme.muted
                     font.pixelSize: 11
                 }

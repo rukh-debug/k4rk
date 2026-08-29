@@ -58,15 +58,15 @@ ColumnLayout {
                 spacing: 0
 
                 IslandLabel {
-                    text: Idioma.t("El color lo pone el fondo")
+                    text: "The colour comes from the wallpaper"
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
                 }
 
                 IslandLabel {
                     text: raiz.motor.paletaAuto
-                        ? Idioma.t("Cambia de fondo y se recolocan la barra, los bordes y la terminal")
-                        : Idioma.t("Apagado al elegir un preset o un color a mano")
+                        ? "Change the wallpaper and the bar, the borders and the terminal follow"
+                        : "Turned off when you pick a preset or a colour by hand"
                     color: Theme.dim
                     font.pixelSize: 9
                     elide: Text.ElideRight
@@ -109,7 +109,7 @@ ColumnLayout {
     }
 
     IslandLabel {
-        text: Idioma.t("Presets")
+        text: "Presets"
         color: Theme.muted
         font.pixelSize: 11
     }
@@ -200,7 +200,7 @@ ColumnLayout {
 
     IslandSlider {
         Layout.fillWidth: true
-        label: Idioma.t("Ángulo del degradado del borde")
+        label: "Border gradient angle"
         suffix: "°"
         from: 0
         to: 360

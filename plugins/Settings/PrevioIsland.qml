@@ -152,7 +152,7 @@ ColumnLayout {
 
             IslandLabel {
                 anchors.centerIn: parent
-                text: Idioma.t("una ventana")
+                text: "a window"
                 color: Qt.rgba(1, 1, 1, 0.30)
                 font.pixelSize: 10
             }
@@ -252,12 +252,12 @@ ColumnLayout {
         Layout.fillWidth: true
         text: {
             if (previo.sitio === "reserva")
-                return Idioma.t("Las ventanas empiezan donde acaba la barra.")
+                return "Windows start where the bar ends."
             if (previo.sitio === "completa")
-                return Idioma.t("Aparta las ventanas, salvo cuando una está a pantalla completa: entonces se quita de en medio.")
+                return "Pushes windows aside, except when one is fullscreen: then it gets out of the way."
             if (previo.sitio === "encima")
-                return Idioma.t("Las ventanas ocupan la pantalla entera y la barra flota encima.")
-            return Idioma.t("No se ve hasta que llevas el ratón al borde.")
+                return "Windows take the whole screen and the bar floats over them."
+            return "Not visible until you take the pointer to the edge."
         }
         color: Theme.dim
         font.pixelSize: 10
@@ -267,7 +267,7 @@ ColumnLayout {
     IslandLabel {
         Layout.fillWidth: true
         visible: previo.hayDock
-        text: Idioma.t("El dock sale en el croquis, pero sus ajustes están en Plugins, dentro de «Modo dual».")
+        text: "The dock shows in the sketch, but its settings live in Plugins, inside “Dual mode”."
         color: Theme.dim
         font.pixelSize: 10
         wrapMode: Text.WordWrap
