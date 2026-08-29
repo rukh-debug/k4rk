@@ -485,17 +485,29 @@ FadeIn {
                                 Layout.leftMargin: 2
                             }
 
-                            //  Appearance has no options: it carries the whole
-                            //  wallpaper grid, the same one the theme screen
-                            //  shows. The engine is asked for by id and its
-                            //  folder is not imported: with the plugin off this
-                            //  just waits, without breaking.
+                            //  The Wallpaper page carries the whole grid
+                            //  PLUS the colour block under it — one page, one
+                            //  scroll. The engine is asked for by id and its
+                            //  folder is not imported: with the plugin off
+                            //  this just waits, without breaking.
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                visible: bloque.modelData.vista === "wallpaper"
+                                text: "Wallpapers"
+                                color: Theme.dim
+                                font.pixelSize: 9
+                                font.capitalization: Font.AllUppercase
+                                Layout.leftMargin: 2
+                                Layout.topMargin: 4
+                            }
+
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
-                                //  As much as fits: what happens here is
-                                //  looking at thumbnails — the more of them on
-                                //  screen, the less scrolling.
+                                //  The grid sizes itself to its rows
+                                //  (`fitContent`), so the colour block below
+                                //  is reachable with the wheel: the whole
+                                //  page scrolls together in this Rodillo.
                                 //
                                 //  Conditional on `active`, and it is not a
                                 //  detail: an inactive Loader STILL occupies
@@ -504,25 +516,63 @@ FadeIn {
                                 //  hole in front and their content fell out of
                                 //  view. The header showed and nothing else,
                                 //  without a single error in the log.
-                                Layout.preferredHeight: active
-                                    ? Math.max(300, vista.height - 260) : 0
-                                active: bloque.modelData.vista === "fondos"
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "wallpaper"
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     RejillaFondos {
                                         motor: PluginManager.instancia("hyprtheme")
+                                        fitContent: true
                                     }
                                 }
                             }
 
                             IslandLabel {
                                 Layout.fillWidth: true
-                                visible: bloque.modelData.vista === "fondos"
+                                visible: bloque.modelData.vista === "wallpaper"
                                          && !PluginManager.instancia("hyprtheme")
                                 text: "The theme plugin is off: you can view the wallpapers, but not apply them."
                                 color: Theme.dim
                                 font.pixelSize: 10
                                 wrapMode: Text.WordWrap
+                            }
+
+                            //  ── the colour block, second half of the page ──
+                            //
+                            //  It used to be a section of its own; it moved
+                            //  under the grid because the accent COMES from
+                            //  the wallpaper until you touch it, and crossing
+                            //  the window to connect the two was the tax.
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                visible: bloque.modelData.vista === "wallpaper"
+                                text: "Colours"
+                                color: Theme.dim
+                                font.pixelSize: 9
+                                font.capitalization: Font.AllUppercase
+                                Layout.leftMargin: 2
+                                Layout.topMargin: 14
+                            }
+
+                            //  The loaders below keep their height
+                            //  conditional on `active`. It is the lesson from
+                            //  before: an inactive one loads nothing but STILL
+                            //  measures whatever you ask of it, and that
+                            //  pushes the other sections' content out of view
+                            //  without a single error.
+                            Loader {
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "wallpaper"
+                                        && bloque.modelData.atajo === undefined
+                                sourceComponent: Component {
+                                    AjustesTema {
+                                        motor: PluginManager.instancia("hyprtheme")
+                                    }
+                                }
                             }
 
                             //  A section offered by the search: click and it
@@ -587,28 +637,9 @@ FadeIn {
                                 }
                             }
 
-                            //  Colour, in its own section.
-                            //
-                            //  The four loaders below keep their height
-                            //  conditional on `active`. It is the lesson from
-                            //  the commit before: an inactive one loads
-                            //  nothing but STILL measures whatever you ask of
-                            //  it, and that pushes the other sections' content
-                            //  out of view without a single error.
-                            Loader {
-                                visible: active
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: active && item
-                                    ? item.implicitHeight : 0
-                                active: bloque.modelData.vista === "color"
-                                        && bloque.modelData.atajo === undefined
-                                sourceComponent: Component {
-                                    AjustesTema {
-                                        motor: PluginManager.instancia("hyprtheme")
-                                    }
-                                }
-                            }
-
+                            //  Windows and Effects, one loader per page,
+                            //  and «Save» after them: they all write the
+                            //  Hyprland Lua through the same motor.
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
@@ -638,8 +669,10 @@ FadeIn {
                             }
 
                             //  «Save» travels with whatever the Hyprland Lua
-                            //  writes. Wallpapers do not carry it: those save
-                            //  on their own the moment you pick one.
+                            //  writes. Wallpapers do not carry it —those save
+                            //  on their own the moment you pick one— but the
+                            //  colour block DOES write the Lua, so the bar
+                            //  follows the colour half of the page.
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
@@ -647,7 +680,7 @@ FadeIn {
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.atajo === undefined
-                                    && (bloque.modelData.vista === "color"
+                                    && (bloque.modelData.vista === "wallpaper"
                                         || bloque.modelData.vista === "ventanas"
                                         || bloque.modelData.vista === "efectos")
                                 sourceComponent: Component {
