@@ -40,6 +40,20 @@ K4Plugin {
     islandHeight: Math.max(420, Math.min(900,
                    Settings.settingsIslandHeight))
 
+    //  ── a page to land on ─────────────────────────────
+    //
+    //  `k4 settingsSection wallpaper` and friends set this; the view lands on
+    //  that page when it opens — or right away, if it already is. Empty is
+    //  the top, as always. The view clears it once consumed, so closing and
+    //  reopening with the pill starts at the top again.
+    property string paginaPedida: ""
+
+    function abrirPagina(pagina) {
+        paginaPedida = String(pagina)
+        if (!open)
+            toggle()
+    }
+
     //  ── is there a newer k4? ────────────────────────────────────
     //
     //  It lives here and not in a service for a practical reason: a new
@@ -85,6 +99,13 @@ K4Plugin {
         target: "k4.settings"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
+
+        //  Open at a page by name, for keybinds: `quickshell ipc call
+        //  k4.settings abrirPagina wallpaper`. Section name or its id both
+        //  work ("Wallpaper", "wallpaper", "effects"…), case-insensitive.
+        function abrirPagina(pagina: string): void {
+            self.abrirPagina(pagina)
+        }
 
         function togglePlugin(id: string): void { Settings.alternar(id) }
 
