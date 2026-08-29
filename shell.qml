@@ -283,8 +283,7 @@ Scope {
             //
             //  A deployed view — the control center, the launcher — closes
             //  with Escape; the pointer deserves the same gesture. While one
-            //  is showing HERE, the surface grows to cover the screen (see
-            //  `targetHeight`) and the input mask includes the catcher (see
+            //  is showing HERE, the input mask includes the catcher (see
             //  `mask`), so a tap outside the island lands on us and closes
             //  the view through the same `close()` door Escape uses.
             //
@@ -534,41 +533,25 @@ Scope {
                       && typeof panelWindow.pluginVisible.reservaBarra === "number"
                       ? panelWindow.pluginVisible.reservaBarra : Theme.baseHeight))
 
-            // Redimensionar una layer surface cuesta un ciclo configure/ack, así
-            // que hacerlo por frame es lo que hacía parpadear el panel. La
-            // superficie crece una vez al empezar y encoge una vez al acabar;
-            // entre medias solo se anima la island dentro de ella.
-            //  El +44 durante un gesto: el empujón baja la island entera y sin
-            //  ese margen los píxeles desplazados se recortan contra el borde
-            //  de la superficie. Crece al empezar el gesto y el encogido lo
-            //  recoge el mismo temporizador de siempre.
-            //  Screen-tall while the outside-click catcher is on (see
-            //  `cerrarConClicFuera`): a tap outside the island can only be
-            //  caught if there is surface under it. Same one-shot resize
-            //  discipline as the island growth — the surface jumps once when
-            //  the view opens and shrinks once (after the usual pause) when
-            //  it closes; the input mask, not the surface size, is what lets
-            //  clicks through in between.
-            readonly property int targetHeight: panelWindow.cerrarConClicFuera
-                ? panelWindow.screen.height
-                : Math.min(Theme.maxIslandHeight,
-                    panelWindow.altoIsla + 2 + (island.gestoEnCurso ? 44 : 0))
-            property int surfaceHeight: targetHeight
-
-            onTargetHeightChanged: {
-                if (targetHeight > surfaceHeight)
-                    surfaceHeight = targetHeight
-                else
-                    surfaceShrinkTimer.restart()
-            }
-
-            Timer {
-                id: surfaceShrinkTimer
-                interval: 520
-                onTriggered: panelWindow.surfaceHeight = panelWindow.targetHeight
-            }
-
-            implicitHeight: surfaceHeight
+            //  ── the surface never resizes ────────────────────────────
+            //
+            //  Resizing a layer surface costs a configure/ack roundtrip,
+            //  and until the first frame at the new size arrives the
+            //  compositor paints the OLD buffer stretched to the new size.
+            //  Growing on demand made that artifact bookend every open and
+            //  close: a pill-sized strip smeared down the whole screen when
+            //  a deployed view turned the catcher on, a squeeze flash on
+            //  the delayed shrink back. One-shot resize discipline shrank
+            //  the window of pain but could not close it.
+            //
+            //  So the window is screen-tall for good: the island animates
+            //  inside it, the retired bar slides off inside it, gestures
+            //  push it around inside it, and the outside-click catcher (see
+            //  `cerrarConClicFuera`) always has surface under whatever it
+            //  must catch. What the surface covers only matters for input,
+            //  and input is decided by the MASK below — outside the input
+            //  region, clicks pass through as if the surface wasn't there.
+            implicitHeight: panelWindow.screen.height
             //  Sin la island, la ventana no acepta ni un clic.
             //
             //  No basta con dejar de dibujarla: la región de entrada seguía
@@ -720,7 +703,10 @@ Scope {
                 x: Math.max(0, Math.min(parent.width - width, xQuerida))
 
                 width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
-                height: panelWindow.altoIsla
+                //  Clamped to the parent as the width is: a view taller than
+                //  the screen (none today, the ceiling is Theme's 880) must
+                //  not push the island past the surface it lives in.
+                height: Math.min(parent.height, panelWindow.altoIsla)
 
                 Behavior on fraccionSuave {
                     NumberAnimation {

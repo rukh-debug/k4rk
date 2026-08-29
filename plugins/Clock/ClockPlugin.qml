@@ -16,6 +16,13 @@ K4Plugin {
     priority: 50
     active: habilitado && Island.hovered
 
+    //  No outside-click catcher for this one. It opens by HOVER — nobody
+    //  asked for it — so an outside tap is not "close what I opened": the
+    //  tap belongs to whatever it was aimed at, and the view already leaves
+    //  by itself when the pointer does. Same call as the volume HUD.
+    //  See `closeOnClickOutside` in the plugin contract.
+    closeOnClickOutside: false
+
     // el módulo de bandeja; lo inyecta el host
     property var tray: null
 

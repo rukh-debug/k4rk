@@ -14,6 +14,15 @@ K4Plugin {
     title: "Player"
     priority: 55
 
+    //  No outside-click catcher for this one. It only ever appears by
+    //  HOVER or by the track-change peek — uninvited — so an outside tap
+    //  is not "close what I opened": the tap belongs to whatever it was
+    //  aimed at, and the view already leaves when the pointer does.
+    //  Same call as the volume HUD. See `closeOnClickOutside` in the
+    //  plugin contract.
+    closeOnClickOutside: false
+
+
     //  Al pasar el ratón —lo de siempre— y además durante el asomo.
     //
     //  El asomo NO pide `isPlaying`: al cambiar de pista hay reproductores que
