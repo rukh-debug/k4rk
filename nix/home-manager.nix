@@ -100,9 +100,12 @@ in
         type = lib.types.bool;
         default = true;
         description = ''
-          Write the Hyprland integration files (k4.conf and k4.lua) from
-          the package's templates. When Home Manager's Hyprland module is
-          active, the classic file is also sourced automatically.
+          Write the Hyprland integration from the package's templates.
+          Only the file matching the configuration flavor is written when
+          Home Manager manages Hyprland (k4.lua for `configType = "lua"`,
+          k4.conf otherwise); both are written when it does not, since
+          there is no way to know which one a hand-written configuration
+          will source.
         '';
       };
 
@@ -121,10 +124,24 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = [ cfg.package ];
 
-    xdg.configFile = lib.mkIf cfg.hyprland.writeConfig {
-      "hypr/k4.conf".text = substituteTemplate "hypr/k4.conf";
-      "hypr/config/k4.lua".text = substituteTemplate "hypr/k4.lua";
-    };
+    #  Only the matching flavor gets a file when Home Manager manages
+    #  Hyprland; a stray k4.conf next to a Lua configuration is confusion
+    #  waiting for someone to source it.
+    xdg.configFile = lib.mkIf cfg.hyprland.writeConfig (
+      if hypr.enable && hyprIsLua then
+        {
+          "hypr/config/k4.lua".text = substituteTemplate "hypr/k4.lua";
+        }
+      else if hypr.enable then
+        {
+          "hypr/k4.conf".text = substituteTemplate "hypr/k4.conf";
+        }
+      else
+        {
+          "hypr/k4.conf".text = substituteTemplate "hypr/k4.conf";
+          "hypr/config/k4.lua".text = substituteTemplate "hypr/k4.lua";
+        }
+    );
 
     wayland.windowManager.hyprland =
       lib.mkIf (cfg.hyprland.writeConfig && cfg.hyprland.hookIntoConfig && hypr.enable)
