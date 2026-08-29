@@ -140,7 +140,10 @@ FadeIn {
         anchors.leftMargin: 16
         anchors.rightMargin: 16
         anchors.topMargin: 14
-        anchors.bottomMargin: 10
+        //  Same air below as on the sides: the last row of a page used to
+        //  sit 10 px from the border while the sides kept 16, and the
+        //  asymmetry read as a mistake.
+        anchors.bottomMargin: 16
         spacing: 14
 
         // ── the sidebar ────────────────────────────────────────────
