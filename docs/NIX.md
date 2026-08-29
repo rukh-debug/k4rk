@@ -98,6 +98,7 @@ Options:
 | `programs.k4.package` | `pkgs.k4` | The package (the overlay, or another). |
 | `programs.k4.hyprland.writeConfig` | `true` | Write `k4.conf` and `k4.lua`. |
 | `programs.k4.hyprland.hookIntoConfig` | `true` | Add the `source`/`require` when HM manages Hyprland. |
+| `programs.k4.hyprland.template` | `null` | Your own Hyprland template instead of the package's. Same substitutions; rendered as the flavor-appropriate file. The right home for a host's key layout — the Lua bind API accumulates, so collisions are removed in the template, and that template is yours, not upstream's. |
 
 ## NixOS
 
