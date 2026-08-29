@@ -1,20 +1,20 @@
-//  Una zona que se desplaza con la rueda de verdad, aunque dentro haya cosas
-//  pulsables.
+//  A zone that scrolls with a real mouse wheel, even when there are
+//  clickable things inside.
 //
-//  Existe por una trampa que ha mordido dos veces en esta barra: un MouseArea
-//  **acepta los eventos de rueda tenga o no manejador**, así que en cuanto tus
-//  filas tienen hover o clic —o sea, siempre— el Flickable de fuera no ve la
-//  rueda jamás. La lista solo se deja arrastrar, y el fallo no da ningún error:
-//  simplemente no pasa nada, que es lo peor de encontrar.
+//  It exists because of a trap that has bitten this bar twice: a MouseArea
+//  **accepts wheel events whether or not it has a handler**, so as soon as
+//  your rows have hover or click —that is, always— the Flickable outside
+//  never sees the wheel. The list could only be dragged, and the failure
+//  gives no error: simply nothing happens, which is the worst kind to find.
 //
-//  El arreglo es la capa de abajo: un MouseArea que no escucha ningún botón y
-//  por tanto no roba clics, pero sí recibe la rueda y la traduce a
-//  desplazamiento. Aquí va de fábrica para que nadie más lo descubra a base de
-//  no entender por qué su lista no se mueve.
+//  The fix is the bottom layer: a MouseArea that listens to no button and
+//  therefore steals no clicks, but does receive the wheel and translates it
+//  to scrolling. It ships here by default so nobody else discovers it by
+//  not understanding why their list does not move.
 //
 //      K4.Rodillo {
 //          anchors.fill: parent
-//          Column { id: contenido; width: parent.width }
+//          Column { id: content; width: parent.width }
 //      }
 
 import QtQuick
@@ -23,7 +23,7 @@ import QtQuick.Controls
 Flickable {
     id: rodillo
 
-    //  Cuánto avanza cada muesca. 60 px es más o menos una fila.
+    //  How far each notch travels. 60 px is roughly one row.
     property int muesca: 60
 
     clip: true
@@ -32,8 +32,20 @@ Flickable {
     contentHeight: contentItem.childrenRect.height
     flickableDirection: Flickable.VerticalFlick
 
+    //  The wheel catcher must live on the FLICKABLE, not in the content.
+    //
+    //  Everything declared inside a Flickable is reparented into its
+    //  contentItem — and anchored to that, this MouseArea measured
+    //  `contentHeight` itself. `contentHeight` feeds on
+    //  `contentItem.childrenRect`, which included it, so the two fed each
+    //  other: the scroll range could only ratchet UP, to the tallest
+    //  content ever shown, and never back down. Every page after it kept
+    //  that much dead scroll below its real content. Reparented here it
+    //  covers the viewport, stays glued while the content scrolls, and the
+    //  content measures only the content.
     MouseArea {
-        //  Debajo de todo y sordo a los botones: pasa los clics a las filas.
+        parent: rodillo
+        //  Below everything and deaf to buttons: clicks pass to the rows.
         z: -1
         anchors.fill: parent
         acceptedButtons: Qt.NoButton
@@ -42,15 +54,16 @@ Flickable {
             const alto = rodillo.contentHeight - rodillo.height
             if (alto <= 0)
                 return
-            //  angleDelta viene en octavos de grado; 120 es una muesca.
+            //  angleDelta comes in eighths of a degree; 120 is one notch.
             const pasos = ev.angleDelta.y / 120
             rodillo.contentY = Math.max(0, Math.min(alto,
                 rodillo.contentY - pasos * rodillo.muesca))
         }
     }
 
-    //  La barrita de la casa, de serie: sale sola cuando hay algo que
-    //  recorrer y se desvanece al soltar. Quien quiera otra puede
-    //  sobreescribir la adjunta, pero nadie debería tener que ponerla.
+    //  The in-house scrollbar, by default: it shows up on its own when
+    //  there is something to travel and fades when released. Anyone who
+    //  wants another one can override the attached property, but nobody
+    //  should have to set it.
     ScrollBar.vertical: Desplazador {}
 }
