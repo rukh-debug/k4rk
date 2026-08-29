@@ -29,8 +29,16 @@ K4Plugin {
     //  Sized once: the sidebar plus one section on the right. The window it
     //  replaces was 1040x700 of card; the island trims the frame and the
     //  margins the card carried, and the search field absorbs the rest.
-    islandWidth: 940
-    islandHeight: 620
+    //
+    //  These are user settings, not constants: the Island page carries
+    //  steppers for both, and the island grows and shrinks while you turn
+    //  them — the same live resize the control centre does between its tabs.
+    //  Clamped to the steppers' bounds so a hand-edited settings file cannot
+    //  open a window bigger than the screen or thinner than the sidebar.
+    islandWidth: Math.max(720, Math.min(1400,
+                  Settings.settingsIslandWidth))
+    islandHeight: Math.max(420, Math.min(900,
+                   Settings.settingsIslandHeight))
 
     //  ── is there a newer k4? ────────────────────────────────────
     //

@@ -293,6 +293,109 @@ Rectangle {
             }
         }
 
+        //  ── opciones numéricas ───────
+        //  Widths and heights: a value you nudge, not one you type. Two
+        //  steppers and the number between them, in the same chip language
+        //  as the choices above — a spinbox with a text field would ask for
+        //  the keyboard in a page that never needed it.
+        RowLayout {
+            id: numerico
+            visible: opcion.modelData.tipo === "numero"
+            Layout.alignment: Qt.AlignVCenter
+            spacing: 6
+
+            //  The current value, as a number: what arrives from `Settings`
+            //  after a `poner` is an int, but a hand-edited file can hold a
+            //  string, and `parseInt` of nothing is NaN — which would render
+            //  as "NaN px" and clamp to nonsense.
+            readonly property int valor: {
+                const v = parseInt(Settings.valor(opcion.modelData.id), 10)
+                return isNaN(v) ? 0 : v
+            }
+
+            //  One step in one direction, clamped to the option's bounds.
+            function paso(cuantos) {
+                const paso = opcion.modelData.paso || 1
+                let n = numerico.valor + cuantos * paso
+                if (opcion.modelData.min !== undefined)
+                    n = Math.max(opcion.modelData.min, n)
+                if (opcion.modelData.max !== undefined)
+                    n = Math.min(opcion.modelData.max, n)
+                if (n !== numerico.valor)
+                    Settings.poner(opcion.modelData.id, n)
+            }
+
+            //  A spent stepper does not answer and says so, at 35 % — `enabled`
+            //  and not just opacity, or it teaches that clicking does nothing.
+            //  The minus goes by codepoint like the ×: a literal minus in a
+            //  `text:` is harvested by the text extractor.
+            Rectangle {
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                radius: 13
+                opacity: menosRaton.enabled ? 1 : 0.35
+                color: menosRaton.enabled && menosRaton.containsMouse
+                    ? Theme.surfaceHi : Theme.track
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                MouseArea {
+                    id: menosRaton
+                    enabled: numerico.valor
+                        > (opcion.modelData.min ?? -Infinity)
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: numerico.paso(-1)
+                }
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: String.fromCodePoint(0x2212)
+                    color: menosRaton.enabled ? Theme.ink : Theme.muted
+                    font.pixelSize: 14
+                }
+            }
+
+            IslandLabel {
+                text: numerico.valor
+                    + (opcion.modelData.unidad ? " " + opcion.modelData.unidad : "")
+                color: Theme.ink
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                Layout.preferredWidth: 64
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                radius: 13
+                opacity: masRaton.enabled ? 1 : 0.35
+                color: masRaton.enabled && masRaton.containsMouse
+                    ? Theme.surfaceHi : Theme.track
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                MouseArea {
+                    id: masRaton
+                    enabled: numerico.valor
+                        < (opcion.modelData.max ?? Infinity)
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: numerico.paso(1)
+                }
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: "+"
+                    color: masRaton.enabled ? Theme.ink : Theme.muted
+                    font.pixelSize: 14
+                }
+            }
+        }
+
         // ── opciones de texto libre
         //  Una URL, un modelo, una clave de API: lo que un
         //  interruptor no puede decir. El valor se entrega

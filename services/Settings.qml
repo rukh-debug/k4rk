@@ -48,6 +48,16 @@ Singleton {
     // services/Notifs.qml: descartar las de una aplicación al ir a su ventana
     property bool notificationsOnFocus: true
 
+    //  ── la isla de Ajustes ──────────────────────
+    //  plugins/Settings/SettingsPlugin.qml sizes its island with these. They
+    //  are here —and not constants there— because the Island page lets the
+    //  user set them, and a value nobody can read back is a setting that lies.
+    //  The plugin clamps to the same bounds the steppers use, so a hand-edited
+    //  file cannot open a window bigger than the screen or smaller than the
+    //  sidebar.
+    property int settingsIslandWidth: 940    // 720–1400, steps of 20
+    property int settingsIslandHeight: 620    // 420–900, steps of 20
+
     // ── accesos directos ──────────────────────────────────────────
     //  Qué aplicaciones salen en la franja del centro de control, por id de
     //  plugin. plugins/Panel/PanelView.qml la pinta y el centro de
@@ -106,6 +116,16 @@ Singleton {
                   nombre: "How it takes up space",
                   desc: "Pushes windows aside, floats over them, or hides",
                   glifo: 0xF003E },   // md-arrange_bring_to_front
+                { id: "settingsIslandWidth", tipo: "numero",
+                  min: 720, max: 1400, paso: 20, unidad: "px",
+                  nombre: "Settings window width",
+                  desc: "How wide these pages open",
+                  glifo: 0xF084E },   // md-arrow_expand_horizontal
+                { id: "settingsIslandHeight", tipo: "numero",
+                  min: 420, max: 900, paso: 20, unidad: "px",
+                  nombre: "Settings window height",
+                  desc: "How tall these pages open",
+                  glifo: 0xF084F },   // md-arrow_expand_vertical
                 { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
                   desc: "Same as Escape: a deployed view closes when you click outside the bar",
                   glifo: 0xF037D },   // md-cursor-default
@@ -258,6 +278,7 @@ Singleton {
     readonly property var claves: [
         "barPosition", "barAlignment", "islandSpace", "cerrarConClicFuera",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
+        "settingsIslandWidth", "settingsIslandHeight",
         "quickAccess"
     ]
 
