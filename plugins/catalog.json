@@ -89,15 +89,6 @@
    ]
   },
   {
-   "id": "weather",
-   "entry": "Weather/WeatherPlugin.qml",
-   "version": "1.0.0",
-   "title": "El tiempo",
-   "enabledByDefault": true,
-   "icono": "0xF0595",
-   "aplicacion": true
-  },
-  {
    "id": "tray",
    "entry": "Tray/TrayPlugin.qml",
    "version": "1.0.0",
@@ -113,15 +104,6 @@
    "enabledByDefault": true,
    "configurable": false,
    "icono": "0xF0493",
-   "aplicacion": true
-  },
-  {
-   "id": "tienda",
-   "entry": "Tienda/TiendaPlugin.qml",
-   "version": "1.0.0",
-   "title": "Plugins",
-   "enabledByDefault": true,
-   "icono": "0xF0431",
    "aplicacion": true
   },
   {
@@ -143,30 +125,12 @@
    "aplicacion": true
   },
   {
-   "id": "files",
-   "entry": "Files/FilesPlugin.qml",
-   "version": "1.0.0",
-   "title": "Archivos",
-   "enabledByDefault": true,
-   "icono": "0xF024B",
-   "aplicacion": true
-  },
-  {
    "id": "keys",
    "entry": "Keys/KeysPlugin.qml",
    "version": "1.0.0",
    "title": "Atajos",
    "enabledByDefault": true,
    "icono": "0xF030C",
-   "aplicacion": true
-  },
-  {
-   "id": "windows",
-   "entry": "Windows/WindowsPlugin.qml",
-   "version": "1.0.0",
-   "title": "Ventanas",
-   "enabledByDefault": true,
-   "icono": "0xF05B2",
    "aplicacion": true
   },
   {

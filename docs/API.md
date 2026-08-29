@@ -169,8 +169,7 @@ one up and `K4.Apps.icono(name)` resolves its icon. `K4.Icono` is an
 ### Window thumbnails
 
 `K4.Miniatura` paints what is inside another window, and keeps painting it —
-it is live, not a photo taken when the panel opened. A window switcher, an
-Alt+Tab, a preview on hover: places where the title is not enough, because
+it is live, not a photo taken when the panel opened. An Alt+Tab, a preview on hover: places where the title is not enough, because
 three terminals are called the same and look nothing alike.
 
 ```qml

@@ -261,7 +261,7 @@ The map, so you can place yourself:
 | 50 · 55 | **clock · player** — the hover views. Be above these. |
 | 59 | notification toast |
 | 60 · 64 · 66 | control center · settings |
-| 80 · 83 | launcher · window switcher |
+| 80 · 83 | launcher · app center |
 
 Above the resting views so you survive being touched; below the things the
 user opens on purpose if yours can open **itself**. A module that appears

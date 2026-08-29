@@ -154,7 +154,6 @@ Scope {
         void Media.hasPlayer
         void Clock.date
         void Workspaces.list
-        void Weather.located
         void Tray.count
         void Idioma.cargado
         void Settings.cargado
@@ -179,9 +178,7 @@ Scope {
         function toggleLauncher(): void { _p("launcher")?.toggle() }
         function clipboard(): void { _p("clipboard")?.toggle() }
         function system(): void { _p("system")?.toggle() }
-        function files(): void { _p("files")?.toggle() }
         function keys(): void { _p("keys")?.toggle() }
-        function windows(): void { _p("windows")?.toggle() }
         function install(query: string): void { _p("launcher")?.openPackageSearch(query) }
         function search(query: string): void {
             const l = _p("launcher")
@@ -255,7 +252,6 @@ Scope {
         //  el centro de control, y romper un atajo de alguien por mudar una
         //  pantalla de sitio es de mala educación.
         function theme(): void { _p("settings")?.abrir() }
-        function weather(): void { _p("weather")?.toggle() }
         function tray(): void { _p("tray")?.toggle() }
         function settings(): void { _p("settings")?.toggle() }
         function session(): void { _p("session")?.toggle() }

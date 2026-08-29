@@ -57,14 +57,11 @@ Singleton {
         { id: "launcher", title: "Lanzador", version: "1.0.0", enabled: true },
         { id: "ask", title: "Preguntar", version: "1.0.0", enabled: true },
         { id: "hyprtheme", title: "Tema de Hyprland", version: "1.0.0", enabled: true },
-        { id: "weather", title: "El tiempo", version: "1.0.0", enabled: true },
         { id: "tray", title: "Bandeja", version: "1.0.0", enabled: true },
         { id: "settings", title: "Ajustes", version: "1.0.0", enabled: true, configurable: false },
         { id: "clipboard", title: "Portapapeles", version: "1.0.0", enabled: true },
         { id: "system", title: "Sistema", version: "1.0.0", enabled: true },
-        { id: "files", title: "Archivos", version: "1.0.0", enabled: true },
         { id: "keys", title: "Atajos", version: "1.0.0", enabled: true },
-        { id: "windows", title: "Ventanas", version: "1.0.0", enabled: true },
         { id: "session", title: "Sesión", version: "1.0.0", enabled: true },
         { id: "captura", title: "Captura", version: "1.0.0", enabled: true }
     ]
@@ -104,7 +101,7 @@ Singleton {
     //  los ciclos (panel↔launcher) no dependen del orden del catálogo.
     readonly property var referencias: ({
         panel: "panel", tray: "tray", launcher: "launcher",
-        theme: "hyprtheme", weather: "weather", ajustes: "settings",
+        theme: "hyprtheme", ajustes: "settings",
         sistema: "system"
     })
 
