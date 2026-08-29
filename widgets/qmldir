@@ -1,6 +1,7 @@
 Artwork 1.0 Artwork.qml
 TrayRow 1.0 TrayRow.qml
 PluginPildora 1.0 PluginPildora.qml
+ExtensionZone 1.0 ExtensionZone.qml
 NotifStrip 1.0 NotifStrip.qml
 Visualizer 1.0 Visualizer.qml
 Minimizados 1.0 Minimizados.qml

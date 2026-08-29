@@ -73,6 +73,7 @@ not be declared inside the view.
 | `K4.SuperficieBloqueo` | What is drawn while locked, one per monitor |
 | `K4.MenuBandeja` | Tray application menu |
 | `K4.Pildora` | Small indicators in the folded pill |
+| `K4.Capsule` | Flank extensions: the capsule growing with your text |
 | `K4.Sonido` | Short sound effect (permission `sonido`) |
 | `K4.Tema` | Palette, fonts, island geometry — and `tintar()` to tint the bar's ambience |
 | `K4.Guardado` | Plugin state as JSON, in its own directory |
@@ -95,6 +96,7 @@ not be declared inside the view.
 | `K4.Notificaciones` | Incoming notifications |
 | `K4.Red` | Wi-Fi and Bluetooth, read only |
 | `K4.Escritorios` | Hyprland workspaces |
+| `K4.Submaps` | The submap Hyprland is in right now (`""` for none) |
 | `K4.Portapapeles` | Clipboard history (reading needs `portapapeles`) |
 | `K4.Reloj` | The bar's single clock |
 | `K4.Ajustes` | Your own settings inside the bar's Settings — switches, choices, free text (`secreto` for keys) |

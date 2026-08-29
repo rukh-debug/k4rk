@@ -144,6 +144,8 @@ Scope {
         K4.Puente.enganches = Enganches
         K4.Puente.isla = Island
         K4.Puente.consola = Consola
+        K4.Puente.extensiones = Extensions
+        K4.Puente.submaps = Submaps
 
         void Audio.volume
         void Wifi.name
@@ -684,7 +686,39 @@ Scope {
                 //  propia animación, que era lo que descentraba la island al
                 //  abrir y cerrar módulos.
                 property real fraccionSuave: Island.colocacion
-                x: (parent.width - width) * fraccionSuave
+
+                //  ── crecimiento hacia UN solo lado ───────────────
+                //
+                //  Mientras la píldora lleva extensiones de flanco (lo que
+                //  los plugins declaran por K4.Capsule), la island crece
+                //  hacia el borde que toque y NO hacia los dos a la vez
+                //  como de costumbre: si no, el cuerpo de la píldora se
+                //  deslizaría medio ancho de extensión cada vez que una
+                //  entra o sale.
+                //
+                //  La cuenta mantiene la PÍLDORA donde estaba —su ancho sin
+                //  extensiones, alas incluidas— y lo que crece por cada
+                //  lado se suma por ese lado solo. Sigue siendo cálculo
+                //  directo, sin animación propia, para que el cuerpo no vaya
+                //  a remolque del ancho mientras este crece con su Behavior.
+                readonly property int extDerecha: pluginVisible
+                    && pluginVisible.name === "idle"
+                    ? Extensions.rightWidth : 0
+                readonly property int extIzquierda: pluginVisible
+                    && pluginVisible.name === "idle"
+                    ? Extensions.leftWidth : 0
+
+                //  La x que dejaría la píldora clavada, y la de verdad con
+                //  tope: una extensión larga con la island muy pegada a un
+                //  borde no puede salirse de la pantalla. Si el tope actúa,
+                //  la píldora cede unos píxeles —solo pasa en los extremos
+                //  de la alineación— y el contenido viaja con la silueta,
+                //  que es lo que importa: contenido y dibujo no se separan.
+                readonly property real xQuerida: (parent.width - width) * fraccionSuave
+                    + extDerecha * fraccionSuave
+                    - extIzquierda * (1 - fraccionSuave)
+                x: Math.max(0, Math.min(parent.width - width, xQuerida))
+
                 width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
                 height: panelWindow.altoIsla
 
@@ -974,6 +1008,13 @@ Scope {
 
                     // Se dispone al tamaño final y se destapa con el clip, así
                     // que no hay recálculo de layout durante la animación.
+                    //
+                    //  Sin desplazamiento propio: el ancho de esta caja ES el
+                    //  de la vista que la llena —extensiones de flanco
+                    //  incluidas cuando la píldora las lleva— y su centro ya
+                    //  es el sitio. Correrla aquí separaba el contenido de la
+                    //  silueta media extensión: los iconos del otro extremo
+                    //  se iban por fuera de la cápsula.
                     Item {
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter

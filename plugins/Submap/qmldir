@@ -1,0 +1,6 @@
+#  Generated: the types of this folder, so they also resolve when the
+#  plugin is loaded by URL (qs: scheme), where implicit sibling
+#  resolution does not exist.
+#  `python3 tools/plugins.py` checks this stays complete.
+
+SubmapPlugin 1.0 SubmapPlugin.qml

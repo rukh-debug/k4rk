@@ -39,6 +39,12 @@ QtObject {
     property var enganches: null
     property var isla: null
 
+    //  Y las dos piezas del idioma "la píldora también es de los plugins":
+    //  las extensiones de flanco (K4.Capsule) y el submap de Hyprland
+    //  (K4.Submaps). El primero es registro; el segundo, dato vivo.
+    property var extensiones: null
+    property var submaps: null
+
     //  Qué terminal hay instalada y dónde conviene correr las cosas. Lo sabe
     //  el servicio, y sin esto un plugin tendría que adivinarlo.
     property var consola: null

@@ -29,13 +29,20 @@ K4Plugin {
     // la island se iba de ancho hasta dejar de parecerse a una island.
     // La carátula y las barras van juntas a la izquierda, así que el hueco de
     // las barras se reserva ahí y no enfrente.
-    readonly property int ladoIzq: Media.isPlaying ? 53 : 0
+    //  Las extensiones de flanco (K4.Capsule → services/Extensions.qml):
+    //  lo que la cápsula gana a cada lado mientras un plugin tiene algo
+    //  que decir ahí. La píldora solo le hace sitio en el flanco que
+    //  toque — el anclaje para que el cuerpo no se mueva lo hace el
+    //  host con estos mismos números.
+    readonly property int ladoIzq: (Media.isPlaying ? 53 : 0)
+        + Extensions.leftWidth
     // Lo mismo para las cápsulas de lo que has dejado a medias: cada una puede
     // llegar a 116 px con su icono y su detalle recortado.
     readonly property int minimizadosWidth: Modulos.count * 116
 
     readonly property int ladoDer: trayWidth
         + minimizadosWidth + Indicadores.anchoAproximado
+        + Extensions.rightWidth
 
     //  La medida REAL de cada fila, publicada por la vista. Las sumas de arriba
     //  se quedan como arranque y red de seguridad: en cuanto la vista existe,
