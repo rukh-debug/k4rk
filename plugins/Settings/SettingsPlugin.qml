@@ -78,7 +78,7 @@ K4Plugin {
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
 
-        function alternar(id: string): void { Settings.alternar(id) }
+        function togglePlugin(id: string): void { Settings.alternar(id) }
 
         //  To peek at its insides without opening anything: which commit the
         //  bar is on, how far behind `origin` it is, and why it cannot tell
@@ -94,6 +94,6 @@ K4Plugin {
         }
 
         //  And to launch it from outside, which is what the button does.
-        function actualizar(): void { self.version.actualizar() }
+        function update(): void { self.version.actualizar() }
     }
 }

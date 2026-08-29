@@ -26,30 +26,28 @@ git	git	base	Instalar y actualizar k4
 python	python	base	Todas las herramientas de tools/
 
 #  Qt: quickshell ya arrastra qt6-declarative y qt6-wayland, pero no el
-#  multimedia. Sin estos dos el editor abre y no reproduce nada.
-pkg:qt6-multimedia	qt6-multimedia	base	Reproducir vídeo y audio en el editor
-pkg:qt6-multimedia-ffmpeg	qt6-multimedia-ffmpeg	base	Descodificador de la previa del editor
+#  multimedia. Sin estos dos no suena nada en la barra.
+pkg:qt6-multimedia	qt6-multimedia	base	Reproducir sonido y vídeo en la barra
+pkg:qt6-multimedia-ffmpeg	qt6-multimedia-ffmpeg	base	Descodificador de lo que se reproduce
 
 #  ── Tipografías ─────────────────────────────────────────────────────────────
 #  Sin la Nerd Font media interfaz son cuadrados: los iconos son glifos.
 pkg:ttf-meslo-nerd	ttf-meslo-nerd	base	Los iconos de la interfaz
-pkg:adwaita-fonts	adwaita-fonts	base	Texto de la interfaz y rótulos del editor
+pkg:adwaita-fonts	adwaita-fonts	base	Texto de la interfaz y rótulos
 
-#  ── Captura y edición de vídeo ──────────────────────────────────────────────
-grim	grim	base	Hacer capturas de pantalla
+#  ── Adjuntar la pantalla a una pregunta ─────────────────────────────────────
+grim	grim	base	Adjuntar la pantalla a una pregunta de Ask
 slurp	slurp	base	Elegir una región con el ratón
-satty	satty	base	Anotar una captura antes de guardarla
-wf-recorder	wf-recorder	base	Grabar la pantalla en vídeo
 swaybg	swaybg	base	Poner el fondo de pantalla desde el selector de temas
-ffmpeg	ffmpeg	base	Montar y renderizar en el editor
-ffprobe	ffmpeg	base	Sondear duración y resolución de los vídeos
-magick	imagemagick	base	Miniaturas y capas de imagen
+ffmpeg	ffmpeg	base	Fondos de vídeo y efectos de tema
+ffprobe	ffmpeg	base	Sondear los vídeos del selector de fondos
+magick	imagemagick	base	Miniaturas y conversiones de imagen
 zenity	zenity	base	El diálogo «Examinar…» para abrir un vídeo
 
 #  ── Escritorio ──────────────────────────────────────────────────────────────
 wl-copy	wl-clipboard	base	Copiar al portapapeles
 wl-paste	wl-clipboard	base	Vigilar el portapapeles para el historial
-fd	fd	base	Buscar ficheros en el lanzador y en el editor
+fd	fd	base	Buscar ficheros en el lanzador
 pactl	libpulse	base	Volumen y dispositivos de audio
 wpctl	wireplumber	base	Volumen por aplicación (PipeWire)
 nmcli	networkmanager	base	Estado de la red y conexión a redes Wi-Fi
@@ -62,7 +60,6 @@ curl	curl	base	El tiempo y las consultas al asistente
 
 #  ── Opcionales ──────────────────────────────────────────────────────────────
 #  Nada de esto se instala salvo que se pida con --opcionales.
-whisper-cli	whisper-cpp	opcional	Transcribir el audio de un vídeo en el editor
 kitty	kitty	opcional	Terminal donde instalar paquetes desde el lanzador
 uwsm	uwsm	opcional	Lanzar aplicaciones en su propio ámbito de systemd
 yay	yay	opcional	Buscar e instalar paquetes de AUR desde el lanzador

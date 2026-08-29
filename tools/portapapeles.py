@@ -79,15 +79,15 @@ RE_ORDEN = re.compile(r"^\s*(sudo|git|npm|pnpm|yarn|cargo|python3?|pip|docker|"
 
 def etiqueta(texto):
     if RE_URL.match(texto):
-        return "enlace"
+        return "link"
     if RE_COLOR.match(texto):
         return "color"
     if RE_RUTA.match(texto) and len(texto) < 300:
-        return "ruta"
+        return "path"
     if RE_ORDEN.match(texto):
-        return "orden"
+        return "command"
     if "\n" in texto.strip() and re.search(r"[{};()=]|^\s{2,}", texto, re.M):
-        return "código"
+        return "code"
     return ""
 
 
@@ -113,7 +113,7 @@ def guardar(tipo):
     if not bruto or len(bruto) > TOPE_BYTES:
         return
 
-    if tipo == "texto":
+    if tipo == "text":
         try:
             texto = bruto.decode("utf-8")
         except UnicodeDecodeError:
@@ -127,7 +127,7 @@ def guardar(tipo):
         mime = "text/plain"
     else:
         resumen = ""
-        marca = "imagen"
+        marca = "image"
         mime = "image/png"
 
     ident = hashlib.sha1(bruto).hexdigest()[:16]
@@ -158,7 +158,7 @@ def guardar(tipo):
         "resumen": resumen,
         "etiqueta": marca,
         "bytes": len(bruto),
-        "lineas": resumen.count("\n") + 1 if tipo == "texto" else 0,
+        "lineas": resumen.count("\n") + 1 if tipo == "text" else 0,
         "cuando": time.time(),
         "fijado": False,
     })
@@ -266,17 +266,17 @@ def main():
     orden = sys.argv[1]
     arg = sys.argv[2] if len(sys.argv) > 2 else ""
 
-    if orden == "guardar":
-        guardar(arg or "texto")
-    elif orden == "listar":
+    if orden == "save":
+        guardar(arg or "text")
+    elif orden == "list":
         listar()
-    elif orden == "copiar":
+    elif orden == "copy":
         copiar(arg)
-    elif orden == "borrar":
+    elif orden == "delete":
         borrar(arg)
-    elif orden == "fijar":
+    elif orden == "pin":
         fijar(arg)
-    elif orden == "limpiar":
+    elif orden == "clear":
         limpiar()
 
 

@@ -53,15 +53,15 @@ Scope {
 
     //  ── lo que se va solo se aparta ───────────────────────────────
     //
-    //  Una vista transitoria —un aviso, la confirmación de una captura— aparece
-    //  sin que nadie la pida y se cierra sola a los pocos segundos. Si en esos
-    //  segundos el usuario abre algo, lo que quiere es lo que ha abierto: la
-    //  confirmación ya ha dicho lo suyo.
+    //  Una vista transitoria —un aviso, la confirmación de un ajuste rápido—
+    //  aparece sin que nadie la pida y se cierra sola a los pocos segundos. Si
+    //  en esos segundos el usuario abre algo, lo que quiere es lo que ha
+    //  abierto: el aviso ya ha dicho lo suyo.
     //
-    //  Antes se quedaba, y no por prioridad sino por su reloj: la captura tiene
+    //  Antes se quedaba, y no por prioridad sino por su reloj: un aviso tiene
     //  cinco segundos y no cede hasta que vencen, así que pulsar el atajo del
-    //  lanzador enseñaba la miniatura de la captura hasta el final y el
-    //  lanzador después. Y cerrarla no basta con que otro le gane la prioridad:
+    //  lanzador enseñaba el aviso hasta el final y el
+    //  lanzador después. Y cerrarlo no basta con que otro le gane la prioridad:
     //  su temporizador se rearma mientras el ratón esté sobre la island —que es
     //  donde está, si acabas de abrir algo— así que volvería a salir al cerrar
     //  lo de encima.
@@ -157,7 +157,6 @@ Scope {
         void PluginManager.cargado
         void Clipboard.cargado
         void Ventanas.count
-        void Captura.carpetaFotos
         void Modulos.count
     }
 
@@ -212,7 +211,7 @@ Scope {
         function pluginCheck(): void { PluginManager.comprobarNovedades() }
         function wifi(): void { _p("panel")?.openTab("wifi") }
         function bluetooth(): void { _p("panel")?.openTab("bluetooth") }
-        function sonido(): void { _p("panel")?.openTab("sonido") }
+        function sound(): void { _p("panel")?.openTab("sound") }
         function clearNotifications(): void { Notifs.clear() }
         function ask(): void {
             const a = _p("ask")
@@ -266,7 +265,7 @@ Scope {
 
             //  La barra vive en el borde que diga Ajustes. El resto del
             //  fichero pregunta `abajo` en vez de repetir la comparación.
-            readonly property bool abajo: Settings.posicionBarra === "abajo"
+            readonly property bool abajo: Settings.barPosition === "bottom"
 
             // Solo la pantalla propietaria enseña la acción global. Las demás
             // siguen con su píldora, que sí pertenece a todos los monitores.
@@ -367,11 +366,11 @@ Scope {
             //
             //  Por pantalla y no global: con dos monitores, el vídeo a pantalla
             //  completa está en uno, y en el otro la barra no molesta a nadie.
-            readonly property string modoSitio: Settings.reservaIsla === "completa"
-                ? (Workspaces.lleno(panelWindow.screen.name) ? "escondida" : "reserva")
-                : Settings.reservaIsla
-            readonly property bool flotante: modoSitio !== "reserva"
-            readonly property bool seEsconde: modoSitio === "escondida"
+            readonly property string modoSitio: Settings.islandSpace === "auto"
+                ? (Workspaces.lleno(panelWindow.screen.name) ? "hidden" : "reserve")
+                : Settings.islandSpace
+            readonly property bool flotante: modoSitio !== "reserve"
+            readonly property bool seEsconde: modoSitio === "hidden"
 
             //  Qué cuenta como «está pasando algo»: que la island la tenga
             //  alguien que no sea el reposo. No hay que inventarse un aviso
@@ -380,7 +379,7 @@ Scope {
             //
             //  Cuáles salen solos, mirado uno a uno y no de memoria: el aviso
             //  de notificación (`Notifs.toastOpen`), el volumen
-            //  (`Audio.overlayOpen`), la confirmación de una captura, y
+            //  (`Audio.overlayOpen`), y
             //  cualquier módulo que abras con su atajo. El reproductor y el
             //  reloj NO: los dos piden `Island.hovered`, así que una canción
             //  que cambia sola no saca la barra — se ve al asomarse, como
@@ -671,8 +670,8 @@ Scope {
                 anchors.top: panelWindow.abajo ? undefined : parent.top
                 anchors.bottom: panelWindow.abajo ? parent.bottom : undefined
 
-                // Ver services/Island.qml: apartarse para las capturas y
-                // mientras haya un diálogo del sistema abierto.
+                // Ver services/Island.qml: apartarse mientras haya un
+                // diálogo del sistema abierto.
                 opacity: Island.apartada ? 0 : 1
 
                 //  Ya no siempre al centro: la island vive en el punto del

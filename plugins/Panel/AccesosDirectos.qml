@@ -31,7 +31,7 @@ Item {
     readonly property var disponibles: {
         const apps = PluginManager.aplicaciones
         const salida = []
-        const ids = Settings.accesosDirectos || []
+        const ids = Settings.quickAccess || []
         for (let i = 0; i < ids.length; ++i) {
             for (let j = 0; j < apps.length; ++j) {
                 if (apps[j].id === ids[i] && apps[j].habilitado) {
@@ -97,10 +97,10 @@ Item {
         //  Los guardados que ahora no se pintan —un plugin apagado— se
         //  conservan al final: apagar algo no debe borrar que lo tenías
         //  anclado.
-        const resto = (Settings.accesosDirectos || []).filter(function (id) {
+        const resto = (Settings.quickAccess || []).filter(function (id) {
             return ids.indexOf(id) < 0
         })
-        Settings.accesosDirectos = ids.concat(resto)
+        Settings.quickAccess = ids.concat(resto)
         Settings.guardar()
     }
 

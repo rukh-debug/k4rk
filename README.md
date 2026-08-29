@@ -47,22 +47,12 @@ Plus notifications with actions and history, a system tray, clipboard history,
 and a bar that lives wherever you put it — top or bottom,
 left, center or right.
 
-### Capture, and an editor that is not a separate app
-
-<img src="screenshots/editor.png" width="100%" alt="The video editor: preview, tool panel and a two-layer timeline">
-
-Region, window or screen; record; then land straight in a non-linear editor.
-Layered video and image timelines, cuts, crops, audio tracks with ducking and
-live noise removal, subtitles, camera overlay, silence detection, Whisper
-transcription. Out the other side: MP4, WebM, GIF or 9:16 for Shorts.
-
 ### Wallpapers that move, and a palette that comes out of them
 
 <img src="screenshots/fondos.gif" width="100%" alt="The wallpaper tab: picking a different video wallpaper, which crossfades in and keeps playing behind the bar">
 
 The bar draws the wallpaper itself, on its own layer below the windows, so a
-wallpaper can be a video or a GIF and not only a picture. Nothing new to
-install: QtMultimedia was already a dependency, for the video editor.
+wallpaper can be a video or a GIF and not only a picture.
 
 And because k4 is the one drawing it, it can do what a wallpaper daemon cannot:
 **pause the video when no window leaves any of it visible.** Measured on a
@@ -83,8 +73,8 @@ steps aside.
 
 ## Plugins
 
-The clock is a plugin. So is the launcher, the control center, the capture
-tool. There is no privileged inner circle — **the API a stranger's plugin gets
+The clock is a plugin. So is the launcher, the control center. There is no
+privileged inner circle — **the API a stranger's plugin gets
 is the API the launcher uses.** Plugins load in isolation, and a broken one is
 recorded with its error while the bar starts without it.
 
@@ -191,12 +181,8 @@ That file is owned by k4; put your overrides after it.
 | `SUPER + K` | Shortcut viewer |
 | `SUPER + L` | Lock screen |
 | `SUPER + G` | Ask Codex |
-| `SUPER + C` | Capture a region |
-| `SUPER + Shift + C` | Start/stop recording |
-| `SUPER + Shift + E` | Open the video editor |
 | `SUPER + Shift + T` | Terminal in the island (sessions kept alive) |
 | `SUPER + Alt + T` | Pop that session out into a window |
-| `Print` / `Shift + Print` / `Ctrl + Print` | Region / screen / window capture |
 
 </details>
 
@@ -213,12 +199,10 @@ publish them.
 
 | Target | Examples |
 |---|---|
-| `k4` | `toggleLauncher`, `togglePanel`, `windows`, `settings`, `lock` |
-| `k4.panel` | `toggle`, `notifications`, `wifi`, `bluetooth`, `close` |
-| `k4.theme` | `toggle`, `tab`, `preset`, `wallpaper`, `apply`, `save` |
-| `k4.captura` | `menu`, `region`, `grabar`, `parar`, `grande` |
-| `k4.editor` | `abrir`, `editar`, `retomar`, `imagen`, `formato`, `silencios` |
-| `k4.term` | `isla`, `nueva`, `siguiente`, `anterior`, `irA`, `ejecutar` |
+| `k4` | `toggleLauncher`, `togglePanel`, `windows`, `settings`, `lock`, `sound` |
+| `k4.panel` | `toggle`, `notifications`, `wifi`, `bluetooth`, `sound`, `close` |
+| `k4.theme` | `toggle`, `preset`, `apply`, `save`, `wallpaperOn`, `palette`, `transition`, `add`, `remove` |
+| `k4.term` | `open`, `island`, `newSession`, `next`, `prev`, `goTo`, `run`, `move` |
 
 Plugin management: `pluginEnable <id>`, `pluginDisable <id>`,
 `pluginToggle <id>`, `pluginReload <id>`, `pluginRefresh`, `pluginStatus`,
@@ -237,14 +221,13 @@ The installer is the source of truth and reads
 | `quickshell`, `hyprland` | Bar runtime and compositor |
 | `python` | Helper tools |
 | `qt6-multimedia`, `qt6-multimedia-ffmpeg` | Video/audio preview |
-| `grim`, `slurp`, `satty` | Capture, region selection, annotation |
-| `wf-recorder` | Screen recording |
+| `grim`, `slurp` | Attach the screen to an Ask question |
 | `swaybg` | Wallpaper backend |
-| `ffmpeg`, `imagemagick` | Editing, probing, thumbnails |
+| `ffmpeg`, `imagemagick` | Video wallpapers, probing, thumbnails |
 | `zenity`, `wl-clipboard`, `fd` | Dialogs, clipboard, search |
 | `pactl`, `wpctl`, `nmcli`, `bluez` | Audio, network, Bluetooth |
 
-Optional packages add Whisper transcription, AUR support, NVIDIA metrics and
+Optional packages add AUR support, NVIDIA metrics and
 Codex integration.
 
 | Option | Effect |
@@ -306,8 +289,7 @@ Before opening a pull request:
 ```sh
 python3 tools/plugins.py && python3 tools/api.py && python3 tools/guia.py
 python3 tools/layouts.py && python3 tools/glifos.py
-python3 tools/prueba_editar.py && python3 tools/prueba_plugins.py
-python3 tools/prueba_rutas.py && python3 tools/prueba_texto.py
+python3 tools/prueba_plugins.py && python3 tools/prueba_texto.py
 git diff --check
 ```
 

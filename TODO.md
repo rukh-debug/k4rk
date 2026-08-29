@@ -1,9 +1,16 @@
 # TODO
 
-## Comments: Spanish to English, one directory at a time
+## Spanish leftovers: comments, then identifiers
 
-The interface is English now; the comments still speak Spanish. Every
-folder — core/, services/, widgets/, plugins/, tools/, the scripts —
+The product surface is English now — UI strings, IPC verbs (`open`,
+`move`, `goTo`…), plugin ids (`sound`, `displays`, `agents`), settings
+keys (`barPosition`, `islandSpace`…), permissions, stored values and
+subcommands, with one-shot migrations for the old names. Two layers
+remain, and they go in this order:
+
+### 1. Comments — translate, one directory at a time
+
+Every folder — core/, services/, widgets/, plugins/, tools/, the scripts —
 carries prose comments in the old voice, and they are worth keeping:
 most of them explain WHY, not what. This is a translation sweep, not a
 rewrite.
@@ -13,14 +20,23 @@ rewrite.
   `plugins/` one at a time, `tools/` and the shell scripts last.
 - Translate, never summarize. The long «why» blocks are the asset; a
   sentence stays a sentence, a list stays a list.
-- Identifiers stay Spanish (`abrir()`, `posicionBarra`, the IPC verbs):
-  they are API names, and renaming them is its own project, not part of
-  this sweep.
-- Runtime data stays as designed: keys, paths, output labels that tools
-  read back. Only prose moves.
 - After each directory, run the checks — `tools/plugins.py`,
   `tools/api.py`, `tools/guia.py` — and diff with `git diff --check`.
   Comments only, but cheap to prove nothing else moved.
+
+### 2. Identifiers — rename, only after the comments pass
+
+`abrir()`, `posicionBarra`, `carpetasFuera`… plus the QML file names
+(`AccesosDirectos.qml`) and folder names (`Sonido/`), and last the
+`K4.*` API type names (`K4.Isla`, `K4.Sonido`), because those are the
+public API and renaming them breaks every outside plugin at once.
+
+- Same discipline: one directory per commit, whole-word renames
+  (`\bposicionBarra\b`), never by hand across files.
+- The IPC verbs, settings keys, plugin ids and permissions are already
+  English — done with migrations, not to be redone.
+- Leave alone: k4term's conf keys (`tamaño`) and shell-integration
+  markers (`donde`) — external contract, see AGENTS.md.
 
 ## Agentes: per-provider toggles + more providers
 

@@ -240,7 +240,7 @@ def describir(accion, vals):
         orden = resolver(dentro, vals).strip()
         # los tres prefijos largos que aparecen una y otra vez
         if "quickshell ipc" in orden:
-            # `call k4 abrir`, pero también `call k4.editor abrir`: cada módulo
+            # `call k4 abrir`, pero también `call k4.apps abrir`: cada módulo
             # publica su propio objetivo y cortar por «call k4 » a secas dejaba
             # esos con la orden entera, ruta incluida.
             m3 = re.search(r'call\s+k4(?:\.(\w+))?\s+(.*)$', orden)

@@ -6,7 +6,7 @@
    "id": "idle",
    "entry": "Idle/IdlePlugin.qml",
    "version": "1.0.0",
-   "title": "Píldora",
+   "title": "Pill",
    "enabledByDefault": true,
    "configurable": false
   },
@@ -14,35 +14,35 @@
    "id": "volume",
    "entry": "Volume/VolumePlugin.qml",
    "version": "1.0.0",
-   "title": "Volumen",
+   "title": "Volume",
    "enabledByDefault": true
   },
   {
-   "id": "sonido",
+   "id": "sound",
    "entry": "Sonido/SonidoPlugin.qml",
    "version": "1.0.0",
-   "title": "Sonido",
+   "title": "Sound",
    "enabledByDefault": true
   },
   {
    "id": "clock",
    "entry": "Clock/ClockPlugin.qml",
    "version": "1.0.0",
-   "title": "Reloj",
+   "title": "Clock",
    "enabledByDefault": true
   },
   {
    "id": "player",
    "entry": "Player/PlayerPlugin.qml",
    "version": "1.0.0",
-   "title": "Reproductor",
+   "title": "Player",
    "enabledByDefault": true
   },
   {
    "id": "toast",
    "entry": "Toast/ToastPlugin.qml",
    "version": "1.0.0",
-   "title": "Notificación",
+   "title": "Notifications",
    "enabledByDefault": true,
    "icono": "0xF0369"
   },
@@ -50,37 +50,37 @@
    "id": "panel",
    "entry": "Panel/PanelPlugin.qml",
    "version": "1.0.0",
-   "title": "Centro de control",
+   "title": "Control center",
    "enabledByDefault": true
   },
   {
    "id": "launcher",
    "entry": "Launcher/LauncherPlugin.qml",
    "version": "1.0.0",
-   "title": "Lanzador",
+   "title": "Launcher",
    "enabledByDefault": true
   },
   {
    "id": "ask",
    "entry": "Ask/AskPlugin.qml",
    "version": "1.0.0",
-   "title": "Preguntar",
+   "title": "Ask",
    "enabledByDefault": true
   },
   {
    "id": "hyprtheme",
    "entry": "HyprTheme/HyprThemePlugin.qml",
    "version": "1.0.0",
-   "title": "Tema de Hyprland",
+   "title": "Hyprland theme",
    "enabledByDefault": true,
    "icono": "0xF03D8"
   },
   {
-   "id": "pantallas",
+   "id": "displays",
    "entry": "Pantallas/PantallasPlugin.qml",
    "version": "1.0.0",
-   "title": "Pantallas",
-   "description": "Configura monitores y reparte escritorios de Hyprland",
+   "title": "Displays",
+   "description": "Set up monitors and hand out Hyprland workspaces",
    "enabledByDefault": true,
    "icono": "0xF037A",
    "aplicacion": true,
@@ -92,7 +92,7 @@
    "id": "tray",
    "entry": "Tray/TrayPlugin.qml",
    "version": "1.0.0",
-   "title": "Bandeja",
+   "title": "Tray",
    "enabledByDefault": true,
    "icono": "0xF1296"
   },
@@ -100,7 +100,7 @@
    "id": "settings",
    "entry": "Settings/SettingsPlugin.qml",
    "version": "1.0.0",
-   "title": "Ajustes",
+   "title": "Settings",
    "enabledByDefault": true,
    "configurable": false,
    "icono": "0xF0493",
@@ -110,7 +110,7 @@
    "id": "clipboard",
    "entry": "Clipboard/ClipboardPlugin.qml",
    "version": "1.0.0",
-   "title": "Portapapeles",
+   "title": "Clipboard",
    "enabledByDefault": true,
    "icono": "0xF014D",
    "aplicacion": true
@@ -119,7 +119,7 @@
    "id": "system",
    "entry": "System/SystemPlugin.qml",
    "version": "1.0.0",
-   "title": "Sistema",
+   "title": "System",
    "enabledByDefault": true,
    "icono": "0xF061A",
    "aplicacion": true
@@ -128,7 +128,7 @@
    "id": "keys",
    "entry": "Keys/KeysPlugin.qml",
    "version": "1.0.0",
-   "title": "Atajos",
+   "title": "Shortcuts",
    "enabledByDefault": true,
    "icono": "0xF030C",
    "aplicacion": true
@@ -137,25 +137,16 @@
    "id": "session",
    "entry": "Session/SessionPlugin.qml",
    "version": "1.0.0",
-   "title": "Sesión",
+   "title": "Session",
    "enabledByDefault": true,
    "icono": "0xF0425",
-   "aplicacion": true
-  },
-  {
-   "id": "captura",
-   "entry": "Captura/CapturaPlugin.qml",
-   "version": "1.0.0",
-   "title": "Captura",
-   "enabledByDefault": true,
-   "icono": "0xF0FCE",
    "aplicacion": true
   },
   {
    "id": "apps",
    "entry": "Apps/AppsPlugin.qml",
    "version": "1.0.0",
-   "title": "Aplicaciones",
+   "title": "Apps",
    "enabledByDefault": true,
    "icono": "0xF02C1"
   },
@@ -173,14 +164,14 @@
    "id": "ssh",
    "entry": "Ssh/SshPlugin.qml",
    "version": "1.0.0",
-   "title": "Servidores",
+   "title": "Servers",
    "enabledByDefault": true
   },
   {
-   "id": "agentes",
+   "id": "agents",
    "entry": "Agentes/AgentesPlugin.qml",
    "version": "1.0.0",
-   "title": "Agentes",
+   "title": "Agents",
    "enabledByDefault": true,
    "icono": "0xF06A9",
    "aplicacion": true

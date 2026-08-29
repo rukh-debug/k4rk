@@ -59,7 +59,7 @@ PERMISOS = {
                          r"(alternarPausa|siguiente|anterior|buscar)\b"),
     "notificaciones": re.compile(r"\bK4\.Notificaciones\.limpiar\b"),
     "portapapeles": re.compile(r"\bK4\.Portapapeles\b"),
-    "sonido": re.compile(r"\bK4\.Sonido\b"),
+    "sound": re.compile(r"\bK4\.Sonido\b"),
 }
 
 #  Y QUÉ ES cada plugin: dónde se dibuja y por dónde se le llama.
@@ -194,13 +194,11 @@ SUPERFICIES = {
     "ventana": re.compile(r"\bK4\.Ventana\b"),
     #  Se le puede llamar desde fuera.
     "ipc": re.compile(r"\bK4\.Ipc\b"),
-    #  Se queda un atajo global del escritorio.
-    "atajo": re.compile(r"\bK4\.Atajo\b"),
 }
 
 
 #  Los COMANDOS que un plugin registra: los targets de IPC por los que se le
-#  puede llamar desde fuera y los nombres de atajo que le pide al escritorio.
+#  puede llamar desde fuera.
 #
 #  Se sacan del QML y no del manifiesto porque es lo que de verdad se registra:
 #  un manifiesto puede declarar misa, pero quien se queda `k4.notas` es el
@@ -213,34 +211,28 @@ SUPERFICIES = {
 #  alguien esconde su target quinientos caracteres más abajo, aquí no sale — y
 #  el choque se lo encontrará en el log, como hasta ahora.
 RE_IPC_BLOQUE = re.compile(r"\bK4\.Ipc\b\s*\{")
-RE_ATAJO_BLOQUE = re.compile(r"\bK4\.Atajo\b\s*\{")
 RE_TARGET = re.compile(r"\btarget\s*:\s*[\"']([^\"']+)[\"']")
-RE_NOMBRE = re.compile(r"\bname\s*:\s*[\"']([^\"']+)[\"']")
 
 
-def comandos_de_texto(texto, ipc, atajos):
-    """Apunta en `ipc` y `atajos` lo que registre este QML."""
+def comandos_de_texto(texto, ipc):
+    """Apunta en `ipc` lo que registre este QML."""
     for m in RE_IPC_BLOQUE.finditer(texto):
         hallado = RE_TARGET.search(texto[m.end():m.end() + 400])
         if hallado:
             ipc.add(hallado.group(1))
-    for m in RE_ATAJO_BLOQUE.finditer(texto):
-        hallado = RE_NOMBRE.search(texto[m.end():m.end() + 400])
-        if hallado:
-            atajos.add(hallado.group(1))
 
 
 def comandos_de_carpeta(d):
-    """`{"ipc": [...], "atajos": [...]}` de una carpeta de plugin."""
-    ipc, atajos = set(), set()
+    """`{"ipc": [...]}` de una carpeta de plugin."""
+    ipc = set()
     for qml in d.glob("**/*.qml"):
         try:
             texto = "\n".join(re.sub(r"//.*$", "", l)
                               for l in qml.read_text().split("\n"))
         except OSError:
             continue
-        comandos_de_texto(texto, ipc, atajos)
-    return {"ipc": sorted(ipc), "atajos": sorted(atajos)}
+        comandos_de_texto(texto, ipc)
+    return {"ipc": sorted(ipc)}
 
 
 def marcar_choques(combinado):
@@ -254,33 +246,22 @@ def marcar_choques(combinado):
     segundo MUERTO y lo cuenta en el log y en ningún sitio más. El plugin
     figura cargado y sin error, y sus comandos sencillamente no contestan.
     """
-    dueno_ipc, dueno_atajo = {}, {}
+    dueno = {}
     for item in combinado:
         if not item.get("cargable", True):
             continue
         cmds = item.get("comandos") or {}
         ident = item.get("id")
-        choque = None
         for t in cmds.get("ipc") or []:
-            if t in dueno_ipc:
-                choque = ("comando-ocupado",
-                          f"el comando {t} ya lo registra «{dueno_ipc[t]}»", t)
+            if t in dueno:
+                item["cargable"] = False
+                item["motivo"], item["dice"], item["detalle"] = (
+                    "comando-ocupado",
+                    f"el comando {t} ya lo registra «{dueno[t]}»", t)
                 break
-        if choque is None:
-            for n in cmds.get("atajos") or []:
-                if n in dueno_atajo:
-                    choque = ("atajo-ocupado",
-                              f"el atajo {n} ya lo registra «{dueno_atajo[n]}»",
-                              n)
-                    break
-        if choque:
-            item["cargable"] = False
-            item["motivo"], item["dice"], item["detalle"] = choque
-            continue
-        for t in cmds.get("ipc") or []:
-            dueno_ipc[t] = ident
-        for n in cmds.get("atajos") or []:
-            dueno_atajo[n] = ident
+        else:
+            for t in cmds.get("ipc") or []:
+                dueno[t] = ident
     return combinado
 
 

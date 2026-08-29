@@ -1,96 +1,96 @@
 {
- "_meta": {
-  "que": "El registro público de plugins de k4: lo que se puede instalar con tools/plugins.py --buscar / --instalar.",
-  "publicar": "Abre un PR añadiendo tu entrada: id, title, description, repo (git), commit (el SHA completo de 40 que quieres publicar) y, si el plugin no vive en la raíz del repo, carpeta.",
-  "commit": "Se publica un COMMIT, no una rama. Así lo que se revisó es exactamente lo que se instala, y una rama que se mueva después no cambia lo que le llega a la gente. Para publicar una versión nueva, otro PR con el SHA nuevo."
- },
- "plugins": [
-  {
-   "id": "hola",
-   "title": "Hola",
-   "description": "El plugin mínimo de la guía: una vista, un contador y sus ajustes",
-   "autor": "k4",
-   "repo": "https://github.com/k4ditano/k4",
-   "commit": "320a3a971633b6602421e052289847fd9970c65e",
-   "carpeta": "ejemplos/hola"
+  "_meta": {
+    "que": "k4's public plugin registry: what can be installed with tools/plugins.py --buscar / --instalar.",
+    "publicar": "Open a PR adding your entry: id, title, description, repo (git), commit (the full 40-char SHA you want published) and, if the plugin does not live at the repo root, carpeta.",
+    "commit": "A COMMIT is published, not a branch. What was reviewed is exactly what gets installed, and a branch that moves later changes nothing for the people who installed it. To publish a new version, another PR with the new SHA."
   },
-  {
-   "id": "snake",
-   "title": "Snake",
-   "description": "La serpiente de siempre, jugable en la island",
-   "autor": "k4",
-   "repo": "https://github.com/k4ditano/k4",
-   "commit": "320a3a971633b6602421e052289847fd9970c65e",
-   "carpeta": "ejemplos/snake"
-  },
-  {
-   "id": "piezas",
-   "title": "Piezas",
-   "description": "Muestrario de los componentes visuales de la API",
-   "autor": "k4",
-   "repo": "https://github.com/k4ditano/k4",
-   "commit": "a1584de2b4261d336454a000830ef69b109160df",
-   "carpeta": "ejemplos/piezas"
-  },
-  {
-   "id": "efectos",
-   "title": "Efectos",
-   "description": "Escaparate del tinte, los gestos y pintar fuera de la island",
-   "autor": "k4",
-   "repo": "https://github.com/k4ditano/k4",
-   "commit": "bb23bd242530746d84b329c62790b6ce5adb3bcb",
-   "carpeta": "ejemplos/efectos"
-  },
-  {
-   "id": "grieta",
-   "title": "La Grieta",
-   "description": "Roguelike de tecleo: sella con el teclado lo que sale por la grieta de la barra",
-   "autor": "k4",
-   "repo": "https://github.com/k4ditano/grieta",
-   "commit": "ce4c39d58ff12364614fcc03b90b84fccfe0df9f"
-  },
-  {
-   "id": "senda",
-   "title": "Senda",
-   "description": "Roguelike autobattler de criaturas: eliges camino, formas equipo y peleas por las ocho medallas",
-   "autor": "k4",
-   "repo": "https://github.com/k4ditano/senda",
-   "commit": "28b29e2139e1934ebae147226413f59eab470838"
-  },
-  {
-   "id": "pinza",
-   "title": "Pinza",
-   "description": "Abre K4 Pinza, el editor de pixel art, desde la island",
-   "repo": "https://github.com/k4ditano/k4-plugin-pinza",
-   "commit": "77cdc91026ce358fa3ab3a46713782e57c8e741f"
-  },
-  {
-   "id": "pomodoro",
-   "title": "Pomodoro",
-   "description": "A focus timer that lives in the island: the countdown rides in the pill and the island opens when a phase ends",
-   "repo": "https://github.com/k4ditano/k4-pomodoro",
-   "commit": "86cf4967800c35ebe82bc8182bf35af270cabbb6"
-  },
-  {
-   "id": "puertos",
-   "title": "Puertos",
-   "description": "What is listening on this machine, and which of it is open to the network",
-   "repo": "https://github.com/k4ditano/k4-puertos",
-   "commit": "e13350d0deaa17f3fc845934c3f7f34721cf2e46"
-  },
-  {
-   "id": "sala",
-   "title": "Sala de máquinas",
-   "description": "What is running here — containers and user services — with the buttons to stop, pause and restart them",
-   "repo": "https://github.com/k4ditano/k4-sala",
-   "commit": "6ae78360ca9dba5c34380ec43a7b5875f11df4a1"
-  },
-  {
-   "id": "dictado",
-   "title": "Dictado",
-   "description": "La isla escucha contigo: onda en vivo mientras dictas por voz con voxtype, y el estado de la transcripción.",
-   "repo": "https://github.com/k4ditano/k4-dictado",
-   "commit": "13e6377f6cc27ec8174952486b5038f0d68dd277"
-  }
- ]
+  "plugins": [
+    {
+      "id": "hola",
+      "title": "Hello",
+      "description": "The guide's minimal plugin: a view, a counter and its settings",
+      "autor": "k4",
+      "repo": "https://github.com/k4ditano/k4",
+      "commit": "320a3a971633b6602421e052289847fd9970c65e",
+      "carpeta": "ejemplos/hola"
+    },
+    {
+      "id": "snake",
+      "title": "Snake",
+      "description": "The usual snake, playable in the island",
+      "autor": "k4",
+      "repo": "https://github.com/k4ditano/k4",
+      "commit": "320a3a971633b6602421e052289847fd9970c65e",
+      "carpeta": "ejemplos/snake"
+    },
+    {
+      "id": "piezas",
+      "title": "Pieces",
+      "description": "Showcase of the API's visual components",
+      "autor": "k4",
+      "repo": "https://github.com/k4ditano/k4",
+      "commit": "a1584de2b4261d336454a000830ef69b109160df",
+      "carpeta": "ejemplos/piezas"
+    },
+    {
+      "id": "efectos",
+      "title": "Effects",
+      "description": "Showcase of tinting, gestures and painting outside the island",
+      "autor": "k4",
+      "repo": "https://github.com/k4ditano/k4",
+      "commit": "bb23bd242530746d84b329c62790b6ce5adb3bcb",
+      "carpeta": "ejemplos/efectos"
+    },
+    {
+      "id": "grieta",
+      "title": "The Rift",
+      "description": "A typing roguelike: seal with the keyboard what comes out of the rift",
+      "autor": "k4",
+      "repo": "https://github.com/k4ditano/grieta",
+      "commit": "ce4c39d58ff12364614fcc03b90b84fccfe0df9f"
+    },
+    {
+      "id": "senda",
+      "title": "Senda",
+      "description": "A creature autobattler roguelike: pick a path, build a team",
+      "autor": "k4",
+      "repo": "https://github.com/k4ditano/senda",
+      "commit": "28b29e2139e1934ebae147226413f59eab470838"
+    },
+    {
+      "id": "pinza",
+      "title": "Pinza",
+      "description": "Opens K4 Pinza, the pixel-art editor, from the island",
+      "repo": "https://github.com/k4ditano/k4-plugin-pinza",
+      "commit": "77cdc91026ce358fa3ab3a46713782e57c8e741f"
+    },
+    {
+      "id": "pomodoro",
+      "title": "Pomodoro",
+      "description": "A focus timer that lives in the island: the countdown rides the pill",
+      "repo": "https://github.com/k4ditano/k4-pomodoro",
+      "commit": "86cf4967800c35ebe82bc8182bf35af270cabbb6"
+    },
+    {
+      "id": "puertos",
+      "title": "Ports",
+      "description": "What is listening on this machine, and which of it is open to the world",
+      "repo": "https://github.com/k4ditano/k4-puertos",
+      "commit": "e13350d0deaa17f3fc845934c3f7f34721cf2e46"
+    },
+    {
+      "id": "sala",
+      "title": "Engine room",
+      "description": "What is running here — containers and user services — with their state",
+      "repo": "https://github.com/k4ditano/k4-sala",
+      "commit": "6ae78360ca9dba5c34380ec43a7b5875f11df4a1"
+    },
+    {
+      "id": "dictado",
+      "title": "Dictation",
+      "description": "The island listens with you: a live waveform as you dictate by voice",
+      "repo": "https://github.com/k4ditano/k4-dictado",
+      "commit": "13e6377f6cc27ec8174952486b5038f0d68dd277"
+    }
+  ]
 }

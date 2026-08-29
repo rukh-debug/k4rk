@@ -9,7 +9,7 @@
 //  deslizador donde está la UNIDAD del aparato —su nivel natural—. Esa marca
 //  es media razón para que esto exista: por encima de ella no se sube el
 //  volumen, se AMPLIFICA, y un micro amplificado entra saturado sin que nada
-//  lo diga hasta que escuchas la grabación.
+//  lo diga hasta que se oye en lo que sale.
 
 import QtQuick
 import QtQuick.Layouts

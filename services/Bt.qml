@@ -53,18 +53,18 @@ Singleton {
         //  El emparejamiento lo lleva bluetoothctl, así que su estado no
         //  llega por `pairing`: lo dice el servicio.
         if (emparejando === device.address)
-            return "Emparejando…"
+            return "Pairing…"
         if (falloEmparejar === device.address && !device.paired)
-            return "No se pudo emparejar"
+            return "Couldn't pair"
         if (device.pairing)
-            return "Emparejando…"
+            return "Pairing…"
         if (device.connected)
             return device.batteryAvailable
-                ? "Conectado · " + Math.round(device.battery * 100) + "%"
-                : "Conectado"
+                ? "Connected · " + Math.round(device.battery * 100) + "%"
+                : "Connected"
         if (device.paired || device.bonded)
-            return "Emparejado"
-        return "Disponible"
+            return "Paired"
+        return "Available"
     }
 
     //  Emparejar NO es conectar, y sin confianza no dura.

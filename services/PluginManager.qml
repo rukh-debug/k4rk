@@ -48,22 +48,21 @@ Singleton {
     // copia mínima evita que la barra se quede sin defaults si el fichero se
     // está actualizando o si se arranca con una versión antigua instalada.
     property var catalogo: [
-        { id: "idle", title: "Píldora", version: "1.0.0", enabled: true, configurable: false },
-        { id: "volume", title: "Volumen", version: "1.0.0", enabled: true },
-        { id: "clock", title: "Reloj", version: "1.0.0", enabled: true },
-        { id: "player", title: "Reproductor", version: "1.0.0", enabled: true },
-        { id: "toast", title: "Notificación", version: "1.0.0", enabled: true },
-        { id: "panel", title: "Centro de control", version: "1.0.0", enabled: true },
-        { id: "launcher", title: "Lanzador", version: "1.0.0", enabled: true },
-        { id: "ask", title: "Preguntar", version: "1.0.0", enabled: true },
-        { id: "hyprtheme", title: "Tema de Hyprland", version: "1.0.0", enabled: true },
-        { id: "tray", title: "Bandeja", version: "1.0.0", enabled: true },
-        { id: "settings", title: "Ajustes", version: "1.0.0", enabled: true, configurable: false },
-        { id: "clipboard", title: "Portapapeles", version: "1.0.0", enabled: true },
-        { id: "system", title: "Sistema", version: "1.0.0", enabled: true },
-        { id: "keys", title: "Atajos", version: "1.0.0", enabled: true },
-        { id: "session", title: "Sesión", version: "1.0.0", enabled: true },
-        { id: "captura", title: "Captura", version: "1.0.0", enabled: true }
+        { id: "idle", title: "Pill", version: "1.0.0", enabled: true, configurable: false },
+        { id: "volume", title: "Volume", version: "1.0.0", enabled: true },
+        { id: "clock", title: "Clock", version: "1.0.0", enabled: true },
+        { id: "player", title: "Player", version: "1.0.0", enabled: true },
+        { id: "toast", title: "Notifications", version: "1.0.0", enabled: true },
+        { id: "panel", title: "Control center", version: "1.0.0", enabled: true },
+        { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
+        { id: "ask", title: "Ask", version: "1.0.0", enabled: true },
+        { id: "hyprtheme", title: "Hyprland theme", version: "1.0.0", enabled: true },
+        { id: "tray", title: "Tray", version: "1.0.0", enabled: true },
+        { id: "settings", title: "Settings", version: "1.0.0", enabled: true, configurable: false },
+        { id: "clipboard", title: "Clipboard", version: "1.0.0", enabled: true },
+        { id: "system", title: "System", version: "1.0.0", enabled: true },
+        { id: "keys", title: "Shortcuts", version: "1.0.0", enabled: true },
+        { id: "session", title: "Session", version: "1.0.0", enabled: true }
     ]
 
     signal cambiado(string id, bool habilitado)
@@ -209,7 +208,7 @@ Singleton {
     function _crear(m) {
         const ruta = m.entry
         if (!ruta) {
-            registrarError(m.id, "sin entry en el catálogo")
+            registrarError(m.id, "no entry in the catalog")
             return null
         }
         //  TODO se resuelve contra este fichero, nunca con file://, y es de
@@ -263,7 +262,7 @@ Singleton {
             return null
         }
         if (!obj) {
-            registrarError(m.id, comp.errorString() || "createObject devolvió null")
+            registrarError(m.id, comp.errorString() || "createObject returned null")
             return null
         }
         const d = Object.assign({}, _porId)
@@ -604,13 +603,23 @@ Singleton {
     //  que no es lo mismo que un mapa vacío: vacío es «no tienes nada puesto»
     //  y null es «no me he enterado», y confundirlos es justo lo que apagaba
     //  los plugins de todo el mundo.
+    //  Plugin ids that were renamed when the bar went English-only; old
+    //  saved state is remapped on load instead of being thrown away.
+    readonly property var idsViejos: ({ sonido: "sound",
+                                        pantallas: "displays",
+                                        agentes: "agents" })
+
     function _leerEstado(bruto) {
         if (!bruto || bruto.length === 0)
             return null
         try {
             const d = JSON.parse(bruto)
-            if (d.habilitados && typeof d.habilitados === "object")
-                return d.habilitados
+            if (d.habilitados && typeof d.habilitados === "object") {
+                const m = {}
+                for (const k in d.habilitados)
+                    m[idsViejos[k] !== undefined ? idsViejos[k] : k] = d.habilitados[k]
+                return m
+            }
         } catch (e) {
             //  Cae fuera: lo dirá quien llame.
         }
@@ -634,7 +643,7 @@ Singleton {
             if (deCopia !== null) {
                 mapa = deCopia
                 estadoRepuesto = true
-                console.warn("k4: plugins.json no se pudo leer; repuesto de "
+                console.warn("k4: plugins.json couldn't be read; restored from "
                              + manager.rutaCopia)
             }
         }
@@ -706,7 +715,7 @@ Singleton {
             //  cuenta.
             if (_aplicarCatalogo(cacheCatalogo.text())) {
                 catalogoDe = "cache"
-                console.warn("k4: no se ha podido listar los plugins; se usa "
+                console.warn("k4: couldn't list the plugins; falling back to "
                              + manager.rutaCache)
             }
         }

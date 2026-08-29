@@ -6,7 +6,7 @@ description: >
   a plugin for it, or debug one. Triggers: k4, the island, the bar, a k4
   plugin, plugin.json, K4.Plugin, quickshell ipc call k4, pluginReload,
   pluginStatus, ~/.config/k4/plugins, the k4 launcher, the k4 control center,
-  the k4 capture tool or its video editor, k4 shortcuts. Also use it when the
+  k4 shortcuts. Also use it when the
   user says "make me a widget/plugin for my bar" and the bar is k4.
 ---
 
@@ -17,7 +17,7 @@ on Quickshell. It sits collapsed at one edge of the screen and expands when it
 has something to show.
 
 **Everything in it is a plugin**, including the parts that look built in: the
-clock, the launcher, the control center, the capture tool. There is no
+clock, the launcher, the control center. There is no
 privileged inner circle — the API a stranger's plugin gets is the API the
 launcher uses. That is the single most useful thing to know before writing
 one, because it means anything you can see the bar do, a plugin can do.

@@ -22,7 +22,7 @@ quickshell ipc -p $qs call k4 settings        # toggles the settings panel
 ## Restarting
 
 Ask the user first. The bar holds live state — games in progress, terminal
-islands, an unsaved editor session — and a restart loses it.
+islands — and a restart loses it.
 
 If you do restart, **count first**:
 

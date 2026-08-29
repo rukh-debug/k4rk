@@ -4,7 +4,7 @@ import K4 as K4
 K4.Plugin {
     id: self
 
-    name: "pantallas"
+    name: "displays"
     title: "Screens"
     priority: 67
     active: abierto
@@ -405,7 +405,7 @@ K4.Plugin {
     }
 
     K4.Ipc {
-        target: "k4.pantallas"
+        target: "k4.displays"
         function toggle(): void { self.toggle() }
         function open(): void { self.abierto = true; self.refresh() }
         function close(): void { self.close() }

@@ -5,8 +5,7 @@
 
 `plugins.py` es la puerta de entrada de código ajeno a la barra: valida
 manifiestos, casa permisos declarados contra lo que el QML usa de verdad, y
-rechaza antes de tocar el disco. Que el editor tuviera setenta pruebas y
-esta puerta ninguna era el desequilibrio más llamativo del proyecto.
+rechaza antes de tocar el disco.
 
 Cada prueba fabrica su carpeta de plugin en un temporal: nada depende de lo
 que haya en la máquina.

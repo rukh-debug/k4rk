@@ -21,10 +21,10 @@ ColumnLayout {
 
     // alto que necesita quien la incruste, cabecera incluida; la fórmula está
     // en el servicio porque los plugins la usan para dimensionar la island
-    readonly property int neededHeight: Settings.notificacionesAlPasar
+    readonly property int neededHeight: Settings.notificationsOnHover
         ? Notifs.stripHeight(max) : 0
 
-    visible: Notifs.recent.length > 0 && Settings.notificacionesAlPasar
+    visible: Notifs.recent.length > 0 && Settings.notificationsOnHover
     spacing: 4
 
     RowLayout {

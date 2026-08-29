@@ -19,7 +19,7 @@ QtObject {
     //
     //  No es lo mismo que `abierta`: la píldora plegada también se ve. Esto es
     //  falso cuando la island está retirada —el modo «escondida» de Ajustes—,
-    //  cuando una captura o un diálogo del sistema la aparta, y en el monitor
+    //  cuando un diálogo del sistema la aparta, y en el monitor
     //  cuya barra no está enseñándose.
     //
     //  Existe para una cosa concreta: en Qt Quick una animación NO se para

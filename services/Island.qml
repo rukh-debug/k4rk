@@ -61,7 +61,7 @@ Singleton {
     //  En qué borde vive la barra ahora mismo: "arriba" o "abajo". Lo decide
     //  el usuario en Ajustes; un plugin que pinte fuera de la island lo lee
     //  para saber hacia dónde asomar.
-    readonly property string posicion: Settings.posicionBarra
+    readonly property string posicion: Settings.barPosition
 
     //  Dónde está la island en la pantalla, en coordenadas de pantalla.
     //
@@ -119,8 +119,8 @@ Singleton {
         vistas = d
     }
 
-    //  `apartada` manda sobre todo lo demás: durante una captura o un diálogo
-    //  del sistema no la ve nadie, la publique quien la publique.
+    //  `apartada` manda sobre todo lo demás: mientras un diálogo del sistema
+    //  no la ve nadie, la publique quien la publique.
     //
     //  Y sin nadie publicando se contesta que SÍ. Es el defecto prudente: una
     //  animación de más se nota menos que una que no arranca nunca, y así esto
@@ -140,7 +140,7 @@ Singleton {
     //
     //  Dónde está la island a lo largo de su borde, como fracción del ancho
     //  libre: 0 pegada a la izquierda, 1 a la derecha. La base la pone el
-    //  usuario en Ajustes (alineacionBarra); un plugin puede desplazarla
+    //  usuario en Ajustes (barAlignment); un plugin puede desplazarla
     //  TEMPORALMENTE con colocar() — la island que esquiva, que hace de pala,
     //  que se aparta para enseñar algo — y vuelve sola: por plazo, al soltar,
     //  o al deshabilitar al dueño (PluginManager llama a soltar al destruir).
@@ -148,7 +148,7 @@ Singleton {
     property real colocacionPedida: -1      // -1 = ninguna, manda Ajustes
 
     readonly property real colocacion: colocacionPedida >= 0
-        ? colocacionPedida : Settings.alineacionBarra / 100
+        ? colocacionPedida : Settings.barAlignment / 100
 
     function colocar(dueno, fraccion, duracionMs) {
         if (!dueno)
@@ -196,13 +196,6 @@ Singleton {
         gesto(String(nombre), f)
     }
 
-    //  Aparta la island un instante, para que no salga en las capturas.
-    //
-    //  No se esconde la ventana: reserva 34 px de zona exclusiva y ocultarla
-    //  reajustaría todas las ventanas del escritorio, que es un parpadeo mucho
-    //  peor que el problema. Se deja mapeada y simplemente no se dibuja.
-    property bool escondida: false
-
     //  Cuántos diálogos del sistema hay abiertos ahora mismo.
     //
     //  La island va en una capa por encima de todo, así que un selector de
@@ -210,19 +203,15 @@ Singleton {
     //  uno, la island se aparta —y además deja de aceptar clics, o se los
     //  comería en su franja aunque no se vea—.
     //
-    //  Un contador y no un booleano porque se puede pedir una imagen desde el
-    //  editor y un vídeo desde el selector sin que el primero haya contestado:
-    //  con un booleano, cerrar uno reaparecería la island con el otro abierto.
-    //
-    //  Y aparte de `escondida` porque aquello dura noventa milisegundos y tiene
-    //  su red de seguridad de veinte segundos; buscar un fichero lleva lo que
-    //  lleve, y esa red lo dejaría a medias.
+    //  Un contador y no un booleano porque se pueden pedir dos ficheros a la
+    //  vez sin que el primero haya contestado: con un booleano, cerrar uno
+    //  reaparecería la island con el otro abierto.
     property int dialogos: 0
 
     function abrirDialogo() { dialogos += 1 }
     function cerrarDialogo() { dialogos = Math.max(0, dialogos - 1) }
 
-    readonly property bool apartada: escondida || dialogos > 0
+    readonly property bool apartada: dialogos > 0
 
     //  Y un vigilante, porque quedarse sin barra no puede pasar.
     //

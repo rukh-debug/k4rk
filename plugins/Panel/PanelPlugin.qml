@@ -14,7 +14,7 @@ K4Plugin {
     priority: 60
     active: habilitado && open
 
-    // "controls" | "notifications" | "wifi" | "bluetooth" | "sonido"
+    // "controls" | "notifications" | "wifi" | "bluetooth" | "sound"
     property string tab: "controls"
     property bool open: false
 
@@ -60,7 +60,7 @@ K4Plugin {
         open = true
         //  Las bases —el nivel natural de cada aparato— son un proceso, y solo
         //  hacen falta cuando se está mirando la lista.
-        if (wanted === "sonido")
+        if (wanted === "sound")
             Audio.mirarBases()
         Wifi.cancelPsk()
         Wifi.notice = ""
@@ -100,7 +100,7 @@ K4Plugin {
         function notifications(): void { self.toggle("notifications") }
         function wifi(): void { self.openTab("wifi") }
         function bluetooth(): void { self.openTab("bluetooth") }
-        function sonido(): void { self.openTab("sonido") }
+        function sound(): void { self.openTab("sound") }
         function close(): void { self.close() }
     }
 

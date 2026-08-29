@@ -27,7 +27,7 @@ RowLayout {
 
     readonly property int shown: Math.min(Tray.count, max)
 
-    visible: Tray.count > 0 && (interactive || Settings.bandejaEnPildora)
+    visible: Tray.count > 0 && (interactive || Settings.trayInPill)
     spacing: 4
 
     Repeater {

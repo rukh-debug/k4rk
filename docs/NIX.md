@@ -46,9 +46,9 @@ The launcher exports everything the bar needs, so `nix run` behaves the
 same inside a Hyprland session on NixOS as on any other distro:
 
 - **PATH** with every helper from [`dependencias.tsv`](../dependencias.tsv):
-  grim, slurp, satty, wf-recorder, swaybg, ffmpeg, imagemagick, zenity,
+  grim, slurp, swaybg, ffmpeg, imagemagick, zenity,
   wl-clipboard, fd, pactl, wpctl, nmcli, bluetoothctl, notify-send,
-  xdg-open, hyprctl, python3, git, curl… The optional ones (whisper, yay,
+  xdg-open, hyprctl, python3, git, curl… The optional ones (yay,
   nvidia-smi, claude, codex) stay out, exactly as `./instalar` leaves them
   without `--optional`.
 - **QtMultimedia**, which nixpkgs' quickshell does not pull in and the

@@ -10,7 +10,7 @@ Item {
     //  Sonando Y a la vista.
     //
     //  Con solo `isPlaying`, estas cuatro barritas seguían animándose con la
-    //  barra escondida o apartada por una captura —donde no las ve nadie— y
+    //  barra escondida o retirada —donde no las ve nadie— y
     //  repintando la escena entera a la tasa del monitor. Medido en la máquina
     //  del autor: tres puntos de CPU y 137 despertares por segundo, para nada.
     property bool active: Media.isPlaying && Island.aLaVista

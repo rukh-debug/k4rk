@@ -28,26 +28,26 @@ ColumnLayout {
     //  Lo que se está mirando. Sin valor guardado se usa lo mismo que usa la
     //  barra de fábrica, o la previsualización mentiría en un arranque limpio.
     readonly property string donde: {
-        const v = Settings.valor("posicionBarra")
-        return v === "abajo" ? "abajo" : "arriba"
+        const v = Settings.valor("barPosition")
+        return v === "bottom" ? "bottom" : "top"
     }
 
     readonly property int alineacion: {
-        const v = parseInt(Settings.valor("alineacionBarra"), 10)
+        const v = parseInt(Settings.valor("barAlignment"), 10)
         return isNaN(v) ? 50 : v
     }
 
     readonly property string sitio: {
-        const v = Settings.valor("reservaIsla")
-        return typeof v === "string" && v.length > 0 ? v : "reserva"
+        const v = Settings.valor("islandSpace")
+        return typeof v === "string" && v.length > 0 ? v : "reserve"
     }
 
     //  ¿Aparta las ventanas? «Reserva» siempre; «completa» sí salvo cuando algo
     //  está a pantalla completa, y eso en un dibujo quieto no se distingue, así
     //  que se dibuja como que sí y se cuenta debajo.
-    readonly property bool aparta: previo.sitio === "reserva"
-                                   || previo.sitio === "completa"
-    readonly property bool escondida: previo.sitio === "escondida"
+    readonly property bool aparta: previo.sitio === "reserve"
+                                   || previo.sitio === "auto"
+    readonly property bool escondida: previo.sitio === "hidden"
 
     //  El dock, si está. Sus ajustes son del plugin `dual`, así que se leen por
     //  su id con prefijo: los de fuera viven en otro cajón.
@@ -81,7 +81,7 @@ ColumnLayout {
     readonly property bool hayDock: !!Settings.valor("plugin_dual")
     readonly property bool dockAparta: {
         const v = Settings.valor("ext_dual_reservaDock")
-        return v === "reserva" || v === "completa"
+        return v === "reserve" || v === "auto"
     }
 
     // ── la pantalla ───────────────────────────────────────────────
@@ -140,7 +140,7 @@ ColumnLayout {
 
             x: margen
             width: parent.width - margen * 2
-            y: (previo.donde === "arriba" ? hueco : 0) + margen
+            y: (previo.donde === "top" ? hueco : 0) + margen
             height: parent.height - hueco - margen * 2
             radius: Math.max(2, 8 * barrita.escala)
             color: Qt.rgba(0.09, 0.11, 0.14, 0.88)
@@ -177,7 +177,7 @@ ColumnLayout {
             height: previo.escondida ? 3 : Math.max(4, Theme.baseHeight * escala)
 
             x: Math.round((parent.width - width) * previo.alineacion / 100)
-            y: previo.donde === "arriba"
+            y: previo.donde === "top"
                 ? 0 : parent.height - height
 
             Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -193,7 +193,7 @@ ColumnLayout {
                 ala: Math.max(1, Theme.wing * barrita.escala)
                 cuerpoRadio: Math.max(1, 20 * barrita.escala)
                 relleno: Theme.islandBg
-                reflejada: previo.donde === "abajo"
+                reflejada: previo.donde === "bottom"
             }
 
             //  El filo, para la opción escondida.
@@ -224,7 +224,7 @@ ColumnLayout {
             border.color: Qt.rgba(1, 1, 1, 0.12)
 
             x: Math.round((parent.width - width) / 2)
-            y: previo.donde === "arriba"
+            y: previo.donde === "top"
                 ? parent.height - height - Math.round(4 * barrita.escala * 4)
                 : Math.round(4 * barrita.escala * 4)
 
@@ -251,11 +251,11 @@ ColumnLayout {
     IslandLabel {
         Layout.fillWidth: true
         text: {
-            if (previo.sitio === "reserva")
+            if (previo.sitio === "reserve")
                 return "Windows start where the bar ends."
-            if (previo.sitio === "completa")
+            if (previo.sitio === "auto")
                 return "Pushes windows aside, except when one is fullscreen: then it gets out of the way."
-            if (previo.sitio === "encima")
+            if (previo.sitio === "onTop")
                 return "Windows take the whole screen and the bar floats over them."
             return "Not visible until you take the pointer to the edge."
         }

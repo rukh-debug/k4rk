@@ -14,8 +14,6 @@
   curl,
   grim,
   slurp,
-  satty,
-  wf-recorder,
   swaybg,
   ffmpeg,
   imagemagick,
@@ -55,8 +53,6 @@ mkShell {
       curl
       grim
       slurp
-      satty
-      wf-recorder
       swaybg
       ffmpeg
       imagemagick

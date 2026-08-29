@@ -457,7 +457,7 @@ Singleton {
         target: Hyprland
 
         function onActiveToplevelChanged() {
-            if (Settings.notificacionesAlEnfocar)
+            if (Settings.notificationsOnFocus)
                 notifs.descartarDeVentana(Hyprland.activeToplevel)
         }
     }

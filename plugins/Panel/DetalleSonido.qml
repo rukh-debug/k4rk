@@ -18,7 +18,7 @@ IslandTile {
     Layout.fillWidth: true
     Layout.fillHeight: true
     pulsable: false
-    visible: view.plugin.tab === "sonido"
+    visible: view.plugin.tab === "sound"
 
     ColumnLayout {
         anchors.fill: parent

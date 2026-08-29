@@ -80,18 +80,11 @@ Rectangle {
         }
     }
 
-    //  Y otras ni siquiera aparecen si no hay con qué.
-    //
-    //  Un interruptor de «grabar la cámara» sin cámara
-    //  enchufada no es una opción, es una promesa falsa.
-    //  En cuanto conectes una, aparece.
-    visible: modelData.si !== "camara" || Captura.hayCamara
-
     opacity: disponible ? 1 : 0.4
     Behavior on opacity { NumberAnimation { duration: 140 } }
 
     Layout.fillWidth: true
-    Layout.preferredHeight: visible ? 40 : 0
+    Layout.preferredHeight: 40
     radius: 10
     color: opcion.armada ? "#2a0f12"
          : (filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface)

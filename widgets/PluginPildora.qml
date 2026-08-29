@@ -1,7 +1,7 @@
 //  Los indicadores que aportan los plugins por K4.Pildora.
 //
-//  Va en las tres vistas de la píldora, con el mismo trato que la grabación o
-//  la mazmorra: en reposo solo se mira —al acercar el ratón la island ya ha
+//  Va en las tres vistas de la píldora, con el mismo trato que la bandeja:
+//  en reposo solo se mira —al acercar el ratón la island ya ha
 //  cambiado a reloj o reproductor— y es en esas donde se pincha. Sin
 //  `interactive` no hay ratón, y así no se traga un clic que la vista de
 //  reposo no puede atender.

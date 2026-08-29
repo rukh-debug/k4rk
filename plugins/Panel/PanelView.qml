@@ -42,7 +42,7 @@ FadeIn {
                 text: view.plugin.tab === "notifications" ? "Notifications"
                     : view.plugin.tab === "wifi" ? "Wi‑Fi"
                     : view.plugin.tab === "bluetooth" ? "Bluetooth"
-                    : view.plugin.tab === "sonido" ? "Sound"
+                    : view.plugin.tab === "sound" ? "Sound"
                     : "Control centre"
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
@@ -299,7 +299,7 @@ FadeIn {
                 //  El deslizador se lleva casi todo el azulejo y tiene su
                 //  propio ratón; lo que queda —la fila del título— abre el
                 //  detalle, igual que en el de Wi‑Fi.
-                onPulsada: view.plugin.openTab("sonido")
+                onPulsada: view.plugin.openTab("sound")
 
                 ColumnLayout {
                     anchors.left: parent.left

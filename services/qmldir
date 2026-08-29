@@ -11,18 +11,14 @@ singleton Settings 1.0 Settings.qml
 singleton Enganches 1.0 Enganches.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Sistema 1.0 Sistema.qml
-singleton Archivos 1.0 Archivos.qml
 singleton Atajos 1.0 Atajos.qml
 singleton Fondos 1.0 Fondos.qml
 singleton Motivos 1.0 Motivos.qml
 singleton Ventanas 1.0 Ventanas.qml
 singleton Sesion 1.0 Sesion.qml
-singleton Captura 1.0 Captura.qml
-singleton Editor 1.0 Editor.qml
 singleton Modulos 1.0 Modulos.qml
 singleton PluginManager 1.0 PluginManager.qml
 singleton Indicadores 1.0 Indicadores.qml
-EditorProcesos 1.0 EditorProcesos.qml
 singleton Paquetes 1.0 Paquetes.qml
 singleton Ambiente 1.0 Ambiente.qml
 singleton Consola 1.0 Consola.qml

@@ -263,11 +263,11 @@ K4Plugin {
 
     readonly property var presets: [
         { id: "cachyos", name: "CachyOS",  from: "#82dccc", to: "#007d6f", inactive: "#798bb2" },
-        { id: "noche",   name: "Noche",    from: "#5e5ce6", to: "#1c1c3a", inactive: "#3a3a4c" },
-        { id: "ambar",   name: "Ámbar",    from: "#ff9f0a", to: "#c1440e", inactive: "#5c4a3a" },
-        { id: "malva",   name: "Malva",    from: "#bf5af2", to: "#5e2b8a", inactive: "#4a3a5c" },
-        { id: "menta",   name: "Menta",    from: "#30d158", to: "#0a6b3d", inactive: "#3a5c48" },
-        { id: "acero",   name: "Acero",    from: "#98a5b8", to: "#3a4654", inactive: "#4a5462" }
+        { id: "noche",   name: "Night",    from: "#5e5ce6", to: "#1c1c3a", inactive: "#3a3a4c" },
+        { id: "ambar",   name: "Amber",    from: "#ff9f0a", to: "#c1440e", inactive: "#5c4a3a" },
+        { id: "malva",   name: "Mauve",    from: "#bf5af2", to: "#5e2b8a", inactive: "#4a3a5c" },
+        { id: "menta",   name: "Mint",    from: "#30d158", to: "#0a6b3d", inactive: "#3a5c48" },
+        { id: "acero",   name: "Steel",    from: "#98a5b8", to: "#3a4654", inactive: "#4a5462" }
     ]
 
     function applyPreset(id) {
@@ -548,9 +548,9 @@ K4Plugin {
     }
 
     readonly property var wallDirs: [
-        K4.Sistema.entorno("HOME") + "/Imágenes",
         K4.Sistema.entorno("HOME") + "/Pictures",
-        K4.Sistema.entorno("HOME") + "/Vídeos",
+        K4.Sistema.entorno("HOME") + "/Pictures",
+        K4.Sistema.entorno("HOME") + "/Videos",
         K4.Sistema.entorno("HOME") + "/Videos",
         K4.Sistema.entorno("HOME") + "/Descargas",
         "/usr/share/wallpapers",
@@ -990,16 +990,16 @@ K4Plugin {
         //  Se conduce por aquí a propósito: así la parte que dibuja se puede
         //  probar entera —vídeo, GIF, foto, dos monitores— antes de que exista
         //  un solo botón, y sin que la interfaz condicione lo que hace.
-        function fondo(pantalla: string, ruta: string): void {
+        function wallpaperOn(pantalla: string, ruta: string): void {
             self.ponerFondoEn(pantalla, ruta)
         }
 
-        function fondos(): string { return self.fondosEstado() }
+        function wallpaperState(): string { return self.fondosEstado() }
 
         //  Cambiar la transición sin pantalla todavía. Devuelve lo que ha
         //  quedado puesto, para no tener que preguntarlo aparte.
         //  La paleta: encenderla, apagarla y mirar lo que ha sacado.
-        function paleta(auto: string): string {
+        function palette(auto: string): string {
             if (auto === "si" || auto === "no") {
                 self.paletaAuto = (auto === "si")
                 if (self.paletaAuto)
@@ -1017,17 +1017,17 @@ K4Plugin {
         }
 
         //  Para poder probar lo de arrastrar sin arrastrar.
-        function sumar(ruta: string): string {
+        function add(ruta: string): string {
             return JSON.stringify({ entraron: self.sumarFondos([ruta]),
                                     extras: self.extras })
         }
 
-        function quitar(ruta: string): string {
+        function remove(ruta: string): string {
             return JSON.stringify({ quitado: self.quitarFondo(ruta),
                                     extras: self.extras })
         }
 
-        function transicion(cual: string): string {
+        function transition(cual: string): string {
             if (self.transiciones.indexOf(cual) >= 0) {
                 self.transicion = cual
                 self.saveState()

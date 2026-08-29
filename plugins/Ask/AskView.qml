@@ -62,9 +62,9 @@ FadeIn {
 
             Repeater {
                 model: [
-                    { t: "Guardar en Imágenes", a: "guardar" },
-                    { t: "Abrir fuera",         a: "abrir" },
-                    { t: "Cerrar",              a: "cerrar" }
+                    { t: "Save to Pictures", a: "guardar" },
+                    { t: "Open outside",     a: "abrir" },
+                    { t: "Close",             a: "cerrar" }
                 ]
 
                 delegate: Rectangle {

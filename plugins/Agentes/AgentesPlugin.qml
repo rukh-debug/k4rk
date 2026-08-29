@@ -23,7 +23,7 @@ import "../../services"
 K4Plugin {
     id: self
 
-    name: "agentes"
+    name: "agents"
     title: "Agents"
     priority: 63
     active: habilitado && abierto
@@ -261,10 +261,10 @@ K4Plugin {
     }
 
     K4.Ipc {
-        target: "k4.agentes"
+        target: "k4.agents"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
-        function refrescar(): void { self.refrescar() }
+        function refresh(): void { self.refrescar() }
     }
 
     //  Buscar «claude» o «límites» en el lanzador tiene que traer esto: es lo
@@ -274,8 +274,8 @@ K4Plugin {
         onBuscando: function (texto) {
             const t = texto.toLowerCase()
             const pega = t.length >= 2
-                && ["agentes", "claude", "codex", "limites", "límites", "cupo",
-                    "gasto", "ia"].some(p => p.indexOf(t) === 0)
+                && ["agents", "claude", "codex", "usage", "limits", "quota",
+                    "spend", "ai", "agentes", "limites", "cupo", "gasto"].some(p => p.indexOf(t) === 0)
             resultados = pega
                 ? [{ id: "abrir", titulo: "Agents",
                      desc: "Claude and Codex limits" }]
