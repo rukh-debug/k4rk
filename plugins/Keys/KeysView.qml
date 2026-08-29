@@ -105,6 +105,13 @@ FadeIn {
                 readonly property bool abreSeccion: index === 0
                     || view.plugin.lista[index - 1].seccion !== modelData.seccion
 
+                // Lo que hace, traducido: la frase —que trae «%1» donde toque—
+                // y el detalle por separado, que se traduce si está en el
+                // diccionario y pasa tal cual si es una orden o un modo.
+                readonly property string haceTexto: modelData.detalle
+                    ? Idioma.f(Idioma.t(modelData.hace), Idioma.t(modelData.detalle))
+                    : Idioma.t(modelData.hace)
+
                 width: ListView.view.width
                 spacing: 0
 
@@ -114,7 +121,7 @@ FadeIn {
                     verticalAlignment: Text.AlignBottom
                     leftPadding: 4
                     bottomPadding: 3
-                    text: fila.modelData.seccion
+                    text: Idioma.t(fila.modelData.seccion)
                     color: Theme.dim
                     font.pixelSize: 9
                     font.capitalization: Font.AllUppercase
@@ -172,7 +179,7 @@ FadeIn {
                         }
 
                         IslandLabel {
-                            text: fila.modelData.hace
+                            text: fila.haceTexto
                             color: Theme.ink
                             font.pixelSize: 11
                             elide: Text.ElideRight

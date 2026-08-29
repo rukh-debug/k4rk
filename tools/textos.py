@@ -191,6 +191,62 @@ def ficheros():
                     yield os.path.join(raiz, n)
 
 
+#  ── las frases que viven en Python ─────────────────────────────
+#
+#  tools/atajos.py escribe las descripciones del panel de atajos: los VERBOS
+#  del diccionario, sus compuestos con «· %1», el «Abrir %1»… La vista las
+#  pasa por Idioma.t() igual que cualquier cadena de QML, así que son
+#  interfaz de toda la vida — pero el barrido de arriba solo mira .qml y se
+#  las quedaba mirando: salían en pantalla sin llegar nunca a la plantilla,
+#  igual que le pasó a `texto` en su día.
+
+
+def frases_python():
+    """Lo traducible de tools/atajos.py, extraído de su propio código.
+
+    Se tira del propio módulo —importarlo y llamar a sus tripas— en vez de
+    rastrear el fichero con regex: el diccionario VERBOS y las frases con %1
+    están ahí en crudo y cualquier rastreo se desincroniza al primer refacto.
+    """
+    import importlib.util
+    ruta = os.path.join(RAIZ, "tools", "atajos.py")
+    try:
+        espec = importlib.util.spec_from_file_location("atajos_k4", ruta)
+        mod = importlib.util.module_from_spec(espec)
+        espec.loader.exec_module(mod)
+    except Exception:
+        return set()
+    frases = set()
+    for v in mod.VERBOS.values():
+        if v:
+            frases.add(v)
+            frases.add(v + " · %1")
+    frases |= {"k4 · %1", "noctalia · %1", "Abrir %1",
+               "el número", "en este monitor", "General"}
+    # Y los verbos IPC que los atajos de k4 enseñan como detalle —`captura
+    # ventana`, `term isla`—: salen en el panel tal cual y varios son
+    # palabras españolas. Se leen de las plantillas de atajos, que es donde
+    # está la lista completa y en los dos sabores: `k4 .. "verbo"` en Lua y
+    # `$k4verbo objetivo` en conf. Solo combinaciones reales: el producto
+    # cruzado de todos los módulos con todos los verbos metía en la plantilla
+    # fantasmas como «apps grabarAlternar», que no existen en ninguna parte.
+    for plantilla in ("hypr/k4.lua", "hypr/k4.conf"):
+        try:
+            texto = open(os.path.join(RAIZ, plantilla), encoding="utf-8").read()
+        except OSError:
+            continue
+        for modulo, verbo in re.findall(
+                r'\b(k4|captura|editor|apps|term|ssh|theme)\s*\.\.\s*"?([A-Za-z]\w*)',
+                texto):
+            frases.add(verbo if modulo == "k4" else modulo + " " + verbo)
+        for modulo, verbo in re.findall(
+                r'\$k4(captura|editor|apps|term|ssh|theme)\s+([A-Za-z]\w*)', texto):
+            frases.add(modulo + " " + verbo)
+        for verbo in re.findall(r'\$k4\s+([A-Za-z]\w*)', texto):
+            frases.add(verbo)
+    return frases
+
+
 #  `Idioma.t("…")` o `Idioma.t('…')`, en cualquier sitio del fichero. Sin
 #  escapes dentro: una cadena de interfaz con comillas escapadas es rarísima y
 #  aceptarlas obligaría a un analizador de verdad para ganar muy poco.
@@ -292,7 +348,9 @@ def envolver(seco=False):
 
 
 def plantilla():
-    encontradas = recolectar()
+    encontradas = dict(recolectar())
+    for s in frases_python():
+        encontradas.setdefault(s, "tools/atajos.py")
     os.makedirs(TRADUCCIONES, exist_ok=True)
 
     datos = {
@@ -317,7 +375,9 @@ def plantilla():
 
 
 def estado():
-    encontradas = recolectar()
+    encontradas = dict(recolectar())
+    for s in frases_python():
+        encontradas.setdefault(s, "tools/atajos.py")
     total = len(encontradas)
     print("%d cadenas en la interfaz\n" % total)
 

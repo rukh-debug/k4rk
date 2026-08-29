@@ -20,19 +20,31 @@ import re
 import sys
 
 CONFIG = os.path.expanduser("~/.config/hypr/config")
-BINDS = os.path.join(CONFIG, "binds.lua")
+# El fichero principal: con configuración en Lua, Home Manager escribe aquí
+# los atajos del usuario y desde allí sale el `require("config.k4")`.
+# Quedarse solo en la carpeta dejaba fuera TODO lo del usuario: el panel
+# enseñaba únicamente los atajos de k4. Va el primero, que es donde está
+# lo primero que uno busca.
+PRINCIPAL = os.path.expanduser("~/.config/hypr/hyprland.lua")
 
 
 def ficheros():
-    """Los .lua que atan teclas, `binds.lua` primero.
+    """El hyprland.lua principal y los .lua de config/ que atan teclas.
 
-    No basta con leer `binds.lua`: desde que el instalador de k4 saca sus atajos
-    a `k4.lua` —para no escribir dentro del fichero del usuario— viven en otro
-    sitio, y este panel se los dejaba fuera. Así que se lee cualquier .lua de la
-    carpeta que contenga `hl.bind`, y el orden es estable para que la lista no
-    baile entre arranques.
+    No basta con leer la carpeta: los atajos del usuario viven en
+    `~/.config/hypr/hyprland.lua` — la configuración Lua que HM escribe— y
+    los de k4 en `config/k4.lua`, a donde el instalador los sacó para no
+    escribir dentro del fichero del usuario. Se lee cualquier .lua con
+    `hl.bind`, y el orden es estable para que la lista no baile entre
+    arranques.
     """
     rutas = []
+    if os.path.isfile(PRINCIPAL):
+        try:
+            if "hl.bind" in open(PRINCIPAL).read():
+                rutas.append(PRINCIPAL)
+        except OSError:
+            pass
     try:
         nombres = sorted(os.listdir(CONFIG))
     except OSError:
@@ -47,8 +59,9 @@ def ficheros():
         except OSError:
             continue
         rutas.append(ruta)
-    # `binds.lua` delante: es el que trae las secciones que el usuario reconoce.
-    rutas.sort(key=lambda r: (os.path.basename(r) != "binds.lua", r))
+    # El principal el primero de todos; `binds.lua` delante de la carpeta,
+    # que es el que trae las secciones que el usuario reconoce.
+    rutas.sort(key=lambda r: (r != PRINCIPAL, os.path.basename(r) != "binds.lua", r))
     return rutas
 
 # Anclados al final a propósito: sin el `$`, `local k4 = "a" .. raiz .. "b"` se
@@ -64,8 +77,11 @@ RE_ALIAS = re.compile(r'^\s*local\s+(\w+)\s*=\s*.*\b%s\b')
 # `local k4 = "quickshell ipc -p " .. raiz .. "/shell.qml call k4 "`
 RE_LOCAL_EXPR = re.compile(r'^\s*local\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$')
 
-# Lo que hace cada despachador, en cristiano. Los que no estén salen con su
-# nombre limpio, que sigue diciendo bastante.
+# Lo que hace cada despachador. La frase es la clave de traducción — el
+# español es el idioma de origen en todo k4 — y la vista la pasa por
+# Idioma.t(): quien traduce añade la entrada a traducciones/<idioma>.json y
+# aquí no se toca nada. Los que no estén salen con su nombre limpio, que
+# sigue diciendo bastante.
 VERBOS = {
     "window.close": "Cerrar la ventana",
     "window.fullscreen": "Pantalla completa",
@@ -78,6 +94,7 @@ VERBOS = {
     "focus": "Cambiar el foco",
     "workspace": "Ir al espacio de trabajo",
     "layout": "Cambiar la disposición",
+    "global": "Evento global de la barra",
     "exit": "Salir de Hyprland",
     "kill": "Matar una ventana",
     "exec_cmd": "",              # se resuelve con el propio comando
@@ -189,11 +206,38 @@ def hasta_cierre(texto):
 
 
 def describir(accion, vals):
+    """(frase, detalle): la frase es traducible, el detalle va detrás.
+
+    La frase lleva «%1» donde toque el detalle —una orden, un modo, una
+    dirección— para que la vista la traduzca entera con Idioma.f() y rellene
+    después. El detalle se traduce aparte con Idioma.t(): lo que no esté en el
+    diccionario pasa tal cual, que es justo lo que quieren las órdenes y los
+    nombres de modo, y lo que quieren traducido los pocos que son frases
+    («el número», «en este monitor»).
+    """
     accion = accion.strip().rstrip(")").strip()
 
     m = re.match(r'hl\.dsp\.([A-Za-z_.]+)\s*\((.*)$', accion, re.S)
     if not m:
-        return accion[:80]
+        # Una función local del usuario —`enter_submap("screenshot", …)`,
+        # `run_and_reset("record start …")`— no es un despachador, pero sí
+        # algo con nombre y argumento. Antes se enseñaba el Lua crudo
+        # cortado a 80 columnas, comilla sin cerrar incluida. Se saca el
+        # nombre en cristiano y el primer argumento de detalle. Y si es un
+        # `function() algo end`, se mira lo de dentro, que es lo que importa.
+        m5 = re.match(r'^function\(\)\s*(.+?)\s*end$', accion, re.S)
+        if m5:
+            return describir(m5.group(1), vals)
+        m4 = re.match(r'^([A-Za-z_]\w*)\s*\(\s*"?([^",)]+)', accion)
+        if m4 and m4.group(1) != "hl":
+            verbo = m4.group(1).replace("_", " ")
+            return verbo + " · %1", m4.group(2).strip()
+        # Y la llamada sin argumentos —`reload_with_status`, `set_cursor_zoom()`—
+        # que el rstrip de arriba deja a veces con un paréntesis cojo.
+        m6 = re.match(r'^([A-Za-z_]\w*)\s*\(?\s*\)?\s*$', accion)
+        if m6:
+            return m6.group(1).replace("_", " "), ""
+        return accion[:80], ""
 
     nombre, dentro = m.group(1), hasta_cierre(m.group(2))
 
@@ -207,13 +251,15 @@ def describir(accion, vals):
             m3 = re.search(r'call\s+k4(?:\.(\w+))?\s+(.*)$', orden)
             if m3:
                 modulo = (m3.group(1) + " ") if m3.group(1) else ""
-                return "k4 · " + modulo + m3.group(2).strip()
-            return "k4 · " + orden.split("call k4 ")[-1].strip()
+                return "k4 · %1", modulo + m3.group(2).strip()
+            return "k4 · %1", orden.split("call k4 ")[-1].strip()
         if orden.startswith("noctalia msg "):
-            return "noctalia · " + orden[len("noctalia msg "):].strip()
+            return "noctalia · %1", orden[len("noctalia msg "):].strip()
         if orden.startswith("uwsm app -- "):
-            return "Abrir " + orden[len("uwsm app -- "):].strip()
-        return orden[:70]
+            return "Abrir %1", orden[len("uwsm app -- "):].strip()
+        # Una orden cualquiera se enseña tal cual: es literalmente lo que se
+        # ejecuta, y traducirla sería mentir sobre la orden.
+        return orden[:70], ""
 
     base = VERBOS.get(nombre, nombre.replace(".", " · ").replace("_", " "))
     detalle = ""
@@ -228,13 +274,16 @@ def describir(accion, vals):
             detalle = m2.group(1).strip()
 
     # En los atajos generados en bucle el detalle es la propia variable, que
-    # no dice nada: la combinación ya enseña el rango.
+    # no dice nada: la combinación ya enseña el rango. Y una tabla Lua que
+    # asoma por el corte —`{ x = delta[1]`— tampoco: más vale sin detalle.
     if detalle in ("i", "key"):
         detalle = "el número"
     elif detalle.startswith("m~"):
         detalle = "en este monitor"
+    elif detalle.startswith("{"):
+        detalle = ""
 
-    return base + (" · " + detalle if detalle else "")
+    return (base + " · %1", detalle) if detalle else (base, "")
 
 
 def leer():
@@ -259,7 +308,14 @@ def leer_fichero(lineas, vals):
     for linea in lineas:
         limpia = linea.strip()
 
-        # títulos de sección: ---- ASÍ ---- o -- así
+        # títulos de sección: ---- ASÍ ----, -- así, o el cajón de rukh:
+        # -- ── así ──────. Las rayas largas las pone el editor al pulsar
+        # guion y no son `-`, así que la regla de toda la vida se las comía
+        # y el fichero entero caía en «General».
+        m = re.match(r'^-{2,}\s*─+\s*(.+?)\s*─+\s*$', limpia)
+        if m and m.group(1).strip("─- "):
+            seccion = m.group(1).strip("─- ").capitalize()
+            continue
         m = re.match(r'^-{2,}\s*(.+?)\s*-{2,}$', limpia)
         if m and m.group(1).strip("- "):
             seccion = m.group(1).strip("- ").capitalize()
@@ -295,9 +351,11 @@ def leer_fichero(lineas, vals):
         if "№" in combo:
             combo = combo.replace("№", "1–" + str(hasta))
 
+        frase, detalle = describir(accion, vals)
         salida.append({
             "combo": combo.strip(),
-            "hace": describir(accion, vals),
+            "hace": frase,
+            "detalle": detalle,
             "seccion": seccion,
         })
 
