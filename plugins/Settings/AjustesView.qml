@@ -874,6 +874,19 @@ FadeIn {
                                 }
                             }
 
+                            //  The shell's typeface, from the families the
+                            //  system has. It lives under Display with the
+                            //  rest of the screen's look.
+                            Loader {
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "fonts"
+                                        && bloque.modelData.atajo === undefined
+                                sourceComponent: Component { SelectorFuentes {} }
+                            }
+
                             //  A section offered by the search: click and it
                             //  takes you there. Without this the match showed
                             //  and could not be followed.

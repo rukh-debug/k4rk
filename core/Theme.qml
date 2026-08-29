@@ -9,7 +9,14 @@ import Quickshell
 Singleton {
     id: tema
 
-    readonly property string uiFont: "Adwaita Sans"
+    //  The shell's typeface. The default is its own; `Settings` owns the
+    //  choice and pushes it here (`shellFont`), because this file is the
+    //  base of the import graph and depends on nothing — the value comes
+    //  TO it, it does not go looking. Every label that binds `uiFont`
+    //  follows the push, and the whole bar re-letters itself live.
+    property string chosenFont: ""
+    readonly property string uiFont: chosenFont.length > 0
+        ? chosenFont : "Adwaita Sans"
     //  La variante Mono, a propósito: en la Nerd Font 3.5 el build
     //  proporcional trae varios iconos con la tinta más ancha que su caja
     //  (el wifi se salía +2px por la derecha del círculo); en la Mono cada

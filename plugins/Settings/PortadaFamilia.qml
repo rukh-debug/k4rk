@@ -221,6 +221,7 @@ ColumnLayout {
     //  this view steps aside first, because the island hosts one view at a
     //  time and a hidden switcher would be a lie.
     K4.Baldosa {
+        id: tarjetaApp
         visible: String(portada.familia.app || "").length > 0
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? 46 : 0
@@ -231,10 +232,10 @@ ColumnLayout {
         readonly property bool lista: PluginManager.estaHabilitado(
             String(portada.familia.app || ""))
 
-        opacity: lista ? 1 : 0.45
+        opacity: tarjetaApp.lista ? 1 : 0.45
 
         onPulsada: {
-            if (lista)
+            if (tarjetaApp.lista)
                 portada.pedidaApp()
         }
 
@@ -268,8 +269,9 @@ ColumnLayout {
 
                 IslandLabel {
                     Layout.fillWidth: true
-                    text: lista ? "Arrange and enable your screens"
-                                : "The displays plugin is off"
+                    text: tarjetaApp.lista
+                        ? "Arrange and enable your screens"
+                        : "The displays plugin is off"
                     textFormat: Text.PlainText
                     color: Theme.dim
                     font.pixelSize: 10
