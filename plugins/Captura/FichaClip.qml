@@ -17,7 +17,7 @@ ColumnLayout {
     spacing: 6
 
     IslandLabel {
-        text: Idioma.t("Velocidad")
+        text: "Speed"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -72,7 +72,7 @@ ColumnLayout {
     }
 
     IslandLabel {
-        text: Idioma.t("Color")
+        text: "Colour"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -87,11 +87,11 @@ ColumnLayout {
     //  de verdad está «previa exacta».
     Repeater {
         model: [
-            { clave: "brillo",     nombre: Idioma.t("Brillo"),
+            { clave: "brillo",     nombre: "Brightness",
               min: -0.5, max: 0.5, def: 0 },
-            { clave: "contraste",  nombre: Idioma.t("Contraste"),
+            { clave: "contraste",  nombre: "Contrast",
               min: 0.0,  max: 2.0, def: 1 },
-            { clave: "saturacion", nombre: Idioma.t("Saturación"),
+            { clave: "saturacion", nombre: "Saturation",
               min: 0.0,  max: 2.0, def: 1 }
         ]
 
@@ -177,7 +177,7 @@ ColumnLayout {
 
     IslandLabel {
         Layout.fillWidth: true
-        text: Idioma.t("El color solo se ve al renderizar")
+        text: "The colour only shows when rendering"
         color: Theme.dim
         font.pixelSize: 9
         wrapMode: Text.WordWrap
@@ -185,23 +185,23 @@ ColumnLayout {
 
     Repeater {
         model: [
-            { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut
+            { texto: "Cut here", icono: 0xF0190,             // md-content_cut
               accion: "cortar" },
             //  Separar el audio saca el sonido del trozo a
             //  su propia capa y deja el trozo mudo. Desde
             //  ahí se mueve y se recorta como cualquier
             //  música añadida.
             { texto: Editor.clipSel && Editor.clipSel.mudo
-                        ? Idioma.t("Devolver el audio")
-                        : Idioma.t("Separar el audio"),
+                        ? "Put the audio back"
+                        : "Split the audio",
               icono: 0xF057E,            // md-volume_high
               accion: "audio" },
             //  Congelar mete un trozo NUEVO, así que va con los
             //  demás botones del trozo y no con los de añadir:
             //  lo que congela es el fotograma que estás viendo.
-            { texto: Idioma.t("Congelar 2 s"), icono: 0xF03E4,            // md-pause
+            { texto: "Freeze 2 s", icono: 0xF03E4,            // md-pause
               accion: "congelar" },
-            { texto: Idioma.t("Quitar el trozo"), icono: 0xF01B4,
+            { texto: "Remove the clip", icono: 0xF01B4,
               accion: "quitar" }
         ]
 

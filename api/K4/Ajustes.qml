@@ -11,9 +11,9 @@
 //
 //      K4.Ajustes {
 //          plugin: "hola"
-//          grupo: K4.Idioma.t("Hola")
-//          opciones: [{ id: "sonar", nombre: K4.Idioma.t("Sonar al abrir"),
-//                       desc: K4.Idioma.t("Un clic corto"), glifo: 0xF057E }]
+//          grupo: "Hello"
+//          opciones: [{ id: "sonar", nombre: "Play a sound on open",
+//                       desc: "A short click", glifo: 0xF057E }]
 //          valores: ({ sonar: self.sonar })
 //          onCambiado: function (id, valor) {
 //              if (id === "sonar") { self.sonar = valor; guardar() }

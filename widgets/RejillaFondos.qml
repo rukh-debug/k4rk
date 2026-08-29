@@ -96,7 +96,7 @@ ColumnLayout {
                     anchors.centerIn: parent
                     textFormat: Text.PlainText
                     text: chipPantalla.modelData.length === 0
-                        ? Idioma.t("Todas") : chipPantalla.modelData
+                        ? "All" : chipPantalla.modelData
                     color: chipPantalla.puesta ? Theme.ink : Theme.muted
                     font.pixelSize: 10
                     font.weight: chipPantalla.puesta
@@ -117,7 +117,7 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
 
         IslandLabel {
-            text: Fondos.lista.length + Idioma.t(" fondos")
+            text: Fondos.lista.length + " backgrounds"
             color: Theme.dim
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter
@@ -142,7 +142,7 @@ ColumnLayout {
                 id: textoAnadir
                 anchors.centerIn: parent
                 textFormat: Text.PlainText
-                text: Idioma.t("Añadir…")
+                text: "Add…"
                 color: Theme.muted
                 font.pixelSize: 10
             }
@@ -171,7 +171,7 @@ ColumnLayout {
         spacing: 6
 
         IslandLabel {
-            text: Idioma.t("Transición")
+            text: "Transition"
             color: Theme.dim
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter
@@ -285,7 +285,7 @@ ColumnLayout {
                         anchors.centerIn: parent
                         textFormat: Text.PlainText
                         text: /\.(gif|apng)$/i.test(wallCell.modelData)
-                            ? "GIF" : Idioma.t("vídeo")
+                            ? "GIF" : "video"
                         color: Theme.ink
                         font.pixelSize: 8
                         font.weight: Font.DemiBold
@@ -364,7 +364,7 @@ ColumnLayout {
         IslandLabel {
             anchors.centerIn: parent
             visible: Fondos.lista.length === 0
-            text: Idioma.t("No hay fondos en tus carpetas de imágenes ni en las del sistema")
+            text: "No backgrounds in your picture folders or the system ones"
             color: Theme.muted
             font.pixelSize: 12
         }
@@ -395,10 +395,10 @@ ColumnLayout {
         IslandLabel {
             Layout.fillWidth: true
             text: !parent.hay
-                ? Idioma.t("Instala awww, swww o swaybg para aplicar fondos")
+                ? "Install awww, swww or swaybg to apply wallpapers"
                 : (parent.puesto
-                   ? Idioma.t("Fondo aplicado y guardado automáticamente")
-                   : Idioma.t("Selecciona una imagen para cambiar el fondo"))
+                   ? "Wallpaper applied and saved automatically"
+                   : "Pick an image to change the wallpaper")
             color: Theme.muted
             font.pixelSize: 10
             wrapMode: Text.WordWrap

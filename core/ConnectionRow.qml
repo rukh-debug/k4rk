@@ -83,7 +83,7 @@ Rectangle {
 
         IslandLabel {
             visible: rowMouse.containsMouse && !row.busy
-            text: row.active ? Idioma.t("Desconectar") : Idioma.t("Conectar")
+            text: row.active ? "Disconnect" : "Connect"
             color: Theme.muted
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter

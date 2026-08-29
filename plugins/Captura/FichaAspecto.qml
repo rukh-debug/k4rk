@@ -39,16 +39,16 @@ ColumnLayout {
     Repeater {
         model: [
             { campo: "filtro", porDefecto: "",
-              opciones: [{ id: "", nombre: Idioma.t("Normal") },
-                         { id: "gris", nombre: Idioma.t("B/N") },
-                         { id: "sepia", nombre: Idioma.t("Sepia") },
-                         { id: "vivo", nombre: Idioma.t("Vivo") },
-                         { id: "frio", nombre: Idioma.t("Frío") },
-                         { id: "calido", nombre: Idioma.t("Cálido") }] },
+              opciones: [{ id: "", nombre: "Normal" },
+                         { id: "gris", nombre: "B&W" },
+                         { id: "sepia", nombre: "Sepia" },
+                         { id: "vivo", nombre: "Vivid" },
+                         { id: "frio", nombre: "Cold" },
+                         { id: "calido", nombre: "Warm" }] },
             { campo: "mascara", porDefecto: "",
-              opciones: [{ id: "", nombre: Idioma.t("Recta") },
-                         { id: "redonda", nombre: Idioma.t("Redondeada") },
-                         { id: "circulo", nombre: Idioma.t("Círculo") }] }
+              opciones: [{ id: "", nombre: "Straight" },
+                         { id: "redonda", nombre: "Rounded" },
+                         { id: "circulo", nombre: "Circle" }] }
         ]
 
         delegate: Flow {
@@ -117,7 +117,7 @@ ColumnLayout {
             && Editor.capaSel.marco !== undefined ? Editor.capaSel.marco : 0
 
         IslandLabel {
-            text: Idioma.t("Marco")
+            text: "Frame"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -126,10 +126,10 @@ ColumnLayout {
         }
 
         Repeater {
-            model: [{ v: 0, nombre: Idioma.t("Sin") },
-                    { v: 0.02, nombre: Idioma.t("Fino") },
-                    { v: 0.05, nombre: Idioma.t("Medio") },
-                    { v: 0.09, nombre: Idioma.t("Grueso") }]
+            model: [{ v: 0, nombre: "None" },
+                    { v: 0.02, nombre: "Thin" },
+                    { v: 0.05, nombre: "Medium" },
+                    { v: 0.09, nombre: "Thick" }]
 
             delegate: Rectangle {
                 id: chipMarco
@@ -175,7 +175,7 @@ ColumnLayout {
             && Editor.capaSel.sombra !== undefined ? Editor.capaSel.sombra : 0
 
         IslandLabel {
-            text: Idioma.t("Sombra")
+            text: "Shadow"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -184,10 +184,10 @@ ColumnLayout {
         }
 
         Repeater {
-            model: [{ v: 0, nombre: Idioma.t("Sin") },
-                    { v: 0.35, nombre: Idioma.t("Suave") },
-                    { v: 0.6, nombre: Idioma.t("Media") },
-                    { v: 0.9, nombre: Idioma.t("Fuerte") }]
+            model: [{ v: 0, nombre: "None" },
+                    { v: 0.35, nombre: "Soft" },
+                    { v: 0.6, nombre: "Medium" },
+                    { v: 0.9, nombre: "Strong" }]
 
             delegate: Rectangle {
                 id: chipSombra
@@ -266,7 +266,7 @@ ColumnLayout {
     //  nada: se puede tener a la vez que cualquier filtro y cualquier forma.
     BotonAccion {
         texto: Editor.capaSel && Editor.capaSel.espejo
-            ? Idioma.t("Del revés") : Idioma.t("Voltear")
+            ? "Reversed" : "Flip"
         icono: 0xF10E7                          // md-flip_horizontal
         activo: Editor.capaSel && !!Editor.capaSel.espejo
         onPulsado: Editor.fijarCapa(Editor.idSel,

@@ -68,7 +68,7 @@ FadeIn {
             spacing: 8
 
             IslandLabel {
-                text: Idioma.t("Sesión de ") + Sesion.visible
+                text: "Session of " + Sesion.visible
                 color: Theme.muted
                 font.pixelSize: 11
             }
@@ -133,7 +133,7 @@ FadeIn {
                         IslandLabel {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
-                            text: casilla.preguntando ? Idioma.t("¿Seguro?")
+                            text: casilla.preguntando ? "Are you sure?"
                                                       : casilla.modelData.texto
                             color: casilla.preguntando ? Theme.red : Theme.ink
                             font.pixelSize: 12
@@ -158,7 +158,7 @@ FadeIn {
             spacing: 8
 
             IslandLabel {
-                text: Idioma.t("← → elige · intro confirma · esc cancela")
+                text: "← → picks · enter confirms · esc cancels"
                 color: Theme.dim
                 font.pixelSize: 9
             }
@@ -176,7 +176,7 @@ FadeIn {
                 IslandLabel {
                     id: ensayoTexto
                     anchors.centerIn: parent
-                    text: Idioma.t("Probar contraseña")
+                    text: "Try password"
                     color: Theme.muted
                     font.pixelSize: 9
                 }
@@ -226,7 +226,7 @@ FadeIn {
 
         IslandLabel {
             Layout.fillWidth: true
-            text: Idioma.t("Probar contraseña")
+            text: "Try password"
             color: Theme.ink
             font.pixelSize: 14
             font.weight: Font.DemiBold
@@ -235,7 +235,7 @@ FadeIn {
         IslandLabel {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            text: Idioma.t("Se comprueba contra el mismo PAM que usa el bloqueo, pero sin bloquear nada. Si aquí entra, la pantalla de bloqueo también abrirá.")
+            text: "Checked against the same PAM the lock uses, without locking anything. If it works here, the lock screen will open too."
             color: Theme.muted
             font.pixelSize: 11
         }
@@ -296,7 +296,7 @@ FadeIn {
                     IslandLabel {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: ensayo.text.length === 0 && !auth.ocupado
-                        text: Idioma.t("Contraseña")
+                        text: "Password"
                         color: Theme.dim
                         font.pixelSize: 14
                     }
@@ -306,12 +306,12 @@ FadeIn {
 
         IslandLabel {
             Layout.fillWidth: true
-            text: auth.estado === "correcto" ? Idioma.t("Correcta: el bloqueo va a funcionar.")
-                : (auth.ocupado ? Idioma.t("Comprobando…")
+            text: auth.estado === "correcto" ? "Correct: the lock will work."
+                : (auth.ocupado ? "Checking…"
                    : (auth.mensaje.length > 0 ? auth.mensaje
-                      : (auth.motivo === "demasiados-intentos" ? Idioma.t("Demasiados intentos")
-                         : auth.motivo === "sin-pam" ? Idioma.t("No se pudo hablar con PAM")
-                         : auth.motivo.length > 0 ? Idioma.t("Contraseña incorrecta") : "")))
+                      : (auth.motivo === "demasiados-intentos" ? "Too many attempts"
+                         : auth.motivo === "sin-pam" ? "Could not talk to PAM"
+                         : auth.motivo.length > 0 ? "Wrong password" : "")))
             color: auth.estado === "correcto" ? Theme.green
                 : (auth.estado === "fallo" ? Theme.red : Theme.muted)
             font.pixelSize: 11

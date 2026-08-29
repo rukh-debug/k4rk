@@ -91,7 +91,7 @@ K4.Aparicion {
             for (let i = 0; i < options.length; ++i)
                 if (String(options[i].value) === String(selectedValue))
                     return options[i].label
-            return K4.Idioma.t("Elegir")
+            return "Choose"
         }
 
         height: 58
@@ -232,7 +232,7 @@ K4.Aparicion {
         }
 
         K4.Etiqueta {
-            text: K4.Idioma.t("Pantallas")
+            text: "Screens"
             width: 112
             anchors.verticalCenter: parent.verticalCenter
             font.pixelSize: 15
@@ -240,14 +240,14 @@ K4.Aparicion {
         }
 
         Chip {
-            label: K4.Idioma.t("Distribución")
+            label: "Layout"
             selected: view.plugin.tab === "pantallas"
             anchors.verticalCenter: parent.verticalCenter
             onClicked: view.plugin.tab = "pantallas"
         }
 
         Chip {
-            label: K4.Idioma.t("Escritorios")
+            label: "Workspaces"
             selected: view.plugin.tab === "workspaces"
             anchors.verticalCenter: parent.verticalCenter
             onClicked: view.plugin.tab = "workspaces"
@@ -341,7 +341,7 @@ K4.Aparicion {
                     color: K4.Tema.azul
                 }
                 K4.Etiqueta {
-                    text: K4.Idioma.t("Arrastra las pantallas como están colocadas en tu mesa")
+                    text: "Arrange the screens the way they sit on your desk"
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
@@ -469,8 +469,7 @@ K4.Aparicion {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 8
                 property var current: view.plugin.draft(view.plugin.seleccionado)
-                text: current ? K4.Idioma.f(K4.Idioma.t("Posición %1 × %2"),
-                                             current.x, current.y) : ""
+                text: current ? `Position ${current.x} × ${current.y}` : ""
                 color: K4.Tema.apagado
                 font.pixelSize: 9
             }
@@ -535,7 +534,7 @@ K4.Aparicion {
                             x: monitorCard.width - width - 8
                             anchors.verticalCenter: parent.verticalCenter
                             label: view.plugin.principal === monitorCard.modelData.name
-                                ? K4.Idioma.t("Principal") : K4.Idioma.t("Elegir")
+                                ? "Primary" : "Choose"
                             selected: view.plugin.principal === monitorCard.modelData.name
                             minimumWidth: 58
                             onClicked: view.plugin.principal = monitorCard.modelData.name
@@ -563,7 +562,7 @@ K4.Aparicion {
                 Dropdown {
                     key: "mode"
                     width: parent.width - 322
-                    label: K4.Idioma.t("Resolución y refresco")
+                    label: "Resolution and refresh rate"
                     menuHeight: 182
                     openUpward: true
                     selectedValue: {
@@ -585,7 +584,7 @@ K4.Aparicion {
                 Dropdown {
                     key: "scale"
                     width: 142
-                    label: K4.Idioma.t("Escala")
+                    label: "Scale"
                     openUpward: true
                     selectedValue: {
                         const draft = view.plugin.draft(view.plugin.seleccionado)
@@ -602,17 +601,17 @@ K4.Aparicion {
                 Dropdown {
                     key: "rotation"
                     width: 144
-                    label: K4.Idioma.t("Orientación")
+                    label: "Orientation"
                     openUpward: true
                     selectedValue: {
                         const draft = view.plugin.draft(view.plugin.seleccionado)
                         return draft ? draft.transform : 0
                     }
                     options: [
-                        { value: 0, label: K4.Idioma.t("Horizontal · 0°") },
-                        { value: 1, label: K4.Idioma.t("Vertical · 90°") },
-                        { value: 2, label: K4.Idioma.t("Horizontal · 180°") },
-                        { value: 3, label: K4.Idioma.t("Vertical · 270°") }
+                        { value: 0, label: "Landscape · 0°" },
+                        { value: 1, label: "Portrait · 90°" },
+                        { value: 2, label: "Landscape · 180°" },
+                        { value: 3, label: "Portrait · 270°" }
                     ]
                     onPicked: function (value) { view.plugin.setDraft("transform", Number(value)) }
                 }
@@ -632,7 +631,7 @@ K4.Aparicion {
         K4.Etiqueta {
             id: workspaceIntro
             width: parent.width
-            text: K4.Idioma.t("Arrastra cada escritorio a la pantalla donde quieres que viva")
+            text: "Drag each workspace to the screen where you want it to live"
             color: K4.Tema.apagado
             font.pixelSize: 11
         }
@@ -706,7 +705,7 @@ K4.Aparicion {
                         anchors.rightMargin: 12
                         y: 14
                         label: view.plugin.principal === workspaceBoard.monitorName
-                            ? K4.Idioma.t("Principal") : K4.Idioma.t("Elegir")
+                            ? "Primary" : "Choose"
                         selected: view.plugin.principal === workspaceBoard.monitorName
                         onClicked: view.plugin.principal = workspaceBoard.monitorName
                     }
@@ -765,7 +764,7 @@ K4.Aparicion {
                                 K4.Etiqueta {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     y: 34
-                                    text: K4.Idioma.t("escritorio")
+                                    text: "workspace"
                                     color: K4.Tema.apagado
                                     font.pixelSize: 7
                                 }
@@ -795,7 +794,7 @@ K4.Aparicion {
                         anchors.centerIn: parent
                         anchors.verticalCenterOffset: 34
                         visible: view.plugin.workspacesFor(workspaceBoard.monitorName).length === 0
-                        text: K4.Idioma.t("Suelta aquí un escritorio")
+                        text: "Drop a workspace here"
                         color: K4.Tema.apagado
                         font.pixelSize: 11
                     }
@@ -817,7 +816,7 @@ K4.Aparicion {
         K4.Etiqueta {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
-            text: K4.Idioma.t("También puedes pulsar un escritorio para mandarlo a la siguiente pantalla")
+            text: "You can also click a workspace to send it to the next screen"
             color: K4.Tema.apagado
             font.pixelSize: 9
         }
@@ -851,14 +850,14 @@ K4.Aparicion {
         }
 
         Action {
-            label: K4.Idioma.t("Aplicar ahora")
+            label: "Apply now"
             enabled: !view.plugin.ocupado
             anchors.verticalCenter: parent.verticalCenter
             onClicked: view.plugin.apply(false)
         }
 
         Action {
-            label: K4.Idioma.t("Guardar y aplicar")
+            label: "Save and apply"
             primary: true
             enabled: !view.plugin.ocupado
             anchors.verticalCenter: parent.verticalCenter

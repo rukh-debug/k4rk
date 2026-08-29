@@ -52,7 +52,7 @@ FadeIn {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             text: view.player && view.player.trackTitle.length > 0
-                ? view.player.trackTitle : Idioma.t("Sin reproducción")
+                ? view.player.trackTitle : "Nothing playing"
             font.pixelSize: 12
             font.weight: Font.DemiBold
             elide: Text.ElideRight
@@ -110,7 +110,7 @@ FadeIn {
                     Layout.fillWidth: true
                     text: view.player && view.player.trackTitle.length > 0
                         ? view.player.trackTitle
-                        : Idioma.t("Sin reproducción")
+                        : "Nothing playing"
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight

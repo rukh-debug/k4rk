@@ -134,7 +134,7 @@ Singleton {
     function titulo(t) {
         const id = clase(t).toLowerCase()
         if (id.length === 0)
-            return Idioma.t("Ventana")
+            return "Window"
 
         const apps = DesktopEntries.applications.values
         for (let i = 0; i < apps.length; ++i) {

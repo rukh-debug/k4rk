@@ -310,20 +310,21 @@ def revisar_ejemplos(doc, texto):
 
 
 def revisar_motivos():
-    """Todo motivo que alguien emita tiene que tener frase en `Idioma`.
+    """Every emitted reason code must have a sentence in `Motivos`.
 
-    Un motivo sin frase no falla: sale el código crudo en la interfaz —
-    «sin-declarar» en mitad de Ajustes—, que es feo y además no dice nada a
-    quien no ha leído el guion. Es exactamente el fallo que había, y la única
-    manera de que no vuelva es que añadir uno sin su frase pare el flujo.
+    A code without a sentence does not fail: the raw code shows up in the
+    interface — «sin-declarar» in the middle of Settings — which is ugly and
+    says nothing to whoever has not read the script. It is exactly the bug
+    there was, and the only way to keep it away is to stop the flow when a
+    code arrives without its sentence.
     """
     fallos = []
-    idioma = RAIZ / "services" / "Idioma.qml"
-    if not idioma.is_file():
-        return ["falta services/Idioma.qml"]
-    bloque = idioma.read_text().split("readonly property var motivos")
+    motivos = RAIZ / "services" / "Motivos.qml"
+    if not motivos.is_file():
+        return ["falta services/Motivos.qml"]
+    bloque = motivos.read_text().split("readonly property var tabla")
     if len(bloque) < 2:
-        return ["services/Idioma.qml ya no tiene la tabla de motivos"]
+        return ["services/Motivos.qml ya no tiene la tabla de motivos"]
     conocidos = set(re.findall(r'"([^"\n]+)"\s*:\s*"',
                                bloque[1].split("})")[0]))
 
@@ -346,7 +347,7 @@ def revisar_motivos():
 
     for codigo, donde in sorted(emitidos.items()):
         if codigo not in conocidos:
-            fallos.append("services/Idioma.qml: falta la frase del motivo "
+            fallos.append("services/Motivos.qml: falta la frase del motivo "
                           "`%s`, que emite %s"
                           % (codigo, ", ".join(sorted(donde))))
     return fallos

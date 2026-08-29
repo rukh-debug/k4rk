@@ -29,7 +29,6 @@ Rodillo 1.0 Rodillo.qml
 Desplazador 1.0 Desplazador.qml
 Estela 1.0 Estela.qml
 FocoInicial 1.0 FocoInicial.qml
-singleton Idioma 1.0 Idioma.qml
 Guardado 1.0 Guardado.qml
 
 singleton Paths 1.0 Paths.qml
@@ -66,4 +65,3 @@ Cargador 1.0 Cargador.qml
 BloqueoSesion 1.0 BloqueoSesion.qml
 SuperficieBloqueo 1.0 SuperficieBloqueo.qml
 Autenticacion 1.0 Autenticacion.qml
-singleton Huella 1.0 Huella.qml

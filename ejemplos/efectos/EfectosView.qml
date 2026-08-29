@@ -15,7 +15,7 @@ Item {
 
         K4.Etiqueta {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: vista.plugin.tr("La island como escenario")
+            text: "The island as a stage"
             font.pixelSize: 14
             font.weight: Font.DemiBold
         }
@@ -27,10 +27,10 @@ Item {
 
             Repeater {
                 model: [
-                    { texto: vista.plugin.tr("Bosque"), color: "#2e5c3a" },
-                    { texto: vista.plugin.tr("Brasa"), color: "#5c2e2e" },
-                    { texto: vista.plugin.tr("Abismo"), color: "#26324f" },
-                    { texto: vista.plugin.tr("Destintar"), color: "" }
+                    { texto: "Forest", color: "#2e5c3a" },
+                    { texto: "Ember", color: "#5c2e2e" },
+                    { texto: "Abyss", color: "#26324f" },
+                    { texto: "Untint", color: "" }
                 ]
 
                 delegate: K4.Baldosa {
@@ -64,9 +64,9 @@ Item {
 
             Repeater {
                 model: [
-                    { texto: vista.plugin.tr("Sacudida"), gesto: "sacudida" },
-                    { texto: vista.plugin.tr("Empujón"), gesto: "empujon" },
-                    { texto: vista.plugin.tr("Tirón"), gesto: "tiron" }
+                    { texto: "Shake", gesto: "sacudida" },
+                    { texto: "Shove", gesto: "empujon" },
+                    { texto: "Tug", gesto: "tiron" }
                 ]
 
                 delegate: K4.Baldosa {
@@ -102,8 +102,8 @@ Item {
                     id: etiquetaMano
                     anchors.centerIn: parent
                     text: vista.plugin.manoFuera
-                        ? vista.plugin.tr("Esconder la mano")
-                        : vista.plugin.tr("Sacar la mano")
+                        ? "Hide the hand"
+                        : "Show the hand"
                     font.pixelSize: 11
                 }
 
@@ -117,7 +117,7 @@ Item {
                 K4.Etiqueta {
                     id: etiquetaPaseo
                     anchors.centerIn: parent
-                    text: vista.plugin.tr("De paseo")
+                    text: "Out for a walk"
                     font.pixelSize: 11
                 }
 

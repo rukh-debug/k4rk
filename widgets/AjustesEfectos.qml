@@ -44,7 +44,7 @@ RowLayout {
             Layout.fillWidth: true
             spacing: 10
 
-            IslandLabel { text: Idioma.t("Desenfoque"); font.pixelSize: 12; font.weight: Font.DemiBold }
+            IslandLabel { text: "Blur"; font.pixelSize: 12; font.weight: Font.DemiBold }
             Item { Layout.fillWidth: true }
             IslandSwitch {
                 checked: raiz.motor.blur
@@ -56,7 +56,7 @@ RowLayout {
             Layout.fillWidth: true
             enabled: raiz.motor.blur
             opacity: raiz.motor.blur ? 1 : 0.35
-            label: Idioma.t("Radio")
+            label: "Radius"
             from: 1; to: 20; step: 1
             value: raiz.motor.blurSize
             onMoved: function (v) { raiz.motor.blurSize = v; raiz.tocado() }
@@ -66,7 +66,7 @@ RowLayout {
             Layout.fillWidth: true
             enabled: raiz.motor.blur
             opacity: raiz.motor.blur ? 1 : 0.35
-            label: Idioma.t("Pasadas")
+            label: "Passes"
             from: 1; to: 6; step: 1
             value: raiz.motor.blurPasses
             onMoved: function (v) { raiz.motor.blurPasses = v; raiz.tocado() }
@@ -77,7 +77,7 @@ RowLayout {
             Layout.topMargin: 6
             spacing: 10
 
-            IslandLabel { text: Idioma.t("Sombras"); font.pixelSize: 12; font.weight: Font.DemiBold }
+            IslandLabel { text: "Shadows"; font.pixelSize: 12; font.weight: Font.DemiBold }
             Item { Layout.fillWidth: true }
             IslandSwitch {
                 checked: raiz.motor.shadow
@@ -97,7 +97,7 @@ RowLayout {
 
         IslandSlider {
             Layout.fillWidth: true
-            label: Idioma.t("Opacidad de la ventana activa")
+            label: "Active window opacity"
             from: 0.4; to: 1; step: 0.05
             value: raiz.motor.activeOpacity
             onMoved: function (v) { raiz.motor.activeOpacity = v; raiz.tocado() }
@@ -105,7 +105,7 @@ RowLayout {
 
         IslandSlider {
             Layout.fillWidth: true
-            label: Idioma.t("Opacidad de las inactivas")
+            label: "Inactive windows opacity"
             from: 0.4; to: 1; step: 0.05
             value: raiz.motor.inactiveOpacity
             onMoved: function (v) { raiz.motor.inactiveOpacity = v; raiz.tocado() }
@@ -116,7 +116,7 @@ RowLayout {
             Layout.topMargin: 6
             spacing: 10
 
-            IslandLabel { text: Idioma.t("Animaciones"); font.pixelSize: 12; font.weight: Font.DemiBold }
+            IslandLabel { text: "Animations"; font.pixelSize: 12; font.weight: Font.DemiBold }
             Item { Layout.fillWidth: true }
             IslandSwitch {
                 checked: raiz.motor.animEnabled
@@ -128,7 +128,7 @@ RowLayout {
             Layout.fillWidth: true
             enabled: raiz.motor.animEnabled
             opacity: raiz.motor.animEnabled ? 1 : 0.35
-            label: Idioma.t("Velocidad (más alto = más rápido)")
+            label: "Speed (higher = faster)"
             from: 1; to: 10; step: 1
             value: raiz.motor.animSpeed
             onMoved: function (v) { raiz.motor.animSpeed = v; raiz.tocado() }

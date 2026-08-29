@@ -11,7 +11,7 @@ K4Plugin {
     id: self
 
     name: "player"
-    title: Idioma.t("Reproductor")
+    title: "Player"
     priority: 55
 
     //  Al pasar el ratón —lo de siempre— y además durante el asomo.
@@ -87,11 +87,11 @@ K4Plugin {
 
     K4.Ajustes {
         plugin: "player"
-        grupo: Idioma.t("Reproductor")
+        grupo: "Player"
         opciones: [
             { id: "asomarAlCambiar",
-              nombre: Idioma.t("Asomarse al cambiar de canción"),
-              desc: Idioma.t("Unos segundos con la pista nueva, y se va sola"),
+              nombre: "Peek when the track changes",
+              desc: "A few seconds with the new track, then it leaves on its own",
               glifo: 0xF075A }   // md-music
         ]
         valores: ({ asomarAlCambiar: self.asomarAlCambiar })

@@ -17,7 +17,7 @@ K4Plugin {
     id: self
 
     name: "captura"
-    title: Idioma.t("Captura")
+    title: "Capture"
     active: habilitado && open
     viewLoaded: open
     //  También durante la cuenta atrás, o el ESC que la cancela no llega a
@@ -52,17 +52,17 @@ K4Plugin {
     property int index: 0
 
     readonly property var ambitos: [
-        { clave: "pantalla", texto: Idioma.t("Pantalla"), icono: 0xF0379 },
-        { clave: "region",   texto: Idioma.t("Región"),   icono: 0xF019E },
-        { clave: "ventana",  texto: Idioma.t("Ventana"),  icono: 0xF05AF }
+        { clave: "pantalla", texto: "Screen", icono: 0xF0379 },
+        { clave: "region",   texto: "Region",   icono: 0xF019E },
+        { clave: "ventana",  texto: "Window",  icono: 0xF05AF }
     ]
 
     //  «Anotar» ya no es un destino: dejaba el anotador abriéndose solo en
     //  CADA captura siguiente, y con el botón de la tarjeta no hace falta.
     readonly property var destinos: [
-        { clave: "portapapeles", texto: Idioma.t("Copiar"),  icono: 0xF018F },
-        { clave: "fichero",      texto: Idioma.t("Guardar"), icono: 0xF0193 },
-        { clave: "ambos",        texto: Idioma.t("Las dos"), icono: 0xF05E0 }
+        { clave: "portapapeles", texto: "Copy",  icono: 0xF018F },
+        { clave: "fichero",      texto: "Save", icono: 0xF0193 },
+        { clave: "ambos",        texto: "Both", icono: 0xF05E0 }
     ]
 
     // 500 y no 440: con cuatro botones debajo del nombre del fichero, a 440 se
@@ -128,7 +128,7 @@ K4Plugin {
             //  Apartar desde la ventana: se cierra y queda en la píldora, igual
             //  que desde la island.
             grande = false
-            Modulos.minimizar("editor", Idioma.t("Editor"),
+            Modulos.minimizar("editor", "Editor",
                               Editor.rutaVideo.split("/").pop(),
                               0xF1122)         // md-movie_edit
             return
@@ -138,7 +138,7 @@ K4Plugin {
             //  rato y no tiene sentido obligar a tenerlo delante hasta acabar:
             //  se cierra, se sigue con lo que sea, y se retoma desde la
             //  píldora por donde ibas.
-            Modulos.minimizar("editor", Idioma.t("Editor"),
+            Modulos.minimizar("editor", "Editor",
                               Editor.rutaVideo.split("/").pop(),
                               0xF1122)         // md-movie_edit
             modo = "menu"
@@ -223,11 +223,11 @@ K4Plugin {
         onArrancado: Island.abrirDialogo()
         onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
-                  "--title=" + Idioma.t("Elegir vídeo o proyecto"),
+                  "--title=" + "Choose video or project",
                   //  El otro diálogo de más abajo —el de meter un vídeo
                   //  ENCIMA— no lleva `.k4v` a propósito: un proyecto no es
                   //  una capa, y ofrecerlo ahí solo puede acabar en un error.
-                  "--file-filter=" + Idioma.t("Vídeo o proyecto")
+                  "--file-filter=" + "Video or project"
                   + " | *.mp4 *.mkv *.mov *.webm *.avi *.m4v *.k4v"]
         onSalida: function (texto) {
             const ruta = String(texto).trim()
@@ -266,8 +266,8 @@ K4Plugin {
         onArrancado: Island.abrirDialogo()
         onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
-                  "--title=" + Idioma.t("Elegir imagen"),
-                  "--file-filter=" + Idioma.t("Imagen")
+                  "--title=" + "Choose image",
+                  "--file-filter=" + "Image"
                   + " | *.png *.jpg *.jpeg *.webp *.gif *.bmp"]
         onSalida: function (texto) {
             const ruta = String(texto).trim()
@@ -297,8 +297,8 @@ K4Plugin {
         onArrancado: Island.abrirDialogo()
         onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
-                  "--title=" + Idioma.t("Elegir audio"),
-                  "--file-filter=" + Idioma.t("Audio")
+                  "--title=" + "Choose audio",
+                  "--file-filter=" + "Audio"
                   + " | *.mp3 *.m4a *.aac *.wav *.flac *.ogg *.opus"]
         onSalida: function (texto) {
             const ruta = String(texto).trim()
@@ -324,8 +324,8 @@ K4Plugin {
         onArrancado: Island.abrirDialogo()
         onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
-                  "--title=" + Idioma.t("Elegir vídeo para encima"),
-                  "--file-filter=" + Idioma.t("Vídeo")
+                  "--title=" + "Choose video to overlay",
+                  "--file-filter=" + "Video"
                   + " | *.mp4 *.mkv *.mov *.webm *.avi *.m4v"]
         onSalida: function (texto) {
             const ruta = String(texto).trim()
@@ -427,8 +427,8 @@ K4Plugin {
             //  usuario. Con la barra en inglés salía el título traducido y el
             //  porqué debajo en español.
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
-                                     Idioma.t("No se pudo grabar"),
-                                     Idioma.porque(motivo, detalle)])
+                                     "Recording failed",
+                                     Motivos.porque(motivo, detalle)])
         }
 
         function onFotoLista(ruta) {
@@ -441,8 +441,8 @@ K4Plugin {
             // Un fallo de verdad sí merece aviso del sistema: puede pasar con
             // la island cerrada y sin nadie mirando la barra.
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
-                                     Idioma.t("No se pudo capturar"),
-                                     Idioma.porque(motivo, detalle)])
+                                     "Capture failed",
+                                     Motivos.porque(motivo, detalle)])
         }
     }
 
@@ -466,19 +466,19 @@ K4Plugin {
             self.modo = "menu"
             self.open = false
             K4.Sistema.lanzar(["notify-send", "-a", "k4",
-                                     Idioma.t("Vídeo listo"),
+                                     "Video ready",
                                      ruta.split("/").pop()])
         }
 
         function onFallo(motivo, detalle) {
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
-                                     Idioma.t("No se pudo editar"),
-                                     Idioma.porque(motivo, detalle)])
+                                     "Editing failed",
+                                     Motivos.porque(motivo, detalle)])
         }
 
         function onMiniaturaGuardada(ruta) {
             K4.Sistema.lanzar(["notify-send", "-a", "k4",
-                                     Idioma.t("Miniatura guardada"),
+                                     "Thumbnail saved",
                                      ruta.split("/").pop()])
         }
     }

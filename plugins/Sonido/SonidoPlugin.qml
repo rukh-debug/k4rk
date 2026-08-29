@@ -21,7 +21,7 @@ K4Plugin {
     id: self
 
     name: "sonido"
-    title: Idioma.t("Sonido")
+    title: "Sound"
     priority: 61
     active: habilitado && abierto
 

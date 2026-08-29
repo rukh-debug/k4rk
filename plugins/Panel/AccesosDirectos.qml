@@ -245,7 +245,7 @@ Item {
             }
 
             IslandLabel {
-                text: Idioma.t("Todas")
+                text: "All"
                 font.pixelSize: 11
                 font.weight: Font.Medium
                 anchors.verticalCenter: parent.verticalCenter

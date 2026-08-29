@@ -21,7 +21,7 @@ K4Plugin {
     id: self
 
     name: "session"
-    title: Idioma.t("Sesión")
+    title: "Session"
     priority: 86
     active: habilitado && open
     viewLoaded: open
@@ -45,19 +45,19 @@ K4Plugin {
     //  que solo pasa una vez y ya no se te olvida.
     readonly property var acciones: {
         const l = [
-            { clave: "bloquear", texto: Idioma.t("Bloquear"),
+            { clave: "bloquear", texto: "Lock",
               icono: 0xF033E, color: Theme.blue, confirma: false },
-            { clave: "suspender", texto: Idioma.t("Suspender"),
+            { clave: "suspender", texto: "Suspend",
               icono: 0xF04B2, color: Theme.blue, confirma: false }
         ]
         if (Sesion.hibernacionPosible)
-            l.push({ clave: "hibernar", texto: Idioma.t("Hibernar"),
+            l.push({ clave: "hibernar", texto: "Hibernate",
                      icono: 0xF0904, color: Theme.blue, confirma: true })
-        l.push({ clave: "salir", texto: Idioma.t("Cerrar sesión"),
+        l.push({ clave: "salir", texto: "Log out",
                  icono: 0xF0343, color: Theme.muted, confirma: true })
-        l.push({ clave: "reiniciar", texto: Idioma.t("Reiniciar"),
+        l.push({ clave: "reiniciar", texto: "Reset",
                  icono: 0xF0709, color: Theme.muted, confirma: true })
-        l.push({ clave: "apagar", texto: Idioma.t("Apagar"),
+        l.push({ clave: "apagar", texto: "Shut down",
                  icono: 0xF0425, color: Theme.red, confirma: true })
         return l
     }

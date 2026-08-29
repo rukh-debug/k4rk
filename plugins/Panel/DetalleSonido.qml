@@ -33,7 +33,7 @@ IslandTile {
 
         IslandLabel {
             Layout.fillWidth: true
-            text: Idioma.t("La marca del deslizador es el nivel natural del aparato: por encima se amplifica")
+            text: "The mark on the slider is the device's natural level: above it, sound is amplified"
             color: Theme.dim
             font.pixelSize: 9
             wrapMode: Text.WordWrap

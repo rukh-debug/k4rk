@@ -19,7 +19,7 @@ Se usa `zoompan` y no `crop`: en ffmpeg n8.1.2 `crop` ya no tiene la opción
 `eval`, así que sus `w`/`h` se evalúan una sola vez y no se pueden animar.
 
 Los motivos y las claves son en español pero NO son texto para el usuario: el
-QML los traduce con Idioma.t().
+QML los escribe con `Motivos.porque()`.
 """
 import argparse, json, math, os, re, subprocess, sys, tempfile
 

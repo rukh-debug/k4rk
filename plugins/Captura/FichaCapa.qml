@@ -53,14 +53,14 @@ ColumnLayout {
         spacing: 3
         BotonAccion {
             texto: Editor.capaSel && Editor.capaSel.visible === false
-                ? Idioma.t("Mostrar") : Idioma.t("Ocultar")
+                ? "Show" : "Hide"
             icono: Editor.capaSel && Editor.capaSel.visible === false
                 ? 0xF0208 : 0xF0209
             onPulsado: Editor.alternarVisibilidadCapa(Editor.idSel)
         }
         BotonAccion {
             texto: Editor.capaSel && Editor.capaSel.bloqueada
-                ? Idioma.t("Desbloquear") : Idioma.t("Bloquear")
+                ? "Unlock" : "Lock"
             icono: Editor.capaSel && Editor.capaSel.bloqueada
                 ? 0xF033E : 0xF033F
             onPulsado: Editor.alternarBloqueoCapa(Editor.idSel)
@@ -76,8 +76,8 @@ ColumnLayout {
                 || Editor.capaSel.tipo === "texto"
                 || Editor.capaSel.tipo === "video")
         texto: Editor.trazandoRuta
-            ? Idioma.t("Pincha el recorrido · clic derecho termina")
-            : Idioma.t("Trazar movimiento")
+            ? "Click the path · right click finishes"
+            : "Trace motion"
         icono: 0xF0561                        // md-vector_polyline
         activo: Editor.trazandoRuta
         onPulsado: Editor.alternarRuta()
@@ -93,15 +93,15 @@ ColumnLayout {
 
     IslandLabel {
         text: {
-            if (!Editor.capaSel) return Idioma.t("Opacidad")
-            if (Editor.capaSel.tipo === "texto") return Idioma.t("Fondo")
+            if (!Editor.capaSel) return "Opacity"
+            if (Editor.capaSel.tipo === "texto") return "Background"
             if (Editor.capaSel.tipo === "audio") {
                 const cual = fichaCapa.nombrePista(Editor.capaSel)
-                return cual ? Idioma.t("Volumen") + " · " + cual
-                            : Idioma.t("Volumen")
+                return cual ? "Volume" + " · " + cual
+                            : "Volume"
             }
-            if (Editor.capaSel.tipo === "zona") return Idioma.t("Fuerza")
-            return Idioma.t("Opacidad")
+            if (Editor.capaSel.tipo === "zona") return "Strength"
+            return "Opacity"
         }
         color: Theme.dim
         font.pixelSize: 9
@@ -191,15 +191,15 @@ ColumnLayout {
         visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
                  && fichaCapa.valorBarra > 1
         text: Editor.limpiandoCapa(Editor.capaSel)
-            ? Idioma.t("Amplificando… se oirá en un momento")
-            : Idioma.t("Amplificado: por encima del 100 % puede saturar")
+            ? "Amplifying… you will hear it shortly"
+            : "Amplified: above 100% it may clip"
         color: Theme.yellow
         font.pixelSize: 9
         wrapMode: Text.WordWrap
     }
 
     Seccion {
-        titulo: Idioma.t("Contenido")
+        titulo: "Content"
         aplica: ["texto", "zona", "forma", "video"].indexOf(Editor.capaSel ? Editor.capaSel.tipo : "") >= 0
         abierta: true
 
@@ -210,7 +210,7 @@ ColumnLayout {
         //  color, y escribir a ciegas en un sitio así no es escribir.
         IslandLabel {
             visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
-            text: Idioma.t("Texto")
+            text: "Text"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -271,7 +271,7 @@ ColumnLayout {
         //  es lo que cuesta colocar.
         IslandLabel {
             visible: Editor.capaSel && Editor.capaSel.tipo === "zona"
-            text: Idioma.t("Qué hace")
+            text: "What it does"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -285,11 +285,11 @@ ColumnLayout {
 
             Repeater {
                 model: [
-                    { id: "desenfoque", nombre: Idioma.t("Difuminar"),
+                    { id: "desenfoque", nombre: "Blur",
                       icono: 0xF00B5 },                    // md-blur
-                    { id: "pixelado", nombre: Idioma.t("Pixelar"),
+                    { id: "pixelado", nombre: "Pixelate",
                       icono: 0xF00B6 },                    // md-blur_linear
-                    { id: "foco", nombre: Idioma.t("Foco"),
+                    { id: "foco", nombre: "Focus",
                       icono: 0xF04C9 }                     // md-spotlight_beam
                 ]
 
@@ -338,7 +338,7 @@ ColumnLayout {
         //  ventana, así que cambiar de uno a otro no descoloca nada.
         IslandLabel {
             visible: Editor.capaSel && Editor.capaSel.tipo === "forma"
-            text: Idioma.t("Qué forma")
+            text: "Which shape"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -417,8 +417,8 @@ ColumnLayout {
 
                 IslandLabel {
                     text: Editor.recortandoCapa
-                        ? Idioma.t("Dibuja el recorte en el vídeo")
-                        : Idioma.t("Recortar vídeo")
+                        ? "Draw the crop on the video"
+                        : "Crop video"
                     color: Editor.recortandoCapa ? "#ffffff"
                                                   : Theme.muted
                     font.pixelSize: 10
@@ -464,8 +464,8 @@ ColumnLayout {
 
                 IslandLabel {
                     text: parent.parent.puesto
-                        ? Idioma.t("Fondo verde quitado (al renderizar)")
-                        : Idioma.t("Quitar el fondo verde")
+                        ? "Green screen removed (when rendering)"
+                        : "Remove the green screen"
                     color: parent.parent.puesto ? "#ffffff" : Theme.muted
                     font.pixelSize: 10
                 }
@@ -483,7 +483,7 @@ ColumnLayout {
     }
 
     Seccion {
-        titulo: Idioma.t("Aspecto")
+        titulo: "Look"
         aplica: ["imagen", "video", "texto", "forma"].indexOf(Editor.capaSel ? Editor.capaSel.tipo : "") >= 0
         abierta: true
 
@@ -496,7 +496,7 @@ ColumnLayout {
         //  segunda fila de colores vale para los tres.
         IslandLabel {
             visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
-            text: Idioma.t("Estilo")
+            text: "Style"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -518,10 +518,10 @@ ColumnLayout {
 
             Repeater {
                 model: [
-                    { id: "caja",     nombre: Idioma.t("Caja") },
-                    { id: "contorno", nombre: Idioma.t("Contorno") },
-                    { id: "sombra",   nombre: Idioma.t("Sombra") },
-                    { id: "limpio",   nombre: Idioma.t("Limpio") }
+                    { id: "caja",     nombre: "Box" },
+                    { id: "contorno", nombre: "Outline" },
+                    { id: "sombra",   nombre: "Shadow" },
+                    { id: "limpio",   nombre: "Plain" }
                 ]
 
                 delegate: Rectangle {
@@ -563,10 +563,10 @@ ColumnLayout {
         //  vídeo, seis colores bien elegidos rinden más que una rueda entera.
         Repeater {
             model: Editor.capaSel && Editor.capaSel.tipo === "texto"
-                ? [{ campo: "color", nombre: Idioma.t("Color del texto") },
-                   { campo: "colorFondo", nombre: Idioma.t("Color del estilo") }]
+                ? [{ campo: "color", nombre: "Text color" },
+                   { campo: "colorFondo", nombre: "Style color" }]
                 : Editor.capaSel && Editor.capaSel.tipo === "forma"
-                ? [{ campo: "color", nombre: Idioma.t("Color") }]
+                ? [{ campo: "color", nombre: "Colour" }]
                 : []
 
             delegate: ColumnLayout {
@@ -633,7 +633,7 @@ ColumnLayout {
         //  huella —la capa no cambia de tamaño— a lo largo de su ventana.
         IslandLabel {
             visible: Editor.capaSel && Editor.capaSel.tipo === "imagen"
-            text: Idioma.t("Ken Burns")
+            text: "Ken Burns"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -647,9 +647,9 @@ ColumnLayout {
 
             Repeater {
                 model: [
-                    { id: "",        nombre: Idioma.t("Nada") },
-                    { id: "acercar", nombre: Idioma.t("Acercar") },
-                    { id: "alejar",  nombre: Idioma.t("Alejar") }
+                    { id: "",        nombre: "None" },
+                    { id: "acercar", nombre: "Zoom in" },
+                    { id: "alejar",  nombre: "Zoom out" }
                 ]
 
                 delegate: Rectangle {
@@ -696,7 +696,7 @@ ColumnLayout {
     }
 
     Seccion {
-        titulo: Idioma.t("Entrada y salida")
+        titulo: "In and out"
         aplica: ["imagen", "texto", "video"].indexOf(Editor.capaSel ? Editor.capaSel.tipo : "") >= 0
         abierta: false
 
@@ -709,10 +709,10 @@ ColumnLayout {
             model: Editor.capaSel && (Editor.capaSel.tipo === "imagen"
                                       || Editor.capaSel.tipo === "texto"
                                       || Editor.capaSel.tipo === "video")
-                ? [{ cual: "entrada", nombre: Idioma.t("Entrada"),
-                     aparecer: Idioma.t("Aparecer") },
-                   { cual: "salida", nombre: Idioma.t("Salida"),
-                     aparecer: Idioma.t("Desvanecer") }]
+                ? [{ cual: "entrada", nombre: "Input",
+                     aparecer: "Fade in" },
+                   { cual: "salida", nombre: "Output",
+                     aparecer: "Fade out" }]
                 : []
 
             delegate: ColumnLayout {
@@ -742,10 +742,10 @@ ColumnLayout {
                     Repeater {
                         model: {
                             const base = [
-                                { id: "", nombre: Idioma.t("Nada") },
+                                { id: "", nombre: "None" },
                                 { id: "desvanecer",
                                   nombre: filaEfecto.modelData.aparecer },
-                                { id: "deslizar", nombre: Idioma.t("Deslizar") }
+                                { id: "deslizar", nombre: "Slide" }
                             ]
                             //  La máquina de escribir teclea: solo un rótulo, y
                             //  solo al entrar.
@@ -753,13 +753,13 @@ ColumnLayout {
                                 && Editor.capaSel
                                 && Editor.capaSel.tipo === "texto")
                                 base.push({ id: "maquina",
-                                            nombre: Idioma.t("Máquina") })
+                                            nombre: "Typewriter" })
                             //  Crecer y girar mueven el dibujo entero, y a un
                             //  rótulo lo pinta `drawtext` sobre el vídeo: no hay
                             //  dibujo que mover, así que ahí no se ofrecen.
                             if (Editor.capaSel && Editor.capaSel.tipo !== "texto") {
-                                base.push({ id: "crecer", nombre: Idioma.t("Crecer") })
-                                base.push({ id: "girar", nombre: Idioma.t("Girar") })
+                                base.push({ id: "crecer", nombre: "Grow" })
+                                base.push({ id: "girar", nombre: "Rotate" })
                             }
                             return base
                         }
@@ -815,15 +815,15 @@ ColumnLayout {
 
                     IslandLabel {
                         Layout.preferredWidth: 58
-                        text: Idioma.t("Velocidad")
+                        text: "Speed"
                         color: Theme.muted
                         font.pixelSize: 9
                     }
 
                     Repeater {
-                        model: [{ id: "recta", nombre: Idioma.t("Recta") },
-                                { id: "suave", nombre: Idioma.t("Suave") },
-                                { id: "golpe", nombre: Idioma.t("Golpe") }]
+                        model: [{ id: "recta", nombre: "Straight" },
+                                { id: "suave", nombre: "Soft" },
+                                { id: "golpe", nombre: "Hit" }]
 
                         delegate: Rectangle {
                             id: chipCurva
@@ -873,7 +873,7 @@ ColumnLayout {
 
                     IslandLabel {
                         Layout.preferredWidth: 58
-                        text: Idioma.t("Duración")
+                        text: "Duration"
                         color: Theme.muted
                         font.pixelSize: 9
                     }
@@ -927,7 +927,7 @@ ColumnLayout {
     }
 
     Seccion {
-        titulo: Idioma.t("Sonido")
+        titulo: "Sound"
         aplica: ["audio", "video"].indexOf(Editor.capaSel ? Editor.capaSel.tipo : "") >= 0
         abierta: true
 
@@ -940,7 +940,7 @@ ColumnLayout {
         BotonAccion {
             visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
             texto: Editor.capaSel && Editor.capaSel.mudo
-                ? Idioma.t("Callada") : Idioma.t("Callar esta pista")
+                ? "Muted" : "Mute this track"
             icono: Editor.capaSel && Editor.capaSel.mudo ? 0xF0581 : 0xF057E
             activo: Editor.capaSel && !!Editor.capaSel.mudo
             onPulsado: Editor.fijarCapa(Editor.idSel,
@@ -959,7 +959,7 @@ ColumnLayout {
             visible: Editor.capaSel && Editor.capaSel.tipo === "video"
                      && Editor.capaSel.puedeSonar !== false
             texto: Editor.capaSel && Editor.capaSel.sonido
-                ? Idioma.t("Suena (al renderizar)") : Idioma.t("Traer su sonido")
+                ? "Plays (when rendering)" : "Bring its sound"
             icono: Editor.capaSel && Editor.capaSel.sonido ? 0xF057E : 0xF0581
             activo: Editor.capaSel && !!Editor.capaSel.sonido
             onPulsado: Editor.fijarCapa(Editor.idSel,
@@ -976,7 +976,7 @@ ColumnLayout {
             spacing: 6
 
             IslandLabel {
-                text: Idioma.t("Volumen")
+                text: "Volume"
                 color: Theme.dim
                 font.pixelSize: 9
                 font.capitalization: Font.AllUppercase
@@ -1046,10 +1046,10 @@ ColumnLayout {
         BotonAccion {
             visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
             texto: !Editor.capaSel || !Editor.capaSel.limpia
-                ? Idioma.t("Quitar ruido de fondo")
+                ? "Remove background noise"
                 : Editor.limpiandoCapa(Editor.capaSel)
-                    ? Idioma.t("Limpiando…")
-                    : Idioma.t("Sin ruido de fondo")
+                    ? "Cleaning up…"
+                    : "No background noise"
             icono: 0xF00E2                        // md-broom
             activo: Editor.capaSel && !!Editor.capaSel.limpia
             onPulsado: Editor.fijarCapa(Editor.idSel,
@@ -1066,8 +1066,8 @@ ColumnLayout {
         BotonAccion {
             visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
             texto: Editor.capaSel && Editor.capaSel.agachar
-                ? Idioma.t("Se agacha")
-                : Idioma.t("Agacharse con otra pista")
+                ? "Ducks"
+                : "Duck under another track"
             icono: 0xF0792                        // md-arrow_collapse_down
             activo: Editor.capaSel && !!Editor.capaSel.agachar
             onPulsado: Editor.fijarCapa(Editor.idSel,
@@ -1084,7 +1084,7 @@ ColumnLayout {
         //  que hacía antes y lo que sigue queriendo casi todo el mundo.
         IslandLabel {
             visible: llaveFila.visible
-            text: Idioma.t("Se agacha con")
+            text: "Ducks under"
             color: Theme.dim
             font.pixelSize: 9
             font.capitalization: Font.AllUppercase
@@ -1103,7 +1103,7 @@ ColumnLayout {
                 //  está: agacharse consigo misma no significa nada y el render
                 //  lo descarta igual, así que ofrecerlo sería mentir.
                 model: {
-                    const r = [{ id: 0, nombre: Idioma.t("El vídeo") }]
+                    const r = [{ id: 0, nombre: "The video" }]
                     const cs = Editor.capas
                     const cuantas = ({})
                     for (let i = 0; i < cs.length; ++i) {
@@ -1175,7 +1175,7 @@ ColumnLayout {
     }
 
     Seccion {
-        titulo: Idioma.t("Colocación")
+        titulo: "Placement"
         aplica: Editor.capaSel !== null
         abierta: false
 
@@ -1291,7 +1291,7 @@ ColumnLayout {
         BotonAccion {
             visible: Editor.capaSel !== null
                 && Editor.capaSel.tipo !== "audio"
-            texto: Idioma.t("Restablecer transformación")
+            texto: "Reset transform"
             icono: 0xF0450
             onPulsado: {
                 const c = Editor.capaSel
@@ -1306,7 +1306,7 @@ ColumnLayout {
         BotonAccion {
             visible: Editor.capaSel !== null
                 && Editor.capaSel.tipo !== "audio"
-            texto: Idioma.t("Crear fotograma clave")
+            texto: "Create keyframe"
             icono: 0xF05A1
             onPulsado: Editor.crearKeyframe(Editor.idSel,
                                              fichaCapa.view.segundos)
@@ -1320,7 +1320,7 @@ ColumnLayout {
                 && (Editor.capaSel.keyframes || []).length > 1
             visible: hay
             texto: Editor.capaSel && Editor.capaSel.suave
-                ? Idioma.t("Movimiento suave") : Idioma.t("Movimiento recto")
+                ? "Smooth motion" : "Straight motion"
             //  Comprobado contra la propia fuente con fontTools, como manda la
             //  casa: 0xF0170 era md-code_not_equal.
             icono: 0xF0C50                        // md-chart_bell_curve
@@ -1333,7 +1333,7 @@ ColumnLayout {
             visible: Editor.capaSel
                 && (Editor.capaSel.keyframes || []).length > 0
             Layout.fillWidth: true
-            text: Idioma.t("los puntos del vídeo y los rombos del bloque se arrastran · clic derecho quita")
+            text: "drag the dots on the video and the diamonds on the block · right-click removes"
             color: Theme.dim
             font.pixelSize: 9
             wrapMode: Text.WordWrap
@@ -1353,11 +1353,9 @@ ColumnLayout {
     IslandLabel {
         Layout.topMargin: 4
         visible: Editor.capaSel !== null
-        text: Idioma.f(Idioma.t("Capa %1 de %2"),
-                       String(Editor.capaSel
-                              ? Editor.bandaDe(Editor.capaSel) : 1),
-                       String(Editor.cuantasBandas))
-             + "  ·  " + Idioma.t("arrastra el bloque para cambiarla")
+        text: `${String(Editor.capaSel
+               ? Editor.bandaDe(Editor.capaSel) : 1)} of ${String(Editor.cuantasBandas)}`
+             + "  ·  " + "drag the block to change it"
         color: Theme.dim
         font.pixelSize: 9
         wrapMode: Text.WordWrap
@@ -1386,16 +1384,16 @@ ColumnLayout {
 
             IslandLabel {
                 text: {
-                    if (!Editor.capaSel) return Idioma.t("Quitar")
+                    if (!Editor.capaSel) return "Remove"
                     if (Editor.capaSel.tipo === "texto")
-                        return Idioma.t("Quitar el rótulo")
+                        return "Remove the caption"
                     if (Editor.capaSel.tipo === "audio")
-                        return Idioma.t("Quitar el audio")
+                        return "Remove the audio"
                     if (Editor.capaSel.tipo === "video")
-                        return Idioma.t("Quitar el vídeo")
+                        return "Remove the video"
                     if (Editor.capaSel.tipo === "forma")
-                        return Idioma.t("Quitar la forma")
-                    return Idioma.t("Quitar la imagen")
+                        return "Remove the shape"
+                    return "Remove the image"
                 }
                 font.pixelSize: 10
             }

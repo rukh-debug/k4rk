@@ -52,7 +52,7 @@ def nombres():
 
 def ficheros():
     for base, dirs, hojas in os.walk(RAIZ):
-        dirs[:] = [d for d in dirs if d not in (".git", "traducciones")]
+        dirs[:] = [d for d in dirs if d not in (".git",)]
         for h in hojas:
             if h.endswith(".qml"):
                 yield os.path.join(base, h)

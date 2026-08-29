@@ -27,10 +27,10 @@ IslandTile {
             spacing: 10
 
             IslandLabel {
-                text: !Bt.adapter ? Idioma.t("Sin adaptador")
-                    : !Bt.adapter.enabled ? Idioma.t("Bluetooth desactivado")
-                    : Bt.adapter.discovering ? Idioma.t("Buscando dispositivos…")
-                    : Idioma.t("Dispositivos")
+                text: !Bt.adapter ? "No adapter"
+                    : !Bt.adapter.enabled ? "Bluetooth off"
+                    : Bt.adapter.discovering ? "Scanning for devices…"
+                    : "Devices"
                 color: Theme.muted
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
@@ -72,7 +72,7 @@ IslandTile {
                 anchors.centerIn: parent
                 visible: Bt.devices.length === 0
                 text: Bt.adapter && Bt.adapter.enabled
-                    ? Idioma.t("Buscando dispositivos…") : Idioma.t("Activa el Bluetooth para buscar")
+                    ? "Scanning for devices…" : "Turn on Bluetooth to scan"
                 color: Theme.muted
                 font.pixelSize: 12
             }

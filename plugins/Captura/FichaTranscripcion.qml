@@ -23,7 +23,7 @@ ColumnLayout {
     spacing: 4
 
     IslandLabel {
-        text: Idioma.t("Transcripción")
+        text: "Transcript"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -39,14 +39,14 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         text: {
             const e = Editor.estadoTranscripcion
-            if (e === "comprobando") return Idioma.t("Comprobando…")
-            if (e === "extrayendo")  return Idioma.t("Sacando el audio…")
-            if (e === "transcribiendo") return Idioma.t("Escuchando… esto tarda")
-            if (e === "fallo") return Idioma.t("No se pudo transcribir")
+            if (e === "comprobando") return "Checking…"
+            if (e === "extrayendo")  return "Extracting the audio…"
+            if (e === "transcribiendo") return "Listening… this takes a while"
+            if (e === "fallo") return "Could not transcribe"
             if (e === "falta")
                 return Editor.faltaTranscripcion === "modelo"
-                    ? Idioma.t("Falta el modelo de voz")
-                    : Idioma.t("Falta whisper.cpp")
+                    ? "Voice model missing"
+                    : "whisper.cpp missing"
             return ""
         }
         color: Editor.estadoTranscripcion === "fallo"
@@ -101,7 +101,7 @@ ColumnLayout {
             }
 
             IslandLabel {
-                text: Idioma.t("Transcribir")
+                text: "Transcribe"
                 font.pixelSize: 10
             }
         }
@@ -140,9 +140,9 @@ ColumnLayout {
             }
 
             IslandLabel {
-                text: Idioma.t("Quemar los ")
+                text: "Burn the "
                       + Editor.transcripcion.length
-                      + Idioma.t(" como subtítulos")
+                      + " as subtitles"
                 color: Theme.muted
                 font.pixelSize: 10
             }

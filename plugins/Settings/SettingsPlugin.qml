@@ -1,15 +1,11 @@
-//  Ajustes de la barra, en su propia ventana.
+//  The bar's settings, as a view deployed from the island.
 //
-//  Antes la tarjeta "Ajustes" del centro de control lanzaba directamente
-//  nm-connection-editor: una ventana del sistema, con su propio marco y su
-//  propia tipografía, que no tenía nada que ver con la barra. Ahora los
-//  ajustes viven aquí y esa herramienta queda como un acceso más.
-//
-//  Y ya no son un panel de la island. Cabían de sobra cuando eran tres
-//  grupos; hoy son ocho propios más los que aportan los plugins —cerca de
-//  cincuenta opciones— y en una columna única la única forma de encontrar algo
-//  era bajar leyendo. Cada plugin que instalas lo empeoraba. El sitio se había
-//  quedado pequeño, así que se cambió de sitio: ver `VentanaAjustes.qml`.
+//  They used to be a card inside a window of their own (K4.Ventana,
+//  namespace "k4-ajustes"): a separate surface with its own focus rules and
+//  its own dismissal gesture. Now they open from the pill like the control
+//  center, hold the keyboard while open, and close with Escape or a click
+//  outside — the same gestures every deployed view answers to. See
+//  `AjustesView.qml` for the layout.
 
 import QtQuick
 import K4 as K4
@@ -20,38 +16,54 @@ K4Plugin {
     id: self
 
     name: "settings"
-    title: Idioma.t("Ajustes")
-    //  Sin `active`, sin `view` y sin `grabKeyboard`: esto ya no se dibuja en
-    //  la island. El teclado lo pide la ventana por su cuenta.
+    title: "Settings"
     priority: 66
 
-    //  ── ¿hay k4 nuevo? ───────────────────────────────────────────
+    //  A deployed view: it occupies the island while open.
+    active: habilitado && open
+    viewLoaded: open
+    grabKeyboard: open
+
+    property bool open: false
+
+    //  Sized once: the sidebar plus one section on the right. The window it
+    //  replaces was 1040x700 of card; the island trims the frame and the
+    //  margins the card carried, and the search field absorbs the rest.
+    islandWidth: 940
+    islandHeight: 620
+
+    //  ── is there a newer k4? ────────────────────────────────────
     //
-    //  Vive aquí y no en un servicio por una razón práctica: un singleton nuevo
-    //  en `services/` no se carga en caliente —hace falta reiniciar la barra
-    //  entera— y esto se ha escrito, probado y ajustado con `pluginReload
-    //  settings`. Y por una de fondo: quien lo enseña son los Ajustes, así que
-    //  que lo sepa quien lo enseña.
+    //  It lives here and not in a service for a practical reason: a new
+    //  singleton in services/ does not hot-load — the whole bar needs a
+    //  restart — and this was written, tested and tuned with `pluginReload
+    //  settings`. And a deeper one: Settings is what shows it, so let the
+    //  one showing it know.
     property Version version: Version {}
 
-    //  `abrir()` de la API cae en esto, así que el centro de aplicaciones y
-    //  el atajo entran por aquí sin saber que detrás hay una ventana.
+    //  `abrir()` from the API lands here, so the app center and the keybind
+    //  walk in without knowing there used to be a window behind it.
     function toggle() {
-        if (ventanaAbierta)
-            cerrarVentana()
-        else
-            abrirVentana()
+        if (open) {
+            close()
+        } else {
+            open = true
+            Consola.revisar()
+            self.version.mirar(false)
+        }
     }
 
-    //  El vistazo de fondo, para que la novedad no dependa de que se abran los
-    //  Ajustes. Cada seis horas y uno al arrancar — con un minuto de cortesía,
-    //  que el arranque de la barra ya tiene bastante que hacer y una llamada a
-    //  la red en ese momento solo compite con lo que sí se ve.
+    function close() { open = false }
+
+    //  The background glance, so the news does not depend on Settings being
+    //  opened. Every six hours and once at startup — with a minute of grace,
+    //  because startup already has plenty to do and a network call right
+    //  then only competes with what is actually visible.
     //
-    //  Y el plazo va atado a que se haya MIRADO, no a que se haya averiguado.
-    //  Atado al resultado —«¿sigue sin haber commit? pues al minuto otra vez»—
-    //  una copia que no es un clon de git no averigua nunca nada, así que se
-    //  quedaba lanzando un `sh` y cuatro `git` cada minuto para siempre.
+    //  The deadline is tied to having been LOOKED at, not to having found
+    //  out. Tied to the result —«still no commit? then again in a minute»—
+    //  a copy that is not a git clone never learns anything, so it kept
+    //  firing an `sh` and four `git` every minute forever.
     property Timer _vistazo: Timer {
         interval: self.version.ultima > 0 ? 6 * 3600 * 1000 : 60000
         repeat: true
@@ -59,32 +71,7 @@ K4Plugin {
         onTriggered: self.version.mirar(true)
     }
 
-    function close() { cerrarVentana() }
-
-    // ── la ventana ────────────────────────────────────────────────
-    //
-    //  Los ajustes en una superficie propia, con barra lateral. El panel de la
-    //  island se queda pequeño: dieciséis secciones y cerca de cincuenta
-    //  opciones en una sola columna.
-    //
-    //  Va en un `Loader` y no siempre puesta: una capa a pantalla completa que
-    //  existe todo el rato es una capa que el compositor compone todo el rato.
-    property bool ventanaAbierta: false
-
-    function abrirVentana() {
-        ventanaAbierta = true
-        Consola.revisar()
-        self.version.mirar(false)
-    }
-
-    function cerrarVentana() { ventanaAbierta = false }
-
-    property Loader _ventana: Loader {
-        active: self.ventanaAbierta
-        sourceComponent: Component {
-            VentanaAjustes { plugin: self }
-        }
-    }
+    view: Component { AjustesView { plugin: self } }
 
     K4.Ipc {
         target: "k4.settings"
@@ -93,8 +80,9 @@ K4Plugin {
 
         function alternar(id: string): void { Settings.alternar(id) }
 
-        //  Para poder mirarle las tripas sin abrir nada: en qué commit está la
-        //  barra, cuánto le lleva `origin` y por qué no se sabe, si no se sabe.
+        //  To peek at its insides without opening anything: which commit the
+        //  bar is on, how far behind `origin` it is, and why it cannot tell
+        //  when it cannot tell.
         function version(): string {
             return JSON.stringify({
                 commit: self.version.commit,
@@ -105,7 +93,7 @@ K4Plugin {
             })
         }
 
-        //  Y para lanzarlo desde fuera, que es lo que hace el botón.
+        //  And to launch it from outside, which is what the button does.
         function actualizar(): void { self.version.actualizar() }
     }
 }

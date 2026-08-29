@@ -136,7 +136,7 @@ RowLayout {
 
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Idioma.t("Capa")
+                    text: "Layer"
                     color: Theme.muted
                     font.pixelSize: 9
                 }
@@ -173,13 +173,12 @@ RowLayout {
                 //  y por cuántas si lleva varias. Vacía, por su número — decía
                 //  «0 cosas», que es verdad y no sirve para nada. Y la 1 es el
                 //  vídeo, que se llama así aunque lleve veinte trozos.
-                texto: esVideo ? Idioma.t("Vídeo")
+                texto: esVideo ? "Video"
                     : modelData.capas.length === 1
                     ? Editor.nombreCapa(modelData.capas[0])
                     : (modelData.capas.length === 0
                        ? Editor.nombreBanda(modelData.banda)
-                       : Idioma.f(Idioma.t("%1 cosas"),
-                                  String(modelData.capas.length)))
+                       : `${String(modelData.capas.length)} things`)
                 //  El icono dice de qué es la banda cuando lleva una sola cosa.
                 glifo: esVideo ? 0x000F0567          // md-video
                     : modelData.capas.length === 1

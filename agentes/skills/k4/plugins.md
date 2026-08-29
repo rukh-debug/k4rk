@@ -156,7 +156,7 @@ The entry QML is a `K4.Plugin`. From there you get the whole API under the
 the reason recorded — it is not a warning.
 
 The current list is in `docs/PLUGINS.md`; `procesos`, `red`, `ficheros`,
-`portapapeles`, `sonido` and `datos-personales` are the ones that come up
+`portapapeles` and `sonido` are the ones that come up
 most. Declare the smallest set that works.
 
 Permissions are honest about what they are: a plugin runs inside the bar and

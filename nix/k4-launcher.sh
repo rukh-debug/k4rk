@@ -51,6 +51,17 @@ if [ ! -f "$mirror/.k4-origen" ] || [ "$(cat "$mirror/.k4-origen" 2>/dev/null)" 
     #  ever runs a tools/ script by hand.
     ln -sfn "$conf/k4/plugins" "$tmp/externos"
 
+    #  Drop Qt's compiled-QML disk cache whenever the mirror changes.
+    #
+    #  The cache keys compiled code on file path + mtime, and store files
+    #  are all stamped epoch (Dec 31 1969), which `cp -a` preserves: after a
+    #  re-sync a CHANGED .qml still looks unchanged, so the old compiled
+    #  version keeps loading — a new property reads as «non-existent» and a
+    #  plugin dies with it. Quickshell rebuilds the cache on the next start;
+    #  the cost is one slower first launch after an update.
+    qscache="${XDG_CACHE_HOME:-$HOME/.cache}/quickshell"
+    rm -rf "$qscache/qmlcache" "$qscache"/qtpipelinecache-*
+
     if [ -d "$mirror" ]; then
         mv -T "$mirror" "$old"
     fi

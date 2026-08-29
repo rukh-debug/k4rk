@@ -141,7 +141,7 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: entrada.text.length === 0
-                    text: Idioma.t("Buscar un vídeo o un proyecto…")
+                    text: "Search for a video or a project…"
                     color: Theme.dim
                     font.pixelSize: 15
                 }
@@ -179,7 +179,7 @@ FadeIn {
 
                     IslandLabel {
                         id: examinarTexto
-                        text: Idioma.t("Examinar…")
+                        text: "Browse…"
                         font.pixelSize: 11
                     }
                 }
@@ -301,10 +301,10 @@ FadeIn {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             visible: view.lista.length === 0
-            text: view.buscando ? Idioma.t("Buscando…")
+            text: view.buscando ? "Searching…"
                 : (entrada.text.trim().length < 2
-                   ? Idioma.t("Escribe parte del nombre, o pulsa «Examinar…»")
-                   : Idioma.t("Nada con ese nombre"))
+                   ? "Type part of the name, or press “Browse…”"
+                   : "Nothing by that name")
             color: Theme.dim
             font.pixelSize: 12
         }

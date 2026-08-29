@@ -157,6 +157,22 @@ QtObject {
     property bool handlesBackgroundTap: false
     signal backgroundTapped()
 
+    //  Click OUTSIDE the shell closes this view, same as Escape.
+    //
+    //  While a view is deployed the host grows the bar's layer surface to
+    //  cover the screen, and a tap that lands outside the island closes the
+    //  view instead of reaching the desktop. The click is SPENT on closing —
+    //  it does not fall through — which is the point: it is the pointer's
+    //  way of pressing Escape.
+    //
+    //  Mark it FALSE for a view that appears without being asked (the volume
+    //  HUD): nobody clicks to dismiss something they did not open, and
+    //  swallowing a click that was going somewhere else is worse than
+    //  staying open a second longer. Truly transient views (`transitorio`)
+    //  are already excluded by the host; this flag is for the rest. The user
+    //  can also turn the whole behavior off in Settings.
+    property bool closeOnClickOutside: true
+
     // Módulos que se abren con el ratón y deben irse al sacarlo. El host emite
     // `hoverTimedOut` cuando el puntero lleva `hoverExitDelay` fuera de la
     // island; qué hacer entonces lo decide el plugin, porque no siempre es

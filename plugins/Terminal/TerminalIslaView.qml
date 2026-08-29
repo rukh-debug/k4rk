@@ -406,7 +406,7 @@ Item {
                     //  y lo que dice en qué anda cada una es el mandato.
                     readonly property string donde: modelData.cwd
                         ? vista.corto(modelData.cwd)
-                        : Idioma.t("terminal") + " " + (index + 1)
+                        : "terminal" + " " + (index + 1)
 
                     //  Qué corre, a secas: el programa, sin ruta ni argumentos,
                     //  que en dos dedos de pestaña es lo único que se lee. Lo
@@ -1302,7 +1302,7 @@ Item {
             anchors.leftMargin: 7
             anchors.verticalCenter: parent.verticalCenter
             visible: campoBusqueda.text.length === 0
-            text: Idioma.t("buscar")
+            text: "search"
             color: Theme.dim
             font.pixelSize: 11
         }
@@ -1472,7 +1472,7 @@ Item {
 
             IslandLabel {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Idioma.t("conectando a ") + Consola.conectando + "…"
+                text: "connecting to " + Consola.conectando + "…"
                 color: Theme.muted
                 font.pixelSize: 12
             }
@@ -1498,7 +1498,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.rightMargin: vista.margen
         anchors.bottomMargin: 6
-        text: Idioma.t("ctrl+shift: ←→ cambia · T nueva · V pega · C copia · F busca")
+        text: "ctrl+shift: ←→ switches · T new · V paste · C copy · F find"
         color: Theme.dim
         font.pixelSize: 10
     }

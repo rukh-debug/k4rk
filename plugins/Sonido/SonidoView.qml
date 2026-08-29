@@ -31,7 +31,7 @@ Item {
             }
 
             IslandLabel {
-                text: Idioma.t("Sonido")
+                text: "Sound"
                 color: Theme.ink
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
@@ -39,7 +39,7 @@ Item {
 
             IslandLabel {
                 Layout.fillWidth: true
-                text: Idioma.t("por dónde sale y por dónde entra")
+                text: "where it goes out and where it comes in"
                 color: Theme.dim
                 font.pixelSize: 10
                 elide: Text.ElideRight
@@ -61,7 +61,7 @@ Item {
 
         IslandLabel {
             Layout.fillWidth: true
-            text: Idioma.t("La marca del deslizador es el nivel natural del aparato: por encima se amplifica")
+            text: "The mark on the slider is the device's natural level: above it, sound is amplified"
             color: Theme.dim
             font.pixelSize: 9
             wrapMode: Text.WordWrap

@@ -22,7 +22,7 @@ ColumnLayout {
     spacing: 4
 
     IslandLabel {
-        text: Idioma.t("Añadir")
+        text: "Add"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -31,7 +31,7 @@ ColumnLayout {
 
     IslandLabel {
         visible: Editor.bandaSeleccionada >= Editor.primeraBandaLibre
-        text: Idioma.t("Grupo seleccionado")
+        text: "Selected group"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -89,34 +89,34 @@ ColumnLayout {
         //  tú dibujándolo encima del vídeo.
         BotonAccion {
             texto: Editor.herramienta === "zoom"
-                ? Idioma.t("Dibújalo en el vídeo")
-                : Idioma.t("Zoom")
+                ? "Draw it on the video"
+                : "Zoom"
             icono: 0xF1276                   // md-magnify_scan
             activo: Editor.herramienta === "zoom"
             onPulsado: Editor.armar("zoom")
         }
 
         BotonAccion {
-            texto: Idioma.t("Imagen")
+            texto: "Image"
             icono: 0xF02E9                   // md-image
             onPulsado: view.plugin.pedirImagen(view.segundos)
         }
 
         BotonAccion {
-            texto: Idioma.t("Texto")
+            texto: "Text"
             icono: 0xF0284                   // md-format_text
             onPulsado: Editor.crearTexto(view.segundos)
         }
 
         BotonAccion {
-            texto: Idioma.t("Zona")
+            texto: "Area"
             icono: 0xF00B5                   // md-blur
             onPulsado: Editor.crearZona(view.segundos,
                                         "desenfoque")
         }
 
         BotonAccion {
-            texto: Idioma.t("Audio")
+            texto: "Audio"
             icono: 0xF075A                   // md-music
             onPulsado: view.plugin.pedirAudio(view.segundos)
         }
@@ -128,23 +128,23 @@ ColumnLayout {
         //  quieras pulsar ahí.
         BotonAccion {
             texto: Editor.estadoVoz === "grabando"
-                    ? Idioma.t("Parar la voz")
+                    ? "Stop the voice"
                  : Editor.estadoVoz !== ""
-                    ? Idioma.t("Un momento…")
-                    : Idioma.t("Grabar voz")
+                    ? "One moment…"
+                    : "Record voice"
             icono: 0xF036C                   // md-microphone
             activo: Editor.estadoVoz !== ""
             onPulsado: Editor.grabarVozAlternar(view.segundos)
         }
 
         BotonAccion {
-            texto: Idioma.t("Vídeo")
+            texto: "Video"
             icono: 0xF0E57   // md-picture_in_picture_bottom_right
             onPulsado: view.plugin.pedirPip(view.segundos)
         }
 
         BotonAccion {
-            texto: Idioma.t("Censurar")
+            texto: "Censor"
             icono: 0xF075F                   // md-volume_mute
             onPulsado: Editor.crearCensura(view.segundos,
                                            "silencio")
@@ -155,27 +155,27 @@ ColumnLayout {
             //  disco no tiene clics que resaltar.
             visible: Editor.fuentes.length > 0
                 && String(Editor.fuentes[0].rastro || "").length > 0
-            texto: Idioma.t("Clics")
+            texto: "Clicks"
             icono: 0xF0CFD           // md-cursor_default_click
             activo: Editor.clicsActivos
             onPulsado: Editor.alternarClics()
         }
 
         BotonAccion {
-            texto: Idioma.t("Marcador")
+            texto: "Marker"
             icono: 0xF05A1
             onPulsado: Editor.crearMarcador(view.segundos)
         }
 
         BotonAccion {
-            texto: Idioma.t("Señalar")
+            texto: "Point out"
             icono: 0xF09C6              // md-arrow_top_right_thick
             onPulsado: Editor.crearForma(view.segundos, "flecha")
         }
     }
 
     IslandLabel {
-        text: Idioma.t("Herramientas")
+        text: "Tools"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -188,13 +188,13 @@ ColumnLayout {
         readonly property bool buscando:
             Editor.estadoSilencios === "buscando"
 
-        texto: buscando ? Idioma.t("Escuchando…")
-             : hay ? Idioma.t("Quitar ")
+        texto: buscando ? "Listening…"
+             : hay ? "Remove "
                      + Editor.cuantosSilencios
-                     + Idioma.t(" silencios")
+                     + " silences"
              : Editor.estadoSilencios === "fallo"
-                     ? Idioma.t("No se pudo")
-                     : Idioma.t("Buscar silencios")
+                     ? "It could not be done"
+                     : "Find silences"
         icono: 0xF057E                       // md-volume_high
         activo: hay
         peligro: true
@@ -211,7 +211,7 @@ ColumnLayout {
     //  resolución completa, con el zoom y las capas puestos, numerado si ya
     //  hay una. Quien hace miniaturas hace tres y se queda con la mejor.
     BotonAccion {
-        texto: Idioma.t("Guardar miniatura")
+        texto: "Save thumbnail"
         icono: 0xF02EB                       // md-image_area
         onPulsado: Editor.miniatura(view.segundos)
     }
@@ -220,8 +220,7 @@ ColumnLayout {
     //  línea por marcador, listas para la descripción del vídeo.
     BotonAccion {
         visible: Editor.marcadores.length > 0
-        texto: Idioma.f(Idioma.t("Copiar %1 capítulos"),
-                        String(Editor.marcadores.length))
+        texto: `Copy ${String(Editor.marcadores.length)} chapters`
         icono: 0xF027B                       // md-format_list_numbered
         onPulsado: Editor.copiarCapitulos()
     }

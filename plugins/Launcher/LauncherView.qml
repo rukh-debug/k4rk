@@ -66,7 +66,7 @@ FadeIn {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: view.plugin.query.length === 0
                     text: view.plugin.mode === "packages"
-                        ? Idioma.t("Buscar paquetes para instalar") : Idioma.t("Buscar aplicaciones")
+                        ? "Search packages to install" : "Search applications"
                     color: Theme.dim
                     font.pixelSize: 19
                 }
@@ -124,7 +124,7 @@ FadeIn {
 
             IslandLabel {
                 text: view.plugin.mode !== "packages" ? "esc"
-                    : view.plugin.aurSearching ? Idioma.t("buscando en AUR…") : Idioma.t("esc vuelve a apps")
+                    : view.plugin.aurSearching ? "searching AUR…" : "esc back to apps"
                 color: Theme.dim
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
@@ -261,7 +261,7 @@ FadeIn {
             IslandLabel {
                 anchors.centerIn: parent
                 visible: view.plugin.matches.length === 0
-                text: Idioma.t("Sin resultados")
+                text: "No results"
                 color: Theme.muted
                 font.pixelSize: 13
             }
@@ -354,7 +354,7 @@ FadeIn {
                         IslandLabel {
                             Layout.fillWidth: true
                             text: packageRow.modelData.installed
-                                ? Idioma.t("Instalado · ") + packageRow.modelData.description
+                                ? "Installed · " + packageRow.modelData.description
                                 : packageRow.modelData.description
                             color: packageRow.modelData.installed ? Theme.green : Theme.muted
                             font.pixelSize: 10
@@ -365,7 +365,7 @@ FadeIn {
                     IslandLabel {
                         visible: packageRow.index === view.plugin.index
                         text: packageRow.modelData.installed
-                            ? Idioma.t("actualizar ↵") : Idioma.t("instalar ↵")
+                            ? "update ↵" : "install ↵"
                         color: Theme.muted
                         font.pixelSize: 10
                         Layout.alignment: Qt.AlignVCenter
@@ -395,7 +395,7 @@ FadeIn {
                             }
 
                             IslandLabel {
-                                text: Idioma.t("desinstalar")
+                                text: "uninstall"
                                 color: Theme.red
                                 font.pixelSize: 10
                             }
@@ -431,8 +431,8 @@ FadeIn {
                 anchors.centerIn: parent
                 visible: view.plugin.packageMatches.length === 0
                 text: view.plugin.packageQuery().length < 2
-                    ? Idioma.t("Escribe al menos dos letras")
-                    : view.plugin.aurSearching ? Idioma.t("Buscando…") : Idioma.t("Ningún paquete coincide")
+                    ? "Type at least two letters"
+                    : view.plugin.aurSearching ? "Searching…" : "No package matches"
                 color: Theme.muted
                 font.pixelSize: 13
             }
@@ -465,12 +465,11 @@ FadeIn {
                 IslandLabel {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    text: Idioma.f(Idioma.t("%1 actualizaciones del sistema (%2)"),
-                                   String(Paquetes.pendientes),
-                                   Math.max(0, Paquetes.pendientesRepo)
-                                       + " repos · "
-                                       + Math.max(0, Paquetes.pendientesAur)
-                                       + " AUR")
+                    text: `${String(Paquetes.pendientes)} system updates
+(${Math.max(0, Paquetes.pendientesRepo)
+                                   + " repos · "
+                                   + Math.max(0, Paquetes.pendientesAur)
+                                   + " AUR"})`
                     color: Theme.muted
                     font.pixelSize: 11
                 }
@@ -490,7 +489,7 @@ FadeIn {
                     IslandLabel {
                         id: elegirTexto
                         anchors.centerIn: parent
-                        text: Idioma.t("Elegir")
+                        text: "Choose"
                         font.pixelSize: 10
                         color: elegirRaton.containsMouse ? Theme.ink
                                                          : Theme.muted
@@ -520,7 +519,7 @@ FadeIn {
                     IslandLabel {
                         id: subirTexto
                         anchors.centerIn: parent
-                        text: Idioma.t("Actualizar")
+                        text: "Update"
                         font.pixelSize: 10
                         font.weight: Font.DemiBold
                     }

@@ -5,7 +5,7 @@ K4.Plugin {
     id: self
 
     name: "pantallas"
-    title: K4.Idioma.t("Pantallas")
+    title: "Screens"
     priority: 67
     active: abierto
     islandWidth: 920
@@ -266,7 +266,7 @@ K4.Plugin {
         if (statusProcess.running)
             return
         ocupado = true
-        mensaje = K4.Idioma.t("Leyendo Hyprland…")
+        mensaje = "Reading Hyprland…"
         mensajeError = false
         statusProcess.command = ["python3", helper, "status"]
         statusProcess.running = true
@@ -309,10 +309,10 @@ K4.Plugin {
             else if (!monitor(principal))
                 principal = active.length ? active[0].name : ""
             mensaje = active.length
-                ? K4.Idioma.f(K4.Idioma.t("%1 pantallas conectadas"), active.length)
-                : K4.Idioma.t("No hay pantallas activas")
+                ? `${active.length} displays connected`
+                : "No active displays"
         } catch (error) {
-            mensaje = K4.Idioma.t("No pude leer la configuración")
+            mensaje = "I couldn't read the configuration"
             mensajeError = true
         }
     }
@@ -337,8 +337,8 @@ K4.Plugin {
             return
         ocupado = true
         mensajeError = false
-        mensaje = persist ? K4.Idioma.t("Guardando distribución…")
-                          : K4.Idioma.t("Aplicando distribución…")
+        mensaje = persist ? "Saving layout…"
+                          : "Applying layout…"
         applyProcess.command = ["python3", helper, "apply", payload(persist)]
         applyProcess.running = true
         principalPreferido = principal
@@ -348,10 +348,10 @@ K4.Plugin {
     function receiveApply(text) {
         try {
             const result = JSON.parse(text)
-            mensaje = result.message || K4.Idioma.t("Configuración aplicada")
+            mensaje = result.message || "Configuration applied"
             mensajeError = result.ok !== true
         } catch (error) {
-            mensaje = K4.Idioma.t("Hyprland devolvió una respuesta inesperada")
+            mensaje = "Hyprland returned an unexpected answer"
             mensajeError = true
         }
     }
@@ -379,7 +379,7 @@ K4.Plugin {
         onTerminado: function (code) {
             self.ocupado = false
             if (code !== 0) {
-                self.mensaje = K4.Idioma.t("No pude consultar Hyprland")
+                self.mensaje = "I couldn't ask Hyprland"
                 self.mensajeError = true
             }
         }
@@ -391,7 +391,7 @@ K4.Plugin {
         onTerminado: function (code) {
             self.ocupado = false
             if (code !== 0 && !self.mensajeError) {
-                self.mensaje = K4.Idioma.t("No se pudo aplicar la distribución")
+                self.mensaje = "The layout could not be applied"
                 self.mensajeError = true
             }
             refreshAfterApply.restart()

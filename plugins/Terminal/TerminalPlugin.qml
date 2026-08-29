@@ -20,7 +20,7 @@ K4Plugin {
     id: self
 
     name: "terminal"
-    title: Idioma.t("Terminal")
+    title: "Terminal"
     //  Por encima del reproductor y del reloj, por debajo del lanzador: si
     //  estás escribiendo en ella, ninguna canción te la quita.
     priority: 75
@@ -281,7 +281,7 @@ K4Plugin {
             return
         }
         if (!contenido) {
-            K4.Sistema.avisar(Idioma.t("Terminal"), Idioma.t("No hay nada que copiar"), false)
+            K4.Sistema.avisar("Terminal", "Nothing to copy", false)
             return
         }
         K4.Sistema.copiar(contenido)
@@ -388,8 +388,8 @@ K4Plugin {
                 mandar({ que: "clave", valor: Consola.claveConexion })
             } else {
                 K4.Sistema.lanzar(["notify-send", "-a", "k4",
-                                   Idioma.t("Actualiza k4term"),
-                                   Idioma.t("Esta versión de k4term-isla no sabe teclear contraseñas: la conexión te la pedirá a mano.")])
+                                   "Update k4term",
+                                   "This version of k4term-isla cannot type passwords: the connection will ask you by hand."])
             }
             Consola.claveConexion = ""
         }
@@ -520,7 +520,7 @@ K4Plugin {
             onTexto: function (contenido, motivo) { self.alRecibirTexto(contenido, motivo) }
             onBuscado: function (hay, fila) { self.hallazgo(hay, fila) }
             onEmigrando: function (socket) { self.alEmigrar(socket) }
-            onAviso: function (texto) { K4.Sistema.avisar(Idioma.t("Terminal"), texto, false) }
+            onAviso: function (texto) { K4.Sistema.avisar("Terminal", texto, false) }
         }
         onObjectAdded: function (indice, objeto) {
             const v = self.vivas.slice()
@@ -692,7 +692,7 @@ K4Plugin {
     property var esperas: ({})
 
     function esperando(pid, titulo) {
-        const nombre = String(titulo || "").trim() || Idioma.t("Terminal")
+        const nombre = String(titulo || "").trim() || "Terminal"
         //  La campana del tema: dice «te llaman» sin necesidad de leerlo, y
         //  en amarillo, que reclama sin alarmar.
         K4.Pildora.registrar(idEspera(pid), nombre.slice(0, 18), Theme.ico.bell.codePointAt(0),
@@ -712,7 +712,7 @@ K4Plugin {
             Notifs.apuntarDestino("k4term", nombre, pid)
 
         K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "8000",
-                           Idioma.t("Te está esperando"), nombre])
+                           "Waiting for you", nombre])
     }
 
     function dejarDeEsperar(pid) {
@@ -871,7 +871,7 @@ K4Plugin {
         //  la aplicación es lo que mejor lo dice; el mandato, si no lo hay.
         const donde = indiceDe(numero)
         const quien = (donde >= 0 && vivas[donde].titulo)
-            || titulo || Idioma.t("Terminal")
+            || titulo || "Terminal"
         esperando(claveIsla(numero), quien)
     }
 
@@ -1142,8 +1142,8 @@ K4Plugin {
         const cuerpo = resumir(mandato) + " · " + duracion(segundos)
         K4.Sistema.lanzar(["notify-send", "-a", "k4term",
                            fallo ? "-u" : "-t", fallo ? "critical" : "6000",
-                           fallo ? Idioma.t("Falló el mandato") + " (" + salida + ")"
-                                 : Idioma.t("Mandato terminado"),
+                           fallo ? "Command failed" + " (" + salida + ")"
+                                 : "Command finished",
                            cuerpo])
     }
 
@@ -1195,7 +1195,7 @@ K4Plugin {
 
     K4.Ajustes {
         plugin: "terminal"
-        grupo: Idioma.t("Terminal")
+        grupo: "Terminal"
 
         //  Solo si hay k4term. Son SUS ajustes: sin él, esta sección ofrecía
         //  cambiar el tamaño de letra y el cristal de una terminal que no está
@@ -1207,24 +1207,24 @@ K4Plugin {
         //  milisegundos; lo que hace que aparezca después es que K4.Ajustes se
         //  vuelve a registrar cuando `opciones` cambia.
         opciones: !Consola.esNuestra ? [] : [
-            { id: "tamaño", nombre: Idioma.t("Tamaño de letra"),
-              desc: Idioma.t("De la ventana; en la island manda el hueco"),
+            { id: "tamaño", nombre: "Font size",
+              desc: "Window only; the island uses its own space",
               glifo: 0xF0207, tipo: "eleccion",
               alternativas: [{ codigo: "11", nombre: "11" },
                              { codigo: "13", nombre: "13" },
                              { codigo: "15", nombre: "15" },
                              { codigo: "18", nombre: "18" }] },
-            { id: "opacidad", nombre: Idioma.t("Cristal"),
-              desc: Idioma.t("Cuánto se ve del fondo por detrás"),
+            { id: "opacidad", nombre: "Glass",
+              desc: "How much shows through",
               glifo: 0xF00B5, tipo: "eleccion",
-              alternativas: [{ codigo: "1", nombre: Idioma.t("Opaca") },
-                             { codigo: "0.94", nombre: Idioma.t("Suave") },
-                             { codigo: "0.88", nombre: Idioma.t("Media") },
-                             { codigo: "0.8", nombre: Idioma.t("Mucha") }] },
-            { id: "estela", nombre: Idioma.t("Estela del cursor"),
-              desc: Idioma.t("Deja rastro al moverse"), glifo: 0xF05D8 },
-            { id: "tranquilo", nombre: Idioma.t("Modo tranquilo"),
-              desc: Idioma.t("Atenúa lo anterior al último mandato"),
+              alternativas: [{ codigo: "1", nombre: "Opaque" },
+                             { codigo: "0.94", nombre: "Soft" },
+                             { codigo: "0.88", nombre: "Medium" },
+                             { codigo: "0.8", nombre: "Strong" }] },
+            { id: "estela", nombre: "Cursor trail",
+              desc: "Leaves a trail when moving", glifo: 0xF05D8 },
+            { id: "tranquilo", nombre: "Quiet mode",
+              desc: "Dims everything before the last command",
               glifo: 0xF0335 }
         ]
         valores: ({

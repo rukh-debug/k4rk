@@ -27,17 +27,14 @@ Singleton {
         if (q.length === 0)
             return lista
 
-        // Se busca también en lo traducido: la lista está en el idioma de
-        // origen y quien busca escribe en el suyo.
+        // Plain match on combo, phrase, detail and section.
         const salida = []
         for (let i = 0; i < lista.length; ++i) {
             const a = lista[i]
             if (a.combo.toLowerCase().indexOf(q) !== -1
                 || a.hace.toLowerCase().indexOf(q) !== -1
-                || Idioma.t(a.hace).toLowerCase().indexOf(q) !== -1
                 || (a.detalle && a.detalle.toLowerCase().indexOf(q) !== -1)
-                || a.seccion.toLowerCase().indexOf(q) !== -1
-                || Idioma.t(a.seccion).toLowerCase().indexOf(q) !== -1)
+                || a.seccion.toLowerCase().indexOf(q) !== -1)
                 salida.push(a)
         }
         return salida

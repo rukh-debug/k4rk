@@ -325,5 +325,4 @@ More: [docs/API.md](docs/API.md) · [docs/PLUGINS.md](docs/PLUGINS.md) ·
 
 ---
 
-MIT. Spanish UI with translation files in [`traducciones/`](traducciones/) —
-English and Russian included.
+MIT.

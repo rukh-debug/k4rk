@@ -15,18 +15,6 @@ Singleton {
 
     readonly property string ruta: Quickshell.env("HOME") + "/.local/state/k4/ajustes.json"
 
-    // ── idioma ────────────────────────────────────────────────────
-    // "auto" sigue al del sistema. services/Idioma.qml lo lee.
-    property string idioma: "auto"
-
-    // ── datos personales ──────────────────────────────────────────
-    //  La doble llave de K4.Huella: el plugin declara `datos-personales` en
-    //  su manifiesto Y el usuario enciende aquí cada fuente. TODO apagado de
-    //  fábrica: los datos personales no se presumen.
-    property bool huellaActiva: false
-    property bool huellaSteam: false
-    property bool huellaPaquetes: false
-
     // ── captura y grabación ───────────────────────────────────────
     // services/Captura.qml los lee. Estaban a fuego ahí, con un comentario que
     // decía «en la fase 6 los lee de Settings»: esta es la fase 6.
@@ -75,6 +63,11 @@ Singleton {
     //  sino una regla: reserva como siempre, y se esconde SOLO mientras una
     //  ventana llena la pantalla. shell.qml es quien las obedece.
     property string reservaIsla: "reserva"   // reserva · completa · encima · escondida
+    //  Click outside the bar closes whatever view is deployed, like Escape.
+    //  shell.qml grows its surface to the whole screen while a view is open
+    //  and spends the outside tap on closing it. Off is the old behavior:
+    //  the click passes through to the desktop and the view stays.
+    property bool cerrarConClicFuera: true
     // widgets/TrayRow.qml: iconos de bandeja en la píldora
     // Apagada de fábrica: en la píldora los iconos de bandeja son ruido casi
     // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
@@ -120,109 +113,80 @@ Singleton {
         guardar()
     }
 
-    readonly property var definicion: [
+    readonly property var definicion: [,,
         {
-            grupo: Idioma.t("Idioma"),
-            glifo: 0xF05CA,
-            desc: Idioma.t("En qué idioma habla la barra."),
-            opciones: [
-                { id: "idioma", tipo: "eleccion", de: "idiomas",
-                  nombre: Idioma.t("Idioma de la barra"),
-                  desc: Idioma.t("Automático sigue al del sistema"),
-                  glifo: 0xF05CA }
-            ]
-        },
-        {
-            grupo: Idioma.t("Datos personales"),
-            glifo: 0xF0237,
-            desc: Idioma.t("Qué puede saber de ti un plugin, y qué no."),
-            opciones: [
-                { id: "huellaActiva", nombre: Idioma.t("Compartir mi huella con plugins"),
-                  desc: Idioma.t("Solo agregados, solo con permiso declarado, y borrable"),
-                  glifo: 0xF0349 },
-                { requiere: "huellaActiva", id: "huellaSteam",
-                  nombre: Idioma.t("Biblioteca de Steam"),
-                  desc: Idioma.t("Cuántos juegos y minutos, nunca partidas ni cuentas"),
-                  glifo: 0xF0EB0 },
-                { requiere: "huellaActiva", id: "huellaPaquetes",
-                  nombre: Idioma.t("Inventario de paquetes"),
-                  desc: Idioma.t("Cuántos hay y cuándo se actualizó, nada más"),
-                  glifo: 0xF03D7 }
-            ]
-        },
-        {
-            grupo: Idioma.t("Captura"),
+            grupo: "Capture",
             glifo: 0xF0100,
-            desc: Idioma.t("Qué entra en la foto y qué hacer con ella después."),
+            desc: "What goes into the shot, and what happens to it afterwards.",
             opciones: [
                 { id: "capturaDestino", tipo: "eleccion", de: "destinos",
-                  nombre: Idioma.t("Qué hacer con la foto"),
-                  desc: Idioma.t("Lo que pasa al capturar sin decir nada más"),
+                  nombre: "What to do with the shot",
+                  desc: "What happens when you capture without saying more",
                   glifo: 0xF0E51 },
-                { id: "capturaCursor", nombre: Idioma.t("Incluir el puntero"),
-                  desc: Idioma.t("Sale el ratón donde estuviera al disparar"),
+                { id: "capturaCursor", nombre: "Include the pointer",
+                  desc: "The pointer shows wherever it was on capture",
                   glifo: 0xF037D }
             ]
         },
         {
-            grupo: Idioma.t("Grabación"),
+            grupo: "Recording",
             glifo: 0xF044A,
-            desc: Idioma.t("Audio, cámara y calidad de lo que grabas."),
+            desc: "Audio, camera and quality of what you record.",
             opciones: [
                 { id: "grabarAudio", tipo: "eleccion", de: "audios",
-                  nombre: Idioma.t("Qué sonido se graba"),
-                  desc: Idioma.t("En pistas separadas, para equilibrarlas después"),
+                  nombre: "Which sound gets recorded",
+                  desc: "On separate tracks, to balance them later",
                   glifo: 0xF057E },
                 { id: "grabarMicro", tipo: "eleccion", de: "microfonos",
-                  nombre: Idioma.t("Micrófono"),
-                  desc: Idioma.t("Automático sigue al del sistema"),
+                  nombre: "Microphone",
+                  desc: "Automatic follows the system",
                   glifo: 0xF036C },
                 { id: "grabarSalida", tipo: "eleccion", de: "salidas",
-                  nombre: Idioma.t("Salida que se graba"),
-                  desc: Idioma.t("De dónde sale el sonido del sistema"),
+                  nombre: "Output that gets recorded",
+                  desc: "Where the system sound comes from",
                   glifo: 0xF04C3 },
                 { id: "grabarFps", tipo: "eleccion", de: "fps",
-                  nombre: Idioma.t("Fotogramas por segundo"),
-                  desc: Idioma.t("60 va más suave y ocupa el doble"),
+                  nombre: "Frames per second",
+                  desc: "60 is smoother and twice the size",
                   glifo: 0xF0567 },
                 { id: "grabarCodec", tipo: "eleccion", de: "codecs",
-                  nombre: Idioma.t("Códec de la grabación"),
-                  desc: Idioma.t("HEVC ocupa menos y tarda más en abrirse"),
+                  nombre: "Recording codec",
+                  desc: "HEVC is smaller and slower to open",
                   glifo: 0xF0381 },
                 //  Solo si hay cámara: ofrecer un interruptor que no puede
                 //  hacer nada es peor que no ofrecerlo.
-                { id: "grabarCamara", nombre: Idioma.t("Grabar también la cámara"),
-                  desc: Idioma.t("En un fichero aparte, para colocarla en el editor"),
+                { id: "grabarCamara", nombre: "Also record the camera",
+                  desc: "In a separate file, to place it in the editor",
                   glifo: 0xF0567, si: "camara" }
             ]
         },
         {
-            grupo: Idioma.t("Editor"),
+            grupo: "Editor",
             glifo: 0xF03EB,
-            desc: Idioma.t("El editor que se abre cuando terminas de capturar."),
+            desc: "The editor that opens when you finish capturing.",
             opciones: [
-                { id: "zoomAuto", nombre: Idioma.t("Proponer zoom al grabar"),
-                  desc: Idioma.t("Del rastro del cursor y de los clics"),
+                { id: "zoomAuto", nombre: "Propose zoom while recording",
+                  desc: "From the cursor trail and the clicks",
                   glifo: 0xF1276 },
                 { requiere: "zoomAuto", id: "zoomNivel", tipo: "eleccion",
                   de: "niveles",
-                  nombre: Idioma.t("Cuánto amplía"),
-                  desc: Idioma.t("El máximo de los momentos que propone"),
+                  nombre: "How much it zooms",
+                  desc: "The ceiling for the moments it proposes",
                   glifo: 0xF034B },
                 { id: "editorCodec", tipo: "eleccion", de: "codecs",
-                  nombre: Idioma.t("Códec al renderizar"),
-                  desc: Idioma.t("El del vídeo que sale del editor"),
+                  nombre: "Render codec",
+                  desc: "The one for videos leaving the editor",
                   glifo: 0xF0381 },
                 { id: "editorSonoridad",
-                  nombre: Idioma.t("Sonoridad de YouTube"),
-                  desc: Idioma.t("Normaliza a −14 LUFS al renderizar"),
+                  nombre: "YouTube loudness",
+                  desc: "Normalizes to −14 LUFS when rendering",
                   glifo: 0xF147D }
             ]
         },
         {
-            grupo: Idioma.t("Island"),
+            grupo: "Island",
             glifo: 0xF1513,
-            desc: Idioma.t("Cuánto sitio se queda la barra, y cuándo se aparta."),
+            desc: "How much room the bar keeps, and when it gets out of the way.",
             //  Dónde vive, cómo se alinea y cómo ocupa el sitio se explican mal
             //  con palabras: «Reservar sitio» y «Encima» suenan parecido y
             //  hacen cosas muy distintas con tus ventanas. Encima de las
@@ -230,38 +194,40 @@ Singleton {
             vista: "island",
             opciones: [
                 { id: "posicionBarra", tipo: "eleccion", de: "posiciones",
-                  nombre: Idioma.t("Dónde vive la barra"),
-                  desc: Idioma.t("La island y sus alas se voltean solas"),
+                  nombre: "Where the bar lives",
+                  desc: "The island and its wings flip on their own",
                   glifo: 0xF10A9 },
                 { id: "alineacionBarra", tipo: "eleccion", de: "alineaciones",
-                  nombre: Idioma.t("Alineación de la island"),
-                  desc: Idioma.t("En qué punto del borde se coloca"),
+                  nombre: "Island alignment",
+                  desc: "Where along the edge it sits",
                   glifo: 0xF11C3 },
                 { id: "reservaIsla", tipo: "eleccion", de: "reservas",
-                  nombre: Idioma.t("Cómo ocupa el sitio"),
-                  desc: Idioma.t("Aparta las ventanas, flota sobre ellas o se esconde"),
+                  nombre: "How it takes up space",
+                  desc: "Pushes windows aside, floats over them, or hides",
                   glifo: 0xF003E },   // md-arrange_bring_to_front
-                { id: "bandejaEnPildora", nombre: Idioma.t("Bandeja en la píldora"),
-                  desc: Idioma.t("Iconos de las aplicaciones en segundo plano"), glifo: 0xF0FB0 },
-                { id: "notificacionesAlPasar", nombre: Idioma.t("Notificaciones al pasar el ratón"),
-                  desc: Idioma.t("Las recientes, bajo el reloj y el reproductor"), glifo: 0xF009A },
-                { id: "notificacionesAlEnfocar", nombre: Idioma.t("Descartar al ir a la aplicación"),
-                  desc: Idioma.t("Ponerte en su ventana ya es haberlas atendido"), glifo: 0xF039F }
+                { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
+                  desc: "Same as Escape: a deployed view closes when you click outside the bar",
+                  glifo: 0xF037D },   // md-cursor-default
+                { id: "bandejaEnPildora", nombre: "Tray in the pill",
+                  desc: "Icons of background apps", glifo: 0xF0FB0 },
+                { id: "notificacionesAlPasar", nombre: "Notifications on hover",
+                  desc: "Recent ones, under the clock and player", glifo: 0xF009A },
+                { id: "notificacionesAlEnfocar", nombre: "Dismiss when you switch to the app",
+                  desc: "Switching to its window already counts as having attended to them", glifo: 0xF039F }
             ]
         },
         {
-            grupo: Idioma.t("Apariencia"),
+            grupo: "Appearance",
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
             //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
             //  el interruptor esté ahí dentro.
             //
-            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
-            //  buscan, y quien teclea «gaps» en una barra en español merece
-            //  encontrarlo igual.
+            //  Never shown, only searched: typing «gaps» deserves to find
+            //  this section even though the switch lives inside a widget.
             claves: ["fondo", "fondos", "wallpaper", "escritorio", "desktop", "imagen", "video", "monitor", "pantalla"],
             glifo: 0xF03D8,
-            desc: Idioma.t("El fondo de escritorio, y de dónde salen los colores de la barra."),
+            desc: "The desktop wallpaper, and where the bar's colours come from.",
             //  El fondo y el color, juntos y en este orden: el color SALE del
             //  fondo mientras no lo toques a mano, así que separarlos en dos
             //  cajones obligaba a cruzar la ventana para entender una cosa.
@@ -271,18 +237,17 @@ Singleton {
             opciones: []
         },
         {
-            grupo: Idioma.t("Color"),
+            grupo: "Colour",
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
             //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
             //  el interruptor esté ahí dentro.
             //
-            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
-            //  buscan, y quien teclea «gaps» en una barra en español merece
-            //  encontrarlo igual.
+            //  Never shown, only searched: typing «gaps» deserves to find
+            //  this section even though the switch lives inside a widget.
             claves: ["color", "colour", "colores", "preset", "acento", "accent", "paleta", "palette", "tema", "theme", "degradado"],
             glifo: 0xF03D9,
-            desc: Idioma.t("De dónde salen los colores: del fondo, o de un preset que elijas."),
+            desc: "Where the colours come from: the wallpaper, or a preset you pick.",
             //  Sección aparte y no debajo de los fondos, aunque estén
             //  emparentados: la rejilla se desplaza por dentro, así que lo que
             //  fuera detrás quedaba inalcanzable con la rueda. Un scroll dentro
@@ -291,41 +256,39 @@ Singleton {
             opciones: []
         },
         {
-            grupo: Idioma.t("Ventanas"),
+            grupo: "Windows",
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
             //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
             //  el interruptor esté ahí dentro.
             //
-            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
-            //  buscan, y quien teclea «gaps» en una barra en español merece
-            //  encontrarlo igual.
+            //  Never shown, only searched: typing «gaps» deserves to find
+            //  this section even though the switch lives inside a widget.
             claves: ["ventanas", "windows", "borde", "border", "hueco", "huecos", "gap", "gaps", "redondeo", "rounding", "esquina", "esquinas"],
             glifo: 0xF10AC,
-            desc: Idioma.t("Bordes, huecos y esquinas de las ventanas de Hyprland."),
+            desc: "Borders, gaps and corners of Hyprland's windows.",
             vista: "ventanas",
             opciones: []
         },
         {
-            grupo: Idioma.t("Efectos"),
+            grupo: "Effects",
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
             //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
             //  el interruptor esté ahí dentro.
             //
-            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
-            //  buscan, y quien teclea «gaps» en una barra en español merece
-            //  encontrarlo igual.
+            //  Never shown, only searched: typing «gaps» deserves to find
+            //  this section even though the switch lives inside a widget.
             claves: ["efectos", "effects", "blur", "desenfoque", "opacidad", "opacity", "sombra", "sombras", "shadow", "animacion", "animaciones", "animation"],
             glifo: 0xF00B5,
-            desc: Idioma.t("Desenfoque, opacidad, sombras y animaciones."),
+            desc: "Blur, opacity, shadows and animations.",
             vista: "efectos",
             opciones: []
         },
         {
-            grupo: Idioma.t("Plugins"),
+            grupo: "Plugins",
             glifo: 0xF0431,
-            desc: Idioma.t("Lo que tienes instalado: encender, apagar y de dónde vino."),
+            desc: "What you have installed: on, off, and where it came from.",
             //  Esta sección no se pinta como una pila de interruptores: son
             //  casi cuarenta, y el ajuste de cada plugin estaba en OTRA
             //  sección. Se despliega cada uno con lo suyo dentro. La vista lo
@@ -341,26 +304,21 @@ Singleton {
 
     //  Las alternativas de cada opción de varias respuestas.
     //
-    //  Aquí y no en la vista: la vista tenía `de === "idiomas"` a fuego y todo lo
-    //  demás devolvía una lista vacía, así que añadir una elección no era añadir
-    //  una opción sino tocar el QML de la pantalla. Ahora es una entrada más en
-    //  este `switch`.
+    //  Here and not in the view: each multi-choice option lists its
+    //  alternatives here, so adding a choice never means touching the view.
     function opcionesDe(de) {
-        if (de === "idiomas")
-            return [{ codigo: "auto", nombre: Idioma.t("Automático") }]
-                .concat(Idioma.disponibles)
         //  «Anotar» dejó de ser un destino: el anotador se abre desde la
         //  tarjeta cuando se pide, no solo en cada captura. Un valor viejo
         //  guardado sigue valiendo como «Guardar».
         if (de === "destinos")
-            return [{ codigo: "fichero",      nombre: Idioma.t("Guardar") },
-                    { codigo: "portapapeles", nombre: Idioma.t("Copiar") },
-                    { codigo: "ambos",        nombre: Idioma.t("Las dos") }]
+            return [{ codigo: "fichero",      nombre: "Save" },
+                    { codigo: "portapapeles", nombre: "Copy" },
+                    { codigo: "ambos",        nombre: "Both" }]
         if (de === "audios")
-            return [{ codigo: "ninguno", nombre: Idioma.t("Nada") },
-                    { codigo: "sistema", nombre: Idioma.t("Sistema") },
-                    { codigo: "micro",   nombre: Idioma.t("Micro") },
-                    { codigo: "ambos",   nombre: Idioma.t("Los dos") }]
+            return [{ codigo: "ninguno", nombre: "None" },
+                    { codigo: "sistema", nombre: "System" },
+                    { codigo: "micro",   nombre: "Mic" },
+                    { codigo: "ambos",   nombre: "Both" }]
         //  Los dispositivos de verdad, con su etiqueta legible. Los lista
         //  Captura vía pactl; aquí solo se les pone «Automático» delante.
         //  «Automático» dice a QUIÉN sigue: «Automático (G733)». Sin eso,
@@ -370,16 +328,16 @@ Singleton {
         if (de === "microfonos")
             return [{ codigo: "auto",
                       nombre: Captura.etiquetaMicroDefecto
-                          ? Idioma.t("Automático") + " (" + Captura.etiquetaMicroDefecto + ")"
-                          : Idioma.t("Automático") }]
+                          ? "Automatic" + " (" + Captura.etiquetaMicroDefecto + ")"
+                          : "Automatic" }]
                 .concat(Captura.microfonos.map(function (m) {
                     return { codigo: m.nombre, nombre: m.etiqueta }
                 }))
         if (de === "salidas")
             return [{ codigo: "auto",
                       nombre: Captura.etiquetaSalidaDefecto
-                          ? Idioma.t("Automático") + " (" + Captura.etiquetaSalidaDefecto + ")"
-                          : Idioma.t("Automático") }]
+                          ? "Automatic" + " (" + Captura.etiquetaSalidaDefecto + ")"
+                          : "Automatic" }]
                 .concat(Captura.salidasAudio.map(function (s) {
                     return { codigo: s.nombre, nombre: s.etiqueta }
                 }))
@@ -390,25 +348,25 @@ Singleton {
             return [{ codigo: 30, nombre: "30" },
                     { codigo: 60, nombre: "60" }]
         if (de === "posiciones")
-            return [{ codigo: "arriba", nombre: Idioma.t("Arriba") },
-                    { codigo: "abajo",  nombre: Idioma.t("Abajo") }]
+            return [{ codigo: "arriba", nombre: "Top" },
+                    { codigo: "abajo",  nombre: "Bottom" }]
         //  De menos a más, que es como se lee una escala: quitar sitio
         //  siempre, quitarlo salvo cuando estorba, no quitarlo, y no estar.
         if (de === "reservas")
-            return [{ codigo: "reserva",   nombre: Idioma.t("Reservar sitio") },
-                    { codigo: "completa",  nombre: Idioma.t("Fuera a pantalla completa") },
-                    { codigo: "encima",    nombre: Idioma.t("Encima") },
-                    { codigo: "escondida", nombre: Idioma.t("Escondida") }]
+            return [{ codigo: "reserva",   nombre: "Reserve space" },
+                    { codigo: "completa",  nombre: "Away when fullscreen" },
+                    { codigo: "encima",    nombre: "On top" },
+                    { codigo: "escondida", nombre: "Hidden" }]
         if (de === "alineaciones")
-            return [{ codigo: 15, nombre: Idioma.t("Izquierda") },
-                    { codigo: 50, nombre: Idioma.t("Centro") },
-                    { codigo: 85, nombre: Idioma.t("Derecha") }]
+            return [{ codigo: 15, nombre: "Left" },
+                    { codigo: 50, nombre: "Centre" },
+                    { codigo: 85, nombre: "Right" }]
         if (de === "niveles")
             //  Etiquetas y no números: «2,5» no le dice nada a nadie, y lo que se
             //  quiere elegir es cuánto se nota.
-            return [{ codigo: 1.8, nombre: Idioma.t("Suave") },
-                    { codigo: 2.5, nombre: Idioma.t("Medio") },
-                    { codigo: 3.2, nombre: Idioma.t("Fuerte") }]
+            return [{ codigo: 1.8, nombre: "Soft" },
+                    { codigo: 2.5, nombre: "Medium" },
+                    { codigo: 3.2, nombre: "Strong" }]
         return []
     }
 
@@ -451,13 +409,11 @@ Singleton {
     //  olvidarse de una. Y una lista y no un recorrido del objeto entero porque
     //  un singleton tiene decenas de propiedades internas que no son ajustes.
     readonly property var claves: [
-        "idioma",
         "capturaDestino", "capturaCursor",
         "grabarAudio", "grabarMicro", "grabarSalida", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",
         "zoomAuto", "zoomNivel", "editorCodec", "editorSonoridad",
-        "posicionBarra", "alineacionBarra", "reservaIsla",
-        "huellaActiva", "huellaSteam", "huellaPaquetes",
+        "posicionBarra", "alineacionBarra", "reservaIsla", "cerrarConClicFuera",
         "bandejaEnPildora", "notificacionesAlPasar", "notificacionesAlEnfocar",
         "accesosDirectos"
     ]

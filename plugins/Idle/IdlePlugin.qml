@@ -11,7 +11,7 @@ K4Plugin {
     id: self
 
     name: "idle"
-    title: Idioma.t("Píldora")
+    title: "Pill"
     priority: 0
     active: habilitado
 

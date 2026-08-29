@@ -28,8 +28,8 @@ IslandTile {
 
             IslandLabel {
                 text: Wifi.activada
-                    ? (Wifi.device && Wifi.device.scannerEnabled ? Idioma.t("Buscando redes…") : Idioma.t("Redes"))
-                    : Idioma.t("Wi‑Fi desactivado")
+                    ? (Wifi.device && Wifi.device.scannerEnabled ? "Scanning for networks…" : "Networks")
+                    : "Wi‑Fi off"
                 color: Theme.muted
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
@@ -58,7 +58,7 @@ IslandTile {
                 required property var modelData
                 width: ListView.view.width
                 glyph: Wifi.strengthIcon(modelData)
-                title: modelData.name.length > 0 ? modelData.name : Idioma.t("(red oculta)")
+                title: modelData.name.length > 0 ? modelData.name : "(hidden network)"
                 subtitle: Wifi.status(modelData)
                 active: modelData.connected
                 busy: modelData.stateChanging
@@ -71,7 +71,7 @@ IslandTile {
             IslandLabel {
                 anchors.centerIn: parent
                 visible: Wifi.networks.length === 0
-                text: Wifi.activada ? Idioma.t("Buscando redes…") : Idioma.t("Activa el Wi‑Fi para ver redes")
+                text: Wifi.activada ? "Scanning for networks…" : "Turn on Wi‑Fi to see networks"
                 color: Theme.muted
                 font.pixelSize: 12
             }
@@ -111,7 +111,7 @@ IslandTile {
                     IslandLabel {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: Wifi.pskInput.length === 0
-                        text: Wifi.pskTarget ? Idioma.t("Contraseña de ") + Wifi.pskTarget.name : ""
+                        text: Wifi.pskTarget ? "Password for " + Wifi.pskTarget.name : ""
                         color: Theme.dim
                         font.pixelSize: 12
                     }

@@ -15,7 +15,7 @@ K4.Aparicion {
             spacing: 14
 
             K4.Etiqueta {
-                text: K4.Idioma.t("Piezas de la API")
+                text: "API pieces"
                 font.pixelSize: 15
                 font.weight: Font.Bold
             }
@@ -33,7 +33,7 @@ K4.Aparicion {
                 }
 
                 K4.Etiqueta {
-                    text: K4.Idioma.t("Interruptor")
+                    text: "Toggle switch"
                     width: parent.width - 100
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -49,7 +49,7 @@ K4.Aparicion {
             // ── Deslizador ────────────────────────────────────────
             K4.Deslizador {
                 width: parent.width
-                etiqueta: K4.Idioma.t("Deslizador")
+                etiqueta: "Slider"
                 valor: vista.plugin.nivel
                 sufijo: "%"
                 onMovido: function (v) { vista.plugin.nivel = v }
@@ -64,7 +64,7 @@ K4.Aparicion {
                 K4.Etiqueta {
                     width: 70
                     anchors.verticalCenter: parent.verticalCenter
-                    text: K4.Idioma.t("Medidor")
+                    text: "Gauge"
                     color: K4.Tema.apagado
                     font.pixelSize: 11
                 }
@@ -113,7 +113,7 @@ K4.Aparicion {
                         K4.Etiqueta {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: vista.plugin.baldosaActiva
-                                ? K4.Idioma.t("Activa") : K4.Idioma.t("Baldosa")
+                                ? "Active" : "Tile"
                             font.pixelSize: 11
                         }
                     }
@@ -126,7 +126,7 @@ K4.Aparicion {
 
                     K4.Etiqueta {
                         anchors.centerIn: parent
-                        text: K4.Idioma.t("No pulsable")
+                        text: "Not clickable"
                         color: K4.Tema.apagado
                         font.pixelSize: 11
                     }
@@ -153,8 +153,7 @@ K4.Aparicion {
 
                 K4.Etiqueta {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: K4.Idioma.f(K4.Idioma.t("%1 pulsaciones"),
-                                      vista.plugin.pulsaciones)
+                    text: `${vista.plugin.pulsaciones} clicks`
                     color: K4.Tema.apagado
                     font.pixelSize: 11
                 }
@@ -165,7 +164,7 @@ K4.Aparicion {
             //  Va de `cursorDelegate` y ya: el campo lo coloca, la pieza
             //  decide cómo se pinta. Escribe aquí y mira el rastro.
             K4.Etiqueta {
-                text: K4.Idioma.t("Estela — escribe y mira el cursor")
+                text: "Estela — type and watch the cursor"
                 font.pixelSize: 11
                 color: K4.Tema.apagado
             }
@@ -186,7 +185,7 @@ K4.Aparicion {
                     selectByMouse: true
                     cursorVisible: true
                     cursorDelegate: K4.Estela {}
-                    text: K4.Idioma.t("escribe algo")
+                    text: "type something"
                 }
             }
 
@@ -201,8 +200,7 @@ K4.Aparicion {
                     K4.Etiqueta {
                         anchors.verticalCenter: parent.verticalCenter
                         x: 12
-                        text: K4.Idioma.f(K4.Idioma.t("Fila %1 · mueve la rueda"),
-                                          index + 1)
+                        text: `Row ${index + 1} · scroll the wheel`
                         font.pixelSize: 12
                     }
                 }

@@ -22,7 +22,7 @@ ColumnLayout {
     visible: Editor.pistasAudio.length > 0
 
     IslandLabel {
-        text: Idioma.t("Audio")
+        text: "Audio"
         color: Theme.dim
         font.pixelSize: 9
         font.capitalization: Font.AllUppercase
@@ -71,7 +71,7 @@ ColumnLayout {
                 Layout.preferredWidth: 62
                 text: filaPista.modelData.titulo.length > 0
                     ? filaPista.modelData.titulo
-                    : Idioma.t("Pista ") + (filaPista.modelData.i + 1)
+                    : "Track " + (filaPista.modelData.i + 1)
                 color: fichaPistas.reproductor.pistaAudio === filaPista.modelData.i
                     ? Theme.ink : Theme.muted
                 font.pixelSize: 10

@@ -14,7 +14,7 @@ K4Plugin {
     id: self
 
     name: "tray"
-    title: Idioma.t("Bandeja")
+    title: "Tray"
     priority: 63
     active: habilitado && open
     //  El teclado entero mientras está abierto: «opcional» es OnDemand y

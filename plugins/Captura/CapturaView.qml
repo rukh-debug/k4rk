@@ -59,7 +59,7 @@ FadeIn {
             spacing: 8
 
             IslandLabel {
-                text: Idioma.t("Capturar")
+                text: "Capture"
                 color: Theme.muted
                 font.pixelSize: 11
             }
@@ -138,7 +138,7 @@ FadeIn {
             spacing: 6
 
             IslandLabel {
-                text: Idioma.t("Destino")
+                text: "Destination"
                 color: Theme.dim
                 font.pixelSize: 9
                 Layout.rightMargin: 2
@@ -219,7 +219,7 @@ FadeIn {
                     }
 
                     IslandLabel {
-                        text: Idioma.t("Grabar")
+                        text: "Record"
                         color: Theme.ink
                         font.pixelSize: 10
                         font.weight: Font.DemiBold
@@ -245,7 +245,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: Idioma.t("← → elige · intro captura")
+                text: "← → picks · enter captures"
                 color: Theme.dim
                 font.pixelSize: 9
             }
@@ -286,7 +286,7 @@ FadeIn {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 12
-            text: Idioma.t("esc cancela")
+            text: "esc cancels"
             color: Theme.dim
             font.pixelSize: 10
         }
@@ -329,10 +329,10 @@ FadeIn {
             IslandLabel {
                 text: {
                     if (Captura.ultimaCopiada && Captura.ultimaRuta.length > 0)
-                        return Idioma.t("Copiada y guardada")
+                        return "Copied and saved"
                     if (Captura.ultimaCopiada)
-                        return Idioma.t("Copiada")
-                    return Idioma.t("Guardada")
+                        return "Copied"
+                    return "Saved"
                 }
                 color: Theme.ink
                 font.pixelSize: 13
@@ -356,10 +356,10 @@ FadeIn {
 
                 Repeater {
                     model: [
-                        { texto: Idioma.t("Anotar"),  icono: 0xF03EB, accion: "anotar" },
-                        { texto: Idioma.t("Abrir"),   icono: 0xF03CC, accion: "abrir" },
-                        { texto: Idioma.t("Carpeta"), icono: 0xF024B, accion: "carpeta" },
-                        { texto: Idioma.t("Copiar"),  icono: 0xF018F, accion: "copiar" }
+                        { texto: "Annotate",  icono: 0xF03EB, accion: "anotar" },
+                        { texto: "Open",   icono: 0xF03CC, accion: "abrir" },
+                        { texto: "Folder", icono: 0xF024B, accion: "carpeta" },
+                        { texto: "Copy",  icono: 0xF018F, accion: "copiar" }
                     ]
 
                     delegate: Rectangle {
@@ -444,7 +444,7 @@ FadeIn {
             spacing: 4
 
             IslandLabel {
-                text: Idioma.t("Grabación guardada")
+                text: "Recording saved"
                 color: Theme.ink
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -466,9 +466,9 @@ FadeIn {
 
                 Repeater {
                     model: [
-                        { texto: Idioma.t("Editor"),  icono: 0xF1122, accion: "editor" },
-                        { texto: Idioma.t("Abrir"),   icono: 0xF03CC, accion: "abrir" },
-                        { texto: Idioma.t("Carpeta"), icono: 0xF024B, accion: "carpeta" }
+                        { texto: "Editor",  icono: 0xF1122, accion: "editor" },
+                        { texto: "Open",   icono: 0xF03CC, accion: "abrir" },
+                        { texto: "Folder", icono: 0xF024B, accion: "carpeta" }
                     ]
 
                     delegate: Rectangle {
