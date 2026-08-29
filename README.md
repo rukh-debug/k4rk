@@ -44,7 +44,7 @@ the flake: [k4 on Nix](docs/NIX.md).
 | **Hyprland's theme**, live — colors, gaps, borders, blur, animations, and the wallpaper. | **Every shortcut**, searchable — yours and the ones k4 adds. |
 
 Plus notifications with actions and history, a system tray, clipboard history,
-a window switcher, and a bar that lives wherever you put it — top or bottom,
+and a bar that lives wherever you put it — top or bottom,
 left, center or right.
 
 ### Capture, and an editor that is not a separate app
@@ -87,29 +87,6 @@ The clock is a plugin. So is the launcher, the control center, the capture
 tool. There is no privileged inner circle — **the API a stranger's plugin gets
 is the API the launcher uses.** Plugins load in isolation, and a broken one is
 recorded with its error while the bar starts without it.
-
-### Install one from the bar
-
-<table>
-<tr>
-<td width="50%"><img src="screenshots/plugins-discover.png" alt="The Discover tab, listing published plugins with their commit"></td>
-<td width="50%"><img src="screenshots/plugins-installed.png" alt="The Installed tab, showing each plugin's permissions and origin"></td>
-</tr>
-<tr>
-<td><b>Discover</b> — what is published, with the commit each entry pins.</td>
-<td><b>Installed</b> — what you have, where it came from, what it asked for.</td>
-</tr>
-</table>
-
-Installing shows you what the plugin declares, where it came from and **which
-commit** — and installs that exact commit, so a branch moving while you read
-cannot change what lands. From the terminal:
-
-```sh
-python3 tools/plugins.py --search          # what's published
-python3 tools/plugins.py --install <url> --commit <sha>
-python3 tools/plugins.py --check       # what of yours has something newer
-```
 
 ### Write one in a minute
 
@@ -211,7 +188,6 @@ That file is owned by k4; put your overrides after it.
 | `SUPER + Z` | k4 settings |
 | `SUPER + Shift + W` | Hyprland theme |
 | `SUPER + V` | Clipboard history |
-| `SUPER + B` | File browser |
 | `SUPER + K` | Shortcut viewer |
 | `SUPER + L` | Lock screen |
 | `SUPER + G` | Ask Codex |

@@ -6,7 +6,6 @@ singleton Media 1.0 Media.qml
 singleton Wifi 1.0 Wifi.qml
 singleton Bt 1.0 Bt.qml
 singleton Notifs 1.0 Notifs.qml
-singleton Weather 1.0 Weather.qml
 singleton Tray 1.0 Tray.qml
 singleton Settings 1.0 Settings.qml
 singleton Enganches 1.0 Enganches.qml
