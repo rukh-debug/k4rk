@@ -19,7 +19,7 @@ integration, starts the bar, and keeps a checkout at
 `~/.config/quickshell/k4`. Run `./instalar --dry-run` first if you would rather
 see what it would do.
 
-On Nix, use the flake instead — `nix run github:rukh-debug/k4`, a Home
+On Nix, use the flake instead — `nix run github:rukh-debug/k4rk`, a Home
 Manager module, or the overlay — same bar, same plugins, updates through
 the flake: [k4 on Nix](docs/NIX.md).
 

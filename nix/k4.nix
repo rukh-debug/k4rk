@@ -152,7 +152,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       plugin. This package runs it from a writable mirror of the store path
       so user plugins and hot reload keep working under Nix.
     '';
-    homepage = "https://github.com/rukh-debug/k4";
+    homepage = "https://github.com/rukh-debug/k4rk";
     license = lib.licenses.mit;
     platforms = lib.platforms.linux;
     mainProgram = "k4";
