@@ -9,6 +9,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../core"
 
 Singleton {
     id: ajustes
@@ -57,6 +58,17 @@ Singleton {
     //  sidebar.
     property int settingsIslandWidth: 940    // 720–1400, steps of 20
     property int settingsIslandHeight: 620    // 420–900, steps of 20
+
+    //  ── la letra del shell ───────────────
+    //  The shell's typeface, as a family name. Empty is the shell's own
+    //  default and not a state to repair: the row list shows it as
+    //  «Shell default» and picking it again is picking nothing.
+    //
+    //  The value travels TO `Theme` (which stays the import-free base of
+    //  the graph): every label that says `Theme.uiFont` follows along, and
+    //  the whole bar re-letters itself the moment you pick one.
+    property string shellFont: ""
+    onShellFontChanged: Theme.chosenFont = shellFont
 
     // ── accesos directos ──────────────────────────────────────────
     //  Qué aplicaciones salen en la franja del centro de control, por id de
@@ -193,6 +205,16 @@ Singleton {
             opciones: []
         },
         {
+            grupo: "Fonts",
+            padre: "Display",
+            claves: ["font", "fuente", "fonts", "fuentes", "tipografia",
+                     "typography", "letra", "typeface"],
+            glifo: 0xF06D6,        // md-format_font
+            desc: "The typeface the shell is written in.",
+            vista: "fonts",
+            opciones: []
+        },
+        {
             grupo: "Windows",
             padre: "Display",
             claves: ["ventanas", "windows", "borde", "border", "hueco", "huecos", "gap", "gaps", "redondeo", "rounding", "esquina", "esquinas"],
@@ -291,6 +313,7 @@ Singleton {
         "barPosition", "barAlignment", "islandSpace", "cerrarConClicFuera",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "settingsIslandWidth", "settingsIslandHeight",
+        "shellFont",
         "quickAccess"
     ]
 
