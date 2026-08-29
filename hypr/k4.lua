@@ -113,9 +113,9 @@ hl.bind(mod .. " + ALT + T",     hl.dsp.exec_cmd(term .. "mudar"))
 ----------------------------------------------------------------------------
 -- El texto seleccionado no se adjunta solo: se ofrece en la cabecera y se
 -- adjunta con Tab, con un clic en el chip, o abriendo con la última de estas.
--- SUPER+G es wl-kbptr en la configuración de rukh: ask va sin tecla propia,
--- quedan las tres de contexto.
--- hl.bind(mod .. " + G",           hl.dsp.exec_cmd(k4 .. "ask"))
+-- (SUPER+G fue wl-kbptr en su día; retirado — sus teclas en pantalla no
+-- recibían clic con las capas de k4 encima — y la tecla vuelve a ask.)
+hl.bind(mod .. " + G",           hl.dsp.exec_cmd(k4 .. "ask"))
 hl.bind(mod .. " + SHIFT + G",   hl.dsp.exec_cmd(k4 .. "askScreen"))
 hl.bind(mod .. " + ALT + G",     hl.dsp.exec_cmd(k4 .. "askRegion"))
 hl.bind(mod .. " + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
