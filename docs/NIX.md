@@ -5,7 +5,7 @@ its whole environment, and the Hyprland integration. This page is for the
 Nix path; the [README](../README.md) is still the front door.
 
 ```sh
-nix run github:rukh-debug/k4        # the bar, right now
+nix run github:rukh-debug/k4rk        # the bar, right now
 nix develop                          # the development shell, on a checkout
 ```
 
@@ -63,7 +63,7 @@ same inside a Hyprland session on NixOS as on any other distro:
 
 ```nix
 # flake.nix
-inputs.k4.url = "github:rukh-debug/k4";
+inputs.k4.url = "github:rukh-debug/k4rk";
 inputs.k4.inputs.nixpkgs.follows = "nixpkgs";
 ```
 
@@ -103,7 +103,7 @@ Options:
 ## NixOS
 
 ```nix
-inputs.k4.url = "github:rukh-debug/k4";
+inputs.k4.url = "github:rukh-debug/k4rk";
 ```
 
 ```nix
