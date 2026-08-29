@@ -59,6 +59,44 @@ Singleton {
     property int settingsIslandWidth: 940    // 720–1400, steps of 20
     property int settingsIslandHeight: 620    // 420–900, steps of 20
 
+    //  ── the control centre ──────────────────
+    //  plugins/Panel dresses itself with these. The WIDTH is a number you
+    //  turn; the height is not, and on purpose: it is derived from what is
+    //  on show (each block brings its own height), so hiding the media row
+    //  makes the centre shorter instead of leaving a hole. Blocks can be
+    //  turned off (`panelShow*`, and the tiles one by one) and re-ordered
+    //  (`panelOrder`, top to bottom). The header keeps its bells and
+    //  whistles always; its two decorations are optional.
+    property int panelWidth: 860              // 640–1100, steps of 20
+    property bool panelShowToggles: true
+    property bool panelTileWifi: true
+    property bool panelTileBluetooth: true
+    property bool panelTileSound: true
+    property bool panelShowMedia: true
+    property bool panelShowShortcuts: true
+    property bool panelShowWorkspaces: true
+    property bool panelShowClock: true
+    //  Block ids top to bottom: "toggles", "media", "shortcuts".
+    property var panelOrder: ["toggles", "media", "shortcuts"]
+
+    //  panelOrder made honest, for the two readers (the centre and its
+    //  editor): unknown ids dropped, forgotten ids appended at the end.
+    //  An order is a list the user rewrites; this is the list the bar obeys.
+    readonly property var panelOrdenEfectivo: {
+        const guardados = panelOrder || []
+        const fuera = []
+        for (let i = 0; i < guardados.length; ++i)
+            if (typeof guardados[i] === "string"
+                && ["toggles", "media", "shortcuts"].indexOf(guardados[i]) >= 0
+                && fuera.indexOf(guardados[i]) < 0)
+                fuera.push(guardados[i])
+        const todos = ["toggles", "media", "shortcuts"]
+        for (let i = 0; i < todos.length; ++i)
+            if (fuera.indexOf(todos[i]) < 0)
+                fuera.push(todos[i])
+        return fuera
+    }
+
     //  ── la letra del shell ───────────────
     //  The shell's typeface, as a family name. Empty is the shell's own
     //  default and not a state to repair: the row list shows it as
@@ -314,6 +352,10 @@ Singleton {
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont",
+        "panelWidth", "panelShowToggles", "panelTileWifi",
+        "panelTileBluetooth", "panelTileSound", "panelShowMedia",
+        "panelShowShortcuts", "panelShowWorkspaces", "panelShowClock",
+        "panelOrder",
         "quickAccess"
     ]
 
