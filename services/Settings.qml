@@ -188,6 +188,51 @@ Singleton {
             ]
         },
         {
+            grupo: "Control Centre",
+            claves: ["panel", "centro de control", "control center",
+                     "control centre", "toggles", "media", "shortcuts",
+                     "accesos", "widgets"],
+            glifo: 0xF1947,        // md-view_dashboard_edit
+            desc: "What the control centre shows, in what order, and how wide it opens.",
+            //  The page carries a sketch of the centre and the block order
+            //  as a custom view; the simple knobs are plain option rows.
+            vista: "panel",
+            opciones: [
+                { id: "panelWidth", tipo: "numero", min: 640, max: 1100,
+                  paso: 20, unidad: "px",
+                  nombre: "Width",
+                  desc: "How wide the control centre opens",
+                  glifo: 0xF084E },   // md-arrow_expand_horizontal
+                { id: "panelShowToggles", nombre: "Quick toggles row",
+                  desc: "Wi‑Fi, Bluetooth and sound, as tiles",
+                  glifo: 0xF056E },   // md-view_dashboard
+                { id: "panelTileWifi", requiere: "panelShowToggles",
+                  nombre: "Wi‑Fi tile",
+                  desc: "The radio and its network",
+                  glifo: 0xF05A9 },   // md-wifi
+                { id: "panelTileBluetooth", requiere: "panelShowToggles",
+                  nombre: "Bluetooth tile",
+                  desc: "The adapter and its devices",
+                  glifo: 0xF00AF },   // md-bluetooth
+                { id: "panelTileSound", requiere: "panelShowToggles",
+                  nombre: "Sound tile",
+                  desc: "The volume slider and its output",
+                  glifo: 0xF057E },   // md-volume_high
+                { id: "panelShowMedia", nombre: "Media row",
+                  desc: "What is playing, with its controls",
+                  glifo: 0xF0387 },   // md-music_note
+                { id: "panelShowShortcuts", nombre: "Shortcuts strip",
+                  desc: "Pinned apps — pin them from the app drawer",
+                  glifo: 0xF003B },   // md-apps
+                { id: "panelShowWorkspaces", nombre: "Workspace dots",
+                  desc: "In the centre's header",
+                  glifo: 0xF15FC },   // md-dots_grid
+                { id: "panelShowClock", nombre: "Clock",
+                  desc: "In the centre's header",
+                  glifo: 0xF0150 }    // md-clock_outline
+            ]
+        },
+        {
             grupo: "Display",
             //  Words the search engine should find this section by. Needed
             //  because its controls live inside a widget and not as
