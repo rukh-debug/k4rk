@@ -1009,6 +1009,19 @@ FadeIn {
                                 }
                             }
 
+                            //  The control centre editor: a sketch of the
+                            //  centre, the blocks with their order and their
+                            //  eye, and the plain knobs as option rows.
+                            Loader {
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "panel"
+                                        && bloque.modelData.atajo === undefined
+                                sourceComponent: Component { PanelEditor {} }
+                            }
+
                             //  And a section can bring something of its own on
                             //  top of its options. The Island one carries a
                             //  sketch of the screen: it turns three similar
