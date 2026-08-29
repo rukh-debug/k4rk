@@ -118,7 +118,7 @@ Singleton {
             ]
         },
         {
-            grupo: "Appearance",
+            grupo: "Wallpaper",
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
             //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
@@ -126,34 +126,26 @@ Singleton {
             //
             //  Never shown, only searched: typing «gaps» deserves to find
             //  this section even though the switch lives inside a widget.
-            claves: ["fondo", "fondos", "wallpaper", "escritorio", "desktop", "imagen", "video", "monitor", "pantalla"],
-            glifo: 0xF03D8,
-            desc: "The desktop wallpaper, and where the bar's colours come from.",
-            //  El fondo y el color, juntos y en este orden: el color SALE del
-            //  fondo mientras no lo toques a mano, así que separarlos en dos
-            //  cajones obligaba a cruzar la ventana para entender una cosa.
-            //  Ninguna opción declarada: lo que se elige aquí es una imagen y
-            //  un color, y eso no cabe en una fila con un interruptor.
-            vista: "fondos",
-            opciones: []
-        },
-        {
-            grupo: "Colour",
-            //  Palabras por las que el buscador debe encontrar esta sección.
-            //  Hacen falta porque sus controles viven dentro de un widget y no
-            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
-            //  el interruptor esté ahí dentro.
             //
-            //  Never shown, only searched: typing «gaps» deserves to find
-            //  this section even though the switch lives inside a widget.
-            claves: ["color", "colour", "colores", "preset", "acento", "accent", "paleta", "palette", "tema", "theme", "degradado"],
-            glifo: 0xF03D9,
-            desc: "Where the colours come from: the wallpaper, or a preset you pick.",
-            //  Sección aparte y no debajo de los fondos, aunque estén
-            //  emparentados: la rejilla se desplaza por dentro, así que lo que
-            //  fuera detrás quedaba inalcanzable con la rueda. Un scroll dentro
-            //  de otro scroll siempre acaba así.
-            vista: "color",
+            //  Wallpaper AND colour keys: the two blocks live on the same
+            //  page now, and a search word should find it whichever half it
+            //  names.
+            claves: ["fondo", "fondos", "wallpaper", "escritorio", "desktop",
+                     "imagen", "video", "monitor", "pantalla",
+                     "color", "colour", "colores", "preset", "acento",
+                     "accent", "paleta", "palette", "tema", "theme", "degradado"],
+            //  md-wallpaper, the page's own subject. The colour block keeps
+            //  md-palette (0xF03D8) for its little header inside.
+            glifo: 0xF0E09,
+            desc: "The desktop wallpaper, and the colours that come with it.",
+            //  One page, one scroll: the wallpaper grid sizes itself to its
+            //  rows (`fitContent`) so the whole page travels together in the
+            //  outer Rodillo — the old "a scroll inside a scroll" trap is
+            //  defused at the grid, not by splitting the page. Colour lives
+            //  BELOW the grid on purpose: the accent comes FROM the wallpaper
+            //  until you touch it, so reading top to bottom is reading the
+            //  story of the page.
+            vista: "wallpaper",
             opciones: []
         },
         {

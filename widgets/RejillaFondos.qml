@@ -29,6 +29,13 @@ ColumnLayout {
     //  Quien sabe aplicar un fondo. Sin él la rejilla se ve pero no toca nada.
     property var motor: null
 
+    //  `true`: the grid drops its own scrolling and sizes itself to its rows,
+    // so the page hosting it scrolls EVERYTHING as one — the Settings view,
+    // where the colour block follows the grid and a scroll inside a scroll
+    // would wall it off. `false` (default): the grid scrolls inside, which is
+    // what a screen of its own wants — the whole viewport for thumbnails.
+    property bool fitContent: false
+
     //  Los monitores, para el filtro de arriba. Los sabe el motor.
     readonly property var pantallas: rejilla.motor
         && typeof rejilla.motor.pantallasConocidas === "function"
@@ -222,7 +229,17 @@ ColumnLayout {
 
     GridView {
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.fillHeight: !rejilla.fitContent
+        //  Sizing to content: `contentHeight` is exactly rows × cellHeight,
+        // so the grid shows every row and never needs its own wheel. The
+        // floor keeps the empty state ("no backgrounds") a visible place
+        // instead of a zero-height sliver.
+        Layout.preferredHeight: rejilla.fitContent
+            ? Math.max(contentHeight, cellHeight * 2) : 0
+        //  Off its own flick: in fitContent mode the wheel belongs to the
+        //  page, and a non-interactive GridView lets it pass through to the
+        //  Rodillo instead of eating it.
+        interactive: !rejilla.fitContent
         clip: true
         cellWidth: Math.floor(width / 4)
         cellHeight: Math.round(cellWidth * 0.6)
