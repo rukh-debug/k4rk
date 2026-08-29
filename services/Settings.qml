@@ -138,45 +138,63 @@ Singleton {
             ]
         },
         {
-            grupo: "Wallpaper",
-            //  Palabras por las que el buscador debe encontrar esta sección.
-            //  Hacen falta porque sus controles viven dentro de un widget y no
-            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
-            //  el interruptor esté ahí dentro.
+            grupo: "Display",
+            //  Words the search engine should find this section by. Needed
+            //  because its controls live inside a widget and not as
+            //  `opciones`: without them, typing «blur» found NOTHING even
+            //  though the switch sits right there.
             //
             //  Never shown, only searched: typing «gaps» deserves to find
             //  this section even though the switch lives inside a widget.
             //
-            //  Wallpaper AND colour keys: the two blocks live on the same
-            //  page now, and a search word should find it whichever half it
-            //  names.
+            //  Wallpaper AND colour keys: the two halves are siblings under
+            //  this group now, and a search word should find it whichever
+            //  half it names.
             claves: ["fondo", "fondos", "wallpaper", "escritorio", "desktop",
                      "imagen", "video", "monitor", "pantalla",
                      "color", "colour", "colores", "preset", "acento",
                      "accent", "paleta", "palette", "tema", "theme", "degradado"],
-            //  md-wallpaper, the page's own subject. The colour block keeps
-            //  md-palette (0xF03D8) for its little header inside.
-            glifo: 0xF0E09,
-            desc: "The desktop wallpaper, and the colours that come with it.",
-            //  One page, one scroll: the wallpaper grid sizes itself to its
-            //  rows (`fitContent`) so the whole page travels together in the
-            //  outer Rodillo — the old "a scroll inside a scroll" trap is
-            //  defused at the grid, not by splitting the page. Colour lives
-            //  BELOW the grid on purpose: the accent comes FROM the wallpaper
-            //  until you touch it, so reading top to bottom is reading the
-            //  story of the page.
+            glifo: 0xF0379,      // md-monitor
+            desc: "The screen: its wallpaper, its colours, its windows, its effects.",
+            //  The parent of the sub-tab family. Its own page is the landing:
+            //  the wallpaper at a glance and a card per child. `app` marks a
+            //  card that opens a full application instead of a child page —
+            //  the displays tool, which is a screen of its own and stays one;
+            //  what was missing was reaching it from the place where the
+            //  screen is configured.
+            vista: "display",
+            app: "displays",
+            opciones: []
+        },
+        {
+            grupo: "Wallpaper",
+            //  A child of Display (`padre`): it renders as a sub-tab under it
+            //  in the sidebar, one level deep.
+            padre: "Display",
+            claves: ["fondo", "fondos", "wallpaper", "escritorio",
+                     "imagen", "video", "pantalla"],
+            glifo: 0xF0E09,      // md-wallpaper
+            desc: "The desktop wallpaper.",
+            //  The grid sizes itself to its rows (`fitContent`) so the page
+            //  scrolls as one in the outer Rodillo. No options declared: what
+            //  gets chosen here is an image, and that does not fit a switch
+            //  row.
             vista: "wallpaper",
             opciones: []
         },
         {
+            grupo: "Colour",
+            padre: "Display",
+            claves: ["color", "colour", "colores", "preset", "acento",
+                     "accent", "paleta", "palette", "tema", "theme", "degradado"],
+            glifo: 0xF03D8,      // md-palette
+            desc: "Where the colours come from: the wallpaper, or a preset you pick.",
+            vista: "color",
+            opciones: []
+        },
+        {
             grupo: "Windows",
-            //  Palabras por las que el buscador debe encontrar esta sección.
-            //  Hacen falta porque sus controles viven dentro de un widget y no
-            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
-            //  el interruptor esté ahí dentro.
-            //
-            //  Never shown, only searched: typing «gaps» deserves to find
-            //  this section even though the switch lives inside a widget.
+            padre: "Display",
             claves: ["ventanas", "windows", "borde", "border", "hueco", "huecos", "gap", "gaps", "redondeo", "rounding", "esquina", "esquinas"],
             glifo: 0xF10AC,
             desc: "Borders, gaps and corners of Hyprland's windows.",
@@ -185,13 +203,7 @@ Singleton {
         },
         {
             grupo: "Effects",
-            //  Palabras por las que el buscador debe encontrar esta sección.
-            //  Hacen falta porque sus controles viven dentro de un widget y no
-            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
-            //  el interruptor esté ahí dentro.
-            //
-            //  Never shown, only searched: typing «gaps» deserves to find
-            //  this section even though the switch lives inside a widget.
+            padre: "Display",
             claves: ["efectos", "effects", "blur", "desenfoque", "opacidad", "opacity", "sombra", "sombras", "shadow", "animacion", "animaciones", "animation"],
             glifo: 0xF00B5,
             desc: "Blur, opacity, shadows and animations.",

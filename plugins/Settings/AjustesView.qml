@@ -77,6 +77,37 @@ FadeIn {
         return g.enLateral !== false
     })
 
+    //  ── the tree ────────────────────────────────────────────
+    //
+    //  Top-level groups, and the children of one. `padre` is the only thing
+    //  a group declares to join a family; the tree is derived, so a group
+    //  can move houses by editing one word, and search keeps walking the
+    //  flat list without knowing a tree exists.
+    readonly property var padres: vista.lateral.filter(function (g) {
+        return !g.padre
+    })
+
+    function hijosDe(grupo) {
+        return vista.lateral.filter(function (g) {
+            return g.padre === grupo.grupo
+        })
+    }
+
+    function indiceDe(grupo) {
+        return vista.lateral.indexOf(grupo)
+    }
+
+    //  Which drawers are open. Display starts open: a closed family at the
+    //  top of the sidebar reads as a setting that is not there.
+    property var expandidos: ({ Display: true })
+
+    function ponerExpandido(grupo, valor) {
+        const e = {}
+        Object.assign(e, vista.expandidos)
+        e[grupo] = valor
+        vista.expandidos = e
+    }
+
     //  What gets painted on the right.
     //
     //  Without a search: the chosen section, that's all. Searching: the
@@ -139,10 +170,37 @@ FadeIn {
             const g = vista.lateral[i]
             if (String(g.grupo).toLowerCase() === n
                 || String(g.vista || "").toLowerCase() === n) {
+                //  A child opens its family's drawer on the way in — landing
+                //  on a page whose row is hidden is landing nowhere.
+                if (g.padre)
+                    vista.ponerExpandido(g.padre, true)
                 vista.elegir(i)
                 return
             }
         }
+    }
+
+    //  A parent row: opens its drawer and lands on its overview. Closing it
+    //  while you stand inside (on it or on one of its children) takes you up
+    //  to the overview, so the header never names a page whose row is hidden.
+    function tocarPadre(grupo) {
+        const idx = vista.indiceDe(grupo)
+        if (!vista.expandidos[grupo.grupo]) {
+            vista.ponerExpandido(grupo.grupo, true)
+            vista.elegir(idx)
+        } else {
+            vista.ponerExpandido(grupo.grupo, false)
+            const sel = vista.lateral[vista.seccion]
+            if (sel !== undefined
+                && (sel === grupo || sel.padre === grupo.grupo))
+                vista.elegir(idx)
+        }
+    }
+
+    function elegirHijo(grupo) {
+        if (grupo.padre)
+            vista.ponerExpandido(grupo.padre, true)
+        vista.elegir(vista.indiceDe(grupo))
     }
 
     //  Land on a page asked for from outside (`k4 settingsSection`). Called
@@ -261,6 +319,12 @@ FadeIn {
                 }
 
                 // ── the sections ──────────────────────────────────
+                //
+                //  A tree, not a list: groups that declare `padre` render
+                //  one level under it, and the parent opens like a drawer.
+                //  The flat rows were fine with five sections; with the
+                //  display family gathered under one roof, a list would make
+                //  you read past three siblings to reach the next subject.
                 K4.Rodillo {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -270,74 +334,258 @@ FadeIn {
                         spacing: 2
 
                         Repeater {
-                            model: vista.lateral
+                            model: vista.padres
 
                             //  A bare rectangle and not `K4.Baldosa`: Baldosa
-                            //  draws an inner border ALWAYS, and with fourteen
-                            //  in a row the sidebar becomes a grid of boxes.
+                            //  draws an inner border ALWAYS, and with a tree
+                            //  in the sidebar it becomes a grid of boxes.
                             //  What must stand out here is ONE: the one you
                             //  are looking at.
-                            delegate: Rectangle {
-                                id: entrada
+                            delegate: Column {
+                                id: rama
                                 required property var modelData
-                                required property int index
-
-                                readonly property bool activa:
-                                    vista.busqueda.length === 0
-                                    && vista.seccion === entrada.index
 
                                 width: parent.width
-                                height: 34
-                                radius: 9
-                                color: entrada.activa
-                                    ? Qt.rgba(Theme.blue.r, Theme.blue.g,
-                                              Theme.blue.b, 0.18)
-                                    : (raton.containsMouse
-                                       ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
+                                spacing: 2
 
-                                Behavior on color { ColorAnimation { duration: 120 } }
-
-                                MouseArea {
-                                    id: raton
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: vista.elegir(entrada.index)
+                                //  Its index among ALL sidebar groups
+                                //  (children included), which is what
+                                //  `seccion` counts.
+                                readonly property int indice:
+                                    vista.indiceDe(rama.modelData)
+                                readonly property var hijos:
+                                    vista.hijosDe(rama.modelData)
+                                readonly property bool despliega:
+                                    rama.hijos.length > 0
+                                readonly property bool abierta:
+                                    rama.despliega
+                                    && !!vista.expandidos[rama.modelData.grupo]
+                                //  A child of this branch is on screen: the
+                                //  parent stays softly lit, so the tree tells
+                                //  you where you are even when the drawer is
+                                //  closed.
+                                readonly property bool acogida: {
+                                    const sel = vista.lateral[vista.seccion]
+                                    return sel !== undefined
+                                        && sel.padre === rama.modelData.grupo
                                 }
+                                readonly property bool activa:
+                                    vista.busqueda.length === 0
+                                    && !rama.acogida
+                                    && vista.seccion === rama.indice
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
-                                    anchors.rightMargin: 10
-                                    spacing: 10
+                                Rectangle {
+                                    width: parent.width
+                                    height: 34
+                                    radius: 9
+                                    color: rama.activa
+                                        ? Qt.rgba(Theme.blue.r, Theme.blue.g,
+                                                  Theme.blue.b, 0.18)
+                                        : (rama.acogida
+                                           ? Qt.rgba(1, 1, 1, 0.04)
+                                           : (raton.containsMouse
+                                              ? Qt.rgba(1, 1, 1, 0.05)
+                                              : "transparent"))
 
-                                    IconGlyph {
-                                        Layout.alignment: Qt.AlignVCenter
-                                        //  No icon of its own —a plugin section
-                                        //  that did not declare one— gets the
-                                        //  puzzle piece, which is how the bar
-                                        //  draws «this is a plugin» everywhere.
-                                        text: String.fromCodePoint(
-                                            entrada.modelData.glifo
-                                                ? entrada.modelData.glifo : 0xF0431)
-                                        color: entrada.activa
-                                            ? Theme.blue : Theme.muted
-                                        font.pixelSize: 14
-                                        renderType: Text.NativeRendering
+                                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                                    MouseArea {
+                                        id: raton
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        //  A parent opens its drawer AND lands
+                                        //  on its overview; closing it while
+                                        //  you are inside takes you up to the
+                                        //  overview too, so the header never
+                                        //  names a page whose row you cannot
+                                        //  see.
+                                        onClicked: rama.despliega
+                                            ? vista.tocarPadre(rama.modelData)
+                                            : vista.elegir(rama.indice)
                                     }
 
-                                    IslandLabel {
-                                        Layout.fillWidth: true
-                                        Layout.alignment: Qt.AlignVCenter
-                                        text: entrada.modelData.grupo
-                                        textFormat: Text.PlainText
-                                        color: entrada.activa
-                                            ? Theme.ink : Theme.muted
-                                        font.pixelSize: 12
-                                        font.weight: entrada.activa
-                                            ? Font.DemiBold : Font.Normal
-                                        elide: Text.ElideRight
-                                        maximumLineCount: 1
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 8
+                                        spacing: 10
+
+                                        IconGlyph {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            //  No icon of its own —a plugin section
+                                            //  that did not declare one— gets the
+                                            //  puzzle piece, which is how the bar
+                                            //  draws «this is a plugin» everywhere.
+                                            text: String.fromCodePoint(
+                                                rama.modelData.glifo
+                                                    ? rama.modelData.glifo : 0xF0431)
+                                            color: rama.activa || rama.acogida
+                                                ? Theme.blue : Theme.muted
+                                            font.pixelSize: 14
+                                            renderType: Text.NativeRendering
+                                        }
+
+                                        IslandLabel {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: rama.modelData.grupo
+                                            textFormat: Text.PlainText
+                                            color: rama.activa || rama.acogida
+                                                ? Theme.ink : Theme.muted
+                                            font.pixelSize: 12
+                                            font.weight: rama.activa
+                                                ? Font.DemiBold : Font.Normal
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+
+                                        //  The drawer's handle. It turns with
+                                        //  the drawer and not on its own click:
+                                        //  the whole row is the target, same as
+                                        //  every other row — a 16 px chevron
+                                        //  would ask for aim.
+                                        IconGlyph {
+                                            visible: rama.despliega
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: Theme.ico.chevronDown
+                                            color: rama.acogida || rama.activa
+                                                ? Theme.blue : Theme.dim
+                                            font.pixelSize: 13
+                                            renderType: Text.NativeRendering
+                                            rotation: rama.abierta ? 0 : -90
+
+                                            Behavior on rotation {
+                                                NumberAnimation {
+                                                    duration: 200
+                                                    easing.type: Easing.OutCubic
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                //  ── the drawer ─────────────────────
+                                //
+                                //  Height 0 when closed, and `clip` so the
+                                //  rows do not paint outside while the drawer
+                                //  travels: the children SLIDE out, which is
+                                //  what makes the tree feel like furniture
+                                //  and not a list that reappears.
+                                Item {
+                                    width: parent.width
+                                    height: rama.abierta
+                                        ? columnaHijos.height : 0
+                                    clip: true
+                                    opacity: rama.abierta ? 1 : 0
+
+                                    Behavior on height {
+                                        NumberAnimation {
+                                            duration: 240
+                                            easing.type: Easing.OutCubic
+                                        }
+                                    }
+                                    Behavior on opacity {
+                                        NumberAnimation { duration: 180 }
+                                    }
+
+                                    Column {
+                                        id: columnaHijos
+                                        width: parent.width
+                                        spacing: 2
+
+                                        Repeater {
+                                            model: rama.hijos
+
+                                            delegate: Rectangle {
+                                                id: hija
+                                                required property var modelData
+
+                                                readonly property int indice:
+                                                    vista.indiceDe(hija.modelData)
+                                                readonly property bool activa:
+                                                    vista.busqueda.length === 0
+                                                    && vista.seccion === hija.indice
+
+                                                width: parent.width
+                                                height: 30
+                                                radius: 8
+                                                color: hija.activa
+                                                    ? Qt.rgba(Theme.blue.r,
+                                                              Theme.blue.g,
+                                                              Theme.blue.b, 0.15)
+                                                    : (ratonHija.containsMouse
+                                                       ? Qt.rgba(1, 1, 1, 0.05)
+                                                       : "transparent")
+
+                                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                                //  The active sub-tab keeps a
+                                                //  tick on its left edge: with
+                                                //  the drawer open you find
+                                                //  your page by the bar of
+                                                //  blue, not by reading.
+                                                Rectangle {
+                                                    visible: hija.activa
+                                                    x: 0
+                                                    anchors.verticalCenter:
+                                                        parent.verticalCenter
+                                                    width: 3
+                                                    height: parent.height - 12
+                                                    radius: 1.5
+                                                    color: Theme.blue
+                                                }
+
+                                                MouseArea {
+                                                    id: ratonHija
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked:
+                                                        vista.elegirHijo(hija.modelData)
+                                                }
+
+                                                RowLayout {
+                                                    anchors.fill: parent
+                                                    //  One step in, so the
+                                                    //  child belongs to its
+                                                    //  parent's column and not
+                                                    //  to the sidebar's edge.
+                                                    anchors.leftMargin: 26
+                                                    anchors.rightMargin: 10
+                                                    spacing: 9
+
+                                                    IconGlyph {
+                                                        Layout.alignment: Qt.AlignVCenter
+                                                        text: String.fromCodePoint(
+                                                            hija.modelData.glifo
+                                                                ? hija.modelData.glifo
+                                                                : 0xF0431)
+                                                        color: hija.activa
+                                                            ? Theme.blue
+                                                            : Theme.muted
+                                                        font.pixelSize: 12
+                                                        renderType: Text.NativeRendering
+                                                    }
+
+                                                    IslandLabel {
+                                                        Layout.fillWidth: true
+                                                        Layout.alignment: Qt.AlignVCenter
+                                                        text: hija.modelData.grupo
+                                                        textFormat: Text.PlainText
+                                                        color: hija.activa
+                                                            ? Theme.ink
+                                                            : Theme.muted
+                                                        font.pixelSize: 11
+                                                        font.weight: hija.activa
+                                                            ? Font.DemiBold
+                                                            : Font.Normal
+                                                        elide: Text.ElideRight
+                                                        maximumLineCount: 1
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -514,29 +762,48 @@ FadeIn {
                                 Layout.leftMargin: 2
                             }
 
-                            //  The Wallpaper page carries the whole grid
-                            //  PLUS the colour block under it — one page, one
-                            //  scroll. The engine is asked for by id and its
-                            //  folder is not imported: with the plugin off
-                            //  this just waits, without breaking.
-                            IslandLabel {
+                            //  ── the landing of a family ──────────────
+                            //
+                            //  A parent's own page: the desktop at a glance,
+                            //  and a card per child. The hero answers «what
+                            //  am I looking at» before anything is touched —
+                            //  the wallpaper names itself — and the cards are
+                            //  the drawer's rows again, big, for the first
+                            //  time you come here.
+                            Loader {
+                                visible: active
                                 Layout.fillWidth: true
-                                visible: bloque.modelData.vista === "wallpaper"
-                                text: "Wallpapers"
-                                color: Theme.dim
-                                font.pixelSize: 9
-                                font.capitalization: Font.AllUppercase
-                                Layout.leftMargin: 2
-                                Layout.topMargin: 4
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "display"
+                                        && bloque.modelData.atajo === undefined
+                                        && vista.busqueda.length === 0
+                                sourceComponent: Component {
+                                    PortadaFamilia {
+                                        familia: bloque.modelData
+                                        onPedida: function (grupo) {
+                                            vista.elegirHijo(grupo)
+                                        }
+                                        onPedidaApp: {
+                                            vista.plugin.close()
+                                            PluginManager.abrirAplicacion(
+                                                bloque.modelData.app)
+                                        }
+                                    }
+                                }
                             }
 
+                            //  ── the wallpaper grid ────────────────────
+                            //
+                            //  The engine is asked for by id and its folder
+                            //  is not imported: with the plugin off this just
+                            //  waits, without breaking.
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
                                 //  The grid sizes itself to its rows
-                                //  (`fitContent`), so the colour block below
-                                //  is reachable with the wheel: the whole
-                                //  page scrolls together in this Rodillo.
+                                //  (`fitContent`), so the page scrolls as one
+                                //  in this Rodillo.
                                 //
                                 //  Conditional on `active`, and it is not a
                                 //  detail: an inactive Loader STILL occupies
@@ -567,27 +834,12 @@ FadeIn {
                                 wrapMode: Text.WordWrap
                             }
 
-                            //  ── the colour block, second half of the page ──
+                            //  The colour picker, on its own sub-tab under the
+                            //  same family as the wallpaper it can follow.
                             //
-                            //  It used to be a section of its own; it moved
-                            //  under the grid because the accent COMES from
-                            //  the wallpaper until you touch it, and crossing
-                            //  the window to connect the two was the tax.
-                            IslandLabel {
-                                Layout.fillWidth: true
-                                visible: bloque.modelData.vista === "wallpaper"
-                                text: "Colours"
-                                color: Theme.dim
-                                font.pixelSize: 9
-                                font.capitalization: Font.AllUppercase
-                                Layout.leftMargin: 2
-                                Layout.topMargin: 14
-                            }
-
-                            //  The loaders below keep their height
-                            //  conditional on `active`. It is the lesson from
-                            //  before: an inactive one loads nothing but STILL
-                            //  measures whatever you ask of it, and that
+                            //  Loaders keep their height conditional on
+                            //  `active`: an inactive one loads nothing but
+                            //  STILL measures whatever you ask of it, and that
                             //  pushes the other sections' content out of view
                             //  without a single error.
                             Loader {
@@ -595,7 +847,7 @@ FadeIn {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
-                                active: bloque.modelData.vista === "wallpaper"
+                                active: bloque.modelData.vista === "color"
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     AjustesTema {
@@ -716,7 +968,7 @@ FadeIn {
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.atajo === undefined
-                                    && (bloque.modelData.vista === "wallpaper"
+                                    && (bloque.modelData.vista === "color"
                                         || bloque.modelData.vista === "ventanas"
                                         || bloque.modelData.vista === "efectos")
                                 sourceComponent: Component {
