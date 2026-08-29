@@ -28,8 +28,11 @@ K4Plugin {
     property var sistema: null
 
     islandWidth: 860
-    // la reproducción compacta y los accesos en rejilla piden menos alto
-    islandHeight: tab === "controls" ? 268 : 400
+    //  controls: header 30 + toggle cards 78 + media row 62 + shortcuts 40
+    //  + 3x12 spacing = 246 px of content; 14 above + 20 below = 280. The
+    //  shortcuts used to end flush against the border, which looked
+    //  cramped next to the 18 px the sides have.
+    islandHeight: tab === "controls" ? 280 : 404
 
     // solo mientras se escribe la contraseña de una red
     //  El teclado entero mientras está abierto: «opcional» es OnDemand y
