@@ -79,55 +79,6 @@ and hands it to the three places colour shows up — the bar's own tint,
 Hyprland's window borders, and the terminal. Pick a preset by hand and it
 steps aside.
 
-### Dual mode: the bar leaves the top and becomes a dock
-
-<img src="screenshots/dual.gif" width="100%" alt="The bar splits in two, the halves run down the side edges of the screen and join at the bottom into a dock">
-
-Press **SUPER + SHIFT + D** and the bar splits in two. The halves run down the side edges of
-the screen like drops, meet at the bottom and close back into a dock — the
-same silhouette, mirrored. Press **SUPER + K** whenever you want to see every
-k4 shortcut and key binding in one place.
-
-The top bar does not linger: it hands back the space it was reserving, and the
-dock takes its own, so the desktop reflows once and then follows the movement.
-While the halves are travelling they reserve nothing and pass over your
-windows.
-
-**Or a drop falls instead.** In Settings, *Transition effect* picks how the
-change is told: the **trip** above, a **drop** — the bar stays put, a bead
-swells under its bottom edge, the neck thins until it snaps, and it falls,
-stretching, until it hits the bottom of the screen and spreads out into the
-dock — or **instant**, no animation at all. The drop takes a second where the
-trip takes three.
-
-*Keep the bar when opening the dock* only changes what happens after that
-shortcut: it keeps the top bar where it is instead of turning it into the dock,
-so you get both. The drop was made for this: it does not tell a move, it tells
-something coming loose, so nothing is missing up top.
-
-<table>
-<tr>
-<td width="46%"><img src="screenshots/dual.png" alt="The dock at the bottom of the screen with its app drawer open above it"></td>
-<td>
-
-**It behaves like a dock.** What you pin stays; what you open shows up and
-leaves on its own. Drag to reorder, drag out to drop. Clicking something
-already running goes **to its window** instead of starting another — and when
-there is more than one, a badge counts them and a row of live previews lets
-you pick.
-
-The app drawer grows out of the dock itself, with the applications on your
-system: type to filter, `Enter` opens the best match, drag one onto the dock
-to keep it there.
-
-Any island shortcut brings the bar home — the dock retracts, the halves climb
-back up, and what you asked for opens in the island. Unless the bar never
-left: with both showing, the shortcut just opens what you asked for.
-
-</td>
-</tr>
-</table>
-
 ---
 
 ## Plugins
@@ -244,18 +195,6 @@ Full guide: [docs/PLUGINS.md](docs/PLUGINS.md) · API: [docs/API.md](docs/API.md
 
 ---
 
-## Games, as ordinary plugins
-
-Not special cases — the same contract as everything else. An idle roguelite, a
-typing roguelike, an autobattler, and
-[Digivice](https://github.com/k4ditano/digivice): a virtual pet whose road
-advances on how you actually use the computer, reading nothing but *that* a
-window changed.
-
-**They arrive turned off.** A bar is not the place to be running a game nobody
-asked for — and a plugin that is never enabled is never created, so it costs
-exactly nothing. Turn one on in Settings when you want it.
-
 ---
 
 <details>
@@ -270,8 +209,6 @@ That file is owned by k4; put your overrides after it.
 | `SUPER + I` / `SUPER + X` | Control center |
 | `SUPER + N` / `SUPER + A` | Notifications |
 | `SUPER + Z` | k4 settings |
-| `SUPER + Tab` | Window switcher |
-| `SUPER + Shift + D` | Dual mode: the bar becomes a dock |
 | `SUPER + Shift + W` | Hyprland theme |
 | `SUPER + V` | Clipboard history |
 | `SUPER + B` | File browser |
@@ -380,7 +317,7 @@ services/       persistent domain services and singletons
 widgets/        data-driven reusable widgets
 plugins/        one directory per built-in plugin
 agentes/        the skill coding agents read
-docs/           API, plugin and game guides
+docs/           API and plugin guides
 tools/          helper scripts and validators
 hypr/           generated Hyprland integration
 ```
@@ -406,7 +343,7 @@ The codebase predates the rule, so migrate names when you touch them, never in
 bulk.
 
 More: [docs/API.md](docs/API.md) · [docs/PLUGINS.md](docs/PLUGINS.md) ·
-[docs/GAMES.md](docs/GAMES.md) · [api/LEEME.md](api/LEEME.md)
+[api/LEEME.md](api/LEEME.md)
 
 </details>
 

@@ -19,28 +19,6 @@ Singleton {
     // "auto" sigue al del sistema. services/Idioma.qml lo lee.
     property string idioma: "auto"
 
-    // ── juego ─────────────────────────────────────────────────────
-    // El interruptor maestro. Apagado no es «ocultar»: se paran los relojes
-    // del combate, el guardado y el vigía de tokens, que solo trabaja para
-    // esto. Quien no quiera el juego no debe pagar nada por tenerlo instalado.
-    property bool juegoActivo: true
-    // services/Game.qml: al caer el grupo, ¿arranca sola la siguiente?
-    //  Apagado de fábrica, y es una decisión de diseño y no una preferencia.
-    //
-    //  Encendido, la partida se reencadena sola a los veinte segundos de morir
-    //  y entonces NO INTERVIENES NUNCA: el juego se juega solo de principio a
-    //  fin. Morir es el único momento en que un idle te pide volver —abrir lo
-    //  que se ha acumulado, gastar reliquias, recolocar el equipo y decidir
-    //  otra vuelta— y encadenando se lo salta. Se notaba en los datos: noventa
-    //  y siete cofres guardados y CERO abiertos en toda la vida de la partida.
-    //
-    //  Sigue estando para quien quiera puro ambiente, pero apagado por defecto.
-    property bool juegoContinuar: false
-    // widgets/JuegoPildora.qml: oleada y aviso de cofres en la píldora
-    property bool juegoEnPildora: true
-    // services/Game.qml: el combate solo avanza con tokens de IA gastados
-    property bool juegoPorTokens: false
-
     // ── datos personales ──────────────────────────────────────────
     //  La doble llave de K4.Huella: el plugin declara `datos-personales` en
     //  su manifiesto Y el usuario enciende aquí cada fuente. TODO apagado de
@@ -152,36 +130,6 @@ Singleton {
                   nombre: Idioma.t("Idioma de la barra"),
                   desc: Idioma.t("Automático sigue al del sistema"),
                   glifo: 0xF05CA }
-            ]
-        },
-        {
-            grupo: Idioma.t("Mazmorra"),
-            glifo: 0xF04E5,
-            desc: Idioma.t("El juego que vive en la píldora: si corre, si guarda y cuánto se le ve."),
-            opciones: [
-                { id: "juegoActivo", nombre: Idioma.t("Mazmorra activa"),
-                  desc: Idioma.t("Apagada no corre, no guarda y no ocupa sitio"), glifo: 0xF04E5 },
-                { requiere: "juegoActivo", id: "juegoContinuar", nombre: Idioma.t("Continuar sola al morir"),
-                  desc: Idioma.t("Encadena sola: no tendrás que volver a intervenir"), glifo: 0xF04E5 },
-                { requiere: "juegoActivo", id: "juegoEnPildora", nombre: Idioma.t("Mostrar en la píldora"),
-                  desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
-                { requiere: "juegoActivo", id: "juegoPorTokens", nombre: Idioma.t("Pelear con tokens"),
-                  desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 },
-                //  Borrar la partida va DENTRO de su grupo y no en un cajón
-                //  aparte al final de la pantalla: es un ajuste de la mazmorra
-                //  como los otros cuatro, y buscarlo en otro sitio no tiene
-                //  ningún sentido. Lo que lo distingue no es dónde está, es
-                //  que pide confirmación.
-                { id: "juegoBorrar", tipo: "peligro", glifo: 0xF0026,
-                  nombre: Idioma.t("Empezar la mazmorra de cero"),
-                  desc: Idioma.t("borra niveles, héroes, logros, equipo y reliquias"),
-                  nombreArmado: Idioma.t("¿Seguro? Esto no se puede deshacer"),
-                  descArmado: Idioma.t("pierdes ") + Game.mejorOleada
-                      + Idioma.t(" de récord, nivel ") + Game.nivelMaximo + ", "
-                      + Game.logrosHechos.length + Idioma.t(" logros y ")
-                      + Game.bolsa.length + Idioma.t(" piezas"),
-                  accion: Idioma.t("Reiniciar"),
-                  confirmar: Idioma.t("Sí, borrar todo") }
             ]
         },
         {
@@ -484,10 +432,6 @@ Singleton {
     //  Va en el servicio y no en la vista porque es donde se declara la
     //  opción — la pantalla solo sabe pintar filas.
     function ejecutar(id) {
-        if (id === "juegoBorrar") {
-            Game.borrarTodo()
-            return
-        }
         if (String(id).indexOf("ext_") === 0)
             Enganches.alternarAjuste(id)
     }
@@ -508,7 +452,6 @@ Singleton {
     //  un singleton tiene decenas de propiedades internas que no son ajustes.
     readonly property var claves: [
         "idioma",
-        "juegoActivo", "juegoContinuar", "juegoEnPildora", "juegoPorTokens",
         "capturaDestino", "capturaCursor",
         "grabarAudio", "grabarMicro", "grabarSalida", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",

@@ -59,7 +59,6 @@ Singleton {
         { id: "hyprtheme", title: "Tema de Hyprland", version: "1.0.0", enabled: true },
         { id: "weather", title: "El tiempo", version: "1.0.0", enabled: true },
         { id: "tray", title: "Bandeja", version: "1.0.0", enabled: true },
-        { id: "game", title: "Mazmorra", version: "1.0.0", enabled: true },
         { id: "settings", title: "Ajustes", version: "1.0.0", enabled: true, configurable: false },
         { id: "clipboard", title: "Portapapeles", version: "1.0.0", enabled: true },
         { id: "system", title: "Sistema", version: "1.0.0", enabled: true },
@@ -104,7 +103,7 @@ Singleton {
     //  la recibe. El reparto es una segunda pasada tras crear todos, así que
     //  los ciclos (panel↔launcher) no dependen del orden del catálogo.
     readonly property var referencias: ({
-        panel: "panel", tray: "tray", juego: "game", launcher: "launcher",
+        panel: "panel", tray: "tray", launcher: "launcher",
         theme: "hyprtheme", weather: "weather", ajustes: "settings",
         sistema: "system"
     })

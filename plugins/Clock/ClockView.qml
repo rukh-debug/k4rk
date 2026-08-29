@@ -8,7 +8,6 @@ FadeIn {
     id: view
 
     property var tray: null
-    property var juego: null
 
     //  Lo que mide de verdad CADA zona, para que el plugin sepa cuánto tiene
     //  que reservar. Se mide aquí porque es aquí donde están los widgets con su
@@ -109,12 +108,6 @@ FadeIn {
                     interactive: true
                     Layout.alignment: Qt.AlignVCenter
                     onParar: Captura.parar()
-                }
-
-                JuegoPildora {
-                    interactive: true
-                    Layout.alignment: Qt.AlignVCenter
-                    onAbrir: if (view.juego) view.juego.toggle()
                 }
 
                 PluginPildora {

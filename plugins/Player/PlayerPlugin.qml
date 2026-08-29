@@ -114,7 +114,6 @@ K4Plugin {
     // el centro de control y la bandeja; los inyecta el host
     property var panel: null
     property var tray: null
-    property var juego: null
 
     //  Las píldoras de los plugins también cuentan: sin ellas en la suma, una
     //  campana de agente empujaba el grupo de la derecha sobre el título de la
@@ -124,7 +123,6 @@ K4Plugin {
     //  que ella. Lo demás no se pinta, así que pedirlo sería dejar un hueco.
     islandWidth: asomando ? 300
         : 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
-        + (Game.cargado ? 46 : 0)
         + Indicadores.anchoAproximado
     // crece para dejar sitio a las notificaciones recientes
     //  El base ya lleva sus márgenes de 14 arriba y abajo. La tira añade lo que
@@ -144,7 +142,7 @@ K4Plugin {
 
     view: Component {
         PlayerView {
-            panel: self.panel; tray: self.tray; juego: self.juego
+            panel: self.panel; tray: self.tray
             //  Sin esto la vista no sabe si es un asomo y sale entera.
             plugin: self
         }

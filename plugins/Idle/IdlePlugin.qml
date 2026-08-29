@@ -23,11 +23,6 @@ K4Plugin {
     readonly property int trayWidth: Tray.count === 0 || !Settings.bandejaEnPildora
         ? 0 : trayShown * 18 + (Tray.count > trayShown ? 18 : 0) + 6
 
-    // el indicador del juego suma su hueco cuando hay partida cargada
-    readonly property int juegoWidth: Settings.juegoActivo
-        && Game.cargado && Settings.juegoEnPildora
-        ? (Game.cofres > 0 ? 44 : 36) : 0
-
     // Cada flanco ocupa lo suyo y la hora se queda quieta por el ancla que se
     // publica abajo, no por reservar lo mismo a los dos lados. La simetría
     // hacía que cada píxel de indicador costase dos, y con dos o tres agentes
@@ -45,7 +40,7 @@ K4Plugin {
     // llegar a 116 px con su icono y su detalle recortado.
     readonly property int minimizadosWidth: Modulos.count * 116
 
-    readonly property int ladoDer: trayWidth + juegoWidth + grabacionWidth
+    readonly property int ladoDer: trayWidth + grabacionWidth
         + minimizadosWidth + Indicadores.anchoAproximado
 
     //  La medida REAL de cada fila, publicada por la vista. Las sumas de arriba

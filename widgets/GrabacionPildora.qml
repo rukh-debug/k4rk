@@ -15,7 +15,7 @@ import "../services"
 //  Raíz Item y no el propio RowLayout: un MouseArea colgado directamente de un
 //  layout es una celda más, así que el layout le impone la geometría y descarta
 //  el x/y/width/height puesto a mano. Con tamaño implícito cero medía 0×0 y
-//  parar la grabación desde aquí no funcionaba. Ver JuegoPildora, que tenía lo
+//  parar la grabación desde aquí no funcionaba.
 //  mismo.
 Item {
     id: indicador

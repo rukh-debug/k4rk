@@ -260,7 +260,7 @@ The map, so you can place yourself:
 | 40 | volume |
 | 50 · 55 | **clock · player** — the hover views. Be above these. |
 | 59 | notification toast |
-| 60 · 64 · 66 | control center · dungeon · settings |
+| 60 · 64 · 66 | control center · settings |
 | 80 · 83 | launcher · window switcher |
 
 Above the resting views so you survive being touched; below the things the
@@ -307,19 +307,19 @@ visible.** It keeps running, and while it runs the whole scene keeps
 repainting — at the refresh rate, on every monitor, for as long as its
 condition holds.
 
-That is not a warning from the manual. k4's own pill had a five-pixel dot
-pulsing whenever the dungeon had unopened chests:
+That is not a warning from the manual. k4's own pill once had a five-pixel
+dot pulsing whenever there was something waiting to be opened:
 
 ```qml
 SequentialAnimation on opacity {
-    running: Game.cofres > 0        // ← data, not visibility
+    running: hayPendientes            // ← data, not visibility
     loops: Animation.Infinite
     NumberAnimation { to: 0.3; duration: 900 }
     NumberAnimation { to: 1;   duration: 900 }
 }
 ```
 
-The condition asks about *data*, never about being seen. With 61 chests
+The condition asks about *data*, never about being seen. With 61 items
 sitting there it had been true for weeks, so the bar rendered **122 frames per
 second while collapsed with nothing open** — around 6% of a core, day and
 night, for a dot nobody was looking at. Fixing that one line took the bar to
@@ -478,14 +478,13 @@ missing:
   it. Without it the key does nothing and your view becomes a trap.
 - `handlesBackgroundTap: true` with an empty `onBackgroundTapped` — or a
   click on any gap in your view opens the control center.
-- `closeOnHoverExit: false` — a game must not vanish when the pointer
-  leaves mid-fight.
+- `closeOnHoverExit: false` — nothing must vanish when the pointer
+  leaves mid-use.
 - Anything you put in `services/` is NOT hot-reloaded: `pluginReload`
   reloads your plugin directory only, so rule changes need the bar
   restarted.
 
-The repo's dungeon (`plugins/Game/`) and the Digivice
-(`plugins/Digivice/`, see `docs/DIGIVICE.md`) are the proof it can go far.
+The repo's own examples (`ejemplos/`) are the proof it can go far.
 And what a game draws with is plain Qt: `AnimatedSprite`, `SpriteSequence`,
 `ParticleSystem`, `Shape`, `ShaderEffect` and `Canvas` are all importable —
 the rule is only that Quickshell stays hidden, not Qt.

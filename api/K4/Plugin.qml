@@ -98,7 +98,7 @@ QtObject {
 
     // Foco BAJO DEMANDA: la capa recibe teclas si interactúas con ella y se las
     // devuelve al escritorio si no. Es lo que quiere un módulo que se queda
-    // abierto de fondo mientras trabajas en otra ventana —la mazmorra— y que
+    // abierto de fondo mientras trabajas en otra ventana y que
     // solo necesita el teclado cuando lo miras.
     //
     // OJO CON EL ESC, que costó encontrarlo: «bajo demanda» significa que el
@@ -114,11 +114,10 @@ QtObject {
 
     // Foco MIENTRAS EL PUNTERO ESTÉ ENCIMA. El punto medio que faltaba.
     //
-    // Los dos de arriba no sirven para un juego: `grabKeyboard` te deja sin
-    // escribir en ninguna ventana mientras la partida esté abierta —y una
-    // partida se queda abierta—, y `tecladoOpcional` solo te da teclas si
-    // PINCHAS, así que las que se pulsan sin clicar no llegan nunca. Un
-    // Digivice se quedó sin ESC exactamente por eso.
+    // Los dos de arriba no sirven para algo que se queda abierto: `grabKeyboard` te deja sin
+    // escribir en ninguna ventana mientras esté abierto, y `tecladoOpcional`
+    // solo te da teclas si PINCHAS, así que las que se pulsan sin clicar no
+    // llegan nunca.
     //
     // Con esto el teclado es tuyo mientras juegas —el puntero está sobre la
     // island, que es donde se juega— y vuelve al escritorio en cuanto lo

@@ -18,7 +18,6 @@ K4Plugin {
 
     // el módulo de bandeja; lo inyecta el host
     property var tray: null
-    property var juego: null
 
     // Mismo criterio que la píldora, y ahora también la misma forma: cada zona
     // ocupa LO SUYO y se encadena con la siguiente, en vez de reservar los dos
@@ -64,7 +63,6 @@ K4Plugin {
         ? Math.min(Tray.count, 5) * 24 + 8 : 0) + 48
         + (Captura.grabando || Captura.estado === "cerrando" ? 60 : 0)
         + Modulos.count * 180
-        + (Game.cargado ? 52 : 0)
         + Indicadores.anchoAproximado
 
     //  Las sumas y los suelos se quedan como ARRANQUE y red de seguridad, y en
@@ -107,7 +105,6 @@ K4Plugin {
     view: Component {
         ClockView {
             tray: self.tray
-            juego: self.juego
             //  Por Binding y no asignando en un `on…Changed`: así el valor
             //  llega también en la primera disposición, que es justo cuando
             //  hace falta.
