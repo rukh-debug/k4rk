@@ -61,13 +61,13 @@ QtObject {
     //  ── lo que se va solo ─────────────────────────────────────────
     //
     //  Márcalo si tu vista aparece sin que nadie la pida y se cierra sola a los
-    //  pocos segundos: un aviso, la confirmación de que la captura salió. No lo
+    //  pocos segundos: un aviso, la confirmación de que algo se hizo. No lo
     //  marques si el usuario la abrió él.
     //
     //  Lo que cambia: en cuanto OTRO plugin se queda la island, este se cierra
     //  en el acto en vez de esperar a que venza su reloj. Pulsar el atajo del
-    //  lanzador con la confirmación de una captura delante enseñaba la captura
-    //  cinco segundos más y el lanzador después, que no es lo que pide quien
+    //  lanzador con un aviso delante lo enseñaba cinco segundos más y el
+    //  lanzador después, que no es lo que pide quien
     //  pulsa un atajo. La regla se aplica en un sitio —shell.qml— y no plugin a
     //  plugin, porque acordarse de llamar a `dismissToast()` en cada sitio que
     //  abre algo es justo lo que se olvida.

@@ -48,7 +48,7 @@ Singleton {
     function titulo(e) {
         if (!e)
             return ""
-        if (e.tipo === "imagen")
+        if (e.tipo === "image")
             return "Imagen · " + tamaño(e.bytes)
 
         const lineas = e.resumen.split("\n")
@@ -67,7 +67,7 @@ Singleton {
 
     function hace(cuando) {
         const s = Math.max(0, Date.now() / 1000 - cuando)
-        if (s < 60) return "ahora"
+        if (s < 60) return "now"
         const m = Math.floor(s / 60)
         if (m < 60) return m + " min"
         const h = Math.floor(m / 60)
@@ -76,10 +76,10 @@ Singleton {
     }
 
     // ── órdenes ───────────────────────────────────────────────────
-    function copiar(id) { mandar(["copiar", id]) }
-    function borrar(id) { mandar(["borrar", id]) }
-    function fijar(id) { mandar(["fijar", id]) }
-    function limpiar() { mandar(["limpiar"]) }
+    function copiar(id) { mandar(["copy", id]) }
+    function borrar(id) { mandar(["delete", id]) }
+    function fijar(id) { mandar(["pin", id]) }
+    function limpiar() { mandar(["clear"]) }
 
     function mandar(args) {
         orden.command = ["python3", portapapeles.guion].concat(args)
@@ -96,7 +96,7 @@ Singleton {
 
     Process {
         id: lector
-        command: ["python3", portapapeles.guion, "listar"]
+        command: ["python3", portapapeles.guion, "list"]
         running: true
 
         stdout: StdioCollector {
@@ -125,7 +125,7 @@ Singleton {
     Process {
         id: vigilaTexto
         command: ["wl-paste", "--type", "text", "--watch",
-                  "python3", portapapeles.guion, "guardar", "texto"]
+                  "python3", portapapeles.guion, "save", "text"]
         running: true
 
         stdout: SplitParser {
@@ -138,7 +138,7 @@ Singleton {
     Process {
         id: vigilaImagen
         command: ["wl-paste", "--type", "image", "--watch",
-                  "python3", portapapeles.guion, "guardar", "imagen"]
+                  "python3", portapapeles.guion, "save", "image"]
         running: true
 
         stdout: SplitParser {

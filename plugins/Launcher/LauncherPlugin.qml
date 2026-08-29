@@ -222,7 +222,7 @@ K4Plugin {
         const name = shellArgument(pkg.name)
         const script = "yay -S --needed -- " + name
             + " && notify-send -a 'Instalar' " + name + " 'Instalado correctamente'"
-            + " || { notify-send -a 'Instalar' -u critical " + name + " 'La instalación falló';"
+            + " || { notify-send -a 'Instalar' -u critical " + name + " 'Installation failed';"
             + Consola.cierre + " }"
 
         Consola.ejecutar(script)
@@ -239,7 +239,7 @@ K4Plugin {
         const name = shellArgument(pkg.name)
         const script = "sudo pacman -Rns --confirm -- " + name
             + " && notify-send -a 'Desinstalar' " + name + " 'Desinstalado correctamente'"
-            + " || { notify-send -a 'Desinstalar' -u critical " + name + " 'La desinstalación falló';"
+            + " || { notify-send -a 'Desinstalar' -u critical " + name + " 'Uninstallation failed';"
             + Consola.cierre + " }"
 
         Consola.ejecutar(script)
@@ -305,7 +305,7 @@ K4Plugin {
             const installEntry = {
                 isInstall: true,
                 name: "Instalar «" + query.trim() + "»",
-                genericName: "Buscar en los repos oficiales y AUR",
+                genericName: "Search the official repos and the AUR",
                 icon: ""
             }
 

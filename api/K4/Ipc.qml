@@ -12,8 +12,8 @@
 //  `enabled` antes del destroy.
 //
 //      K4.Ipc {
-//          target: "k4.mimodulo"
-//          function abrir(): void { ... }
+//          target: "k4.mymodule"
+//          function open(): void { ... }
 //      }
 
 import Quickshell.Io

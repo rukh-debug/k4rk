@@ -104,12 +104,6 @@ FadeIn {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                GrabacionPildora {
-                    interactive: true
-                    Layout.alignment: Qt.AlignVCenter
-                    onParar: Captura.parar()
-                }
-
                 PluginPildora {
                     interactive: true
                     Layout.alignment: Qt.AlignVCenter

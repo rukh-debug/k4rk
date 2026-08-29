@@ -2,9 +2,9 @@ pragma Singleton
 
 //  Módulos apartados a un lado, para retomarlos luego.
 //
-//  Cerrar no siempre quiere decir «tira esto». Una conversación con la IA o un
-//  vídeo a medio editar son cosas en las que estabas, y que al cerrarlas se
-//  pierdan obliga a no cerrarlas nunca —o sea, a tener la island ocupada
+//  Cerrar no siempre quiere decir «tira esto». Una conversación con la IA
+//  es algo en lo que estabas, y que al cerrarla se
+//  pierda obliga a no cerrarla nunca —o sea, a tener la island ocupada
 //  mientras haces otra cosa—. Aquí se apuntan las que están apartadas para que
 //  la píldora pueda enseñarlas y devolverlas de un clic.
 //

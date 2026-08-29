@@ -61,7 +61,6 @@ K4Plugin {
 
     readonly property int ladoEstimado: (Tray.count > 0
         ? Math.min(Tray.count, 5) * 24 + 8 : 0) + 48
-        + (Captura.grabando || Captura.estado === "cerrando" ? 60 : 0)
         + Modulos.count * 180
         + Indicadores.anchoAproximado
 
@@ -98,7 +97,7 @@ K4Plugin {
     //  68 de la zona del reloj, y si hay notificaciones lo que mida la tira más
     //  el hueco de 6 y los 12 de aire de abajo que pone la vista. Esos 18 son los
     //  que faltaban: sin ellos el reparto aplastaba las filas contra el borde.
-    readonly property int alturaTira: Settings.notificacionesAlPasar
+    readonly property int alturaTira: Settings.notificationsOnHover
         ? Notifs.stripHeight(3) : 0
     islandHeight: 68 + (alturaTira > 0 ? alturaTira + 18 : 0)
 

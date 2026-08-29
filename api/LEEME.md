@@ -68,7 +68,6 @@ not be declared inside the view.
 | `K4.Ventana` | Full-screen layer-shell surface |
 | `K4.PorPantalla` | One instance per monitor |
 | `K4.Cargador` | Lazy-load expensive content |
-| `K4.Atajo` | Global shortcut |
 | `K4.Autenticacion` | PAM authentication |
 | `K4.BloqueoSesion` | Real session lock |
 | `K4.SuperficieBloqueo` | What is drawn while locked, one per monitor |

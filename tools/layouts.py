@@ -17,8 +17,6 @@ buscara el patrón:
   · la píldora de la mazmorra no se podía pulsar, y el clic seguía hasta el
     fondo de la island, que abre el centro de control — o sea que hacía algo,
     solo que no lo suyo;
-  · el botón de parar la grabación tampoco respondía, con el mismo código
-    copiado;
   · y las tres acciones de una imagen del Ask —ampliar, guardar, abrir— ni se
     iluminaban al pasar el ratón ni hacían nada al pulsarlas.
 

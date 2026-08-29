@@ -161,7 +161,7 @@ FadeIn {
                 required property int index
 
                 readonly property bool elegida: index === view.plugin.index
-                readonly property bool esImagen: modelData.tipo === "imagen"
+                readonly property bool esImagen: modelData.tipo === "image"
 
                 width: ListView.view.width
                 height: 48
@@ -191,11 +191,11 @@ FadeIn {
                     IconGlyph {
                         visible: !fila.esImagen
                         text: String.fromCodePoint(
-                            fila.modelData.etiqueta === "enlace" ? 0xF0339
+                            fila.modelData.etiqueta === "link" ? 0xF0339
                             : fila.modelData.etiqueta === "color" ? 0xF0765
-                            : fila.modelData.etiqueta === "orden" ? 0xF018D
-                            : fila.modelData.etiqueta === "ruta" ? 0xF024B
-                            : fila.modelData.etiqueta === "código" ? 0xF0169
+                            : fila.modelData.etiqueta === "command" ? 0xF018D
+                            : fila.modelData.etiqueta === "path" ? 0xF024B
+                            : fila.modelData.etiqueta === "code" ? 0xF0169
                             : 0xF0219)
                         color: fila.elegida ? Theme.ink : Theme.muted
                         font.pixelSize: 17

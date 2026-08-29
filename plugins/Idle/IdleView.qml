@@ -208,8 +208,6 @@ FadeIn {
 
             Minimizados { Layout.alignment: Qt.AlignVCenter }
 
-            GrabacionPildora { Layout.alignment: Qt.AlignVCenter }
-
             PluginPildora { Layout.alignment: Qt.AlignVCenter }
 
             TrayRow {

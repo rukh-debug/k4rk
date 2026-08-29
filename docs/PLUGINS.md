@@ -162,7 +162,7 @@ commands that come next. The rest of this page explains what it wrote.
 ```
 
 - `superficies`: what your plugin **occupies**, as opposed to what it touches.
-  `island` (it has a `view`), `pildora`, `ventana`, `ipc`, `atajo`. It is
+  `island` (it has a `view`), `pildora`, `ventana`, `ipc`. It is
   optional — a manifest without it still validates — but if you declare it,
   the validator checks it against what your QML actually does, the same way it
   already does with `permisos`. Declaring lets Settings describe your plugin
@@ -272,7 +272,7 @@ something is announcing it, not demanding the screen.
 
 You ask for `islandWidth` and `islandHeight`, and **you can change them
 live**: a plugin can be a 200×150 strip and turn into a big screen
-depending on what it is doing. The bar's video editor does exactly that.
+depending on what it is doing.
 
 ```qml
 islandWidth:  modo === "mini" ? 200 : 980
@@ -333,8 +333,8 @@ running: hayAlgoQueContar && K4.Isla.aLaVista
 ```
 
 `K4.Isla.aLaVista` is false while the island is retracted (the *Hidden* mode
-in Settings), while a capture or a system dialog has it out of the way, and on
-a monitor whose bar is not showing. It is published per screen, so with two
+in Settings), while a system dialog has it out of the way, and on a monitor
+whose bar is not showing. It is published per screen, so with two
 monitors the answer is "yes" when any of them shows it. With no bar behind it
 — a `--test` run — it answers "yes", because an animation too many is easier
 to notice than one that never starts.
@@ -388,7 +388,7 @@ bar's directory, not yours.
 | `K4.Ipc` | your IPC target (`k4.<id>`) |
 | `K4.Process` | external processes — requires the `procesos` permission |
 | `K4.Terminal` | the house terminal: run a script where it best fits, open one — `ejecutar`/`abrir` require `procesos` |
-| `K4.Sonido` | a short sound — requires the `sonido` permission |
+| `K4.Sonido` | a short sound — requires the `sound` permission |
 | `K4.Fichero` | reading and writing files — requires `ficheros` |
 | `K4.Pildora` | an indicator on the folded pill |
 | `K4.Paths` | paths: `estadoDe(id)` is your state directory |
@@ -398,10 +398,9 @@ And what you need when yours grows past the island:
 
 | Type | What for |
 |---|---|
-| `K4.Ventana` | a window of your own, apart from the island: a full-screen picker, an editor, something worth real space |
+| `K4.Ventana` | a window of your own, apart from the island: a full-screen picker, something worth real space |
 | `K4.PorPantalla` | one copy of yours per monitor — with two screens almost nothing wants to exist once |
 | `K4.Cargador` | loads the expensive part only when needed and drops it when not |
-| `K4.Atajo` | a global shortcut, the kind that works no matter who has focus. Here you declare the name; binding it to a key belongs to the compositor's configuration |
 | `K4.Apps` | the installed applications: name, icon, how to launch them |
 | `K4.Sistema` | the loose ends: launching things, reading the environment, finding icons |
 | `K4.MenuBandeja` | the menu a tray icon publishes |
@@ -619,17 +618,16 @@ All three deregister on their own when your plugin is destroyed — disabled,
 reloaded, uninstalled — and the manager also sweeps by id: a Settings row
 that calls a dead plugin cannot exist.
 
-## 3b · Commands: IPC targets and shortcuts
+## 3b · Commands: IPC targets
 
-An `K4.Ipc` target and a `K4.Atajo` name are **shared between every plugin
+An `K4.Ipc` target is **shared between every plugin
 on the bar**. Two plugins cannot hold `k4.notes`: the compositor and
 Quickshell hand it to whoever registered first, and the loser stays loaded,
 without errors, simply not answering. That failure is invisible — it only
-shows up in the log, and only for IPC; duplicate shortcut names say nothing
-at all.
+shows up in the log.
 
-So the bar checks it for you. `tools/plugins.py` reads the targets and
-shortcut names **out of your QML** — not out of the manifest, because what
+So the bar checks it for you. `tools/plugins.py` reads the targets
+**out of your QML** — not out of the manifest, because what
 is registered is what the code says — and cross-checks them against
 everything already installed. Whoever asks for a taken command is listed as
 not loadable, with the reason:
@@ -644,12 +642,9 @@ governs ids. The commands each plugin registers travel in the catalog under
 `comandos`, so Settings and the store can show them before you turn
 anything on.
 
-Two things this does not do yet, and it is better to know: the scan looks
-for `target` and `name` in the first 400 characters of the block, so a
-target hidden far below is not seen; and a shortcut **name** is not a key —
-the key lives in the compositor's config (`hypr/k4.conf`), so a plugin
-installed from the store declares its shortcut but nobody presses it until
-that binding exists.
+One thing this does not do yet, and it is better to know: the scan looks
+for `target` in the first 400 characters of the block, so a target hidden
+far below is not seen.
 
 ## 4 · Permissions
 
@@ -660,7 +655,7 @@ The manifest declares what you use; the bar checks it **before listing**:
 | `procesos` | `K4.Process`, `K4.Terminal.ejecutar`, `K4.Terminal.abrir` |
 | `red` | `XMLHttpRequest`, `WebSocket` |
 | `ficheros` | `K4.Fichero` |
-| `sonido` | `K4.Sonido` |
+| `sound` | `K4.Sonido` |
 | `audio` | `K4.Audio.ponerVolumen`, `K4.Audio.alternarSilencio` |
 | `medios` | `K4.Medios.alternarPausa`, `.siguiente`, `.anterior`, `.buscar` |
 | `notificaciones` | `K4.Notificaciones.limpiar` |

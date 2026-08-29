@@ -20,7 +20,7 @@ import "../../services"
 K4Plugin {
     id: self
 
-    name: "sonido"
+    name: "sound"
     title: "Sound"
     priority: 61
     active: habilitado && abierto
@@ -61,7 +61,7 @@ K4Plugin {
     function close() { abierto = false }
 
     K4.Ipc {
-        target: "k4.sonido"
+        target: "k4.sound"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
     }

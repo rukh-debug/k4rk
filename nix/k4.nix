@@ -8,7 +8,7 @@
 #
 #  The dependency list mirrors dependencias.tsv — the project's single
 #  source of truth. Everything marked `base` that exists in nixpkgs is
-#  here; optional ones (whisper, yay, nvidia-smi, claude, codex) are left
+#  here; optional ones (yay, nvidia-smi, claude, codex) are left
 #  to the user, exactly as `./instalar` leaves them unless asked.
 {
   lib,
@@ -26,8 +26,6 @@
   curl,
   grim,
   slurp,
-  satty,
-  wf-recorder,
   swaybg,
   ffmpeg,
   imagemagick,
@@ -83,8 +81,6 @@ let
     curl
     grim
     slurp
-    satty
-    wf-recorder
     swaybg
     ffmpeg
     imagemagick

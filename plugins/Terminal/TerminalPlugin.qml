@@ -1019,48 +1019,48 @@ K4Plugin {
         //  Sin decir dónde, en tu casa. Hay que ser explícito: lo que se
         //  hereda al lanzar desde aquí es el directorio de la barra, que no
         //  le importa a nadie.
-        function abrir(): void {
+        function open(): void {
             K4.Sistema.lanzar(Consola.abrir(K4.Sistema.entorno("HOME")))
         }
 
-        function abrirEn(ruta: string): void {
+        function openAt(ruta: string): void {
             K4.Sistema.lanzar(Consola.abrir(ruta))
         }
 
         //  Donde la casa corra las cosas: la island si la hay, y si no una
         //  ventana. Antes esto abría ventana siempre, y era incoherente con
         //  que Actualizar sí se vea en la island.
-        function ejecutar(mandato: string): void {
+        function run(mandato: string): void {
             if (mandato)
                 Consola.ejecutar(mandato)
         }
 
         //  Lo de la island, a lo grande y en el mismo sitio.
-        function sacar(): void { self.sacar() }
+        function popOut(): void { self.sacar() }
 
         //  El gesto único: mudar la sesión al otro lado, sea cual sea el otro
         //  lado. Si estás mirando una ventana de k4term, se vuelve a la
         //  island; si no, la de la island se va a una ventana. Dos atajos
         //  para lo mismo no tenían sentido, y encima el de la ventana no
         //  llegaba mientras la island se quedaba el teclado.
-        function mudar(): void { quien.running = true }
+        function move(): void { quien.running = true }
 
         //  Abrir donde estás mirando: se pregunta a Hyprland por la ventana
         //  con foco y se baja por el árbol de procesos hasta el último hijo
         //  —el intérprete que de verdad tiene el directorio— para leerle el
         //  cwd. Si algo falla, cae en abrir sin más.
-        function aqui(): void { donde.running = true }
+        function here(): void { donde.running = true }
 
         //  Empieza algo largo: a la píldora. Quien decide qué es «largo» es
         //  la terminal, que es la que tiene el reloj puesto.
-        function inicio(pid: string, mandato: string, llevaba: string): void {
+        function start(pid: string, mandato: string, llevaba: string): void {
             self.apuntar(pid, mandato, llevaba)
         }
 
         //  Y al acabar: fuera de la píldora, y aviso si de verdad ha llevado
         //  su rato. El indicador aparece antes que el aviso a propósito —
         //  primero enterarse de que trabaja, luego de que terminó.
-        function fin(pid: string, mandato: string, salida: string,
+        function end(pid: string, mandato: string, salida: string,
                      segundos: string): void {
             self.olvidar(pid)
             if (Number(segundos) >= self.avisoSegundos)
@@ -1068,17 +1068,17 @@ K4Plugin {
         }
 
         //  La ventana se cierra con algo dentro: se lleva su indicador.
-        function limpiar(pid: string): void {
+        function clear(pid: string): void {
             self.olvidar(pid)
             self.dejarDeEsperar(pid)
         }
 
         //  La terminal de la island, para lo rápido.
-        function isla(): void { self.toggle() }
+        function island(): void { self.toggle() }
 
         //  Una ventana devuelve su sesión: se abre una pestaña que la adopta.
         //  La ventana se cierra sola en cuanto se la hayan quitado.
-        function adoptar(socket: string): void {
+        function adopt(socket: string): void {
             if (!socket)
                 return
             self.nueva(socket)
@@ -1087,21 +1087,21 @@ K4Plugin {
 
         //  Las de tener varias: abrir otra, moverse entre ellas y cerrar la
         //  que sobra. Lo mismo que las teclas, para quien prefiera un guion.
-        function nueva(): void {
+        function newSession(): void {
             if (!Consola.hayIsla)
                 return
             self.nueva()
             self.abierto = true
         }
 
-        function siguiente(): void { self.siguiente() }
-        function anterior(): void { self.anterior() }
-        function irA(n: string): void { self.irA(parseInt(n, 10) - 1) }
-        function cerrarTerminal(): void { self.cerrarSesion(self.actual) }
+        function next(): void { self.siguiente() }
+        function prev(): void { self.anterior() }
+        function goTo(n: string): void { self.irA(parseInt(n, 10) - 1) }
+        function closeTerminal(): void { self.cerrarSesion(self.actual) }
 
         //  Teclear en la que tengas delante, sin abrir ninguna nueva. Es lo
         //  que distingue esto de `ejecutar`, que siempre estrena terminal.
-        function escribir(texto: string): void {
+        function write(texto: string): void {
             //  Los saltos de línea se convierten en retornos por lo mismo que
             //  al pegar: es lo que manda la tecla Intro, y con `\n` la línea
             //  se queda escrita sin ejecutarse.
@@ -1114,24 +1114,24 @@ K4Plugin {
         //  un agente que ha terminado su turno y te espera. Se apunta en la
         //  píldora —con su propio glifo, que no es lo mismo que un mandato
         //  largo— y se avisa una vez.
-        function campana(pid: string, titulo: string): void {
+        function bell(pid: string, titulo: string): void {
             self.esperando(pid, titulo)
         }
 
         //  Estás dentro de un sitio. Lo dice la ventana al conectar y la
         //  píldora lo enseña: con tres terminales abiertas, saber a cuál
         //  máquina pertenece cada una no debería exigir mirar el prompt.
-        function conectado(pid: string, destino: string): void {
+        function connected(pid: string, destino: string): void {
             self.entrarEn(pid, destino)
         }
 
-        function desconectado(pid: string): void {
+        function disconnected(pid: string): void {
             self.salirDe(pid)
         }
 
         //  Un recado suelto de la terminal: no tiene dónde decir «guardado»
         //  sin taparse a sí misma, y la isla sí.
-        function decir(titulo: string, cuerpo: string): void {
+        function notify(titulo: string, cuerpo: string): void {
             K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "5000",
                                titulo, cuerpo])
         }

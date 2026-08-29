@@ -247,7 +247,6 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hello toggle
   `zonaActiva`, or its `null` mask swallows every click on the desktop.
 - `K4.PorPantalla`: one instance per monitor.
 - `K4.Cargador`: a `LazyLoader` for expensive views or windows.
-- `K4.Atajo`: a global shortcut identified by `appid: "k4"` and `name`.
 - `K4.Autenticacion`: PAM authentication state and signals.
 - `K4.BloqueoSesion` and `K4.SuperficieBloqueo`: the real `ext-session-lock`
   and its per-output surface.
@@ -321,8 +320,8 @@ K4.Lanzador {
   alto }`); with a transparent `K4.Ventana` above everything you can draw
   outside the island — a waving hand, a pet peeking over the edge.
 - `K4.Isla.aLaVista` says whether anyone can see the island right now —
-  false while it is retracted in *Hidden* space mode, while a capture or a
-  system dialog has it out of the way, and on a monitor whose bar is not
+  false while it is retracted in *Hidden* space mode, while a system dialog
+  has it out of the way, and on a monitor whose bar is not
   showing. **An animation that never ends must ask this**, because in Qt
   Quick an animation does not stop when its item stops being visible; see
   [PLUGINS.md](PLUGINS.md#an-animation-nobody-sees-still-runs).

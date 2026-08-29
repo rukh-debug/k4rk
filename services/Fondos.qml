@@ -26,8 +26,10 @@ Singleton {
     readonly property string casa: Quickshell.env("HOME") || ""
 
     readonly property var carpetas: [
+        casa + "/Pictures",
         casa + "/Imágenes",
         casa + "/Pictures",
+        casa + "/Videos",
         casa + "/Vídeos",
         casa + "/Videos",
         casa + "/Descargas",
@@ -37,11 +39,10 @@ Singleton {
 
     //  Y lo que NO cuenta como fondo aunque esté ahí dentro.
     //
-    //  «Capturas» es donde el propio k4 guarda las fotos y grabaciones de
-    //  pantalla, así que la rejilla se llenaba de capturas de la barra: en esta
-    //  máquina, de 120 imágenes encontradas la inmensa mayoría eran pantallazos
-    //  de terminales. Un selector de fondos que enseña tus capturas es un
-    //  selector que no has mirado nunca.
+    //  «Capturas» y «Screenshots» son donde van a parar los pantallazos, y
+    //  un selector de fondos que se llena de pantallazos de terminales es un
+    //  selector que no has mirado nunca: en esta máquina, de 120 imágenes
+    //  encontradas la inmensa mayoría eran eso.
     readonly property var carpetasFuera: ["Capturas", "Screenshots", ".thumbnails"]
 
     //  Qué se admite. Los de siempre más lo que se mueve, que es de lo que iba
@@ -196,7 +197,7 @@ Singleton {
         args.push("3")
         //  Las carpetas excluidas se podan ANTES de mirar ficheros: con un
         //  `-not -path` cada fichero de dentro se examina igualmente, y en una
-        //  carpeta de capturas con cientos eso es recorrer para descartar.
+        //  carpeta de pantallazos con cientos eso es recorrer para descartar.
         for (let i = 0; i < fondos.carpetasFuera.length; ++i) {
             args.push("(")
             args.push("-type"); args.push("d")

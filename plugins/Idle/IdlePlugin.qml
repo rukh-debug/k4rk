@@ -20,19 +20,13 @@ K4Plugin {
 
     // cuántos iconos caben sin que la píldora se desmadre; el resto se resume
     readonly property int trayShown: Math.min(Tray.count, 4)
-    readonly property int trayWidth: Tray.count === 0 || !Settings.bandejaEnPildora
+    readonly property int trayWidth: Tray.count === 0 || !Settings.trayInPill
         ? 0 : trayShown * 18 + (Tray.count > trayShown ? 18 : 0) + 6
 
     // Cada flanco ocupa lo suyo y la hora se queda quieta por el ancla que se
     // publica abajo, no por reservar lo mismo a los dos lados. La simetría
     // hacía que cada píxel de indicador costase dos, y con dos o tres agentes
     // la island se iba de ancho hasta dejar de parecerse a una island.
-    // Grabando: el punto rojo y el mm:ss. Reservarlo es obligatorio, no
-    // cosmético: los flancos tienen hueco fijo y lo que no se reserva se sale
-    // por encima de la hora, que es lo que pasaba.
-    readonly property int grabacionWidth: Captura.grabando
-        || Captura.estado === "cerrando" ? 60 : 0
-
     // La carátula y las barras van juntas a la izquierda, así que el hueco de
     // las barras se reserva ahí y no enfrente.
     readonly property int ladoIzq: Media.isPlaying ? 53 : 0
@@ -40,7 +34,7 @@ K4Plugin {
     // llegar a 116 px con su icono y su detalle recortado.
     readonly property int minimizadosWidth: Modulos.count * 116
 
-    readonly property int ladoDer: trayWidth + grabacionWidth
+    readonly property int ladoDer: trayWidth
         + minimizadosWidth + Indicadores.anchoAproximado
 
     //  La medida REAL de cada fila, publicada por la vista. Las sumas de arriba

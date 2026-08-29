@@ -26,8 +26,8 @@ K4Plugin {
     //
     //  Antes solo salía al pasar el ratón, así que era lo único del sistema que
     //  no tenía forma de pedir la island por su cuenta: con la barra escondida,
-    //  una canción nueva no se la enteraba nadie. El aviso, el volumen y la
-    //  captura sí salen solos; esto faltaba.
+    //  una canción nueva no se la enteraba nadie. El aviso y el volumen
+    //  sí salen solos; esto faltaba.
     //
     //  La pista se identifica por lo que se LEE —título y artista— y no por el
     //  `xesam:trackid`: hay reproductores que no lo publican, y los navegadores
@@ -127,7 +127,7 @@ K4Plugin {
     // crece para dejar sitio a las notificaciones recientes
     //  El base ya lleva sus márgenes de 14 arriba y abajo. La tira añade lo que
     //  mide más el espaciado de 13 del reparto y los 2 de su propio topMargin.
-    readonly property int alturaTira: Settings.notificacionesAlPasar
+    readonly property int alturaTira: Settings.notificationsOnHover
         ? Notifs.stripHeight(3) : 0
     //  Asomándose, solo la fila de la pista: 44 px de carátula más sus dos
     //  márgenes de 14. El resto —línea de tiempo, transporte, notificaciones—

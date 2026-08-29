@@ -62,7 +62,7 @@ Singleton {
         if (!item)
             return ""
         if (item.status === Status.NeedsAttention)
-            return "Requiere atención"
+            return "Needs attention"
         if (item.status === Status.Passive)
             return "En segundo plano"
         return "Activo"

@@ -134,7 +134,7 @@ K4Plugin {
 
     view: Component { SshView { plugin: self } }
 
-    function abrir() {
+    function open() {
         fSsh.reload()
         fExtras.reload()
         busqueda = ""
@@ -407,7 +407,7 @@ K4Plugin {
         return partes.join(" ")
     }
 
-    function conectar(h, enVentana) {
+    function connect(h, enVentana) {
         let guion = mandato(h)
         if (!guion)
             return
@@ -854,7 +854,7 @@ K4Plugin {
         //  shell emitiendo cada marcador por duplicado.
         const guion =
             "set -e; " +
-            "echo '→ copiando la integración a " + destino + "'; " +
+            "echo '→ copying the integration to " + destino + "'; " +
             "k4term --integracion zsh  | ssh " + destino +
                 " 'mkdir -p ~/.config/k4term && cat > ~/.config/k4term/k4term.zsh'; " +
             "k4term --integracion fish | ssh " + destino +
@@ -863,12 +863,12 @@ K4Plugin {
                 "for par in \"$HOME/.zshrc:zsh\" \"$HOME/.config/fish/config.fish:fish\"; do " +
                 "  rc=${par%:*}; cual=${par#*:}; " +
                 "  [ -f \"$rc\" ] || continue; " +
-                "  grep -q k4term/k4term.$cual \"$rc\" && { echo \"✓ $cual ya estaba\"; continue; }; " +
-                "  printf \"\\n#  k4term: integración de la shell\\n\" >> \"$rc\"; " +
+                "  grep -q k4term/k4term.$cual \"$rc\" && { echo \"✓ $cual already had it\"; continue; }; " +
+                "  printf \"\\n#  k4term: shell integration\\n\" >> \"$rc\"; " +
                 "  printf \". ~/.config/k4term/k4term.%s\\n\" \"$cual\" >> \"$rc\"; " +
-                "  echo \"✓ $cual integrada\"; " +
+                "  echo \"✓ $cual integrated\"; " +
                 "done'; " +
-            "echo '→ listo: vuelve a entrar y los bloques funcionarán también allí'"
+            "echo '→ done: log in again and the blocks work there too'"
 
         K4.Terminal.ejecutar(guion + K4.Terminal.cierre)
         cerrar()
@@ -896,13 +896,13 @@ K4Plugin {
         target: "k4.ssh"
 
         //  El selector, que es para lo que se abre esto.
-        function abrir(): void { self.abrir() }
-        function cerrar(): void { self.cerrar() }
-        function alternar(): void { self.alternar() }
+        function open(): void { self.abrir() }
+        function close(): void { self.cerrar() }
+        function toggle(): void { self.alternar() }
 
         //  Y conectar por guion, sin abrir nada: para atajos propios o para
         //  llamarlo desde otro sitio.
-        function conectar(alias: string): void {
+        function connect(alias: string): void {
             self.fSsh.reload()
             const h = self.guardados.find(function (x) { return x.alias === alias })
             if (h)

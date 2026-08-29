@@ -18,8 +18,6 @@ local raiz = "@RAIZ@"
 -- Las tres llamadas de IPC. `k4` es el objetivo general, que se mantiene por
 -- compatibilidad; los módulos nuevos publican el suyo propio.
 local k4 = "quickshell ipc -p " .. raiz .. "/shell.qml call k4 "
-local captura = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.captura "
-local editor = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.editor "
 local apps = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.apps "
 local term = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.term "
 local ssh = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.ssh "
@@ -57,7 +55,7 @@ hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
 -- La terminal
 ----------------------------------------------------------------------------
 -- Nada de SUPER+T a secas: esa abre tu terminal de siempre y no se toca. La
--- de la island va con SHIFT, como el editor con SHIFT+E: misma letra, y la
+-- de la island va con SHIFT: misma letra, y la
 -- que lleva SHIFT es la de la casa.
 --
 -- Son la misma sesión vista de dos maneras, y por eso el par tiene sentido:
@@ -67,8 +65,8 @@ hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
 --
 -- Y ALT vale en los dos sentidos: pulsado sobre una ventana de k4term, la
 -- sesión se vuelve a la island. Un gesto, no dos.
-hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd(term .. "isla"))
-hl.bind(mod .. " + ALT + T",     hl.dsp.exec_cmd(term .. "mudar"))
+hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd(term .. "island"))
+hl.bind(mod .. " + ALT + T",     hl.dsp.exec_cmd(term .. "move"))
 
 -- Y los servidores de uno, a dos golpes: se abre, se escriben tres letras y
 -- se entra. Los hosts salen de ~/.ssh/config, así que lo que guardes aquí lo
@@ -98,32 +96,5 @@ hl.bind("XF86AudioNext",  hl.dsp.exec_cmd(k4 .. "nextTrack"),  { locked = true }
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd(k4 .. "prevTrack"),  { locked = true })
 
 ----------------------------------------------------------------------------
--- Capturas y grabación
-----------------------------------------------------------------------------
-hl.bind(mod .. " + C",           hl.dsp.exec_cmd(captura .. "region"))
-hl.bind(mod .. " + CONTROL + C", hl.dsp.exec_cmd(captura .. "anotar"))
-hl.bind(mod .. " + Print",       hl.dsp.exec_cmd(captura .. "menu"))
-hl.bind("Print",                 hl.dsp.exec_cmd(captura .. "region"))
-hl.bind("SHIFT + Print",         hl.dsp.exec_cmd(captura .. "pantalla"))
-hl.bind("CONTROL + Print",       hl.dsp.exec_cmd(captura .. "ventana"))
--- Nada de ALT + Print: con Alt pulsado el kernel convierte esa tecla en SysRq y
--- Hyprland ya no ve un "Print", así que la combinación no llega nunca. Probado.
-
--- La misma tecla arranca y para la grabación: no hay que acordarse de otra.
-hl.bind(mod .. " + SHIFT + C",   hl.dsp.exec_cmd(captura .. "grabarAlternar"))
-
-----------------------------------------------------------------------------
--- El editor de vídeo
-----------------------------------------------------------------------------
--- Nada de SUPER + E a secas: esa es el gestor de ficheros desde siempre.
-hl.bind(mod .. " + SHIFT + E",   hl.dsp.exec_cmd(editor .. "abrir"))
-hl.bind(mod .. " + ALT + E",     hl.dsp.exec_cmd(editor .. "retomar"))
-
-----------------------------------------------------------------------------
 -- Los clics
 ----------------------------------------------------------------------------
--- Para que el zoom automático del editor sepa dónde estabas mirando.
--- `non_consuming` es lo que hace que el clic siga llegando a la aplicación: sin
--- eso el ratón dejaría de funcionar en cuanto se cargara esta configuración.
-hl.bind("mouse:272", hl.dsp.global("k4:clic"),        { non_consuming = true })
-hl.bind("mouse:273", hl.dsp.global("k4:clicDerecho"), { non_consuming = true })

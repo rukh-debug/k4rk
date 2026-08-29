@@ -817,7 +817,6 @@ titulo "Listo"
 if [ "$N_BASE" -gt 0 ]; then
     aviso "Faltan $N_BASE paquetes de los necesarios; míralos arriba."
 fi
-nota "Los atajos: SUPER+Space lanzador · SUPER+I panel · SUPER+C captura"
-nota "SUPER+SHIFT+C grabar · SUPER+SHIFT+E editor · SUPER+Z ajustes"
+nota "Los atajos: SUPER+Space lanzador · SUPER+I panel · SUPER+Z ajustes"
 nota "Todos están en $RAIZ/hypr/ y se documentan en el README."
 printf '\n'
