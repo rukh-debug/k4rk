@@ -93,8 +93,18 @@ FadeIn {
         })
     }
 
+    //  A group's index among the sidebar groups. By NAME and not by
+    //  object: a Repeater hands its delegates a COPY of every array-model
+    //  object — `modelData === lateral[i]` is false, `indexOf` is -1, and
+    //  navigation that trusts references lands nowhere (ask the all-blue
+    //  sidebar of one bad evening). Names are the groups' stable ids:
+    //  `grupo` is what search matches, what `padre` points at, and what the
+    //  keybinds arrive as.
     function indiceDe(grupo) {
-        return vista.lateral.indexOf(grupo)
+        for (let i = 0; i < vista.lateral.length; ++i)
+            if (vista.lateral[i].grupo === grupo.grupo)
+                return i
+        return -1
     }
 
     //  Which drawers are open. Display starts open: a closed family at the
@@ -185,6 +195,8 @@ FadeIn {
     //  to the overview, so the header never names a page whose row is hidden.
     function tocarPadre(grupo) {
         const idx = vista.indiceDe(grupo)
+        if (idx < 0)
+            return
         if (!vista.expandidos[grupo.grupo]) {
             vista.ponerExpandido(grupo.grupo, true)
             vista.elegir(idx)
@@ -192,7 +204,8 @@ FadeIn {
             vista.ponerExpandido(grupo.grupo, false)
             const sel = vista.lateral[vista.seccion]
             if (sel !== undefined
-                && (sel === grupo || sel.padre === grupo.grupo))
+                && (sel.grupo === grupo.grupo
+                    || sel.padre === grupo.grupo))
                 vista.elegir(idx)
         }
     }
@@ -217,6 +230,11 @@ FadeIn {
     }
 
     function elegir(i) {
+        //  Out of range is a closed door, not a page: an index nobody has
+        //  would leave the content empty and every row comparing itself
+        //  against nothing.
+        if (i < 0 || i >= vista.lateral.length)
+            return
         vista.seccion = i
         vista.busqueda = ""
         campo.text = ""
