@@ -9,7 +9,6 @@ FadeIn {
 
     property var panel: null
     property var tray: null
-    property var juego: null
 
     //  Quién la ha abierto y en qué modo. Se lo pasa el plugin —el host no
     //  inyecta nada— y de aquí sale la única pregunta que esta vista le hace:
@@ -149,13 +148,6 @@ FadeIn {
                 Layout.leftMargin: 4
                 Layout.alignment: Qt.AlignVCenter
                 onParar: Captura.parar()
-            }
-
-            JuegoPildora {
-                interactive: true
-                Layout.leftMargin: 2
-                Layout.alignment: Qt.AlignVCenter
-                onAbrir: if (view.juego) view.juego.toggle()
             }
 
             PluginPildora {

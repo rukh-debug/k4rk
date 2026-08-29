@@ -113,7 +113,7 @@ PanelWindow {
     //  OJO en "fondo" con `zonaActiva`: sin ella el mask se queda en `null` y
     //  esta superficie se lleva TODOS los clics del escritorio, que en la capa
     //  de abajo significa un escritorio que deja de responder. Un fondo no
-    //  recoge clics: dale un Item de 0×0, como hacen las escenas del modo dual.
+    //  recoge clics: dale un Item de 0×0.
     property string capa: ventana.encima ? "encima" : "normal"
 
     //  Y de paso: un fondo no le quita sitio a nadie —lo de debajo no puede
@@ -160,9 +160,7 @@ PanelWindow {
     //
     //  Lo necesita cualquiera que quiera pintar SOBRE la franja de la barra. Sin
     //  esto, una ventana a pantalla completa empieza donde acaba la barra y todo
-    //  lo que dibuje sale 34 px más abajo de donde cree —medido, con el modo
-    //  dual: los trozos salían en `y: 34-67` en vez de `0-33`, despegados del
-    //  canto de la pantalla—.
+    //  lo que dibuje sale 34 px más abajo de donde cree.
     exclusionMode: reserva > 0 ? ExclusionMode.Normal : ExclusionMode.Ignore
     exclusiveZone: reserva
 

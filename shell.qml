@@ -24,7 +24,7 @@ Scope {
     //  «Type X unavailable» y CERO barras, y pasó esta semana. Con la carga
     //  dinámica, el roto se apunta en Ajustes y los demás arrancan.
     //
-    //  Las referencias cruzadas (`panel`, `tray`, `juego`…) también las
+    //  Las referencias cruzadas (`panel`, `tray`…) también las
     //  reparte el gestor: cualquier plugin que declare la propiedad la
     //  recibe, venga del repo o de ~/.config/k4/plugins.
 
@@ -156,11 +156,9 @@ Scope {
         void Workspaces.list
         void Weather.located
         void Tray.count
-        void Game.cargado
         void Idioma.cargado
         void Settings.cargado
         void PluginManager.cargado
-        void Tokens.cargado
         void Clipboard.cargado
         void Ventanas.count
         void Captura.carpetaFotos
@@ -259,7 +257,6 @@ Scope {
         function theme(): void { _p("settings")?.abrir() }
         function weather(): void { _p("weather")?.toggle() }
         function tray(): void { _p("tray")?.toggle() }
-        function game(): void { _p("game")?.toggle() }
         function settings(): void { _p("settings")?.toggle() }
         function session(): void { _p("session")?.toggle() }
         function lock(): void { Sesion.bloquear() }
@@ -292,7 +289,7 @@ Scope {
             //  `activePlugin` es uno solo y global: gana el de más prioridad y
             //  mientras esté activo NADIE más puede activarse, en ninguna
             //  pantalla. Eso vale para un módulo que se abre y se cierra, pero
-            //  no para uno que se queda —el modo dual se lleva la barra al
+            //  no para uno que se queda —una escena puede llevarse la barra al
             //  borde de abajo y ahí sigue— porque deja la island de los otros
             //  monitores muerta: ni se despliega ni responde.
             //
@@ -440,7 +437,7 @@ Scope {
                 interval: 1600
                 //  Se vuelve a preguntar al vencer, y no se da por hecho lo que
                 //  era verdad al armarlo: entre medias ha podido volver el
-                //  ratón, o el dual llevarse la barra abajo.
+                //  ratón, o una escena llevarse la barra abajo.
                 onTriggered: panelWindow.retirada = panelWindow.seEsconde
                     && !panelWindow.sinBarra && !panelWindow.hayQueEnsenar
             }
@@ -487,7 +484,7 @@ Scope {
             //
             //  Salvo que no haya píldora. Un módulo puede pedir la island de
             //  alto CERO, que es como se dice «ahora mismo aquí no hay barra»
-            //  —lo usa el modo dual, que se lleva la barra al borde de abajo—,
+            //  —lo usa quien se lleva la barra al borde de abajo—,
             //  y entonces seguir quitándole 34 px al escritorio sería cobrar
             //  por una franja que no se ve.
             //  Y quien lo decide es el módulo, no su altura.
@@ -506,7 +503,7 @@ Scope {
             //  Y por encima de todo eso manda Ajustes: quien ha dicho que la
             //  barra no le quite sitio no lo ha dicho a medias, así que
             //  «encima» y «escondida» le ganan también a lo que pida un módulo.
-            //  Incluida la franja que el dual guarda para el viaje al dock: si
+            //  Incluida la franja que se guarda para el viaje al borde: si
             //  nunca se reservó nada, empezar a reservarlo justo al bajar la
             //  barra sería un salto del escritorio salido de la nada.
             exclusiveZone: panelWindow.flotante ? 0

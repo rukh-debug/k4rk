@@ -48,25 +48,12 @@ hl.bind(mod .. " + X",           hl.dsp.exec_cmd(k4 .. "togglePanel"))
 hl.bind(mod .. " + N",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
 hl.bind(mod .. " + A",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
 hl.bind(mod .. " + Z",           hl.dsp.exec_cmd(k4 .. "settings"))
--- La atalaya releva aquí al selector `windows`, que sigue instalado y se
--- abre desde el centro de aplicaciones. Va por `global` y no por
--- `exec_cmd` porque es un K4.Atajo: el compositor se lo entrega a la
--- barra sin lanzar un proceso en cada pulsación.
-hl.bind(mod .. " + Tab",         hl.dsp.global("k4:atalaya"))
 hl.bind(mod .. " + SHIFT + W",   hl.dsp.exec_cmd(k4 .. "theme"))
 hl.bind(mod .. " + V",           hl.dsp.exec_cmd(k4 .. "clipboard"))
 hl.bind(mod .. " + B",           hl.dsp.exec_cmd(k4 .. "files"))
 hl.bind(mod .. " + K",           hl.dsp.exec_cmd(k4 .. "keys"))
 hl.bind(mod .. " + L",           hl.dsp.exec_cmd(k4 .. "lock"))
 hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
--- Modo dual: la barra se parte en dos, baja por los bordes y se hace dock.
--- Va por atajo global y no por IPC porque no hace falta levantar un proceso
--- para alternarla: la barra recibe la señal del compositor.
---
--- SHIFT y no SUPER+D a secas: esa ya es «pantalla completa» en la
--- configuración de CachyOS, y pisarla no es cosa nuestra.
-hl.bind(mod .. " + SHIFT + D",   hl.dsp.global("k4:dual"))
-
 ----------------------------------------------------------------------------
 -- La terminal
 ----------------------------------------------------------------------------

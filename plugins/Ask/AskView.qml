@@ -428,7 +428,6 @@ FadeIn {
                                     //  tamaño implícito— la zona quedaba en
                                     //  0×0: ni se iluminaban al pasar por
                                     //  encima ni hacían nada al pulsarlas.
-                                    //  Mismo caso que JuegoPildora.
                                     delegate: Item {
                                         id: accion
                                         required property var modelData
