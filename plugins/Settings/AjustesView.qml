@@ -44,6 +44,15 @@ FadeIn {
     Component.onCompleted: {
         campo.forceActiveFocus()
         foco.start()
+        aterrizar()
+    }
+
+    //  The landing note can also arrive while the view is open: Super+W with
+    //  Settings already on screen should still take you to the Wallpaper
+    //  page, not be swallowed because the view was created earlier.
+    Connections {
+        target: vista.plugin
+        function onPaginaPedidaChanged() { vista.aterrizar() }
     }
 
     Timer {
@@ -120,13 +129,33 @@ FadeIn {
     }
 
     //  Jump to a section by name: used by the search result that offers a
-    //  whole section.
+    //  whole section, and by `k4 settingsSection <name>`. The name or the
+    //  section id both work ("Wallpaper" and "wallpaper"), case-insensitive
+    //  — whoever binds a key types it once, and getting the case wrong
+    //  should open the top, not nothing.
     function irASeccion(nombre) {
-        for (let i = 0; i < vista.lateral.length; ++i)
-            if (vista.lateral[i].grupo === nombre) {
+        const n = String(nombre).toLowerCase()
+        for (let i = 0; i < vista.lateral.length; ++i) {
+            const g = vista.lateral[i]
+            if (String(g.grupo).toLowerCase() === n
+                || String(g.vista || "").toLowerCase() === n) {
                 vista.elegir(i)
                 return
             }
+        }
+    }
+
+    //  Land on a page asked for from outside (`k4 settingsSection`). Called
+    //  on open, because the plugin note can arrive before the view exists,
+    //  and every time the note changes, because it can also arrive while the
+    //  view is open. Consumed here so reopening with the pill starts at the
+    //  top: the landing is a favour to a keybind, not a new home.
+    function aterrizar() {
+        const p = vista.plugin.paginaPedida
+        if (!p || p.length === 0)
+            return
+        vista.plugin.paginaPedida = ""
+        vista.irASeccion(p)
     }
 
     function elegir(i) {
@@ -640,6 +669,13 @@ FadeIn {
                             //  Windows and Effects, one loader per page,
                             //  and «Save» after them: they all write the
                             //  Hyprland Lua through the same motor.
+                            //
+                            //  These loaders keep their height conditional on
+                            //  `active`. It is the lesson from before: an
+                            //  inactive one loads nothing but STILL measures
+                            //  whatever you ask of it, and that pushes the
+                            //  other sections' content out of view without a
+                            //  single error.
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
