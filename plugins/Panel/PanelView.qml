@@ -11,6 +11,22 @@ FadeIn {
 
     required property var plugin
 
+    //  Whether a centre block is on show, by id. Same rule the editor and
+    //  the plugin's alturaControles apply: a block is on when its switch
+    //  says so AND it has something to show — the toggles with every tile
+    //  off are a row of nothing.
+    function editorVisibilidad(id) {
+        if (id === "toggles")
+            return Settings.panelShowToggles
+                   && (Settings.panelTileWifi || Settings.panelTileBluetooth
+                       || Settings.panelTileSound)
+        if (id === "media")
+            return Settings.panelShowMedia
+        if (id === "shortcuts")
+            return Settings.panelShowShortcuts
+        return false
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 18
@@ -102,6 +118,10 @@ FadeIn {
                     model: Workspaces.list
 
                     delegate: Rectangle {
+                        //  The dots are decoration of the header, and the
+                        //  header is theirs to dress: the Control Centre
+                        //  page can turn them off.
+                        visible: Settings.panelShowWorkspaces
                         required property var modelData
                         Layout.preferredWidth: modelData.focused ? 24 : 8
                         Layout.preferredHeight: 8
@@ -122,6 +142,8 @@ FadeIn {
             Item { Layout.fillWidth: true }
 
             IslandLabel {
+                //  The header's other decoration; same page, same switch.
+                visible: Settings.panelShowClock
                 text: Qt.formatDateTime(Clock.date, "HH:mm")
                 color: Theme.muted
                 font.pixelSize: 13
@@ -149,17 +171,53 @@ FadeIn {
             }
         }
 
-        // ── tarjetas de conmutación
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: false
-            Layout.preferredHeight: 78
-            spacing: 10
-            visible: view.plugin.tab === "controls"
+        // ── the centre's blocks, in the stored order ───────────
+        //
+        //  `Layout.order` does not exist in this QtQuick.Layouts, so the
+        //  order is the MODEL's: one Repeater over panelOrdenEfectivo, one
+        //  Loader per slot picking its block's Component. Moving a block is
+        //  rewriting the list, and the column follows on the next polish.
+        Repeater {
+            model: Settings.panelOrdenEfectivo
 
-            IslandTile {
-                id: wifiTile
+            delegate: Loader {
+                id: hueco
+                required property var modelData
+
                 Layout.fillWidth: true
+                Layout.preferredHeight: hueco.modelData === "toggles" ? 78
+                    : hueco.modelData === "media" ? 62
+                    : hueco.modelData === "shortcuts" ? 40 : 0
+                //  Only while the tab is controls AND the block is on show —
+                //  a hidden block is no height at all, and the centre's own
+                //  height counts on this staying honest (alturaControles).
+                visible: view.plugin.tab === "controls"
+                         && editorVisibilidad(hueco.modelData)
+                sourceComponent: hueco.modelData === "toggles" ? compToggles
+                    : hueco.modelData === "media" ? compMedia
+                    : hueco.modelData === "shortcuts" ? compAccesos : null
+            }
+        }
+
+        //  ── the blocks themselves, parked as Components ─────────
+        //
+        //  They keep their insides exactly as they were; what they lose is
+        //  their Layout.* attacheds, because a Loader's loaded item is not
+        //  the layout's child — the LOADER is, and it carries the sizes.
+        Component {
+            id: compToggles
+
+            //  Only while some tile is on show: a row of three hidden tiles
+            //  is a 78 px hole.
+            RowLayout {
+                width: parent.width
+                height: parent.height
+                spacing: 10
+
+                IslandTile {
+                    id: wifiTile
+                    visible: Settings.panelTileWifi
+                    Layout.fillWidth: true
                 Layout.fillHeight: true
                 // el círculo del icono lleva su propio MouseArea encima, así
                 // que pulsarlo conmuta la radio y el resto abre el detalle
@@ -226,6 +284,7 @@ FadeIn {
 
             IslandTile {
                 id: btTile
+                visible: Settings.panelTileBluetooth
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 onPulsada: view.plugin.openTab("bluetooth")
@@ -294,6 +353,7 @@ FadeIn {
 
             IslandTile {
                 id: sonidoTile
+                visible: Settings.panelTileSound
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 //  El deslizador se lleva casi todo el azulejo y tiene su
@@ -382,17 +442,19 @@ FadeIn {
                 }
             }
         }
+        }
 
         // ── reproducción, compacta ────────────────────────────────
         // Ocupaba media pestaña con una carátula de 52 px. En el centro de
         // control de macOS "Reproduciendo" es una fila discreta, no el
         // protagonista: aquí baja a 62 px de alto y gana el ancho entero.
-        IslandTile {
-            Layout.fillWidth: true
-            Layout.fillHeight: false
-            Layout.preferredHeight: 62
-            visible: view.plugin.tab === "controls"
-            pulsable: false
+        Component {
+            id: compMedia
+
+            IslandTile {
+                width: parent.width
+                height: parent.height
+                pulsable: false
 
             RowLayout {
                 anchors.fill: parent
@@ -464,6 +526,7 @@ FadeIn {
                 }
             }
         }
+        }
 
         // ── accesos directos ──────────────────────────────────────
         //
@@ -471,16 +534,18 @@ FadeIn {
         //  del catálogo, y al final el botón que abre el cajón entero. Se
         //  anclan con la chincheta del centro de aplicaciones y se reordenan
         //  arrastrándolos aquí mismo, que es donde se ven.
-        AccesosDirectos {
-            Layout.fillWidth: true
-            Layout.fillHeight: false
-            Layout.preferredHeight: altura
-            visible: view.plugin.tab === "controls"
+        Component {
+            id: compAccesos
+
+            AccesosDirectos {
+                width: parent.width
+                height: altura
 
             onAbrir: function (id) {
                 view.plugin.close()
                 PluginManager.abrirAplicacion(id)
             }
+        }
         }
 
         // ── pestaña de notificaciones

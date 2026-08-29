@@ -27,12 +27,34 @@ K4Plugin {
     property var juego: null
     property var sistema: null
 
-    islandWidth: 860
-    //  controls: header 30 + toggle cards 78 + media row 62 + shortcuts 40
-    //  + 3x12 spacing = 246 px of content; 14 above + 20 below = 280. The
-    //  shortcuts used to end flush against the border, which looked
-    //  cramped next to the 18 px the sides have.
-    islandHeight: tab === "controls" ? 280 : 404
+    islandWidth: Math.max(640, Math.min(1100, Settings.panelWidth))
+    //  The controls tab is as tall as what it shows: each block brings its
+    //  own height and the spacing between them, so turning a block off makes
+    //  the centre shorter instead of leaving a hole behind. The other tabs
+    //  are lists that fill, and keep their fixed height.
+    islandHeight: tab === "controls" ? alturaControles() : 404
+
+    //  Header 30, margins 14 + 20, 12 between every pair of neighbours, and
+    //  each visible block's own height. With everything on, this is the 280
+    //  the constant used to be.
+    function alturaControles() {
+        let bloques = 0, alto = 0
+        const alguna = Settings.panelTileWifi || Settings.panelTileBluetooth
+                       || Settings.panelTileSound
+        if (Settings.panelShowToggles && alguna) {
+            bloques += 1
+            alto += 78
+        }
+        if (Settings.panelShowMedia) {
+            bloques += 1
+            alto += 62
+        }
+        if (Settings.panelShowShortcuts) {
+            bloques += 1
+            alto += 40
+        }
+        return 14 + 30 + 12 * bloques + alto + 20
+    }
 
     // solo mientras se escribe la contraseña de una red
     //  El teclado entero mientras está abierto: «opcional» es OnDemand y
