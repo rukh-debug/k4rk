@@ -19,7 +19,7 @@ Singleton {
     //  En qué borde vive la barra. shell.qml ancla la ventana, voltea la
     //  silueta y orienta los gestos con esto; los plugins lo leen por
     //  K4.Isla.posicion para adaptar lo que pinten fuera.
-    property string barPosition: "arriba"     // arriba · abajo
+    property string barPosition: "top"        // top · bottom
     //  En qué punto del borde se centra la island, en tanto por ciento del
     //  ancho libre: 50 es el centro de siempre. Un plugin puede desplazarla
     //  TEMPORALMENTE con K4.Isla.colocar; esto es la base a la que vuelve.
@@ -32,7 +32,7 @@ Singleton {
     //  hasta que hay algo que enseñar. Y «completa» no es un cuarto estado
     //  sino una regla: reserva como siempre, y se esconde SOLO mientras una
     //  ventana llena la pantalla. shell.qml es quien las obedece.
-    property string islandSpace: "reserva"   // reserva · completa · encima · escondida
+    property string islandSpace: "reserve"    // reserve · auto · onTop · hidden
     //  Click outside the bar closes whatever view is deployed, like Escape.
     //  shell.qml grows its surface to the whole screen while a view is open
     //  and spends the outside tap on closing it. Off is the old behavior:

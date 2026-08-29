@@ -45,7 +45,8 @@ the flake: [k4 on Nix](docs/NIX.md).
 
 Plus notifications with actions and history, a system tray, clipboard history,
 and a bar that lives wherever you put it — top or bottom,
-left, center or right.
+left, center or right. When a Hyprland submap is on, the pill grows toward
+the screen edge with its name — the mode you're in, at a glance.
 
 ### Wallpapers that move, and a palette that comes out of them
 

@@ -391,6 +391,8 @@ bar's directory, not yours.
 | `K4.Sonido` | a short sound — requires the `sound` permission |
 | `K4.Fichero` | reading and writing files — requires `ficheros` |
 | `K4.Pildora` | an indicator on the folded pill |
+| `K4.Capsule` | the capsule growing toward a screen edge with your text |
+| `K4.Submaps` | the submap Hyprland is in right now ("" for none) |
 | `K4.Paths` | paths: `estadoDe(id)` is your state directory |
 | `K4.IconoPlugin` | a plugin's icon: its image if it brings one, its glyph if not |
 
@@ -543,6 +545,29 @@ stops, and the value arrives on confirm — Enter or a click outside — not
 keystroke by keystroke. With this, a plugin that talks to a service, an AI
 or a CLI configures itself in Settings like everything else, without
 inventing a screen of its own.
+
+**Your news, on the capsule itself.** An indicator chip is small on
+purpose; some things deserve to be read from across the room. While your
+`extension` is set, the pill grows toward a screen edge carrying your
+text, and folds back when it is null:
+
+```qml
+K4.Capsule {
+    plugin: "rec"
+    extension: grabando ? ({
+        lado: "right", texto: "Recording",
+        glifo: 0xF037E, color: K4.Tema.rojo,
+        maxLength: 300            // px the capsule may grow to
+    }) : null
+}
+```
+
+The width is not yours to fight for: the bar hugs your text with the
+pill's own font and caps it at `maxLength` and at the room to the edge.
+The pill's own content does not move, and while a deployed view owns the
+island the extension folds with the pill. `extension` must be a binding
+— a new object when your state changes — because mutating the old one
+in place tells no one.
 
 **Your results, in the launcher.** You answer when you can; if yours is
 expensive — a network query — you block nobody. Yours shows up **below**
