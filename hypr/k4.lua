@@ -73,7 +73,11 @@ hl.bind(mod .. " + V",           hl.dsp.exec_cmd(k4 .. "clipboard"))
 hl.bind(mod .. " + SHIFT + V",   hl.dsp.exec_cmd(k4 .. "clipboard"))
 -- B es el gestor de contraseñas (rbw) en la configuración de rukh: sin ata.
 -- hl.bind(mod .. " + B",           hl.dsp.exec_cmd(k4 .. "files"))
+-- La chuleta, en K a secas y también en F1: la tecla de «ayuda» de toda la
+-- vida (antes del fork, hyprland.conf del usuario la daba a un guion propio
+-- que leía la sintaxis clásica — con configuración en Lua ya no valía).
 hl.bind(mod .. " + K",           hl.dsp.exec_cmd(k4 .. "keys"))
+hl.bind(mod .. " + F1",          hl.dsp.exec_cmd(k4 .. "keys"))
 hl.bind(mod .. " + L",           hl.dsp.exec_cmd(k4 .. "lock"))
 -- Sesión por ambos caminos: el ALT+C de k4 y el CTRL+ALT+E de siempre.
 hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
