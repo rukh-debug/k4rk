@@ -1417,6 +1417,14 @@ Scope {
                     onda.visible = false
 
                     const tipo = Settings.islandOpenAnim
+                    //  The actors must play against the view's FULL size,
+                    //  not the pill the island still is at this instant:
+                    //  a ring sized from the pill dies inside the opening
+                    //  view, and that was a ripple nobody could see.
+                    const objetivo = panelWindow.pluginVisible
+                        ? panelWindow.pluginVisible.islandWidth
+                          + Theme.wing * 2
+                        : island.width
                     if (tipo === "fade") {
                         efectoOpacidad = 0
                         efectoEscala = 0.96
@@ -1424,15 +1432,18 @@ Scope {
                     } else if (tipo === "slash") {
                         efectoOpacidad = 0
                         tajo.visible = true
+                        tajo.width = objetivo * 1.4
                         tajo.x = -tajo.width
+                        aniSlashLinea.to = objetivo * 1.05
                         aniLlegada = aniSlash
                     } else if (tipo === "drop") {
                         efectoOpacidad = 0
                         efectoEscala = 0.55
                         onda.visible = true
                         onda.opacity = 0.7
-                        onda.width = island.width * 0.3
+                        onda.width = objetivo * 0.25
                         onda.height = onda.width
+                        aniOndaTam.to = objetivo * 1.5
                         aniLlegada = aniDrop
                     } else if (tipo === "blow") {
                         //  The gust comes from the view's own border,
@@ -1472,9 +1483,10 @@ Scope {
                         NumberAnimation { target: island
                             property: "efectoOpacidad"
                             to: 1; duration: 90 }
-                        NumberAnimation { target: tajo
+                        NumberAnimation { id: aniSlashLinea
+                            target: tajo
                             property: "x"
-                            to: island.width; duration: 240
+                            duration: 240
                             easing.type: Easing.OutQuad }
                     }
                     PropertyAction { target: tajo
@@ -1492,9 +1504,10 @@ Scope {
                         to: 1; duration: 380
                         easing.type: Easing.OutBack
                         easing.overshoot: 1.2 }
-                    NumberAnimation { target: onda
+                    NumberAnimation { id: aniOndaTam
+                        target: onda
                         properties: "width,height"
-                        to: island.width * 1.6; duration: 480
+                        duration: 480
                         easing.type: Easing.OutCubic }
                     NumberAnimation { target: onda
                         property: "opacity"
