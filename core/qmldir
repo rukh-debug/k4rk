@@ -15,3 +15,4 @@ ConnectionRow 1.0 ConnectionRow.qml
 MediaButton 1.0 MediaButton.qml
 IslandScrollBar 1.0 IslandScrollBar.qml
 AparatosDeSonido 1.0 AparatosDeSonido.qml
+DropArrival 1.0 DropArrival.qml
