@@ -230,14 +230,14 @@ Singleton {
                   nombre: "Settings window height",
                   desc: "How tall these pages open",
                   glifo: 0xF084F },   // md-arrow_expand_vertical
-                { id: "edgeZoneEnabled", nombre: "Edge zone brings it back",
-                  desc: "While the bar is away, a thin strip on the other edges summons it",
+                { id: "edgeZoneEnabled", nombre: "Island rim around the screen",
+                  desc: "The island's own colour as a strip along every border — and while the bar is away, touching a border brings it back",
                   glifo: 0xF0741 },   // md-gesture_tap
                 { id: "edgeZoneSize", tipo: "numero", min: 1, max: 8,
                   paso: 1, unidad: "px",
                   requiere: "edgeZoneEnabled",
-                  nombre: "Edge zone thickness",
-                  desc: "Pixels of screen border that answer — each one also keeps its clicks",
+                  nombre: "Rim thickness",
+                  desc: "Pixels of island colour along the borders — each one also keeps its clicks",
                   glifo: 0xF00D0 },   // md-border_style
                 { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
                   desc: "Same as Escape: a deployed view closes when you click outside the bar",
