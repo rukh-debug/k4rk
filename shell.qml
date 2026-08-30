@@ -670,8 +670,10 @@ Scope {
                 }
 
                 //  Las franjas de los otros bordes, solo mientras la barra
-                //  no está. El borde de la barra se queda sin franja: su
-                //  camino de vuelta es el filo, que ya existe.
+                //  no está, responden. El borde de la barra se queda sin
+                //  franja: su camino de vuelta es el filo, que ya existe.
+                //  (Dibujadas están siempre — ver los Rectangle de arriba;
+                //  coger Clic es otra cosa.)
                 Region {
                     item: (panelWindow.zonasVivas
                            && Settings.barPosition !== "bottom")
@@ -757,56 +759,71 @@ Scope {
                 HoverHandler { id: sobreFilo }
             }
 
-            //  ── las franjas de los otros bordes ─────────────────────
+            //  ── los bordes de la pantalla ─────────────────────────
             //
-            //  Una por borde que NO es el de la barra, a lo largo entero de
-            //  él y del grosor que diga Ajustes (1 px por defecto — cada
-            //  píxel por encima es un píxel de clics ajenos que la tira se
-            //  queda). Solo existen mientras la barra está escondida y
-            //  retirada — la máscara las deja entrar entonces y solo
-            //  entonces—, así que con la barra puesta no cobran ni un píxel.
-            //  Y el toque no se lee del hover sino que se ANOTA: en cuanto la
-            //  barra vuelve, las franjas salen de la máscara y su hover queda
-            //  cojo. Ver `zonaToque` arriba.
-            Item {
+            //  A visible rim along every border that is NOT the bar's own —
+            //  the strip the setting sizes, 1 px by default because every
+            //  pixel of it is also a pixel the desktop does not get back.
+            //  Drawn in the accent so it reads as the shell's own furniture
+            //  and not as a window border.
+            //
+            //  Seeing it is one thing; ANSWERING is another, and only
+            //  happens while the bar is away: the mask lets these strips
+            //  take input exactly then, and touching one brings the bar
+            //  back for as long as the touch lasts. The touch is carried by
+            //  a flag and not by the hover — in the moment the bar returns,
+            //  the strips leave the input mask and a hover whose item
+            //  stopped receiving cannot be trusted to say anything.
+            //  Ver `zonaToque` arriba.
+            Rectangle {
                 id: zonaArriba
                 width: parent.width
                 height: Settings.edgeZoneSize
                 anchors.top: parent.top
-                opacity: 0
+                visible: Settings.edgeZoneEnabled
+                    && Settings.barPosition !== "top"
+                color: Theme.blue
+
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
                 }
             }
 
-            Item {
+            Rectangle {
                 id: zonaAbajo
                 width: parent.width
                 height: Settings.edgeZoneSize
                 anchors.bottom: parent.bottom
-                opacity: 0
+                visible: Settings.edgeZoneEnabled
+                    && Settings.barPosition !== "bottom"
+                color: Theme.blue
+
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
                 }
             }
 
-            Item {
+            Rectangle {
                 id: zonaIzquierda
                 width: Settings.edgeZoneSize
                 height: parent.height
                 anchors.left: parent.left
-                opacity: 0
+                visible: Settings.edgeZoneEnabled
+                color: Theme.blue
+
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
                 }
             }
 
-            Item {
+            Rectangle {
                 id: zonaDerecha
                 width: Settings.edgeZoneSize
                 height: parent.height
                 anchors.right: parent.right
-                opacity: 0
+                visible: Settings.edgeZoneEnabled
+                color: Theme.blue
+
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
                 }
