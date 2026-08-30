@@ -669,11 +669,11 @@ Scope {
                     intersection: Intersection.Combine
                 }
 
-                //  Las franjas de los otros bordes, solo mientras la barra
-                //  no está, responden. El borde de la barra se queda sin
-                //  franja: su camino de vuelta es el filo, que ya existe.
-                //  (Dibujadas están siempre — ver los Rectangle de arriba;
-                //  coger Clic es otra cosa.)
+                //  The rim is drawn on all four borders but only answers
+                //  while the bar is away, and only on the borders it does
+                //  not live on: its own border's path back is the filo,
+                //  which already exists. Seeing the rim and having it take
+                //  input are different things, on purpose.
                 Region {
                     item: (panelWindow.zonasVivas
                            && Settings.barPosition !== "bottom")
@@ -759,30 +759,30 @@ Scope {
                 HoverHandler { id: sobreFilo }
             }
 
-            //  ── los bordes de la pantalla ─────────────────────────
+            //  ── the rim: island colour along every screen border ────
             //
-            //  A visible rim along every border that is NOT the bar's own —
-            //  the strip the setting sizes, 1 px by default because every
-            //  pixel of it is also a pixel the desktop does not get back.
-            //  Drawn in the accent so it reads as the shell's own furniture
-            //  and not as a window border.
+            //  Not a highlight and not a thing with a colour of its own:
+            //  the rim IS the island's material, drawn along all four
+            //  borders of the screen, and the island attaches to it
+            //  wherever it lives — same colour, flush edge, one thing. It
+            //  follows the island's colour wherever the theme takes it, on
+            //  purpose and without a setting: a rim that could disagree
+            //  with the island would not be attached to it.
             //
-            //  Seeing it is one thing; ANSWERING is another, and only
-            //  happens while the bar is away: the mask lets these strips
-            //  take input exactly then, and touching one brings the bar
-            //  back for as long as the touch lasts. The touch is carried by
-            //  a flag and not by the hover — in the moment the bar returns,
-            //  the strips leave the input mask and a hover whose item
-            //  stopped receiving cannot be trusted to say anything.
-            //  Ver `zonaToque` arriba.
+            //  The rim also carries the summons: while the bar is away, the
+            //  borders it does not live on take input — touch one and the
+            //  bar comes back for as long as the touch lasts. The touch is
+            //  carried by a flag and not by the hover: in the moment the
+            //  bar returns, the strips leave the input mask, and a hover
+            //  whose item stopped receiving cannot be trusted to say
+            //  anything. Ver `zonaToque` arriba.
             Rectangle {
                 id: zonaArriba
                 width: parent.width
                 height: Settings.edgeZoneSize
                 anchors.top: parent.top
                 visible: Settings.edgeZoneEnabled
-                    && Settings.barPosition !== "top"
-                color: Theme.blue
+                color: Theme.islandBg
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
@@ -795,8 +795,7 @@ Scope {
                 height: Settings.edgeZoneSize
                 anchors.bottom: parent.bottom
                 visible: Settings.edgeZoneEnabled
-                    && Settings.barPosition !== "bottom"
-                color: Theme.blue
+                color: Theme.islandBg
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
@@ -809,7 +808,7 @@ Scope {
                 height: parent.height
                 anchors.left: parent.left
                 visible: Settings.edgeZoneEnabled
-                color: Theme.blue
+                color: Theme.islandBg
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
@@ -822,7 +821,7 @@ Scope {
                 height: parent.height
                 anchors.right: parent.right
                 visible: Settings.edgeZoneEnabled
-                color: Theme.blue
+                color: Theme.islandBg
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
