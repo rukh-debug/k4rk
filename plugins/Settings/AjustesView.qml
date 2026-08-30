@@ -1009,6 +1009,19 @@ FadeIn {
                                 }
                             }
 
+                            //  The placement editor: one card per
+                            //  openable view, side chips and alignment
+                            //  chips with a little monitor each.
+                            Loader {
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "placement"
+                                        && bloque.modelData.atajo === undefined
+                                sourceComponent: Component { PlacementPage {} }
+                            }
+
                             //  The control centre editor: a sketch of the
                             //  centre, the blocks with their order and their
                             //  eye, and the plain knobs as option rows.

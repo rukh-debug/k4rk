@@ -232,6 +232,19 @@ Singleton {
             ]
         },
         {
+            grupo: "Placement",
+            claves: ["placement", "position", "posicion", "side",
+                     "lado", "lados", "edge", "corner", "esquina",
+                     "donde", "abrir", "abre", "sale"],
+            glifo: 0xF09BB,        // md-arrow_decision
+            desc: "Which side each view opens from, and where along that side. The pill keeps its own home — see Island.",
+            //  One card per openable view: side chips («Follow bar» is the
+            //  default and the first chip) and alignment chips, with a
+            //  little monitor that shows the point the words are choosing.
+            vista: "placement",
+            opciones: []
+        },
+        {
             grupo: "Control Centre",
             claves: ["panel", "centro de control", "control center",
                      "control centre", "toggles", "media", "shortcuts",
