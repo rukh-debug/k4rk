@@ -532,16 +532,35 @@ Scope {
                 //  handler runs before or after the fraction bindings
                 //  re-evaluate, no animation may start for this change.
                 panelWindow.animarColocacion = false
-                Qt.callLater(panelWindow.resolverColocacion)
+                //  And a drop cut short hands its channels back before
+                //  anything else claims them.
+                panelWindow.cancelarGota()
 
+                let diferido = false
                 const p = panelWindow.pluginVisible
                 if (p && p.name !== "idle") {
                     const col = Settings.placementDe(p.name)
                     const ladoBarra = Settings.barPosition === "bottom"
                         ? "bottom" : "top"
                     if (col.side !== ladoBarra)
-                        island.reproducirApertura(col.side)
+                        diferido = island.reproducirApertura(col)
                 }
+                //  The drop tells the trip itself — the island must stay
+                //  at the source until the neck snaps — so its landing
+                //  calls the snap. Every other arrival lands now.
+                if (!diferido)
+                    Qt.callLater(panelWindow.resolverColocacion)
+            }
+
+            //  A drop interrupted mid-flight (the view closed again, another
+            //  took over) must not leave the island invisible and frozen:
+            //  whatever it was holding goes back to whoever is showing now.
+            function cancelarGota() {
+                if (!llegadaGota.activo)
+                    return
+                llegadaGota.parar()
+                island.efectoOpacidad = 1
+                island.restaurarTamano()
             }
 
             //  The landing, deferred until the occupant change has settled.
@@ -1385,26 +1404,15 @@ Scope {
                     opacity: 0.9
                 }
 
-                Rectangle {
-                    id: onda
-                    //  The drop's ring: one circle that grows out of the
-                    //  island and dies at its edge, so the scale-up has a
-                    //  wavefront instead of just being small-then-big.
-                    visible: false
-                    anchors.centerIn: parent
-                    width: 0
-                    height: 0
-                    radius: width / 2
-                    color: "transparent"
-                    border.width: 2
-                    border.color: Theme.blue
-                }
-
                 //  One slot for whichever arrival is playing, so stopping
                 //  the previous one is one call and not four.
                 property var aniLlegada: null
 
-                function reproducirApertura(lado) {
+                //  Plays the arrival and answers whether the position
+                //  snap is DEFERRED — only the drop defers it, because only
+                //  the drop needs the island held at the source until its
+                //  neck snaps (the snap then rides the drop's cortado).
+                function reproducirApertura(col) {
                     //  Everything to neutral first: an interrupted arrival
                     //  must not leave its fingerprints on the next one.
                     if (aniLlegada)
@@ -1414,16 +1422,14 @@ Scope {
                     efectoTr.x = 0
                     efectoTr.y = 0
                     tajo.visible = false
-                    onda.visible = false
 
                     const tipo = Settings.islandOpenAnim
                     //  The actors must play against the view's FULL size,
                     //  not the pill the island still is at this instant:
-                    //  a ring sized from the pill dies inside the opening
-                    //  view, and that was a ripple nobody could see.
-                    const objetivo = panelWindow.pluginVisible
-                        ? panelWindow.pluginVisible.islandWidth
-                          + Theme.wing * 2
+                    //  an effect sized from the pill dies inside the
+                    //  opening view.
+                    const objetivo = pluginVisible
+                        ? pluginVisible.islandWidth + Theme.wing * 2
                         : island.width
                     if (tipo === "fade") {
                         efectoOpacidad = 0
@@ -1436,32 +1442,68 @@ Scope {
                         tajo.x = -tajo.width
                         aniSlashLinea.to = objetivo * 1.05
                         aniLlegada = aniSlash
-                    } else if (tipo === "drop") {
-                        efectoOpacidad = 0
-                        efectoEscala = 0.55
-                        onda.visible = true
-                        onda.opacity = 0.7
-                        onda.width = objetivo * 0.25
-                        onda.height = onda.width
-                        aniOndaTam.to = objetivo * 1.5
-                        aniLlegada = aniDrop
                     } else if (tipo === "blow") {
                         //  The gust comes from the view's own border,
                         //  pushing it into the screen.
                         efectoOpacidad = 0
-                        if (lado === "top")
+                        if (col.side === "top")
                             efectoTr.y = -80
-                        else if (lado === "bottom")
+                        else if (col.side === "bottom")
                             efectoTr.y = 80
-                        else if (lado === "left")
+                        else if (col.side === "left")
                             efectoTr.x = -80
                         else
                             efectoTr.x = 80
                         aniLlegada = aniBlow
+                    } else if (tipo === "drop") {
+                        //  The island cannot tell this one: the drop tells
+                        //  it FOR the island. Freeze at the seed, go dark,
+                        //  hold the pill's spot — the overlay draws the
+                        //  bead, the neck and the fall, and its cortado and
+                        //  impacto hand the island back its snap and its
+                        //  growth. See DropArrival and the Connections
+                        //  around llegadaGota.
+                        const semW = island.width
+                        const semH = island.height
+                        const fx = col.side === "left" ? 0
+                            : col.side === "right" ? 1 : col.align / 100
+                        const fy = col.side === "top" ? 0
+                            : col.side === "bottom" ? 1 : col.align / 100
+                        const ax = Math.max(0, Math.min(parent.width - semW,
+                            (parent.width - semW) * fx)) + semW / 2
+                        const ay = Math.max(0, Math.min(parent.height - semH,
+                            (parent.height - semH) * fy)) + semH / 2
+                        island.fxSuave = island.fxSuave   // freeze, no glide
+                        island.fySuave = island.fySuave
+                        island.width = semW                // freeze at seed
+                        island.height = semH
+                        efectoOpacidad = 0
+                        llegadaGota.play(
+                            { x: island.x + semW / 2,
+                              y: island.y + semH / 2 },
+                            { x: ax, y: ay },
+                            { w: semW, h: semH })
+                        return true
                     } else {
-                        return          // grow: the size Behaviors ARE it
+                        return false     // grow: the size Behaviors ARE it
                     }
                     aniLlegada.start()
+                    return false
+                }
+
+                //  The sizes' own bindings, back after a freeze: what
+                //  restaurar does is hand the width and height back to the
+                //  expressions they were born with, so the Behaviors that
+                //  always grow the island grow it now, from the seed the
+                //  splash left standing on the point.
+                function restaurarTamano() {
+                    width = Qt.binding(function () {
+                        return Math.min(parent.width,
+                                        pluginWindow.anchoIsla
+                                        + Theme.wing * 2) })
+                    height = Qt.binding(function () {
+                        return Math.min(parent.height,
+                                        pluginWindow.altoIsla) })
                 }
 
                 ParallelAnimation {
@@ -1494,29 +1536,6 @@ Scope {
                 }
 
                 ParallelAnimation {
-                    id: aniDrop
-
-                    NumberAnimation { target: island
-                        property: "efectoOpacidad"
-                        to: 1; duration: 140 }
-                    NumberAnimation { target: island
-                        property: "efectoEscala"
-                        to: 1; duration: 380
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.2 }
-                    NumberAnimation { id: aniOndaTam
-                        target: onda
-                        properties: "width,height"
-                        duration: 480
-                        easing.type: Easing.OutCubic }
-                    NumberAnimation { target: onda
-                        property: "opacity"
-                        to: 0; duration: 480
-                        easing.type: Easing.OutCubic }
-                    onStopped: onda.visible = false
-                }
-
-                ParallelAnimation {
                     id: aniBlow
 
                     NumberAnimation { target: island
@@ -1528,6 +1547,36 @@ Scope {
                         easing.type: Easing.OutCubic }
                 }
 }
+
+            //  ── the drop, as its own drawing ──────────────────────
+            //
+            //  The island cannot tell this story: what detaches and falls
+            //  is DRAWN, over it and around it — core/DropArrival.qml,
+            //  ported from upstream's Caida.qml. This overlay only paints;
+            //  the two moments that belong to the island — hide at the
+            //  snap, grow under the splash at the landing — arrive as its
+            //  signals, so the overlay never reaches into it.
+            DropArrival {
+                id: llegadaGota
+                anchors.fill: parent
+
+                onCortado: {
+                    //  The bead is loose: the island may now go where the
+                    //  view lives — hidden, under the story being told —
+                    //  and wait at its seed for the splash to land on it.
+                    island.efectoOpacidad = 0
+                    panelWindow.resolverColocacion()
+                }
+
+                onImpacto: {
+                    //  The splash has landed as the seed: grow from under
+                    //  it, now, with the sizes' own Behaviours — the splash
+                    //  lingers its beat to cover exactly this start.
+                    island.restaurarTamano()
+                    island.efectoOpacidad = 1
+                }
+            }
+
 
         }
     }
