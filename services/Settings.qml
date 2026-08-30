@@ -213,6 +213,7 @@ Singleton {
             //  opciones va un croquis que lo enseña.
             vista: "island",
             opciones: [
+                { tipo: "titulo", nombre: "Where it lives" },
                 { id: "barPosition", tipo: "eleccion", de: "posiciones",
                   nombre: "Where the bar lives",
                   desc: "The island and its wings flip on their own",
@@ -221,20 +222,12 @@ Singleton {
                   nombre: "Island alignment",
                   desc: "Where along the edge it sits",
                   glifo: 0xF11C3 },
+                { tipo: "titulo", nombre: "Room on the desktop" },
                 { id: "islandSpace", tipo: "eleccion", de: "reservas",
                   nombre: "How it takes up space",
                   desc: "Pushes windows aside, floats over them, or hides",
                   glifo: 0xF003E },   // md-arrange_bring_to_front
-                { id: "settingsIslandWidth", tipo: "numero",
-                  min: 720, max: 1400, paso: 20, unidad: "px",
-                  nombre: "Settings window width",
-                  desc: "How wide these pages open",
-                  glifo: 0xF084E },   // md-arrow_expand_horizontal
-                { id: "settingsIslandHeight", tipo: "numero",
-                  min: 420, max: 900, paso: 20, unidad: "px",
-                  nombre: "Settings window height",
-                  desc: "How tall these pages open",
-                  glifo: 0xF084F },   // md-arrow_expand_vertical
+                { tipo: "titulo", nombre: "The rim" },
                 { id: "edgeZoneEnabled", nombre: "Island rim around the screen",
                   desc: "The island's own colour as a strip along every border — and while the bar is away, touching a border brings it back",
                   glifo: 0xF0741 },   // md-gesture_tap
@@ -250,15 +243,29 @@ Singleton {
                   nombre: "Rim corner radius",
                   desc: "How round the rim turns at the screen's corners",
                   glifo: 0xF0607 },   // md-rounded_corner
-                { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
-                  desc: "Same as Escape: a deployed view closes when you click outside the bar",
-                  glifo: 0xF037D },   // md-cursor-default
+                { tipo: "titulo", nombre: "The pill" },
                 { id: "trayInPill", nombre: "Tray in the pill",
                   desc: "Icons of background apps", glifo: 0xF0FB0 },
+                { tipo: "titulo", nombre: "Notifications" },
                 { id: "notificationsOnHover", nombre: "Notifications on hover",
                   desc: "Recent ones, under the clock and player", glifo: 0xF009A },
                 { id: "notificationsOnFocus", nombre: "Dismiss when you switch to the app",
-                  desc: "Switching to its window already counts as having attended to them", glifo: 0xF039F }
+                  desc: "Switching to its window already counts as having attended to them", glifo: 0xF039F },
+                { tipo: "titulo", nombre: "Clicks" },
+                { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
+                  desc: "Same as Escape: a deployed view closes when you click outside the bar",
+                  glifo: 0xF037D },   // md-cursor_default
+                { tipo: "titulo", nombre: "This window" },
+                { id: "settingsIslandWidth", tipo: "numero",
+                  min: 720, max: 1400, paso: 20, unidad: "px",
+                  nombre: "Settings window width",
+                  desc: "How wide these pages open",
+                  glifo: 0xF084E },   // md-arrow_expand_horizontal
+                { id: "settingsIslandHeight", tipo: "numero",
+                  min: 420, max: 900, paso: 20, unidad: "px",
+                  nombre: "Settings window height",
+                  desc: "How tall these pages open",
+                  glifo: 0xF084F }    // md-arrow_expand_vertical
             ]
         },
         {
