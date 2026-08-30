@@ -12,3 +12,4 @@ PortadaFamilia 1.0 PortadaFamilia.qml
 Version 1.0 Version.qml
 SelectorFuentes 1.0 SelectorFuentes.qml
 PanelEditor 1.0 PanelEditor.qml
+PlacementPage 1.0 PlacementPage.qml
