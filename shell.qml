@@ -927,28 +927,6 @@ Scope {
                     }
                 }
 
-                //  ── the side the silhouette wears ───────────────
-                //
-                //  The target side (`panelWindow.lugar.side`) flips the
-                //  instant the occupant changes. Wearing it while the body
-                //  is still travelling was the 100 ms lie that once cost
-                //  this trip its animation: an island fused to a rim it had
-                //  not reached, reading as if it opened from the opposite
-                //  side. So the shape keeps the rim it is LEAVING, and
-                //  turns only when the fractions have landed on their
-                //  targets — flush with the new rim, where a turn is a
-                //  fusion and not a contradiction. `colocada` goes true on
-                //  arrival (and, thanks to the OutBack overshoot, a hair
-                //  past it — as good a moment as any); it is re-checked on
-                //  every step of the trip, so a landing interrupted by
-                //  another departure simply keeps its old rim until the
-                //  next one touches down.
-                property string ladoVivo: panelWindow.lugar.side
-                readonly property bool colocada: fxSuave === panelWindow.fraccionX
-                    && fySuave === panelWindow.fraccionY
-                onColocadaChanged:
-                    if (colocada) ladoVivo = panelWindow.lugar.side
-
                 //  ── crecimiento hacia UN solo lado ───────────────
                 //
                 //  Mientras la píldora lleva extensiones de flanco (lo que
@@ -1073,10 +1051,6 @@ Scope {
                 onWidthChanged: publicarRect()
                 onHeightChanged: publicarRect()
                 Component.onCompleted: {
-                    //  The latch starts as the truth of this instant — the
-                    //  assignment breaks the binding it was born with, so
-                    //  from here on it only ever moves on landings.
-                    ladoVivo = panelWindow.lugar.side
                     publicarRect()
                     forceActiveFocus()      // el ESC de arriba; ver por qué
                 }
@@ -1250,7 +1224,20 @@ Scope {
                     ala: Theme.wing
                     cuerpoRadio: island.bodyRadius
                     relleno: Theme.islandBg
-                    lado: island.ladoVivo
+                    //  The shape turns at DEPARTURE, not on landing. It was
+                    //  tempting to let it keep the rim it leaves until the
+                    //  trip ends — honest, in its way — but an island that
+                    //  spends the whole crossing (and a beat past arrival)
+                    //  wearing the shape of where it came from reads as never
+                    //  having attached to where it went. Wearing the
+                    //  destination from the first frame, the shape travels
+                    //  already turned: mid-crossing it is a capsule in open
+                    //  water, and the rim it reaches finds it true on
+                    //  contact, with no gap to fill. Nothing stands still
+                    //  wearing the wrong rim, either: with the fractions
+                    //  bound (no assignments, no resolver), the body is
+                    //  moving the same frame the shape turns.
+                    lado: panelWindow.lugar.side
                 }
 
                 // ── zona de contenido (dentro del cuerpo, sin las alas)
