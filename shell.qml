@@ -528,10 +528,11 @@ Scope {
             //  The snap leaves the fractions' Behaviors alone for what they
             //  were for: dragging a placement around in Ajustes still glides.
             onPluginVisibleChanged: {
+                //  The glide is off BEFORE anything else: whether this
+                //  handler runs before or after the fraction bindings
+                //  re-evaluate, no animation may start for this change.
                 panelWindow.animarColocacion = false
-                island.fxSuave = panelWindow.fraccionX
-                island.fySuave = panelWindow.fraccionY
-                panelWindow.animarColocacion = true
+                Qt.callLater(panelWindow.resolverColocacion)
 
                 const p = panelWindow.pluginVisible
                 if (p && p.name !== "idle") {
@@ -541,6 +542,28 @@ Scope {
                     if (col.side !== ladoBarra)
                         island.reproducirApertura(col.side)
                 }
+            }
+
+            //  The landing, deferred until the occupant change has settled.
+            //
+            //  Reading the fractions INSIDE the change handler was the bug:
+            //  they had not re-evaluated yet, so the snap assigned the OLD
+            //  occupant's placement — Settings opened on top, and the close
+            //  hopped to the bottom — and the assignment broke the binding,
+            //  so it stayed wrong. Here, one event loop turn later, the
+            //  fractions are true; land on them with the glide still off,
+            //  re-tie the bindings (same values, so nothing animates), and
+            //  let the next honest change — a placement dragged around its
+            //  card — glide again.
+            function resolverColocacion() {
+                animarColocacion = false
+                island.fxSuave = fraccionX
+                island.fySuave = fraccionY
+                island.fxSuave = Qt.binding(function () {
+                    return panelWindow.fraccionX })
+                island.fySuave = Qt.binding(function () {
+                    return panelWindow.fraccionY })
+                animarColocacion = true
             }
 
             //  Y se cuenta, que hay animaciones que no se paran solas: ver
