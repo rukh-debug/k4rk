@@ -97,6 +97,50 @@ Singleton {
         return fuera
     }
 
+    //  ── dónde abre cada vista ─────────────
+    //  Which edge each openable view comes from, and where along that
+    //  edge — the control centre from the left, Settings from the bottom
+    //  corner, whatever the user draws. A map pluginId → placement, and an
+    //  EMPTY entry is not "none" but "follow the bar": the view opens on
+    //  the bar's edge, at the bar's alignment, which is what every view did
+    //  before placement existed and stays the default so nothing jumps
+    //  after the update.
+    //
+    //  The pill itself is not in this map — it lives wherever `barPosition`
+    //  says and drags its hover views with it. What is here is what OPENS:
+    //  the views you summon.
+    property var islandPlacements: {}
+
+    //  The placement a plugin opens with, resolved: its own if it has one,
+    //  the bar's if it does not. Always a { side, align } with side one of
+    //  top/bottom/left/right and align 0–100 — a map hand-edited into the
+    //  file cannot smuggle anything stranger in.
+    function placementDe(id) {
+        const p = (islandPlacements || {})[id]
+        if (p && (p.side === "top" || p.side === "bottom"
+                  || p.side === "left" || p.side === "right")) {
+            let a = Number(p.align)
+            if (!isFinite(a))
+                a = 50
+            return { side: p.side, align: Math.max(0, Math.min(100, a)) }
+        }
+        return { side: barPosition === "bottom" ? "bottom" : "top",
+                 align: barAlignment }
+    }
+
+    //  Writing one placement. side "" is the row's «Follow the bar» chip:
+    //  the entry leaves the map instead of storing a copy of the bar's own
+    //  placement, so moving the bar later moves the views that follow it.
+    function ponerPlacement(id, side, align) {
+        const d = Object.assign({}, islandPlacements || {})
+        if (side === "")
+            delete d[id]
+        else
+            d[id] = { side: side, align: align }
+        islandPlacements = d
+        guardar()
+    }
+
     //  ── la letra del shell ───────────────
     //  The shell's typeface, as a family name. Empty is the shell's own
     //  default and not a state to repair: the row list shows it as
@@ -401,6 +445,7 @@ Singleton {
         "panelTileBluetooth", "panelTileSound", "panelShowMedia",
         "panelShowShortcuts", "panelShowWorkspaces", "panelShowClock",
         "panelOrder",
+        "islandPlacements",
         "quickAccess"
     ]
 
