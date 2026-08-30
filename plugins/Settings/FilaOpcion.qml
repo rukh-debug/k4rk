@@ -34,6 +34,12 @@ Rectangle {
     readonly property bool activa:
         !!Settings.valor(modelData.id)
 
+    //  A section title inside the stack of rows: not a setting, a divider
+    //  that names the group the rows below it belong to. One `tipo` more in
+    //  the option definitions — and a page stops being a wall of
+    //  forty-pixel rectangles that all weigh the same.
+    readonly property bool esTitulo: modelData.tipo === "titulo"
+
     //  El valor de una opción de texto, siempre como
     //  cadena: un registro externo contesta `false`
     //  cuando todavía no hay nada guardado.
@@ -84,16 +90,48 @@ Rectangle {
     Behavior on opacity { NumberAnimation { duration: 140 } }
 
     Layout.fillWidth: true
-    Layout.preferredHeight: 40
+    Layout.preferredHeight: esTitulo ? 24 : 40
     radius: 10
-    color: opcion.armada ? "#2a0f12"
+    color: esTitulo ? "transparent"
+         : opcion.armada ? "#2a0f12"
          : (filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface)
-    border.width: opcion.armada ? 1 : 0
+    border.width: !esTitulo && opcion.armada ? 1 : 0
     border.color: Theme.red
 
     Behavior on color { ColorAnimation { duration: 120 } }
 
+    //  ── the section title ───────────────
+    //
+    //  Small, spaced-out letters over a hairline: enough to part groups,
+    //  quiet enough not to compete with the rows it names. It takes the
+    //  place of the whole row — no icon, no switch, nothing to press.
+    IslandLabel {
+        visible: opcion.esTitulo
+        anchors.left: parent.left
+        anchors.leftMargin: 12
+        anchors.bottom: underline.top
+        anchors.bottomMargin: 3
+        text: opcion.modelData.nombre
+        color: Theme.muted
+        font.pixelSize: 10
+        font.weight: Font.DemiBold
+        font.letterSpacing: 1.1
+    }
+
+    Rectangle {
+        id: underline
+        visible: opcion.esTitulo
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        anchors.bottom: parent.bottom
+        height: 1
+        color: Theme.track
+    }
+
     RowLayout {
+        visible: !opcion.esTitulo
         anchors.fill: parent
         anchors.leftMargin: 12
         anchors.rightMargin: 12
