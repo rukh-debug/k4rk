@@ -150,6 +150,11 @@ Singleton {
     //  purpose: it is the thinnest promise the screen edge can make, and
     //  every pixel above it is a pixel of desktop clicks the strip keeps.
     property int edgeZoneSize: 1                // 1–8, steps of 1
+    //  How rounded the rim's INSIDE corners are — where one border turns
+    //  into the next. Six is quiet company for a 1 px rim; twenty-four is
+    //  a bold arc. Zero is square, and the rim stays a frame.
+    property int rimRadius: 6                   // 0–24, steps of 1
+
 
     //  ── la letra del shell ───────────────
     //  The shell's typeface, as a family name. Empty is the shell's own
@@ -239,6 +244,12 @@ Singleton {
                   nombre: "Rim thickness",
                   desc: "Pixels of island colour along the borders — each one also keeps its clicks",
                   glifo: 0xF00D0 },   // md-border_style
+                { id: "rimRadius", tipo: "numero", min: 0, max: 24,
+                  paso: 1, unidad: "px",
+                  requiere: "edgeZoneEnabled",
+                  nombre: "Rim corner radius",
+                  desc: "How round the rim turns at the screen's corners",
+                  glifo: 0xF0607 },   // md-rounded_corner
                 { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
                   desc: "Same as Escape: a deployed view closes when you click outside the bar",
                   glifo: 0xF037D },   // md-cursor-default
@@ -477,7 +488,7 @@ Singleton {
         "panelTileBluetooth", "panelTileSound", "panelShowMedia",
         "panelShowShortcuts", "panelShowWorkspaces", "panelShowClock",
         "panelOrder",
-        "islandPlacements", "edgeZoneEnabled", "edgeZoneSize",
+        "islandPlacements", "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
         "quickAccess"
     ]
 
