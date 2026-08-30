@@ -1,14 +1,13 @@
 //  Where each view opens from: which side of the screen, and where along
 //  that side. One card per view — the side chips carry the big choice
 //  («Follow bar» is the default and the first chip, so the page starts
-//  showing what everything does), and the alignment chips below refine it
-//  once a side of its own is picked.
+//  showing what everything does).
 //
-//  The little monitor on the right is not decoration: a placement is a
-//  POINT, and a point reads better drawn than described. The strip on the
-//  bar's own edge is the pill itself, so it is visible what «Follow bar»
-//  means — the dot rides the strip when following, and leaves it when a
-//  side is chosen.
+//  The point along the side is not chips but the little monitor itself:
+//  the dot is where the view opens, and you DRAG it — to the centre, to a
+//  quarter, flush into a corner. Dragging near an edge picks that edge,
+//  dragging along it picks the point, and corners are just the ends. A
+//  placement is a point; chips could only ever offer the named few.
 
 import QtQuick
 import QtQuick.Layouts
@@ -54,15 +53,14 @@ ColumnLayout {
     ]
 
     //  The placement words along the edge change with the edge: left and
-    //  right are aligned top to bottom, the horizontal sides end to end.
-    function alineacionesDe(lado) {
-        if (lado === "left" || lado === "right")
-            return [{ codigo: 15, nombre: "Top" },
-                    { codigo: 50, nombre: "Centre" },
-                    { codigo: 85, nombre: "Bottom" }]
-        return [{ codigo: 15, nombre: "Left" },
-                { codigo: 50, nombre: "Centre" },
-                { codigo: 85, nombre: "Right" }]
+    //  right run top to bottom, the horizontal ones end to end. For the
+    //  little status line under the title.
+    function palabraLado(lado) {
+        if (lado === "left")
+            return "left edge"
+        if (lado === "right")
+            return "right edge"
+        return lado === "top" ? "top edge" : "bottom edge"
     }
 
     //  The view's own entry, if it has one. A hand-edited file cannot
@@ -110,7 +108,23 @@ ColumnLayout {
                         font.weight: Font.DemiBold
                     }
 
+                    //  The state in words, because a dot alone does not say
+                    //  «this one follows the bar».
+                    IslandLabel {
+                        text: tarjeta.propia === null
+                            ? "Follows the bar — " + pagina.palabraLado(
+                                  Settings.barPosition === "bottom"
+                                  ? "bottom" : "top")
+                            : pagina.palabraLado(tarjeta.propia.side)
+                              + " · " + Math.round(tarjeta.propia.align) + "%"
+                        color: tarjeta.propia === null ? Theme.dim : Theme.muted
+                        font.pixelSize: 9
+                    }
+
                     //  ── the side chips ────────────────────
+                    //
+                    //  Coarse choice; the fine one is the dot. Picking a
+                    //  side here keeps the point the view already had.
                     RowLayout {
                         spacing: 5
 
@@ -163,80 +177,25 @@ ColumnLayout {
                             }
                         }
                     }
-
-                    //  ── the alignment chips ───────────────
-                    //
-                    //  Only with a side of its own: a view that follows the
-                    //  bar has no alignment to pick — it borrows the bar's.
-                    RowLayout {
-                        visible: tarjeta.propia !== null
-                        spacing: 5
-
-                        Repeater {
-                            model: tarjeta.propia
-                                ? pagina.alineacionesDe(
-                                      tarjeta.propia.side)
-                                : []
-
-                            delegate: Rectangle {
-                                id: chipAlineacion
-                                required property var modelData
-
-                                readonly property bool puesta:
-                                    tarjeta.propia
-                                    && tarjeta.propia.align
-                                       === chipAlineacion.modelData.codigo
-
-                                implicitWidth: textoAlineacion.implicitWidth
-                                               + 20
-                                implicitHeight: 22
-                                radius: 11
-                                color: puesta ? Theme.blue
-                                    : (ratonAlineacion.containsMouse
-                                       ? Theme.surfaceHi : Theme.track)
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 120 }
-                                }
-
-                                IslandLabel {
-                                    id: textoAlineacion
-                                    anchors.centerIn: parent
-                                    text: chipAlineacion.modelData.nombre
-                                    color: chipAlineacion.puesta ? Theme.ink
-                                                                 : Theme.muted
-                                    font.pixelSize: 10
-                                    font.weight: chipAlineacion.puesta
-                                        ? Font.DemiBold : Font.Normal
-                                }
-
-                                MouseArea {
-                                    id: ratonAlineacion
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.ponerPlacement(
-                                        tarjeta.idVista,
-                                        tarjeta.propia.side,
-                                        chipAlineacion.modelData.codigo)
-                                }
-                            }
-                        }
-                    }
                 }
 
-                //  ── the little monitor ──────────────────
+                //  ── the little monitor, and its dot is draggable ──
                 //
-                //  The strip is the pill on the bar's edge; the dot is
-                //  where THIS view opens. Following paints the dot on the
-                //  strip — it goes wherever the pill goes.
+                //  The strip is the pill on the bar's edge; the dot is where
+                //  THIS view opens. Press anywhere on the monitor — or drag:
+                //  the nearest edge becomes the side, the position along it
+                //  the point, and the corner is just the end of the drag.
+                //  Bigger than a decoration needs to be, on purpose: it is
+                //  an input surface now, and a 72×44 one asks for tweezers.
                 Item {
-                    Layout.preferredWidth: 72
-                    Layout.preferredHeight: 44
+                    id: monitor
+
+                    Layout.preferredWidth: 118
+                    Layout.preferredHeight: 68
                     Layout.alignment: Qt.AlignVCenter
 
-                    readonly property real margenPunto: 4
-                    //  The bar's own edge and point, for the strip.
+                    readonly property real margenPunto: 5
+                    //  The bar's own edge, for the strip.
                     readonly property string ladoBarra:
                         Settings.barPosition === "bottom" ? "bottom" : "top"
 
@@ -253,21 +212,49 @@ ColumnLayout {
                         return Qt.point(m + (w - 2 * m) * align / 100, m)
                     }
 
+                    //  A point on the monitor → the placement it names. The
+                    //  nearest edge wins; the coordinate ALONG it is the
+                    //  percentage. Clamped, so the drag cannot leave the
+                    //  monitor and invent a 120%.
+                    function colocacionEn(x, y) {
+                        const w = width, h = height
+                        const dArriba = y, dAbajo = h - y
+                        const dIzq = x, dDer = w - x
+                        const dMin = Math.min(dArriba, dAbajo, dIzq, dDer)
+                        let lado, fraccion
+                        if (dMin === dArriba) {
+                            lado = "top"; fraccion = x / w
+                        } else if (dMin === dAbajo) {
+                            lado = "bottom"; fraccion = x / w
+                        } else if (dMin === dIzq) {
+                            lado = "left"; fraccion = y / h
+                        } else {
+                            lado = "right"; fraccion = y / h
+                        }
+                        return { side: lado,
+                                 align: Math.round(
+                                     Math.max(0, Math.min(1, fraccion)) * 100) }
+                    }
+
                     Rectangle {
                         anchors.fill: parent
-                        radius: 5
-                        color: "transparent"
+                        radius: 7
+                        color: ratonMonitor.containsMouse
+                            ? Qt.rgba(1, 1, 1, 0.03) : "transparent"
+
+                        Behavior on color { ColorAnimation { duration: 120 } }
+
                         border.width: 1
                         border.color: Theme.track
                     }
 
                     //  The pill: a strip along the bar's edge.
                     Rectangle {
-                        readonly property var p: parent.puntoEn(
-                            parent.ladoBarra, Settings.barAlignment)
-                        x: p.x - 12
+                        readonly property var p: monitor.puntoEn(
+                            monitor.ladoBarra, Settings.barAlignment)
+                        x: p.x - 18
                         y: p.y - 1.5
-                        width: 24
+                        width: 36
                         height: 3
                         radius: 1.5
                         color: Theme.track
@@ -275,16 +262,35 @@ ColumnLayout {
 
                     //  The dot: where this view opens.
                     Rectangle {
-                        readonly property var p: parent.puntoEn(
+                        readonly property var p: monitor.puntoEn(
                             tarjeta.efectiva.side, tarjeta.efectiva.align)
-                        x: p.x - 3.5
-                        y: p.y - 3.5
-                        width: 7
-                        height: 7
-                        radius: 3.5
+                        x: p.x - 4
+                        y: p.y - 4
+                        width: 8
+                        height: 8
+                        radius: 4
                         color: Theme.blue
                         border.width: 1
                         border.color: Theme.islandBg
+                    }
+
+                    MouseArea {
+                        id: ratonMonitor
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onPressed: function (mouse) {
+                            const c = monitor.colocacionEn(mouse.x, mouse.y)
+                            Settings.ponerPlacement(tarjeta.idVista,
+                                c.side, c.align)
+                        }
+                        onPositionChanged: function (mouse) {
+                            if (!pressed)
+                                return
+                            const c = monitor.colocacionEn(mouse.x, mouse.y)
+                            Settings.ponerPlacement(tarjeta.idVista,
+                                c.side, c.align)
+                        }
                     }
                 }
             }
