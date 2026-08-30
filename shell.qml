@@ -1224,20 +1224,32 @@ Scope {
                     ala: Theme.wing
                     cuerpoRadio: island.bodyRadius
                     relleno: Theme.islandBg
-                    //  The shape turns at DEPARTURE, not on landing. It was
-                    //  tempting to let it keep the rim it leaves until the
-                    //  trip ends — honest, in its way — but an island that
-                    //  spends the whole crossing (and a beat past arrival)
-                    //  wearing the shape of where it came from reads as never
-                    //  having attached to where it went. Wearing the
-                    //  destination from the first frame, the shape travels
-                    //  already turned: mid-crossing it is a capsule in open
-                    //  water, and the rim it reaches finds it true on
-                    //  contact, with no gap to fill. Nothing stands still
-                    //  wearing the wrong rim, either: with the fractions
-                    //  bound (no assignments, no resolver), the body is
-                    //  moving the same frame the shape turns.
-                    lado: panelWindow.lugar.side
+                    //  The shape turns MIDWAY, in open water. Turning at
+                    //  departure dressed a top island in bottom corners
+                    //  while it still stood on the top rim; turning on
+                    //  landing kept the old shape a beat past arrival.
+                    //  Between the two there is a stretch where the shape
+                    //  cannot be wrong: the middle of the screen, where no
+                    //  rim is near enough to contradict it. So the side is
+                    //  where the island IS, not where it is going — the
+                    //  destination only picks the FAMILY (vertical sides
+                    //  judge by height, horizontal by width), and the
+                    //  island's own position does the judging: it leaves
+                    //  dressed as where it came from, turns as it crosses
+                    //  the middle, and arrives already true. At rest the
+                    //  same rule reads the rim it sits on — no latch, no
+                    //  handler, a binding that re-judges every frame of
+                    //  the glide.
+                    lado: {
+                        const destino = panelWindow.lugar.side
+                        if (destino === "left" || destino === "right")
+                            return island.x + island.width / 2
+                                < island.parent.width / 2
+                                ? "left" : "right"
+                        return island.y + island.height / 2
+                            < island.parent.height / 2
+                            ? "top" : "bottom"
+                    }
                 }
 
                 // ── zona de contenido (dentro del cuerpo, sin las alas)
