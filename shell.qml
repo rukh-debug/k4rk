@@ -437,6 +437,13 @@ Scope {
             //  borde, y quedarse un segundo de más no le estorba a nadie.
             property bool retirada: false
 
+            //  Whether the placement fractions may glide. True for the
+            //  journeys that deserve one — a placement dragged in Ajustes,
+            //  the bar nudged along its edge — and suspended for the beat
+            //  of an occupant change, where the position must simply BE
+            //  where the new view lives. See onPluginVisibleChanged.
+            property bool animarColocacion: true
+
             //  ── la franja que la trae de vuelta ─────────────────────
             //
             //  Escondida y retirada, el filo de la píldora es el único camino
@@ -507,6 +514,34 @@ Scope {
             onHayQueEnsenarChanged: repensarRetirada()
             onSeEscondeChanged: repensarRetirada()
             onSinBarraChanged: repensarRetirada()
+
+            //  ── cambiar de dueño no es viajar ───────────────
+            //
+            //  When another view takes the island, its position goes there
+            //  AT ONCE. Animating the trip was the 100 ms lie: the silhouette
+            //  had already flipped to the new border while the body was
+            //  still halfway across the screen — an island attached to the
+            //  wrong rim, reading as if it opened from the opposite side.
+            //  The trip is not the opening; the ARRIVAL is, and it has its
+            //  own repertoire (see `reproducirApertura` in the island).
+            //
+            //  The snap leaves the fractions' Behaviors alone for what they
+            //  were for: dragging a placement around in Ajustes still glides.
+            onPluginVisibleChanged: {
+                panelWindow.animarColocacion = false
+                island.fxSuave = panelWindow.fraccionX
+                island.fySuave = panelWindow.fraccionY
+                panelWindow.animarColocacion = true
+
+                const p = panelWindow.pluginVisible
+                if (p && p.name !== "idle") {
+                    const col = Settings.placementDe(p.name)
+                    const ladoBarra = Settings.barPosition === "bottom"
+                        ? "bottom" : "top"
+                    if (col.side !== ladoBarra)
+                        island.reproducirApertura(col.side)
+                }
+            }
 
             //  Y se cuenta, que hay animaciones que no se paran solas: ver
             //  `aLaVista` en services/Island.qml.
@@ -910,6 +945,7 @@ Scope {
                 property real fySuave: panelWindow.fraccionY
 
                 Behavior on fxSuave {
+                    enabled: panelWindow.animarColocacion
                     NumberAnimation {
                         duration: 440
                         easing.type: Easing.OutBack
@@ -918,6 +954,7 @@ Scope {
                 }
 
                 Behavior on fySuave {
+                    enabled: panelWindow.animarColocacion
                     NumberAnimation {
                         duration: 440
                         easing.type: Easing.OutBack
@@ -966,8 +1003,21 @@ Scope {
                 height: Math.min(parent.height, panelWindow.altoIsla)
 
                 // Ver services/Island.qml: apartarse mientras haya un
-                // diálogo del sistema abierto.
-                opacity: Island.apartada ? 0 : 1
+                // diálogo del sistema abierto. The arrival effects share
+                // the same door: `efectoOpacidad` is 1 unless one is
+                // running, so apartada keeps its veto and nothing else
+                // has to know either exists.
+                opacity: Island.apartada ? 0 : efectoOpacidad
+                scale: efectoEscala
+
+                //  ── the arrival channels ───────────────────
+                //
+                //  Plain properties the animations below write to: opacity
+                //  and scale ride existing bindings, the trip rides its own
+                //  Translate slot (gestures and retreat keep theirs — three
+                //  writers on one Translate would fight over the same x/y).
+                property real efectoOpacidad: 1
+                property real efectoEscala: 1
 
                 readonly property real bodyRadius: Math.min(32, height / 2)
 
@@ -1065,6 +1115,7 @@ Scope {
                 //  Un desplazamiento del contenido, nunca de la ventana: mover
                 //  una layer surface reajustaría el escritorio entero.
                 transform: [
+                    Translate { id: efectoTr },
                     Translate { id: gestoTr },
                     //  ── y el escondite, por el mismo camino ──────────
                     //
@@ -1281,7 +1332,167 @@ Scope {
                         }
                     }
                 }
-            }
+                            //  ── the arrivals, and their actors ─────────────────
+                //
+                //  A view opening AWAY from the bar's home — its own edge,
+                //  its own point — arrives the way the user likes, and the
+                //  way is a setting: unfurl like the pill always did, or
+                //  fade in, or a slash, a water drop, a gust. Only those
+                //  openings: at the bar's own spot everything grows as it
+                //  always has, and the pill that expands under the pointer
+                //  is not a stage trick.
+                //
+                //  The actors are declared, not created on demand: an
+                //  animation that has to be born before it can run arrives
+                //  late, and the whole point of an arrival is its first
+                //  frame.
+                Rectangle {
+                    id: tajo
+                    //  The slash's edge: a line of accent that crosses the
+                    //  island faster than the eye, and takes the view with
+                    //  it. Slightly tilted, because a level cut is a scan,
+                    //  not a slash.
+                    visible: false
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 2
+                    radius: 1
+                    width: island.width * 1.5
+                    color: Theme.blue
+                    rotation: 14
+                    opacity: 0.9
+                }
+
+                Rectangle {
+                    id: onda
+                    //  The drop's ring: one circle that grows out of the
+                    //  island and dies at its edge, so the scale-up has a
+                    //  wavefront instead of just being small-then-big.
+                    visible: false
+                    anchors.centerIn: parent
+                    width: 0
+                    height: 0
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.blue
+                }
+
+                //  One slot for whichever arrival is playing, so stopping
+                //  the previous one is one call and not four.
+                property var aniLlegada: null
+
+                function reproducirApertura(lado) {
+                    //  Everything to neutral first: an interrupted arrival
+                    //  must not leave its fingerprints on the next one.
+                    if (aniLlegada)
+                        aniLlegada.stop()
+                    efectoOpacidad = 1
+                    efectoEscala = 1
+                    efectoTr.x = 0
+                    efectoTr.y = 0
+                    tajo.visible = false
+                    onda.visible = false
+
+                    const tipo = Settings.islandOpenAnim
+                    if (tipo === "fade") {
+                        efectoOpacidad = 0
+                        efectoEscala = 0.96
+                        aniLlegada = aniFade
+                    } else if (tipo === "slash") {
+                        efectoOpacidad = 0
+                        tajo.visible = true
+                        tajo.x = -tajo.width
+                        aniLlegada = aniSlash
+                    } else if (tipo === "drop") {
+                        efectoOpacidad = 0
+                        efectoEscala = 0.55
+                        onda.visible = true
+                        onda.opacity = 0.7
+                        onda.width = island.width * 0.3
+                        onda.height = onda.width
+                        aniLlegada = aniDrop
+                    } else if (tipo === "blow") {
+                        //  The gust comes from the view's own border,
+                        //  pushing it into the screen.
+                        efectoOpacidad = 0
+                        if (lado === "top")
+                            efectoTr.y = -80
+                        else if (lado === "bottom")
+                            efectoTr.y = 80
+                        else if (lado === "left")
+                            efectoTr.x = -80
+                        else
+                            efectoTr.x = 80
+                        aniLlegada = aniBlow
+                    } else {
+                        return          // grow: the size Behaviors ARE it
+                    }
+                    aniLlegada.start()
+                }
+
+                ParallelAnimation {
+                    id: aniFade
+                    NumberAnimation { target: island
+                        property: "efectoOpacidad"
+                        to: 1; duration: 220
+                        easing.type: Easing.OutCubic }
+                    NumberAnimation { target: island
+                        property: "efectoEscala"
+                        to: 1; duration: 280
+                        easing.type: Easing.OutCubic }
+                }
+
+                SequentialAnimation {
+                    id: aniSlash
+
+                    ParallelAnimation {
+                        NumberAnimation { target: island
+                            property: "efectoOpacidad"
+                            to: 1; duration: 90 }
+                        NumberAnimation { target: tajo
+                            property: "x"
+                            to: island.width; duration: 240
+                            easing.type: Easing.OutQuad }
+                    }
+                    PropertyAction { target: tajo
+                        property: "visible"; value: false }
+                }
+
+                ParallelAnimation {
+                    id: aniDrop
+
+                    NumberAnimation { target: island
+                        property: "efectoOpacidad"
+                        to: 1; duration: 140 }
+                    NumberAnimation { target: island
+                        property: "efectoEscala"
+                        to: 1; duration: 380
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 1.2 }
+                    NumberAnimation { target: onda
+                        properties: "width,height"
+                        to: island.width * 1.6; duration: 480
+                        easing.type: Easing.OutCubic }
+                    NumberAnimation { target: onda
+                        property: "opacity"
+                        to: 0; duration: 480
+                        easing.type: Easing.OutCubic }
+                    onStopped: onda.visible = false
+                }
+
+                ParallelAnimation {
+                    id: aniBlow
+
+                    NumberAnimation { target: island
+                        property: "efectoOpacidad"
+                        to: 1; duration: 150 }
+                    NumberAnimation { target: efectoTr
+                        properties: "x,y"
+                        to: 0; duration: 320
+                        easing.type: Easing.OutCubic }
+                }
+}
+
         }
     }
 
