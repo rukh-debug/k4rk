@@ -155,6 +155,13 @@ Singleton {
     //  a bold arc. Zero is square, and the rim stays a frame.
     property int rimRadius: 6                   // 0–24, steps of 1
 
+    //  ── how a view opens away from home ──────
+    //  When a view opens somewhere other than the bar's own spot, HOW it
+    //  arrives is a matter of taste: unfurl like the pill always did, or
+    //  arrive as an effect. One choice for all of them — the placement
+    //  page decides WHERE, this decides HOW, and two knobs for the same
+    //  thing would be one too many.
+    property string islandOpenAnim: "grow"      // grow · fade · slash · drop · blow
 
     //  ── la letra del shell ───────────────
     //  The shell's typeface, as a family name. Empty is the shell's own
@@ -243,6 +250,11 @@ Singleton {
                   nombre: "Rim corner radius",
                   desc: "How round the rim turns at the screen's corners",
                   glifo: 0xF0607 },   // md-rounded_corner
+                { tipo: "titulo", nombre: "How views open" },
+                { id: "islandOpenAnim", tipo: "eleccion", de: "aperturas",
+                  nombre: "Arrival of a view away from home",
+                  desc: "How something opens when its placement is not the bar's — the Placement page picks where, this picks how",
+                  glifo: 0xF09BB },   // md-arrow_decision
                 { tipo: "titulo", nombre: "The pill" },
                 { id: "trayInPill", nombre: "Tray in the pill",
                   desc: "Icons of background apps", glifo: 0xF0FB0 },
@@ -445,6 +457,14 @@ Singleton {
             return [{ codigo: 15, nombre: "Left" },
                     { codigo: 50, nombre: "Centre" },
                     { codigo: 85, nombre: "Right" }]
+        //  How a view arrives when it opens away from the bar's spot. Only
+        //  those openings — at the bar's home everything unfurls as always.
+        if (de === "aperturas")
+            return [{ codigo: "grow",  nombre: "Grow" },
+                    { codigo: "fade",  nombre: "Fade in" },
+                    { codigo: "slash", nombre: "Slash" },
+                    { codigo: "drop",  nombre: "Water drop" },
+                    { codigo: "blow",  nombre: "Gust" }]
         return []
     }
 
@@ -496,6 +516,7 @@ Singleton {
         "panelShowShortcuts", "panelShowWorkspaces", "panelShowClock",
         "panelOrder",
         "islandPlacements", "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
+        "islandOpenAnim",
         "quickAccess"
     ]
 
