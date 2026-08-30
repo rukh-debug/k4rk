@@ -425,7 +425,10 @@ Scope {
             //  siempre.
             //
             //  Y el ratón en el borde cuenta igual: ir a buscarla es pedirla.
-            readonly property bool ratonEncima: sobreIsla.hovered || sobreFilo.hovered
+            //  Franjas incluidas — el toque de una franja dura lo que su flag
+            //  (`zonaToque`, más abajo), y entretanto es un ratón más encima.
+            readonly property bool ratonEncima: sobreIsla.hovered
+                || sobreFilo.hovered || zonaToque
             readonly property bool hayQueEnsenar: ratonEncima
                 || (!!pluginVisible && pluginVisible.name !== "idle")
 
@@ -433,6 +436,35 @@ Scope {
             //  se cierra lo que había— la barra parpadea cada vez que cruzas el
             //  borde, y quedarse un segundo de más no le estorba a nadie.
             property bool retirada: false
+
+            //  ── la franja que la trae de vuelta ─────────────────────
+            //
+            //  Escondida y retirada, el filo de la píldora es el único camino
+            //  de vuelta — y solo si recuerdas en qué borde estaba. Mientras
+            //  no está, las OTRAS tres franjas de la pantalla también la
+            //  llaman: una tira fina a lo largo de cada borde que no es el
+            //  suyo. De 1 px por defecto, que es la promesa más fina que un
+            //  borde puede hacer: cada píxel por encima es un píxel de clics
+            //  ajenos que la tira se queda. Y solo existe mientras la barra
+            //  NO está: puesta, no cobra nada.
+            //
+            //  El toque se lleva un FLAG y no el hover: en cuanto la barra
+            //  vuelve, las franjas salen de la máscara y su hover se queda
+            //  cojo —el puntero no se ha movido, nadie garantiza que llegue
+            //  un hovered nuevo—. Con el flag, la barra asoma lo que dura el
+            //  toque (y su segundo de cortesía), y si el puntero la alcanza,
+            //  la retiene el hover de siempre.
+            property bool zonaToque: false
+
+            function tocarZona() {
+                if (!zonasVivas)
+                    return
+                zonaToque = true
+                zonaTimer.restart()
+            }
+
+            readonly property bool zonasVivas: Settings.edgeZoneEnabled
+                && seEsconde && retirada && !sinBarra && !Island.apartada
 
             function repensarRetirada() {
                 //  Sin modo escondite no hay nada que retirar, y con la barra
@@ -498,6 +530,16 @@ Scope {
                 //  ratón, o una escena llevarse la barra abajo.
                 onTriggered: panelWindow.retirada = panelWindow.seEsconde
                     && !panelWindow.sinBarra && !panelWindow.hayQueEnsenar
+            }
+
+            //  Cuánto dura el asomo que pide una franja: lo que tarda en
+            //  llegar quien iba de verdad a por la barra, y no mucho más.
+            //  Si el puntero la alcanza antes, la retiene el hover de
+            //  siempre; si no, se va con la misma cortesía de siempre.
+            Timer {
+                id: zonaTimer
+                interval: 1600
+                onTriggered: panelWindow.zonaToque = false
             }
 
             anchors.top: !abajo
@@ -626,6 +668,33 @@ Scope {
                            || !panelWindow.seEsconde) ? null : filo
                     intersection: Intersection.Combine
                 }
+
+                //  Las franjas de los otros bordes, solo mientras la barra
+                //  no está. El borde de la barra se queda sin franja: su
+                //  camino de vuelta es el filo, que ya existe.
+                Region {
+                    item: (panelWindow.zonasVivas
+                           && Settings.barPosition !== "bottom")
+                        ? zonaArriba : null
+                    intersection: Intersection.Combine
+                }
+
+                Region {
+                    item: (panelWindow.zonasVivas
+                           && Settings.barPosition !== "top")
+                        ? zonaAbajo : null
+                    intersection: Intersection.Combine
+                }
+
+                Region {
+                    item: panelWindow.zonasVivas ? zonaIzquierda : null
+                    intersection: Intersection.Combine
+                }
+
+                Region {
+                    item: panelWindow.zonasVivas ? zonaDerecha : null
+                    intersection: Intersection.Combine
+                }
             }
 
             //  ── the catcher: what the outside tap falls on ─────────────
@@ -686,6 +755,61 @@ Scope {
                 //  `hovered` nuevo—, así que si el filo dejase de contar en ese
                 //  instante la barra se iría otra vez con el ratón encima.
                 HoverHandler { id: sobreFilo }
+            }
+
+            //  ── las franjas de los otros bordes ─────────────────────
+            //
+            //  Una por borde que NO es el de la barra, a lo largo entero de
+            //  él y del grosor que diga Ajustes (1 px por defecto — cada
+            //  píxel por encima es un píxel de clics ajenos que la tira se
+            //  queda). Solo existen mientras la barra está escondida y
+            //  retirada — la máscara las deja entrar entonces y solo
+            //  entonces—, así que con la barra puesta no cobran ni un píxel.
+            //  Y el toque no se lee del hover sino que se ANOTA: en cuanto la
+            //  barra vuelve, las franjas salen de la máscara y su hover queda
+            //  cojo. Ver `zonaToque` arriba.
+            Item {
+                id: zonaArriba
+                width: parent.width
+                height: Settings.edgeZoneSize
+                anchors.top: parent.top
+                opacity: 0
+                HoverHandler {
+                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                }
+            }
+
+            Item {
+                id: zonaAbajo
+                width: parent.width
+                height: Settings.edgeZoneSize
+                anchors.bottom: parent.bottom
+                opacity: 0
+                HoverHandler {
+                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                }
+            }
+
+            Item {
+                id: zonaIzquierda
+                width: Settings.edgeZoneSize
+                height: parent.height
+                anchors.left: parent.left
+                opacity: 0
+                HoverHandler {
+                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                }
+            }
+
+            Item {
+                id: zonaDerecha
+                width: Settings.edgeZoneSize
+                height: parent.height
+                anchors.right: parent.right
+                opacity: 0
+                HoverHandler {
+                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                }
             }
 
             Item {
