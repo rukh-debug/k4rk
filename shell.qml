@@ -276,6 +276,37 @@ Scope {
             //  fichero pregunta `abajo` en vez de repetir la comparación.
             readonly property bool abajo: Settings.barPosition === "bottom"
 
+            //  ── dónde está la island AHORA ──────────────────────────
+            //
+            //  The bar has its edge; every view that OPENS can have its own
+            //  — the control centre from the left, Settings from the bottom
+            //  — read from its placement in Ajustes. A view with no entry
+            //  follows the bar: its edge, its alignment, which is what every
+            //  view did before placement existed and stays the default so
+            //  nothing jumps after the update.
+            readonly property var lugar: {
+                const p = pluginVisible
+                return p && p.name !== "idle"
+                    ? Settings.placementDe(p.name)
+                    : { side: Settings.barPosition === "bottom"
+                              ? "bottom" : "top",
+                        align: Settings.barAlignment }
+            }
+
+            //  The placement as two fractions of the free space: the edge's
+            //  axis pinned to its side, the other free to carry the
+            //  alignment. Top and bottom pin Y (0 and 1), left and right pin
+            //  X — and a plugin's temporary dodge (Island.colocar) rides the
+            //  FREE axis, whichever it happens to be now.
+            readonly property real fraccionX: lugar.side === "left" ? 0
+                : lugar.side === "right" ? 1
+                : (Island.colocacionPedida >= 0 ? Island.colocacionPedida
+                                                : lugar.align / 100)
+            readonly property real fraccionY: lugar.side === "top" ? 0
+                : lugar.side === "bottom" ? 1
+                : (Island.colocacionPedida >= 0 ? Island.colocacionPedida
+                                                : lugar.align / 100)
+
             // Solo la pantalla propietaria enseña la acción global. Las demás
             // siguen con su píldora, que sí pertenece a todos los monitores.
             readonly property var idlePlugin: PluginManager.instancia("idle")
@@ -659,12 +690,6 @@ Scope {
 
             Item {
                 id: island
-                anchors.top: panelWindow.abajo ? undefined : parent.top
-                anchors.bottom: panelWindow.abajo ? parent.bottom : undefined
-
-                // Ver services/Island.qml: apartarse mientras haya un
-                // diálogo del sistema abierto.
-                opacity: Island.apartada ? 0 : 1
 
                 //  Ya no siempre al centro: la island vive en el punto del
                 //  borde que digan Ajustes, o donde la coloque temporalmente
@@ -675,7 +700,34 @@ Scope {
                 //  —como hacía el ancla al centro— y no va a remolque con su
                 //  propia animación, que era lo que descentraba la island al
                 //  abrir y cerrar módulos.
-                property real fraccionSuave: Island.colocacion
+                //
+                //  Con vistas que abren en cualquier borde hacen falta DOS
+                //  fracciones, una por eje: el del borde queda clavado a su
+                //  lado (0 o 1) y el libre lleva la alineación. Una vista que
+                //  abre en otro borde se DESLIZA hasta él con la misma curva
+                //  que siempre tuvo la alineación, ahora en los dos ejes.
+                //  Y sin anclas: la y también es cálculo directo, con lo que
+                //  crecer hacia fuera del borde —el de siempre hacia abajo,
+                //  el nuevo hacia la derecha— sale solo de que la fracción
+                //  clavada no se mueve mientras la isla engorda.
+                property real fxSuave: panelWindow.fraccionX
+                property real fySuave: panelWindow.fraccionY
+
+                Behavior on fxSuave {
+                    NumberAnimation {
+                        duration: 440
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 0.42
+                    }
+                }
+
+                Behavior on fySuave {
+                    NumberAnimation {
+                        duration: 440
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 0.42
+                    }
+                }
 
                 //  ── crecimiento hacia UN solo lado ───────────────
                 //
@@ -704,10 +756,12 @@ Scope {
                 //  la píldora cede unos píxeles —solo pasa en los extremos
                 //  de la alineación— y el contenido viaja con la silueta,
                 //  que es lo que importa: contenido y dibujo no se separan.
-                readonly property real xQuerida: (parent.width - width) * fraccionSuave
-                    + extDerecha * fraccionSuave
-                    - extIzquierda * (1 - fraccionSuave)
+                readonly property real xQuerida: (parent.width - width) * fxSuave
+                    + extDerecha * fxSuave
+                    - extIzquierda * (1 - fxSuave)
                 x: Math.max(0, Math.min(parent.width - width, xQuerida))
+                y: Math.max(0, Math.min(parent.height - height,
+                    (parent.height - height) * fySuave))
 
                 width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
                 //  Clamped to the parent as the width is: a view taller than
@@ -715,13 +769,9 @@ Scope {
                 //  not push the island past the surface it lives in.
                 height: Math.min(parent.height, panelWindow.altoIsla)
 
-                Behavior on fraccionSuave {
-                    NumberAnimation {
-                        duration: 440
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 0.42
-                    }
-                }
+                // Ver services/Island.qml: apartarse mientras haya un
+                // diálogo del sistema abierto.
+                opacity: Island.apartada ? 0 : 1
 
                 readonly property real bodyRadius: Math.min(32, height / 2)
 
@@ -794,8 +844,12 @@ Scope {
                 // ── geometría publicada, para pintar fuera de la island ──
                 //
                 //  K4.Isla.rect: coordenadas de pantalla, solo la principal.
-                //  Un plugin con K4.Ventana ancla aquí lo que asoma.
+                //  Un plugin con K4.Ventana ancla aquí lo que asoma. La x y
+                //  la y son las de verdad —la island ya no va anclada a
+                //  ningún borde— así que una vista que se desliza a su borde
+                //  nuevo arrastra consigo lo que le cuelgue.
                 onXChanged: publicarRect()
+                onYChanged: publicarRect()
                 onWidthChanged: publicarRect()
                 onHeightChanged: publicarRect()
                 Component.onCompleted: {
@@ -805,16 +859,9 @@ Scope {
 
                 function publicarRect() {
                     Island.publicarRect(panelWindow.screen.name, {
-                        x: island.x,
-                        y: panelWindow.abajo
-                            ? panelWindow.screen.height - island.height : 0,
+                        x: island.x, y: island.y,
                         ancho: island.width, alto: island.height
                     }, panelWindow.modelData === Quickshell.screens[0])
-                }
-
-                Connections {
-                    target: Settings
-                    function onPosicionBarraChanged() { island.publicarRect() }
                 }
 
                 // ── gestos: el plugin pide (services/Island.qml), esto anima ──
@@ -979,7 +1026,7 @@ Scope {
                     ala: Theme.wing
                     cuerpoRadio: island.bodyRadius
                     relleno: Theme.islandBg
-                    reflejada: panelWindow.abajo
+                    lado: panelWindow.lugar.side
                 }
 
                 // ── zona de contenido (dentro del cuerpo, sin las alas)

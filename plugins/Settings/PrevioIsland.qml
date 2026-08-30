@@ -193,7 +193,7 @@ ColumnLayout {
                 ala: Math.max(1, Theme.wing * barrita.escala)
                 cuerpoRadio: Math.max(1, 20 * barrita.escala)
                 relleno: Theme.islandBg
-                reflejada: previo.donde === "bottom"
+                lado: previo.donde === "bottom" ? "bottom" : "top"
             }
 
             //  El filo, para la opción escondida.
