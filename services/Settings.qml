@@ -141,6 +141,16 @@ Singleton {
         guardar()
     }
 
+    //  ── la franja que la trae de vuelta ───────
+    //  While the bar is away (hidden mode, retired), thin strips on the
+    //  other three edges summon it back — the path TO it when it is not
+    //  there. Off means reaching for the bar's own edge only, as before.
+    property bool edgeZoneEnabled: true
+    //  How many pixels of border answer, per edge. One is the default on
+    //  purpose: it is the thinnest promise the screen edge can make, and
+    //  every pixel above it is a pixel of desktop clicks the strip keeps.
+    property int edgeZoneSize: 1                // 1–8, steps of 1
+
     //  ── la letra del shell ───────────────
     //  The shell's typeface, as a family name. Empty is the shell's own
     //  default and not a state to repair: the row list shows it as
@@ -220,6 +230,15 @@ Singleton {
                   nombre: "Settings window height",
                   desc: "How tall these pages open",
                   glifo: 0xF084F },   // md-arrow_expand_vertical
+                { id: "edgeZoneEnabled", nombre: "Edge zone brings it back",
+                  desc: "While the bar is away, a thin strip on the other edges summons it",
+                  glifo: 0xF0741 },   // md-gesture_tap
+                { id: "edgeZoneSize", tipo: "numero", min: 1, max: 8,
+                  paso: 1, unidad: "px",
+                  requiere: "edgeZoneEnabled",
+                  nombre: "Edge zone thickness",
+                  desc: "Pixels of screen border that answer — each one also keeps its clicks",
+                  glifo: 0xF00D0 },   // md-border_style
                 { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
                   desc: "Same as Escape: a deployed view closes when you click outside the bar",
                   glifo: 0xF037D },   // md-cursor-default
@@ -458,7 +477,7 @@ Singleton {
         "panelTileBluetooth", "panelTileSound", "panelShowMedia",
         "panelShowShortcuts", "panelShowWorkspaces", "panelShowClock",
         "panelOrder",
-        "islandPlacements",
+        "islandPlacements", "edgeZoneEnabled", "edgeZoneSize",
         "quickAccess"
     ]
 
