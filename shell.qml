@@ -437,13 +437,6 @@ Scope {
             //  borde, y quedarse un segundo de más no le estorba a nadie.
             property bool retirada: false
 
-            //  Whether the placement fractions may glide. True for the
-            //  journeys that deserve one — a placement dragged in Ajustes,
-            //  the bar nudged along its edge — and suspended for the beat
-            //  of an occupant change, where the position must simply BE
-            //  where the new view lives. See onPluginVisibleChanged.
-            property bool animarColocacion: true
-
             //  ── la franja que la trae de vuelta ─────────────────────
             //
             //  Escondida y retirada, el filo de la píldora es el único camino
@@ -517,43 +510,6 @@ Scope {
 
             //  ── cambiar de dueño no es viajar ───────────────
             //
-            //  When another view takes the island, its position goes there
-            //  AT ONCE. Animating the trip was the 100 ms lie: the silhouette
-            //  had already flipped to the new border while the body was
-            //  still halfway across the screen — an island attached to the
-            //  wrong rim, reading as if it opened from the opposite side.
-            //  The snap leaves the fractions' Behaviors alone for what they
-            //  were for: dragging a placement around in Ajustes still glides.
-            onPluginVisibleChanged: {
-                //  The glide is off BEFORE anything else: whether this
-                //  handler runs before or after the fraction bindings
-                //  re-evaluate, no animation may start for this change.
-                panelWindow.animarColocacion = false
-                Qt.callLater(panelWindow.resolverColocacion)
-            }
-
-            //  The landing, deferred until the occupant change has settled.
-            //
-            //  Reading the fractions INSIDE the change handler was the bug:
-            //  they had not re-evaluated yet, so the snap assigned the OLD
-            //  occupant's placement — Settings opened on top, and the close
-            //  hopped to the bottom — and the assignment broke the binding,
-            //  so it stayed wrong. Here, one event loop turn later, the
-            //  fractions are true; land on them with the glide still off,
-            //  re-tie the bindings (same values, so nothing animates), and
-            //  let the next honest change — a placement dragged around its
-            //  card — glide again.
-            function resolverColocacion() {
-                animarColocacion = false
-                island.fxSuave = fraccionX
-                island.fySuave = fraccionY
-                island.fxSuave = Qt.binding(function () {
-                    return panelWindow.fraccionX })
-                island.fySuave = Qt.binding(function () {
-                    return panelWindow.fraccionY })
-                animarColocacion = true
-            }
-
             //  Y se cuenta, que hay animaciones que no se paran solas: ver
             //  `aLaVista` en services/Island.qml.
             onRetiradaChanged: Island.publicarVista(screen.name, !retirada)
@@ -956,7 +912,6 @@ Scope {
                 property real fySuave: panelWindow.fraccionY
 
                 Behavior on fxSuave {
-                    enabled: panelWindow.animarColocacion
                     NumberAnimation {
                         duration: 440
                         easing.type: Easing.OutBack
@@ -965,13 +920,34 @@ Scope {
                 }
 
                 Behavior on fySuave {
-                    enabled: panelWindow.animarColocacion
                     NumberAnimation {
                         duration: 440
                         easing.type: Easing.OutBack
                         easing.overshoot: 0.42
                     }
                 }
+
+                //  ── the side the silhouette wears ───────────────
+                //
+                //  The target side (`panelWindow.lugar.side`) flips the
+                //  instant the occupant changes. Wearing it while the body
+                //  is still travelling was the 100 ms lie that once cost
+                //  this trip its animation: an island fused to a rim it had
+                //  not reached, reading as if it opened from the opposite
+                //  side. So the shape keeps the rim it is LEAVING, and
+                //  turns only when the fractions have landed on their
+                //  targets — flush with the new rim, where a turn is a
+                //  fusion and not a contradiction. `colocada` goes true on
+                //  arrival (and, thanks to the OutBack overshoot, a hair
+                //  past it — as good a moment as any); it is re-checked on
+                //  every step of the trip, so a landing interrupted by
+                //  another departure simply keeps its old rim until the
+                //  next one touches down.
+                property string ladoVivo: panelWindow.lugar.side
+                readonly property bool colocada: fxSuave === panelWindow.fraccionX
+                    && fySuave === panelWindow.fraccionY
+                onColocadaChanged:
+                    if (colocada) ladoVivo = panelWindow.lugar.side
 
                 //  ── crecimiento hacia UN solo lado ───────────────
                 //
@@ -1097,6 +1073,10 @@ Scope {
                 onWidthChanged: publicarRect()
                 onHeightChanged: publicarRect()
                 Component.onCompleted: {
+                    //  The latch starts as the truth of this instant — the
+                    //  assignment breaks the binding it was born with, so
+                    //  from here on it only ever moves on landings.
+                    ladoVivo = panelWindow.lugar.side
                     publicarRect()
                     forceActiveFocus()      // el ESC de arriba; ver por qué
                 }
@@ -1270,7 +1250,7 @@ Scope {
                     ala: Theme.wing
                     cuerpoRadio: island.bodyRadius
                     relleno: Theme.islandBg
-                    lado: panelWindow.lugar.side
+                    lado: island.ladoVivo
                 }
 
                 // ── zona de contenido (dentro del cuerpo, sin las alas)
