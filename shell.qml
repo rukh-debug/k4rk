@@ -769,59 +769,115 @@ Scope {
             //  purpose and without a setting: a rim that could disagree
             //  with the island would not be attached to it.
             //
+            //  One frame and not four bars, because the corners matter:
+            //  where one border turns into the next, the rim rounds
+            //  INWARD — a radius the user sets, six by default — and four
+            //  rectangles cannot draw that turn, only butt into each other.
+            //  The frame is a Shape with a hole: the outer edge the screen,
+            //  the inner edge the desktop, rounded.
+            //
             //  The rim also carries the summons: while the bar is away, the
-            //  borders it does not live on take input — touch one and the
-            //  bar comes back for as long as the touch lasts. The touch is
-            //  carried by a flag and not by the hover: in the moment the
-            //  bar returns, the strips leave the input mask, and a hover
-            //  whose item stopped receiving cannot be trusted to say
-            //  anything. Ver `zonaToque` arriba.
-            Rectangle {
+            //  borders it does not live on take input — that is what the
+            //  four invisible strips below the Shape are for, full-length
+            //  along each border and never seen. Touch one and the bar
+            //  comes back for as long as the touch lasts, carried by a flag
+            //  and not by the hover: in the moment the bar returns, the
+            //  strips leave the input mask, and a hover whose item stopped
+            //  receiving cannot be trusted to say anything. Ver `zonaToque`.
+            Shape {
+                id: aro
+                visible: Settings.edgeZoneEnabled
+                anchors.fill: parent
+                antialiasing: true
+
+                //  The hole: the desktop, inset by the rim's thickness and
+                //  rounded at its corners. Clamped so no thickness can
+                //  swallow the screen and no radius can out-run its rect.
+                readonly property real t: Math.max(0, Math.min(
+                    Settings.edgeZoneSize, width / 2, height / 2))
+                readonly property real huecoW: width - 2 * t
+                readonly property real huecoH: height - 2 * t
+                readonly property real r: Math.max(0, Math.min(
+                    Settings.rimRadius, huecoW / 2, huecoH / 2))
+
+                ShapePath {
+                    fillColor: Theme.islandBg
+                    strokeWidth: 0
+                    strokeColor: "transparent"
+                    fillRule: ShapePath.OddEvenFill
+
+                    startX: 0
+                    startY: 0
+                    PathLine { x: aro.width; y: 0 }
+                    PathLine { x: aro.width; y: aro.height }
+                    PathLine { x: 0; y: aro.height }
+                    PathLine { x: 0; y: 0 }
+
+                    PathLine { x: aro.t + aro.r; y: aro.t }
+                    PathLine { x: aro.t + aro.huecoW - aro.r; y: aro.t }
+                    PathArc { x: aro.t + aro.huecoW; y: aro.t + aro.r
+                              radiusX: aro.r; radiusY: aro.r
+                              direction: PathArc.Clockwise }
+                    PathLine { x: aro.t + aro.huecoW; y: aro.t + aro.huecoH - aro.r }
+                    PathArc { x: aro.t + aro.huecoW - aro.r; y: aro.t + aro.huecoH
+                              radiusX: aro.r; radiusY: aro.r
+                              direction: PathArc.Clockwise }
+                    PathLine { x: aro.t + aro.r; y: aro.t + aro.huecoH }
+                    PathArc { x: aro.t; y: aro.t + aro.huecoH - aro.r
+                              radiusX: aro.r; radiusY: aro.r
+                              direction: PathArc.Clockwise }
+                    PathLine { x: aro.t; y: aro.t + aro.r }
+                    PathArc { x: aro.t + aro.r; y: aro.t
+                              radiusX: aro.r; radiusY: aro.r
+                              direction: PathArc.Clockwise }
+                }
+            }
+
+            //  The rim's invisible fingers, one per border: only while the
+            //  bar is away, and only on the borders it does not live on,
+            //  does the mask let them take input. Their ids feed the mask.
+            Item {
                 id: zonaArriba
                 width: parent.width
                 height: Settings.edgeZoneSize
                 anchors.top: parent.top
-                visible: Settings.edgeZoneEnabled
-                color: Theme.islandBg
+                opacity: 0
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
                 }
             }
 
-            Rectangle {
+            Item {
                 id: zonaAbajo
                 width: parent.width
                 height: Settings.edgeZoneSize
                 anchors.bottom: parent.bottom
-                visible: Settings.edgeZoneEnabled
-                color: Theme.islandBg
+                opacity: 0
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
                 }
             }
 
-            Rectangle {
+            Item {
                 id: zonaIzquierda
                 width: Settings.edgeZoneSize
                 height: parent.height
                 anchors.left: parent.left
-                visible: Settings.edgeZoneEnabled
-                color: Theme.islandBg
+                opacity: 0
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
                 }
             }
 
-            Rectangle {
+            Item {
                 id: zonaDerecha
                 width: Settings.edgeZoneSize
                 height: parent.height
                 anchors.right: parent.right
-                visible: Settings.edgeZoneEnabled
-                color: Theme.islandBg
+                opacity: 0
 
                 HoverHandler {
                     onHoveredChanged: if (hovered) panelWindow.tocarZona()
