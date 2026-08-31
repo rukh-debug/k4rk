@@ -337,6 +337,16 @@ K4Plugin {
         function onResultadosChanged() { self.rebuild(true) }
     }
 
+    //  Opened with somewhere to be: the host's `k4 search` lands here
+    //  instead of poking open/query/rebuild from outside. One verb, one
+    //  door — and the opening sequence stays where it belongs.
+    function buscar(texto) {
+        if (!open)
+            toggle()
+        query = texto
+        rebuild()
+    }
+
     function refreshApplications() {
         desktopDatabaseProcess.running = true
         rebuild()

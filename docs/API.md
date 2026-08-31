@@ -36,7 +36,16 @@ equivalent exists.
 | `viewLoaded` | Keep the size while the view closes |
 | `grabKeyboard` | Exclusive keyboard focus |
 | `tecladoOpcional` | On-demand keyboard focus |
+| `tecladoAlPasar` | Exclusive keyboard focus only while the pointer is over the island (for games) |
 | `closeOnHoverExit` | Enable hover-exit timeout |
+| `colocable` | Your surface is a summoned view: it gets a card in Settings → Placement. Only what OPENS gets placed — the pill's wings, transients and indicators do not |
+
+The host also knows a few optional verbs. They exist as no-op stubs on
+the contract, so a plugin overrides the ones it serves and the host can
+call unconditionally: `toggle(tab)`, `openTab(tab)`,
+`abrirPagina(page)`, `buscar(query)`, `preguntar(texto)`. If your view
+is addressable — a tab, a landing page, a search to start with — serve
+the verb instead of letting the caller poke properties.
 
 `active` and `habilitado` are different states:
 
@@ -288,6 +297,42 @@ plugin keeps the values, the bar asks for them (`valores`) and notifies
 
 With these, a plugin that talks to a service, an AI or a CLI configures
 itself in Settings like everything else.
+
+## Your pages in Settings: `K4.Pagina`
+
+A whole page, not a row of options. The plugin that knows the work ships
+the screen for it: it renders inside the Settings window with the same
+sidebar, the same search and the same scroll as every native page, and it
+leaves with its author — a disabled plugin contributes no pages, so
+nothing renders a dead engine's knobs.
+
+```qml
+K4.Pagina {
+    plugin: "hola"
+    name: "gretings"          // unique within your plugin
+    titulo: "Greetings"       // sidebar title
+    padre: "Display"          // optional: nest under a family
+    glifo: 0xF02FC
+    desc: "How this plugin greets the desktop"
+    claves: ["hello", "salute"]
+    componente: Component { MiPagina {} }
+}
+```
+
+- `padre` is the family to nest under, by its title — a native family
+  («Display») or another contributed page's `titulo`. Empty means a
+  top-level section of your own. Titles are the sidebar's ids: pick one
+  no other section uses.
+- `claves` are search keys, read exactly like a native group's.
+- `componente` is instantiated only while its page is on screen, in your
+  plugin's own context — the same arrangement as `K4.Plugin.view`. Root
+  it in a layout that reports `implicitHeight` and the window sizes and
+  scrolls it for you.
+- External plugins declare the `"paginas"` permission: injecting pages
+  into Settings is UI power, and it shows on the consent card.
+
+The bar's own plugins use the same door — the theme engine ships the
+Display family's Colour, Windows and Effects pages this way.
 
 ## Your results in the launcher: `K4.Lanzador`
 

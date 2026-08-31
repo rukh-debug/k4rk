@@ -179,13 +179,7 @@ Scope {
         function keys(): void { _p("keys")?.toggle() }
         function install(query: string): void { _p("launcher")?.openPackageSearch(query) }
         function search(query: string): void {
-            const l = _p("launcher")
-            if (!l)
-                return
-            if (!l.open)
-                l.toggle()
-            l.query = query
-            l.rebuild()
+            _p("launcher")?.buscar(query)
         }
         function togglePanel(): void { _p("panel")?.toggle("controls") }
         function toggleNotifications(): void { _p("panel")?.toggle("notifications") }
@@ -224,21 +218,10 @@ Scope {
         }
         function askSelection(): void { _p("ask")?.openAsk(true) }
         function askNow(question: string): void {
-            const a = _p("ask")
-            if (!a)
-                return
-            a.openAsk(false)
-            a.query = question
-            a.send()
+            _p("ask")?.preguntar(question)
         }
         function askFollowUp(question: string): void {
-            const a = _p("ask")
-            if (!a)
-                return
-            if (!a.open)
-                a.openAsk(false)
-            a.query = question
-            a.send()
+            _p("ask")?.preguntar(question)
         }
         function askScreen(): void { _p("ask")?.withScreenshot() }
         function askRegion(): void { _p("ask")?.withRegion() }
