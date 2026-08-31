@@ -1,13 +1,15 @@
-//  Un plugin instalado, en una fila que se despliega.
+//  An installed plugin, in a row that unfolds.
 //
-//  Antes eran dos sitios: aquí un interruptor con el nombre, y en OTRA sección
-//  de la lateral los ajustes de ese mismo plugin. Para apagar lo que acababas
-//  de configurar había que cruzar la ventana, y para saber qué era «senda»
-//  había que abrir su repositorio.
+//  It used to be two places: a switch with the name here, and that same
+//  plugin's settings in ANOTHER section of the sidebar. To turn off what
+//  you had just configured you had to cross the window, and to know what
+//  «senda» was you had to open its repository.
 //
-//  Cerrada dice lo justo —nombre, versión y si está encendido—. Abierta dice lo
-//  que hace, de dónde vino, qué permisos pide, por dónde se le llama, y trae
-//  sus propios ajustes al lado del interruptor que los enciende.
+//  Closed, it says the least — name, version, whether it is on. Open, it
+//  says what it does, where it came from, what it asks for, how it is
+//  called, and what it BRINGS: its settings beside the switch that
+//  enables them, and the Settings pages and launcher results that come
+//  with turning it on.
 
 import QtQuick
 import QtQuick.Layouts
@@ -20,12 +22,13 @@ Rectangle {
 
     required property var modelData
 
-    //  `modelData` viene de `PluginManager.opcionesAjustes`: lo justo para la
-    //  fila cerrada. Lo demás se busca cuando hace falta.
+    //  `modelData` comes from `PluginManager.opcionesAjustes`: just
+    //  enough for the closed row. The rest is looked up when needed.
     readonly property string ident: String(modelData.pluginId || "")
     readonly property var meta: PluginManager.metadata(fila.ident)
 
-    //  Sus ajustes, los que registró con `K4.Ajustes`. Puede no tener.
+    //  Its settings, the ones it registered with `K4.Ajustes`. It may
+    //  have none.
     readonly property var suGrupo: {
         const gs = Enganches.gruposAjustes
         for (let i = 0; i < gs.length; ++i)
@@ -34,13 +37,41 @@ Rectangle {
         return null
     }
 
+    //  The Settings pages it ships with `K4.Pagina`, and whether it adds
+    //  results to the launcher. Both lists are about the SAME thing —
+    //  what enabling this plugin puts into the bar — so they are told
+    //  together, as information: the switch above is the decision, this
+    //  is what the decision buys.
+    readonly property var susPaginas: {
+        const salida = []
+        const todas = Enganches.paginas
+        for (let i = 0; i < todas.length; ++i)
+            if (todas[i].plugin === fila.ident)
+                salida.push(todas[i])
+        return salida
+    }
+
+    readonly property bool enLanzador: {
+        const ls = Enganches.lanzador
+        for (let i = 0; i < ls.length; ++i)
+            if (ls[i].plugin === fila.ident)
+                return true
+        return false
+    }
+
     readonly property bool encendido: !!Settings.valor(modelData.id)
 
-    //  Roto o sin requisitos: se dice y no se deja tocar. `fijo` es que no hay
-    //  nada que hacer desde aquí; `recargable` es que se puede reintentar.
+    //  Broken or missing requirements: it says so and cannot be touched.
+    //  `fijo` means there is nothing to do from here; `recargable` means
+    //  it can be retried.
     readonly property bool averiado: modelData.error === "fijo"
 
-    property bool abierta: false
+    //  The row's open state lives in the VIEW, not here: this row is
+    //  rebuilt every time the roster changes — which is exactly when you
+    //  flip the switch inside it — and a delegate that remembers nothing
+    //  would snap shut under your hand.
+    readonly property bool abierta:
+        vista.filasAbiertas[fila.ident] === true
 
     Layout.fillWidth: true
     Layout.preferredHeight: cuerpo.implicitHeight + 18
@@ -61,14 +92,14 @@ Rectangle {
         anchors.topMargin: 9
         spacing: 10
 
-        // ── lo que se ve siempre ──────────────────────────────────
+        // ── what is always visible ──────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 34
             spacing: 11
 
-            //  La flecha. Gira al abrir, que es la forma de decir «esto tiene
-            //  más» sin escribirlo.
+            //  The arrow. It turns when opened, which is how you say
+            //  «there is more here» without writing it.
             IconGlyph {
                 Layout.alignment: Qt.AlignVCenter
                 text: String.fromCodePoint(0xF0142)   // md-chevron_right
@@ -81,7 +112,7 @@ Rectangle {
                 }
             }
 
-            //  Su icono: la imagen si trae una, y si no el códice.
+            //  Its icon: the image if it brings one, the codex if not.
             Item {
                 Layout.alignment: Qt.AlignVCenter
                 implicitWidth: 18
@@ -123,8 +154,8 @@ Rectangle {
                     maximumLineCount: 1
                 }
 
-                //  Cerrada, la descripción en una línea. Abierta se calla:
-                //  abajo va entera y sin recortar.
+                //  Closed, the description in one line. Open, it stays
+                //  quiet: the whole thing goes below, uncut.
                 IslandLabel {
                     Layout.fillWidth: true
                     visible: !fila.abierta
@@ -137,8 +168,9 @@ Rectangle {
                 }
             }
 
-            //  Cuántos ajustes trae, cuando trae. Es la pista de que ahí dentro
-            //  hay algo, sin tener que abrir para averiguarlo.
+            //  How many settings it brings, when it brings any. The hint
+            //  that there is something inside, without opening to find
+            //  out.
             Rectangle {
                 visible: !fila.abierta && fila.suGrupo !== null
                 Layout.alignment: Qt.AlignVCenter
@@ -156,7 +188,7 @@ Rectangle {
                 }
             }
 
-            //  El interruptor. Lo mismo que había, en el mismo sitio.
+            //  The switch. The same as ever, in the same place.
             Rectangle {
                 Layout.alignment: Qt.AlignVCenter
                 implicitWidth: 40
@@ -189,7 +221,7 @@ Rectangle {
             }
         }
 
-        // ── lo que aparece al desplegar ───────────────────────────
+        // ── what appears when it unfolds ────────────────────────────
         ColumnLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 25
@@ -207,9 +239,9 @@ Rectangle {
                 wrapMode: Text.WordWrap
             }
 
-            //  De dónde salió y qué se queda. Un plugin de fuera corre dentro
-            //  de la barra y puede hacer lo que la barra pueda: saber de quién
-            //  es y qué pide no es un detalle de más.
+            //  Where it came from and what it keeps. An outside plugin
+            //  runs inside the bar and can do what the bar can: knowing
+            //  whose it is and what it asks for is not a spare detail.
             Flow {
                 Layout.fillWidth: true
                 spacing: 6
@@ -255,9 +287,94 @@ Rectangle {
                 }
             }
 
-            //  Y sus ajustes, aquí mismo. Las mismas filas que el resto de la
-            //  ventana: un interruptor de plugin no tiene por qué verse
-            //  distinto de uno de la barra.
+            // ── what enabling it brings ──────────────────────────────
+            //
+            //  Pages and launcher results are told, not switched: the
+            //  plugin's own switch is the decision — this is what the
+            //  decision buys, said plainly enough that nobody has to
+            //  guess what a plugin will do to their bar.
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                visible: fila.susPaginas.length > 0 || fila.enLanzador
+                spacing: 5
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Qt.rgba(1, 1, 1, 0.06)
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: "What it adds"
+                    color: Theme.dim
+                    font.pixelSize: 10
+                }
+
+                Repeater {
+                    model: fila.susPaginas
+
+                    delegate: RowLayout {
+                        id: filaPagina
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 11
+
+                        K4.IconoPlugin {
+                            glifo: filaPagina.modelData.fuente.glifo
+                            color: Theme.ink
+                            tamano: 15
+                            Layout.preferredWidth: 18
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                            spacing: 1
+
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: (filaPagina.modelData.fuente.titulo
+                                       || filaPagina.modelData.name)
+                                    + "  ·  "
+                                    + (filaPagina.modelData.fuente.padre
+                                       ? "in " + filaPagina.modelData.fuente.padre
+                                       : "its own section")
+                                textFormat: Text.PlainText
+                                color: Theme.ink
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
+
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: filaPagina.modelData.fuente.desc
+                                textFormat: Text.PlainText
+                                color: Theme.dim
+                                font.pixelSize: 9
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
+                        }
+                    }
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    visible: fila.enLanzador
+                    text: "Its own results in the launcher's search"
+                    textFormat: Text.PlainText
+                    color: Theme.ink
+                    font.pixelSize: 12
+                }
+            }
+
+            //  And its settings, right here. The same rows as the rest
+            //  of the window: a plugin's switch has no reason to look
+            //  different from one of the bar's own.
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
@@ -276,8 +393,8 @@ Rectangle {
                 }
             }
 
-            //  Tiene ajustes pero está apagado: decirlo, en vez de enseñar
-            //  controles que no gobiernan nada.
+            //  It has settings but is off: say so, instead of showing
+            //  controls that govern nothing.
             IslandLabel {
                 Layout.fillWidth: true
                 visible: fila.suGrupo !== null && !fila.encendido
@@ -288,14 +405,15 @@ Rectangle {
         }
     }
 
-    //  El clic que despliega. Va DEBAJO de los controles —se declara antes—,
-    //  así que el interruptor y las filas de dentro se quedan los suyos.
+    //  The click that unfolds. It sits BELOW the controls — declared
+    //  before them — so the switch and the rows inside keep their
+    //  clicks to themselves.
     MouseArea {
         id: raton
         anchors.fill: parent
         z: -1
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: fila.abierta = !fila.abierta
+        onClicked: vista.ponerFilaAbierta(fila.ident, !fila.abierta)
     }
 }

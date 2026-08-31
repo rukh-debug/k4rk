@@ -118,6 +118,21 @@ FadeIn {
         vista.expandidos = e
     }
 
+    //  Which plugin rows stand open in the Plugins page. It lives HERE
+    //  and not in the row: the row list is rebuilt whenever the plugin
+    //  roster changes — which is exactly when you flip a switch inside
+    //  one of them — and a state that dies with its delegate reads as
+    //  the row snapping shut at you. The view is the one thing that
+    //  survives the rebuild, so the view keeps the memory.
+    property var filasAbiertas: ({})
+
+    function ponerFilaAbierta(id, valor) {
+        const d = {}
+        Object.assign(d, vista.filasAbiertas)
+        d[id] = valor
+        vista.filasAbiertas = d
+    }
+
     //  What gets painted on the right.
     //
     //  Without a search: the chosen section, that's all. Searching: the
