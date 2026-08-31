@@ -961,11 +961,20 @@ Scope {
                 y: Math.max(0, Math.min(parent.height - height,
                     (parent.height - height) * fySuave))
 
+                //  A vertical island — hanging from a left or right rim —
+                //  carries its wings along its vertical axis: the body grows
+                //  two wings TALL, and the content zone below reads them as
+                //  margins, so the first and last rows get the same air the
+                //  sides always had instead of riding under the end corners.
+                readonly property bool vertical:
+                    silueta.lado === "left" || silueta.lado === "right"
+
                 width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
                 //  Clamped to the parent as the width is: a view taller than
                 //  the screen (none today, the ceiling is Theme's 880) must
                 //  not push the island past the surface it lives in.
-                height: Math.min(parent.height, panelWindow.altoIsla)
+                height: Math.min(parent.height, panelWindow.altoIsla
+                    + (vertical ? Theme.wing * 2 : 0))
 
                 // Ver services/Island.qml: apartarse mientras haya un
                 // diálogo del sistema abierto.
@@ -1253,10 +1262,18 @@ Scope {
                 }
 
                 // ── zona de contenido (dentro del cuerpo, sin las alas)
+                //
+                //  The wings sit on the axis the island RUNS along: left and
+                //  right margins for a horizontal one, and for a VERTICAL one
+                //  top and bottom as well — the silhouette's wing cuts and
+                //  end corners live there, and without the margin the first
+                //  and last rows ride under them while the sides keep air.
                 Item {
                     anchors.fill: parent
                     anchors.leftMargin: Theme.wing
                     anchors.rightMargin: Theme.wing
+                    anchors.topMargin: island.vertical ? Theme.wing : 0
+                    anchors.bottomMargin: island.vertical ? Theme.wing : 0
                     clip: true
 
                     // Debajo de toda vista: los botones y sliders se quedan sus
