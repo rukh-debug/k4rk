@@ -35,9 +35,9 @@ ColumnLayout {
     //  call; the card just says it was asked.
     signal pedidaApp()
 
-    //  The theme engine, for the wallpaper the hero shows. Asked by id, same
-    //  as every other page: no plugin imports another.
-    readonly property var motor: PluginManager.instancia("hyprtheme")
+    //  The theme engine, for the wallpaper the hero shows. Passed in by the
+    //  hosting view, which holds the injected reference.
+    required property var motor
 
     //  The wallpaper currently applied, exactly the way the grid decides it:
     //  the chosen monitor's if one is chosen, the common one otherwise.

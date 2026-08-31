@@ -26,6 +26,10 @@ K4Plugin {
 
     property bool open: false
 
+    //  The theme engine, injected by the host: the Display family pages
+    //  drive it, and the wallpaper page steps aside when it is off.
+    property var hyprtheme: null
+
     //  Sized once: the sidebar plus one section on the right. The window it
     //  replaces was 1040x700 of card; the island trims the frame and the
     //  margins the card carried, and the search field absorbs the rest.

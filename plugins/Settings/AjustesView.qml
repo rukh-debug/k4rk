@@ -799,6 +799,7 @@ FadeIn {
                                 sourceComponent: Component {
                                     PortadaFamilia {
                                         familia: bloque.modelData
+                                        motor: vista.plugin.hyprtheme
                                         onPedida: function (grupo) {
                                             vista.elegirHijo(grupo)
                                         }
@@ -836,7 +837,7 @@ FadeIn {
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     RejillaFondos {
-                                        motor: PluginManager.instancia("hyprtheme")
+                                        motor: vista.plugin.hyprtheme
                                         fitContent: true
                                     }
                                 }
@@ -845,7 +846,7 @@ FadeIn {
                             IslandLabel {
                                 Layout.fillWidth: true
                                 visible: bloque.modelData.vista === "wallpaper"
-                                         && !PluginManager.instancia("hyprtheme")
+                                         && !vista.plugin.hyprtheme
                                 text: "The theme plugin is off: you can view the wallpapers, but not apply them."
                                 color: Theme.dim
                                 font.pixelSize: 10
@@ -869,7 +870,7 @@ FadeIn {
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     AjustesTema {
-                                        motor: PluginManager.instancia("hyprtheme")
+                                        motor: vista.plugin.hyprtheme
                                     }
                                 }
                             }
@@ -968,7 +969,7 @@ FadeIn {
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     AjustesVentanas {
-                                        motor: PluginManager.instancia("hyprtheme")
+                                        motor: vista.plugin.hyprtheme
                                     }
                                 }
                             }
@@ -982,7 +983,7 @@ FadeIn {
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     AjustesEfectos {
-                                        motor: PluginManager.instancia("hyprtheme")
+                                        motor: vista.plugin.hyprtheme
                                     }
                                 }
                             }
@@ -1004,7 +1005,7 @@ FadeIn {
                                         || bloque.modelData.vista === "efectos")
                                 sourceComponent: Component {
                                     GuardarTema {
-                                        motor: PluginManager.instancia("hyprtheme")
+                                        motor: vista.plugin.hyprtheme
                                     }
                                 }
                             }

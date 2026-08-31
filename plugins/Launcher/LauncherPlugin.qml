@@ -20,8 +20,11 @@ K4Plugin {
     viewLoaded: open
     grabKeyboard: open
 
-    // lo aparta al abrirse; lo inyecta el host
+    //  Host-injected references, declared by catalog id: the panel (opened
+    //  alongside this one) and the app centre (its updates view, offered
+    //  here when the system has some).
     property var panel: null
+    property var apps: null
 
     property bool open: false
     property bool closing: false

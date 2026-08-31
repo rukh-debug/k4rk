@@ -502,7 +502,7 @@ FadeIn {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             view.plugin.close()
-                            const apps = PluginManager.instancia("apps")
+                            const apps = view.plugin.apps
                             if (apps)
                                 apps.abrirActualizaciones()
                         }
