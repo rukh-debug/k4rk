@@ -87,7 +87,8 @@ ColumnLayout {
                 id: chipPantalla
                 required property var modelData
                 readonly property bool puesta:
-                    rejilla.motor.pantallaElegida === modelData
+                    !!rejilla.motor
+                    && rejilla.motor.pantallaElegida === modelData
 
                 Layout.preferredWidth: textoPantalla.implicitWidth + 22
                 Layout.preferredHeight: 24
@@ -115,8 +116,9 @@ ColumnLayout {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: rejilla.motor.pantallaElegida =
-                        chipPantalla.modelData
+                    onClicked: if (rejilla.motor)
+                        rejilla.motor.pantallaElegida =
+                            chipPantalla.modelData
                 }
             }
         }
@@ -159,7 +161,7 @@ ColumnLayout {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: rejilla.motor.elegirFondo()
+                onClicked: if (rejilla.motor) rejilla.motor.elegirFondo()
             }
         }
 
@@ -185,13 +187,14 @@ ColumnLayout {
         }
 
         Repeater {
-            model: rejilla.motor.transiciones
+            model: rejilla.motor ? rejilla.motor.transiciones : []
 
             delegate: Rectangle {
                 id: chipTrans
                 required property var modelData
                 readonly property bool puesta:
-                    rejilla.motor.transicion === modelData
+                    !!rejilla.motor
+                    && rejilla.motor.transicion === modelData
 
                 Layout.preferredWidth: textoTrans.implicitWidth + 20
                 Layout.preferredHeight: 22
@@ -216,7 +219,7 @@ ColumnLayout {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
+                    onClicked: if (rejilla.motor) {
                         rejilla.motor.transicion = chipTrans.modelData
                         rejilla.motor.saveState()
                     }
@@ -361,7 +364,8 @@ ColumnLayout {
                         anchors.margins: -3
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: rejilla.motor.quitarFondo(wallCell.modelData)
+                        onClicked: if (rejilla.motor)
+                            rejilla.motor.quitarFondo(wallCell.modelData)
                     }
                 }
 
@@ -373,7 +377,8 @@ ColumnLayout {
                     //  Debajo de la cruz a propósito: declarado
                     //  después iría encima y se comería su clic.
                     z: -1
-                    onClicked: rejilla.motor.ponerEnElegida(wallCell.modelData)
+                    onClicked: if (rejilla.motor)
+                        rejilla.motor.ponerEnElegida(wallCell.modelData)
                 }
             }
         }

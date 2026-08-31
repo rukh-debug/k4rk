@@ -812,6 +812,21 @@ FadeIn {
                                 }
                             }
 
+                            //  ── the engine's absence, said up front ───
+                            //
+                            //  Above the grid on purpose: the grid can run
+                            //  for a whole screen, and a notice at its feet
+                            //  is a notice nobody ever met.
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                visible: bloque.modelData.vista === "wallpaper"
+                                         && !vista.plugin.hyprtheme
+                                text: "The theme plugin is off: you can view the wallpapers, but not apply them."
+                                color: Theme.dim
+                                font.pixelSize: 10
+                                wrapMode: Text.WordWrap
+                            }
+
                             //  ── the wallpaper grid ────────────────────
                             //
                             //  The engine is asked for by id and its folder
@@ -822,7 +837,7 @@ FadeIn {
                                 Layout.fillWidth: true
                                 //  The grid sizes itself to its rows
                                 //  (`fitContent`), so the page scrolls as one
-                                //  in this Rodillo.
+                                //  in this outer Rodillo.
                                 //
                                 //  Conditional on `active`, and it is not a
                                 //  detail: an inactive Loader STILL occupies
@@ -842,6 +857,7 @@ FadeIn {
                                     }
                                 }
                             }
+
 
                             IslandLabel {
                                 Layout.fillWidth: true

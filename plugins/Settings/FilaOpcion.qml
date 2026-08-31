@@ -76,15 +76,12 @@ Rectangle {
         onTriggered: opcion.armada = false
     }
 
-    //  Cerrar y volver a abrir no puede dejarla
-    //  armada esperando un clic despistado.
-    Connections {
-        target: view
-        function onVisibleChanged() {
-            if (!view.visible)
-                opcion.armada = false
-        }
-    }
+    //  Close and reopen must not leave a row armed, waiting for a stray
+    //  click. The signal is the row's OWN — the context's `view` is not
+    //  guaranteed here, and a Connections to something without the signal
+    //  warns once per row and disarms nothing.
+    onVisibleChanged: if (!visible)
+        opcion.armada = false
 
     opacity: disponible ? 1 : 0.4
     Behavior on opacity { NumberAnimation { duration: 140 } }
@@ -142,7 +139,7 @@ Rectangle {
             //  imagen; el resto de opciones son
             //  glifos y caen por el mismo sitio.
             imagen: opcion.modelData.imagen || ""
-            glifo: opcion.modelData.glifo
+            glifo: opcion.modelData.glifo || 0
             color: opcion.activa ? Theme.ink : Theme.dim
             tamano: 15
             Layout.preferredWidth: 18
@@ -155,19 +152,20 @@ Rectangle {
             spacing: 0
 
             IslandLabel {
-                text: opcion.armada
-                    ? (opcion.modelData.nombreArmado
-                       || "Are you sure? This cannot be undone")
-                    : opcion.modelData.nombre
+                text: (opcion.armada
+                       ? (opcion.modelData.nombreArmado
+                          || "Are you sure? This cannot be undone")
+                       : opcion.modelData.nombre) || ""
                 color: opcion.armada ? Theme.red : Theme.ink
                 font.pixelSize: 12
                 font.weight: Font.DemiBold
             }
 
             IslandLabel {
-                text: opcion.armada
-                    ? (opcion.modelData.descArmado || opcion.modelData.desc)
-                    : opcion.modelData.desc
+                text: (opcion.armada
+                       ? (opcion.modelData.descArmado
+                          || opcion.modelData.desc)
+                       : opcion.modelData.desc) || ""
                 //  El motivo de un plugin roto va
                 //  en rojo: es la diferencia entre
                 //  «apagado» y «no puede».

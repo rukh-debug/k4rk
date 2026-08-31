@@ -22,6 +22,11 @@ ColumnLayout {
     //  Quien sabe escribir esto en la config de Hyprland.
     property var motor: null
 
+    //  The engine can be off — its plugin is a switch like any other. Every
+    //  read below goes through this, so a page without its engine stands
+    //  still instead of throwing.
+    readonly property bool vivo: !!raiz.motor
+
     //  Cualquier retoque a mano deja de ser «el preset tal cual».
     function tocado() {
         if (!raiz.motor)
@@ -64,9 +69,11 @@ ColumnLayout {
                 }
 
                 IslandLabel {
-                    text: raiz.motor.paletaAuto
-                        ? "Change the wallpaper and the bar, the borders and the terminal follow"
-                        : "Turned off when you pick a preset or a colour by hand"
+                    text: raiz.vivo
+                        ? (raiz.motor.paletaAuto
+                           ? "Change the wallpaper and the bar, the borders and the terminal follow"
+                           : "Turned off when you pick a preset or a colour by hand")
+                        : ""
                     color: Theme.dim
                     font.pixelSize: 9
                     elide: Text.ElideRight
@@ -77,7 +84,7 @@ ColumnLayout {
             //  Lo que ha salido del fondo, para que se vea que no es
             //  magia: los tres colores que se están repartiendo.
             Repeater {
-                model: raiz.motor.paletaAuto
+                model: raiz.vivo && raiz.motor.paletaAuto
                     ? [raiz.motor.accentFrom, raiz.motor.accentTo,
                        raiz.motor.inactive] : []
 
@@ -94,9 +101,11 @@ ColumnLayout {
             }
 
             IslandSwitch {
-                checked: raiz.motor.paletaAuto
+                checked: raiz.vivo && raiz.motor.paletaAuto
                 Layout.alignment: Qt.AlignVCenter
                 onToggled: {
+                    if (!raiz.motor)
+                        return
                     raiz.motor.paletaAuto = !raiz.motor.paletaAuto
                     if (raiz.motor.paletaAuto)
                         raiz.motor.sacarPaleta()
@@ -121,12 +130,13 @@ ColumnLayout {
         rowSpacing: 10
 
         Repeater {
-            model: raiz.motor.presets
+            model: raiz.vivo ? raiz.motor.presets : []
 
             delegate: Rectangle {
                 id: presetCard
                 required property var modelData
-                readonly property bool current: raiz.motor.preset === modelData.id
+                readonly property bool current: raiz.vivo
+                    && raiz.motor.preset === modelData.id
                     && !raiz.motor.dirty
 
                 Layout.fillWidth: true
@@ -190,7 +200,8 @@ ColumnLayout {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: raiz.motor.applyPreset(presetCard.modelData.id)
+                    onClicked: if (raiz.motor)
+                        raiz.motor.applyPreset(presetCard.modelData.id)
                 }
             }
         }
@@ -205,7 +216,12 @@ ColumnLayout {
         from: 0
         to: 360
         step: 5
-        value: raiz.motor.angle
-        onMoved: function (v) { raiz.motor.angle = v; raiz.tocado() }
+        value: raiz.vivo ? raiz.motor.angle : 0
+        onMoved: function (v) {
+            if (!raiz.motor)
+                return
+            raiz.motor.angle = v
+            raiz.tocado()
+        }
     }
 }
