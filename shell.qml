@@ -88,12 +88,12 @@ Scope {
     onActivePluginChanged: {
         apartarTransitorios()
         const anterior = Island.ocupante
-        if (activePlugin && activePlugin.name !== "idle") {
+        if (activePlugin && activePlugin.name !== PluginManager.pillId) {
             // Desde reposo, el origen explícito del clic; sin él, el monitor
             // con foco. Entre dos vistas abiertas se conserva la pantalla para
             // que navegar por el panel no haga saltar la island.
             if (Island.pantallaPedida.length > 0
-                    || anterior.length === 0 || anterior === "idle")
+                    || anterior.length === 0 || anterior === PluginManager.pillId)
                 Island.pantallaActiva = Island.tomarPantallaPedida()
         } else {
             Island.pantallaPedida = ""
@@ -118,7 +118,7 @@ Scope {
     }
 
     function backgroundTap(pantalla, mostrado) {
-        if (mostrado && mostrado.name !== "idle" && mostrado.handlesBackgroundTap)
+        if (mostrado && mostrado.name !== PluginManager.pillId && mostrado.handlesBackgroundTap)
             mostrado.backgroundTapped()
         else
             abrirPanelEn(pantalla)
@@ -286,7 +286,7 @@ Scope {
             //  nothing jumps after the update.
             readonly property var lugar: {
                 const p = pluginVisible
-                return p && p.name !== "idle"
+                return p && p.name !== PluginManager.pillId
                     ? Settings.placementDe(p.name)
                     : { side: Settings.barPosition === "bottom"
                               ? "bottom" : "top",
@@ -309,12 +309,12 @@ Scope {
 
             // Solo la pantalla propietaria enseña la acción global. Las demás
             // siguen con su píldora, que sí pertenece a todos los monitores.
-            readonly property var idlePlugin: PluginManager.instancia("idle")
+            readonly property var idlePlugin: PluginManager.instancia(PluginManager.pillId)
             readonly property bool esPantallaActiva: root.activePlugin
-                && root.activePlugin.name !== "idle"
+                && root.activePlugin.name !== PluginManager.pillId
                 && panelWindow.screen.name === Island.pantallaActiva
             readonly property var pluginVisible: root.activePlugin
-                && (root.activePlugin.name === "idle" || esPantallaActiva)
+                && (root.activePlugin.name === PluginManager.pillId || esPantallaActiva)
                 ? root.activePlugin : idlePlugin
 
             //  ── click outside closes, like Escape ─────────────────────
@@ -430,7 +430,7 @@ Scope {
             readonly property bool ratonEncima: sobreIsla.hovered
                 || sobreFilo.hovered || zonaToque
             readonly property bool hayQueEnsenar: ratonEncima
-                || (!!pluginVisible && pluginVisible.name !== "idle")
+                || (!!pluginVisible && pluginVisible.name !== PluginManager.pillId)
 
             //  Vuelve al instante y se va con retraso. Al revés —irse en cuanto
             //  se cierra lo que había— la barra parpadea cada vez que cruzas el
@@ -565,7 +565,7 @@ Scope {
                 if (Island.apartada)
                     return WlrKeyboardFocus.None
                 const p = panelWindow.pluginVisible
-                if (!p || p !== root.activePlugin || p.name === "idle")
+                if (!p || p !== root.activePlugin || p.name === PluginManager.pillId)
                     return WlrKeyboardFocus.None
                 if (p.grabKeyboard)
                     return WlrKeyboardFocus.Exclusive
@@ -942,10 +942,10 @@ Scope {
                 //  directo, sin animación propia, para que el cuerpo no vaya
                 //  a remolque del ancho mientras este crece con su Behavior.
                 readonly property int extDerecha: pluginVisible
-                    && pluginVisible.name === "idle"
+                    && pluginVisible.name === PluginManager.pillId
                     ? Extensions.rightWidth : 0
                 readonly property int extIzquierda: pluginVisible
-                    && pluginVisible.name === "idle"
+                    && pluginVisible.name === PluginManager.pillId
                     ? Extensions.leftWidth : 0
 
                 //  La x que dejaría la píldora clavada, y la de verdad con
@@ -1165,7 +1165,7 @@ Scope {
                 //  reloj se activa con `Island.hovered`. Se separa del gesto
                 //  para poder retrasarlo, que es lo único que cambia aquí.
                 function abrirPorRaton() {
-                    if (!root.activePlugin || root.activePlugin.name === "idle")
+                    if (!root.activePlugin || root.activePlugin.name === PluginManager.pillId)
                         Island.pedirPantalla(panelWindow.screen.name)
                     else if (root.activePlugin.name === "clock"
                              || root.activePlugin.name === "player")
@@ -1198,7 +1198,7 @@ Scope {
                             //  segundos, ese medio segundo era la diferencia
                             //  entre alcanzarlo y verlo desaparecer.
                             const enReposo = !panelWindow.pluginVisible
-                                || panelWindow.pluginVisible.name === "idle"
+                                || panelWindow.pluginVisible.name === PluginManager.pillId
                             if (!panelWindow.seEsconde || !enReposo)
                                 island.abrirPorRaton()
                         } else {

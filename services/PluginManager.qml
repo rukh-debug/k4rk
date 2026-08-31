@@ -67,6 +67,11 @@ Singleton {
 
     signal cambiado(string id, bool habilitado)
 
+    //  The pill's plugin id, said once. The host asks «is this the pill?» in
+    //  a dozen places, and a mistyped string there fails silently — the check
+    //  just stops matching — so the id lives here and nowhere else.
+    readonly property string pillId: "idle"
+
     // ── las instancias vivas ──────────────────────────────────────
     //
     //  Aquí está el cambio de fondo: los plugins ya no se instancian

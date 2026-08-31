@@ -466,14 +466,6 @@ K4Plugin {
         return fuera
     }
 
-    function admitido(ruta) {
-        const r = String(ruta || "").toLowerCase()
-        for (let i = 0; i < extensionesFondo.length; ++i)
-            if (r.endsWith("." + extensionesFondo[i]))
-                return true
-        return false
-    }
-
     //  ── traer uno de fuera ───────────────────────────────────────
     //
     //  Por el diálogo del sistema y no arrastrando, y no es la primera opción
@@ -534,7 +526,7 @@ K4Plugin {
         const nuevos = []
         for (let i = 0; i < rutas.length; ++i) {
             const r = String(rutas[i])
-            if (!admitido(r) || extras.indexOf(r) >= 0)
+            if (!Fondos.admitido(r) || extras.indexOf(r) >= 0)
                 continue
             nuevos.push(r)
         }
@@ -547,32 +539,14 @@ K4Plugin {
         return nuevos.length
     }
 
-    readonly property var wallDirs: [
-        K4.Sistema.entorno("HOME") + "/Pictures",
-        K4.Sistema.entorno("HOME") + "/Pictures",
-        K4.Sistema.entorno("HOME") + "/Videos",
-        K4.Sistema.entorno("HOME") + "/Videos",
-        K4.Sistema.entorno("HOME") + "/Descargas",
-        "/usr/share/wallpapers",
-        "/usr/share/backgrounds"
-    ]
-
-    //  Y lo que NO cuenta como fondo aunque esté en esas carpetas.
-    //
-    //  «Capturas» es donde el propio k4 guarda las fotos y las grabaciones de
-    //  pantalla, así que la rejilla se llenaba de capturas de la barra: en esta
-    //  máquina, de 120 imágenes encontradas la inmensa mayoría eran pantallazos
-    //  de terminales. Un selector de fondos que enseña tus capturas es un
-    //  selector que no has mirado nunca.
-    readonly property var carpetasFuera: ["Capturas", "Screenshots", ".thumbnails"]
-
-    //  Qué se admite. Los de siempre más lo que se mueve, que es de lo que iba
-    //  todo esto.
-    readonly property var extensionesFondo: [
-        "jpg", "jpeg", "png", "webp", "avif",
-        "gif", "apng",
-        "mp4", "webm", "mkv", "mov", "m4v"
-    ]
+    //  Where to look, what to skip and what counts as a wallpaper: one list
+    //  of each, kept by Fondos — the service this grid and Ajustes both read,
+    //  so the two can never drift apart again. The old copies had already
+    //  drifted: duplicated entries, and the Spanish-named picture folders
+    //  only Fondos knew about.
+    readonly property var wallDirs: Fondos.carpetas
+    readonly property var carpetasFuera: Fondos.carpetasFuera
+    readonly property var extensionesFondo: Fondos.extensiones
 
     //  La miniatura de un fondo: la propia imagen si está quieta, y el póster ya
     //  cacheado si se mueve. `posterSello` está en la cuenta a propósito: una

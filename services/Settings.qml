@@ -204,7 +204,7 @@ Singleton {
         guardar()
     }
 
-    readonly property var definicion: [,,
+    readonly property var definicion: [
         {
             grupo: "Island",
             glifo: 0xF1513,
