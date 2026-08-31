@@ -10,8 +10,8 @@
 
 import QtQuick
 import QtQuick.Layouts
-import "../core"
-import "../services"
+import "../../core"
+import "../../services"
 
 RowLayout {
     id: guardar

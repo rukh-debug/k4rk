@@ -10,6 +10,7 @@
 //  línea `require`, y todo vuelve a estar como estaba.
 
 import QtQuick
+import QtQuick.Layouts
 import K4 as K4
 import "../../core"
 import "../../services"
@@ -1022,6 +1023,92 @@ K4Plugin {
         }
         return JSON.stringify({ telas: salida, guardado: self.fondos,
                                 global: self.wallpaper })
+    }
+
+    //  ── the Settings pages this plugin ships ────────────────────
+    //
+    //  The Display family's working pages live here now, not in Settings:
+    //  the engine that writes the Hyprland Lua owns the screens that drive
+    //  it. Each one rides into Settings' sidebar through K4.Pagina, under
+    //  the host's «Display» family, with its Save row inside — the page
+    //  and its author leave together, which is the whole point: nothing
+    //  renders a dead engine's knobs.
+    K4.Pagina {
+        plugin: "hyprtheme"
+        name: "colour"
+        titulo: "Colour"
+        padre: "Display"
+        glifo: 0xF03D8       // md-palette
+        desc: "Where the colours come from: the wallpaper, or a preset you pick."
+        claves: ["color", "colour", "colores", "preset", "acento",
+                 "accent", "paleta", "palette", "tema", "theme",
+                 "degradado"]
+        componente: Component {
+            ColumnLayout {
+                spacing: 0
+                AjustesTema {
+                    motor: self
+                    Layout.fillWidth: true
+                }
+                GuardarTema {
+                    motor: self
+                    Layout.fillWidth: true
+                    Layout.topMargin: 12
+                }
+            }
+        }
+    }
+
+    K4.Pagina {
+        plugin: "hyprtheme"
+        name: "windows"
+        titulo: "Windows"
+        padre: "Display"
+        glifo: 0xF10AC
+        desc: "Borders, gaps and corners of Hyprland's windows."
+        claves: ["ventanas", "windows", "borde", "border", "hueco",
+                 "huecos", "gap", "gaps", "redondeo", "rounding",
+                 "esquina", "esquinas"]
+        componente: Component {
+            ColumnLayout {
+                spacing: 0
+                AjustesVentanas {
+                    motor: self
+                    Layout.fillWidth: true
+                }
+                GuardarTema {
+                    motor: self
+                    Layout.fillWidth: true
+                    Layout.topMargin: 12
+                }
+            }
+        }
+    }
+
+    K4.Pagina {
+        plugin: "hyprtheme"
+        name: "effects"
+        titulo: "Effects"
+        padre: "Display"
+        glifo: 0xF00B5
+        desc: "Blur, opacity, shadows and animations."
+        claves: ["efectos", "effects", "blur", "desenfoque", "opacidad",
+                 "opacity", "sombra", "sombras", "shadow", "animacion",
+                 "animaciones", "animation"]
+        componente: Component {
+            ColumnLayout {
+                spacing: 0
+                AjustesEfectos {
+                    motor: self
+                    Layout.fillWidth: true
+                }
+                GuardarTema {
+                    motor: self
+                    Layout.fillWidth: true
+                    Layout.topMargin: 12
+                }
+            }
+        }
     }
 
 }

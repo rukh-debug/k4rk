@@ -869,28 +869,6 @@ FadeIn {
                                 wrapMode: Text.WordWrap
                             }
 
-                            //  The colour picker, on its own sub-tab under the
-                            //  same family as the wallpaper it can follow.
-                            //
-                            //  Loaders keep their height conditional on
-                            //  `active`: an inactive one loads nothing but
-                            //  STILL measures whatever you ask of it, and that
-                            //  pushes the other sections' content out of view
-                            //  without a single error.
-                            Loader {
-                                visible: active
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: active && item
-                                    ? item.implicitHeight : 0
-                                active: bloque.modelData.vista === "color"
-                                        && bloque.modelData.atajo === undefined
-                                sourceComponent: Component {
-                                    AjustesTema {
-                                        motor: vista.plugin.hyprtheme
-                                    }
-                                }
-                            }
-
                             //  The shell's typeface, from the families the
                             //  system has. It lives under Display with the
                             //  rest of the screen's look.
@@ -966,64 +944,34 @@ FadeIn {
                                 }
                             }
 
-                            //  Windows and Effects, one loader per page,
-                            //  and «Save» after them: they all write the
-                            //  Hyprland Lua through the same motor.
+                            //  ── a page some plugin contributes ──────────
                             //
-                            //  These loaders keep their height conditional on
-                            //  `active`. It is the lesson from before: an
-                            //  inactive one loads nothing but STILL measures
-                            //  whatever you ask of it, and that pushes the
-                            //  other sections' content out of view without a
-                            //  single error.
+                            //  Any plugin can ship a whole page — the theme
+                            //  engine ships the Display family's working
+                            //  pages this way. The Component is asked to the
+                            //  registry BY NAME: a Repeater hands its
+                            //  delegates a copy of the model object, and a
+                            //  Component that travelled inside a copy does
+                            //  not instantiate. The section vanishes with
+                            //  its plugin — nobody renders a page whose
+                            //  author is gone, which is why the null-motor
+                            //  question never comes up for these.
+                            //
+                            //  Height rides `implicitHeight`, like every
+                            //  native page: an inactive Loader still measures
+                            //  what you ask of it.
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
-                                active: bloque.modelData.vista === "ventanas"
+                                active: bloque.modelData.pagina !== undefined
                                         && bloque.modelData.atajo === undefined
-                                sourceComponent: Component {
-                                    AjustesVentanas {
-                                        motor: vista.plugin.hyprtheme
-                                    }
-                                }
-                            }
-
-                            Loader {
-                                visible: active
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: active && item
-                                    ? item.implicitHeight : 0
-                                active: bloque.modelData.vista === "efectos"
-                                        && bloque.modelData.atajo === undefined
-                                sourceComponent: Component {
-                                    AjustesEfectos {
-                                        motor: vista.plugin.hyprtheme
-                                    }
-                                }
-                            }
-
-                            //  «Save» travels with whatever the Hyprland Lua
-                            //  writes. Wallpapers do not carry it —those save
-                            //  on their own the moment you pick one— but the
-                            //  colour block DOES write the Lua, so the bar
-                            //  follows the colour half of the page.
-                            Loader {
-                                visible: active
-                                Layout.fillWidth: true
-                                Layout.topMargin: active ? 12 : 0
-                                Layout.preferredHeight: active && item
-                                    ? item.implicitHeight : 0
-                                active: bloque.modelData.atajo === undefined
-                                    && (bloque.modelData.vista === "color"
-                                        || bloque.modelData.vista === "ventanas"
-                                        || bloque.modelData.vista === "efectos")
-                                sourceComponent: Component {
-                                    GuardarTema {
-                                        motor: vista.plugin.hyprtheme
-                                    }
-                                }
+                                sourceComponent: bloque.modelData.pagina
+                                    ? Enganches.componenteDe(
+                                        bloque.modelData.pagina.plugin,
+                                        bloque.modelData.pagina.name)
+                                    : null
                             }
 
                             //  The placement editor: one card per

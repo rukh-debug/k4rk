@@ -13,8 +13,8 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import K4 as K4
-import "../core"
-import "../services"
+import "../../core"
+import "../../services"
 
 ColumnLayout {
     id: raiz
