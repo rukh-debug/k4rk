@@ -1301,26 +1301,35 @@ Scope {
                         width: panelWindow.anchoIsla
                         height: panelWindow.altoIsla
 
-                        Repeater {
-                            //  Las instancias vivas del gestor. Cuando esto
-                            //  era `root.plugins` y la lista se fue, el modelo
-                            //  quedó indefinido y la island se abría NEGRA:
-                            //  cero delegates, cero vistas, sin un solo error.
-                            model: PluginManager.instancias
-
-                            delegate: Loader {
-                                required property var modelData
-                                anchors.fill: parent
-                                active: modelData === panelWindow.pluginVisible
-                                    && modelData.viewLoaded
-                                sourceComponent: modelData.view
-                                onStatusChanged: {
-                                    if (status === Loader.Error)
-                                        PluginManager.registrarError(
-                                            modelData.name, "No se pudo cargar la vista")
-                                    else if (status === Loader.Ready)
-                                        PluginManager.limpiarError(modelData.name)
-                                }
+                        //  ── the one view on stage ────────────────────
+                        //
+                        //  ONE loader, keyed on the visible plugin's view
+                        //  — not a Repeater over the instances. The
+                        //  instance list churns constantly: toggling a
+                        //  plugin, reloading one, a catalog rescan, and a
+                        //  Repeater whose model was reassigned destroys
+                        //  EVERY delegate and recreates them, which took
+                        //  the mounted view with it — Settings jumped back
+                        //  to its first page each time you flipped an
+                        //  unrelated plugin's switch. Keying on the view
+                        //  Component means the loader only swaps when what
+                        //  is on stage actually changes; churn around it
+                        //  is none of its business.
+                        Loader {
+                            anchors.fill: parent
+                            active: panelWindow.pluginVisible
+                                && panelWindow.pluginVisible.viewLoaded
+                            sourceComponent: panelWindow.pluginVisible
+                                ? panelWindow.pluginVisible.view : null
+                            onStatusChanged: {
+                                const p = panelWindow.pluginVisible
+                                if (!p)
+                                    return
+                                if (status === Loader.Error)
+                                    PluginManager.registrarError(
+                                        p.name, "The view could not be loaded")
+                                else if (status === Loader.Ready)
+                                    PluginManager.limpiarError(p.name)
                             }
                         }
                     }
