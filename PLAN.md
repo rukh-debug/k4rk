@@ -56,7 +56,41 @@ produces no TypeError in `~/.local/state/k4/k4.log`.
 Verify: build/restart/IPC; toggle HyprTheme off → colour pages show their
 engine-off state; launcher still lists plugin apps.
 
-## Phase 2 — Contract formalization
+## Phase 2 — Settings pages & placement (DONE, direction-adjusted)
+
+Added mid-program by owner request. Sub-parts, as landed:
+
+- **2.0** Null-guarded every `motor.*` read in the Display-family
+  widgets; the engine-off notice moved above the wallpaper grid; the
+  Display hero says "The theme plugin is off" instead of a misleading
+  "No wallpaper set"; FilaOpcion undefined-warnings fixed.
+- **2.1 `K4.Pagina`** — plugins contribute whole Settings pages:
+  registered in `Enganches.paginas`, appended to
+  `Settings.definicion`, rendered by one generic Loader that asks the
+  registry for the Component by (plugin, name) — never through
+  modelData copies. Swept with the plugin: off author, no page.
+- **2.4 migration** — Colour/Windows/Effects moved out of AjustesView
+  into HyPrTheme as `K4.Pagina { padre: "Display" }` contributions
+  (widgets physically in `plugins/HyprTheme/`); Wallpaper and Fonts
+  stay host-owned. The null-motor bug class died by construction.
+- **2.2 informational (toggles reverted)** — per-page enable/disable
+  was built (`services/Paginas.qml`) and reverted by owner decision:
+  the plugin's own switch is the decision; FilaPlugin tells what it
+  buys in a "What it adds" group (pages + destination, launcher
+  results). While here: toggling a plugin no longer resets Settings to
+  its first page (the island's content is one Loader keyed on the
+  visible view, not a Repeater over the churning instance list), and
+  plugin rows keep their open state across roster rebuilds
+  (`AjustesView.filasAbiertas`).
+- **2.3 placement derived** — `K4.Plugin.colocable` contract property;
+  `PlacementPage.vistas` derives from live instances instead of a
+  hardcoded 16-entry list. HyPrTheme dropped from the cards (it no
+  longer has a surface); disabled plugins show no card.
+- **2.5 docs** — `docs/API.md` + `api/LEEME.md`: K4.Pagina,
+  `colocable`, the `"paginas"` permission for external contributors
+  (tools/plugins.py PERMISOS). *Pending.*
+
+## Phase 3 — Contract formalization
 
 1. **One verb, one method** — replace multi-poke sequences in shell.qml's
    compat layer with single methods plugins own:
@@ -72,7 +106,7 @@ Verify: IPC round-trip of every touched verb (`k4 askNow hi`, `k4 search
 foo`, `k4 settingsSection wallpaper`, `togglePanel`, `toggleNotifications`,
 `wifi`, `bluetooth`, `sound`, `theme`).
 
-## Phase 3 — Packages extraction (the big one)
+## Phase 4 — Packages extraction (the big one)
 
 New `plugins/Packages/` — id `packages`, `aplicacion: true`, permisos
 `["procesos"]`, self-gating by binary probe.
@@ -102,7 +136,7 @@ Verify: clean log on this machine, launcher search intact, plugin row in
 Settings, IPC verbs work. Full install/remove flows need an Arch box — out
 of test reach here; note in commit.
 
-## Phase 4 — Binary requirements
+## Phase 5 — Binary requirements
 
 1. New probe service (`services/Binarios.qml`, Consola's `revisar()`
    pattern — one batched `command -v` sweep at startup, change-notifying).
@@ -117,7 +151,7 @@ of test reach here; note in commit.
 Verify: temporary `"requiere": "bin:definitely-missing"` on a scratch
 plugin via `pluginReload` → disabled-with-reason; remove the requiere.
 
-## Phase 5 — Codification in docs
+## Phase 6 — Codification in docs
 
 1. `services/Settings.qml` header: the registry rule — cross-cutting or
    previewed knobs live here (`panelShowMedia` is read by Panel AND
@@ -129,7 +163,7 @@ plugin via `pluginReload` → disabled-with-reason; remove the requiere.
 
 ---
 
-**Execution order:** 0 → 1 → 2 → 3 (depends on 1+2) → 4 → 5.
+**Execution order:** 0 → 1 → 2 (done) → 3 → 4 (depends on 1+3) → 5 → 6.
 
 **Out of scope, flagged:** TerminalIslaView.qml:765's 16 ms timer (looks
 like a game-loop; unverified), any nix package backend.

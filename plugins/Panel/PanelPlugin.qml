@@ -12,6 +12,7 @@ K4Plugin {
     name: "panel"
     title: "Control centre"
     priority: 60
+    colocable: true
     active: habilitado && open
 
     // "controls" | "notifications" | "wifi" | "bluetooth" | "sound"

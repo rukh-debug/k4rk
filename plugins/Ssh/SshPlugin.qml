@@ -29,6 +29,7 @@ K4Plugin {
     //  Como el portapapeles: se pide a propósito, así que manda sobre lo que
     //  esté puesto.
     priority: 82
+    colocable: true
     active: abierto || cerrando
     viewLoaded: abierto
     grabKeyboard: abierto

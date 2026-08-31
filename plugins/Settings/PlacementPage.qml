@@ -19,27 +19,23 @@ ColumnLayout {
 
     spacing: 10
 
-    //  Everything that OPENS and takes the island. The pill is not in the
-    //  list: it lives wherever the Island page says and drags its hover
-    //  views with it; what is here is what you summon.
-    readonly property var vistas: [
-        { id: "panel",     nombre: "Control centre" },
-        { id: "settings",  nombre: "Settings" },
-        { id: "launcher",  nombre: "Launcher" },
-        { id: "clipboard", nombre: "Clipboard" },
-        { id: "system",    nombre: "System" },
-        { id: "keys",      nombre: "Shortcuts" },
-        { id: "session",   nombre: "Session" },
-        { id: "tray",      nombre: "Tray" },
-        { id: "ask",       nombre: "Ask" },
-        { id: "apps",      nombre: "Apps" },
-        { id: "terminal",  nombre: "Terminal" },
-        { id: "ssh",       nombre: "Servers" },
-        { id: "agents",    nombre: "Agents" },
-        { id: "hyprtheme", nombre: "Hyprland theme" },
-        { id: "displays",  nombre: "Displays" },
-        { id: "toast",     nombre: "Notification toast" }
-    ]
+    //  Everything that OPENS and takes the island: the live plugins that
+    //  say so with `colocable`. Derived, not listed — a plugin that ships
+    //  a summoned surface gets its card the day it is written, and one
+    //  that is off has no surface to place, so it shows no card until it
+    //  comes back. The pill is not in the list on purpose: it lives
+    //  wherever the Island page says and drags its hover views with it;
+    //  what is here is what you summon.
+    readonly property var vistas: {
+        const salida = []
+        const lista = PluginManager.instancias
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
+            if (p.colocable)
+                salida.push({ id: p.name, nombre: p.title || p.name })
+        }
+        return salida
+    }
 
     //  «» is Follow bar: no entry of its own, the bar's edge and alignment.
     //  It is stored as an ABSENT key and not as a copy of the bar's

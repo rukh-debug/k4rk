@@ -15,6 +15,7 @@ K4Plugin {
     name: "launcher"
     title: "Launcher"
     priority: 80
+    colocable: true
     // sigue ocupando la island mientras se encoge, pero ya sin contenido
     active: habilitado && (open || closing)
     viewLoaded: open

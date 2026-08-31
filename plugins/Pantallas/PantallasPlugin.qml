@@ -7,6 +7,7 @@ K4.Plugin {
     name: "displays"
     title: "Screens"
     priority: 67
+    colocable: true
     active: abierto
     islandWidth: 920
     // La distribución es compacta; Escritorios necesita algo más de tablero.

@@ -15,6 +15,7 @@ K4Plugin {
     name: "ask"
     title: "Ask"
     priority: 90
+    colocable: true
     active: habilitado && open
     grabKeyboard: true
 

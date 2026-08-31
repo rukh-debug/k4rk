@@ -24,6 +24,7 @@ K4Plugin {
     //  Por encima del reproductor y del reloj, por debajo del lanzador: si
     //  estás escribiendo en ella, ninguna canción te la quita.
     priority: 75
+    colocable: true
     active: abierto
 
     //  ── la terminal de la island ──────────────────────────────────

@@ -23,6 +23,7 @@ K4.Plugin {
     name: "apps"
     title: "Applications"
     priority: 72
+    colocable: true
     active: abierto
     grabKeyboard: abierto
     islandWidth: 700
