@@ -108,9 +108,14 @@ ColumnLayout {
                 IslandLabel {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
-                    text: portada.nombreFondo.length > 0
-                        ? portada.nombreFondo
-                        : "No wallpaper set"
+                    //  With the engine off, «No wallpaper set» would be a
+                    //  lie: there may well be one — we just cannot ask the
+                    //  only one who knows. The honest line names the cause.
+                    text: !portada.motor
+                        ? "The theme plugin is off"
+                        : (portada.nombreFondo.length > 0
+                           ? portada.nombreFondo
+                           : "No wallpaper set")
                     textFormat: Text.PlainText
                     color: Theme.ink
                     font.pixelSize: 11
