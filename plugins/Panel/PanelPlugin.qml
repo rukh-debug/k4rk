@@ -18,14 +18,10 @@ K4Plugin {
     property string tab: "controls"
     property bool open: false
 
-    // el lanzador y los módulos que se abren desde los accesos directos;
-    // los inyecta el host
+    //  The launcher, injected by the host: the shortcuts strip opens apps
+    //  through it. A reference is declared by catalog id and filled by
+    //  PluginManager — see its `_repartir`.
     property var launcher: null
-    property var theme: null
-    property var weather: null
-    property var ajustes: null
-    property var juego: null
-    property var sistema: null
 
     islandWidth: Math.max(640, Math.min(1100, Settings.panelWidth))
     //  The controls tab is as tall as what it shows: each block brings its

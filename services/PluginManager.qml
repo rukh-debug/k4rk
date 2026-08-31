@@ -98,16 +98,12 @@ Singleton {
             p.toggle()
     }
 
-    //  Qué referencia cruzada corresponde a cada propiedad que un plugin puede
-    //  declarar. Antes eran ocho asignaciones a mano en shell.qml; ahora
-    //  cualquier plugin —también uno de fuera— declara `property var panel` y
-    //  la recibe. El reparto es una segunda pasada tras crear todos, así que
-    //  los ciclos (panel↔launcher) no dependen del orden del catálogo.
-    readonly property var referencias: ({
-        panel: "panel", tray: "tray", launcher: "launcher",
-        theme: "hyprtheme", ajustes: "settings",
-        sistema: "system"
-    })
+    //  Cross references, by catalog id and nothing else: a plugin that
+    //  declares `property var <id>` — for any plugin in the catalog —
+    //  receives that plugin's live instance, or null when it is off or
+    //  broken, which is what keeps guarded bindings at peace. The handout
+    //  is a second pass after every creation, so cycles (panel↔launcher)
+    //  do not depend on the catalog's order. See `_repartir`.
 
     //  ── lo que un plugin necesita para tener sentido ──────────────
     //
@@ -277,21 +273,40 @@ Singleton {
         return obj
     }
 
-    //  El reparto de referencias: para cada instancia, cada propiedad del mapa
-    //  que declare se rellena con la instancia que le toca — o con null si esa
-    //  no está cargada, que es lo que deja los bindings con guarda en paz.
+    //  The reference handout: for every live instance, every OTHER catalog
+    //  id it declares as a property receives that plugin's instance — or
+    //  null when it is not loaded, which is what keeps guarded bindings at
+    //  peace. The property name IS the request, so there is no map to keep
+    //  in step and no translation to get wrong.
     function _repartir() {
         for (const id in _porId) {
             const obj = _porId[id]
-            for (const prop in referencias) {
-                if (!(prop in obj))
+            //  Names the handout used to translate before it went by id
+            //  (theme→hyprtheme, ajustes→settings, sistema→system).
+            //  Declaring one now is a typo: nothing would ever fill it, and
+            //  the failure is silent. Said once, out loud.
+            for (let v = 0; v < _viejos.length; ++v) {
+                const nombre = _viejos[v]
+                if (nombre in obj && !_avisados[nombre]) {
+                    _avisados[nombre] = true
+                    console.warn("k4: some plugin declares '"
+                                 + nombre + "'; references go by catalog id "
+                                 + "(hyprtheme, settings, system)")
+                }
+            }
+            for (let i = 0; i < catalogo.length; ++i) {
+                const otro = catalogo[i].id
+                if (otro === id || !(otro in obj))
                     continue
-                const destino = _porId[referencias[prop]] || null
-                if (obj[prop] !== destino)
-                    obj[prop] = destino
+                const destino = _porId[otro] || null
+                if (obj[otro] !== destino)
+                    obj[otro] = destino
             }
         }
     }
+
+    readonly property var _viejos: ["theme", "ajustes", "sistema"]
+    property var _avisados: ({})
 
     function _publicar() {
         const lista = []
