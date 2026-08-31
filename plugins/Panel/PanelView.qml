@@ -118,17 +118,37 @@ FadeIn {
                     model: Workspaces.list
 
                     delegate: Rectangle {
-                        //  The dots are decoration of the header, and the
+                        //  The desks in the header are decoration, and the
                         //  header is theirs to dress: the Control Centre
-                        //  page can turn them off.
+                        //  page can turn them off, and the same page picks
+                        //  their dress — a dot per desk, or its number.
+                        id: sitio
                         visible: Settings.panelShowWorkspaces
                         required property var modelData
-                        Layout.preferredWidth: modelData.focused ? 24 : 8
-                        Layout.preferredHeight: 8
-                        radius: 4
+                        readonly property bool numeros:
+                            Settings.panelWorkspaceStyle === "numbers"
+
+                        Layout.preferredWidth: numeros
+                            ? numero.implicitWidth + (modelData.focused ? 12 : 4)
+                            : (modelData.focused ? 24 : 8)
+                        Layout.preferredHeight: numeros ? 18 : 8
+                        radius: numeros ? 9 : 4
                         color: modelData.focused ? Theme.ink : Theme.surfaceHi
 
                         Behavior on Layout.preferredWidth { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                        Behavior on Layout.preferredHeight { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+                        IslandLabel {
+                            id: numero
+                            anchors.centerIn: parent
+                            visible: sitio.numeros
+                            text: sitio.modelData.id
+                            color: sitio.modelData.focused
+                                ? Theme.islandBg : Theme.muted
+                            font.pixelSize: 10
+                            font.weight: sitio.modelData.focused
+                                ? Font.DemiBold : Font.Normal
+                        }
 
                         MouseArea {
                             anchors.fill: parent
