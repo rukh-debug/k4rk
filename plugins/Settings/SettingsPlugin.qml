@@ -18,6 +18,7 @@ K4Plugin {
     name: "settings"
     title: "Settings"
     priority: 66
+    colocable: true
 
     //  A deployed view: it occupies the island while open.
     active: habilitado && open

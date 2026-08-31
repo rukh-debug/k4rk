@@ -90,6 +90,18 @@ QtObject {
     // manteniendo el tamaño mientras el contenido ya se ha ido.
     property bool viewLoaded: true
 
+    //  Does this plugin's surface deserve a card in Settings → Placement?
+    //
+    //  Mark it true if your view is a SUMMONED surface — something the
+    //  user opens that takes the island for a while: the control centre,
+    //  a drawer, a terminal. Not everything that paints is that: the
+    //  pill's wings, transient notices and indicators ride along rather
+    //  than open, and they get no card. Only what OPENS gets placed, and
+    //  the card — its edge, its point along it — is then the user's to
+    //  draw. A plugin that is off has no surface, and so no card: the
+    //  list is derived from the live ones.
+    property bool colocable: false
+
     // Pide foco de teclado EXCLUSIVO: mientras esté activo, ninguna ventana
     // recibe una tecla. Solo para lo que se escribe de verdad —el lanzador, la
     // pregunta a la IA, la clave del wifi—, porque bloquea el resto del

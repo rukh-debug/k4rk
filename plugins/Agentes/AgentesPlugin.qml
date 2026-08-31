@@ -26,6 +26,7 @@ K4Plugin {
     name: "agents"
     title: "Agents"
     priority: 63
+    colocable: true
     active: habilitado && abierto
 
     property bool abierto: false

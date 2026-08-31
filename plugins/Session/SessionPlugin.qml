@@ -23,6 +23,7 @@ K4Plugin {
     name: "session"
     title: "Session"
     priority: 86
+    colocable: true
     active: habilitado && open
     viewLoaded: open
     grabKeyboard: open

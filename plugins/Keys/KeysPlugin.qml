@@ -11,6 +11,7 @@ K4Plugin {
     name: "keys"
     title: "Shortcuts"
     priority: 65
+    colocable: true
     active: habilitado && (open || closing)
     viewLoaded: open
     grabKeyboard: open

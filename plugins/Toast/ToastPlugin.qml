@@ -21,6 +21,7 @@ K4Plugin {
     //  el aviso. En 59 queda justo por encima de las de reposo y por debajo de
     //  todo lo que abres tú, que es lo que la lista ya decía.
     priority: 59
+    colocable: true
 
     //  Y si te abre algo la island mientras está puesto, se va. Un aviso ya ha
     //  dicho lo suyo con salir; quedarse tapando lo que acabas de abrir es

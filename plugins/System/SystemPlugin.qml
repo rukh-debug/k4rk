@@ -15,6 +15,7 @@ K4Plugin {
     name: "system"
     title: "System"
     priority: 62
+    colocable: true
     active: habilitado && (open || closing)
     viewLoaded: open
     //  El teclado entero mientras está abierto: «opcional» es OnDemand y

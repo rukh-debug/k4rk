@@ -16,6 +16,7 @@ K4Plugin {
     name: "tray"
     title: "Tray"
     priority: 63
+    colocable: true
     active: habilitado && open
     //  El teclado entero mientras está abierto: «opcional» es OnDemand y
     //  el compositor solo lo da si PINCHAS la superficie, así que abierto
