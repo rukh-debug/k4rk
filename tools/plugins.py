@@ -60,6 +60,10 @@ PERMISOS = {
     "notificaciones": re.compile(r"\bK4\.Notificaciones\.limpiar\b"),
     "portapapeles": re.compile(r"\bK4\.Portapapeles\b"),
     "sound": re.compile(r"\bK4\.Sonido\b"),
+    #  Injecting pages into the Settings window is UI power: it gets its
+    #  own line in the consent card, so «what it adds» is a promise the
+    #  user read before the switch.
+    "paginas": re.compile(r"\bK4\.Pagina\b"),
 }
 
 #  Y QUÉ ES cada plugin: dónde se dibuja y por dónde se le llama.

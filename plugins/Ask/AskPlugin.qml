@@ -47,6 +47,17 @@ K4Plugin {
     //  igual: volver a pulsar el atajo no puede costar la conversación que
     //  dejaste a medias. Para empezar de cero está el botón «nueva» (y
     //  `fresco: true`, que usa el IPC de pregunta directa).
+    //  A question from outside, in one call: open if closed, ask, send.
+    //  The host's ask verbs used to poke openAsk/query/send one by one —
+    //  three properties that only made sense in this order — and now the
+    //  sequence lives with the only one who knows what it is for.
+    function preguntar(texto) {
+        if (!open)
+            openAsk(false)
+        query = texto
+        send()
+    }
+
     function openAsk(attach, fresco) {
         const retomar = fresco !== true && messages.length > 0
         Modulos.quitar("ask")

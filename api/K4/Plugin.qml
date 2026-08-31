@@ -166,6 +166,29 @@ QtObject {
             active = true
     }
 
+    //  ── the optional verbs the host knows ─────────────────────────
+    //
+    //  Not every plugin is addressable, but the host has things to say
+    //  to those that are: open a tab, land on a page, arrive with a
+    //  search already written. These stubs exist so the CALLER never has
+    //  to know whether you serve the verb — override the ones you do,
+    //  and the contract here is the list of names worth overriding.
+    //
+    //      · toggle(tab) — alternate your surface; the tab, if you have
+    //        tabs, is yours to name.
+    //      · openTab(tab) — go to that tab, opening if closed.
+    //      · abrirPagina(page) — land on that page of your surface.
+    //      · buscar(query) — arrive with a search already written.
+    //      · preguntar(texto) — a question asked from outside.
+    //
+    //  `toggle` has a working default for plugins with no view logic of
+    //  their own; the rest are no-ops until you write them.
+    function toggle(tab) { active = !active }
+    function openTab(tab) { }
+    function abrirPagina(page) { }
+    function buscar(query) { }
+    function preguntar(texto) { }
+
     property bool handlesBackgroundTap: false
     signal backgroundTapped()
 
