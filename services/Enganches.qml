@@ -68,7 +68,7 @@ Singleton {
                      fuente: fuente }])
     }
 
-    //  Esta sí barre las dos: es para cuando el plugin se va.
+    //  This one sweeps all three: it is for when the plugin leaves.
     function quitarDe(plugin) {
         const quedan = ajustes.filter(function (x) { return x.plugin !== plugin })
         if (quedan.length !== ajustes.length)
@@ -76,6 +76,9 @@ Singleton {
         const quedanL = lanzador.filter(function (x) { return x.plugin !== plugin })
         if (quedanL.length !== lanzador.length)
             lanzador = quedanL
+        const quedanP = paginas.filter(function (x) { return x.plugin !== plugin })
+        if (quedanP.length !== paginas.length)
+            paginas = quedanP
     }
 
     //  Lo que Ajustes añade al final de su lista de grupos.
@@ -138,6 +141,58 @@ Singleton {
         const f = _fuente(p.plugin)
         if (f)
             f.cambiado(p.opcion, valor)
+    }
+
+    // ── pages contributed to Settings ─────────────────────────────
+    //
+    //  A WHOLE page, not a row of options: shipped by the plugin that
+    //  knows the work, rendered by Settings with its sidebar, its search
+    //  and its scroll like any native page. Each entry:
+    //  { plugin, name, fuente } — the fuente is the K4.Pagina, the one
+    //  holding the Component.
+    property var paginas: []
+
+    function registrarPagina(fuente) {
+        if (!fuente || !fuente.plugin || !fuente.name
+                || !fuente.componente)
+            return
+        paginas = paginas.filter(function (x) {
+            return !(x.plugin === fuente.plugin
+                     && x.name === fuente.name)
+        }).concat([{ plugin: fuente.plugin, name: fuente.name,
+                     fuente: fuente }])
+    }
+
+    //  The Component is asked to the registry BY NAME, never through
+    //  modelData: a Repeater hands its delegates a COPY of the model
+    //  object, and a Component that travelled inside a copy does not
+    //  instantiate.
+    function componenteDe(plugin, name) {
+        for (let i = 0; i < paginas.length; ++i)
+            if (paginas[i].plugin === plugin && paginas[i].name === name)
+                return paginas[i].fuente.componente
+        return null
+    }
+
+    //  What the pages add to Settings' sidebar: groups shaped like the
+    //  native ones, carrying `pagina` instead of `vista` — the key the
+    //  view reads to know this section is painted by asking the registry
+    //  for a Component.
+    readonly property var gruposPaginas: {
+        const salida = []
+        for (let i = 0; i < paginas.length; ++i) {
+            const f = paginas[i].fuente
+            salida.push({
+                grupo: f.titulo || f.name,
+                padre: f.padre || "",
+                glifo: f.glifo || 0,
+                desc: f.desc || "",
+                claves: f.claves || [],
+                pagina: { plugin: f.plugin, name: paginas[i].name },
+                opciones: []
+            })
+        }
+        return salida
     }
 
     // ── resultados en el lanzador ─────────────────────────────────

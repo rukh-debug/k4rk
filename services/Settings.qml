@@ -381,16 +381,6 @@ Singleton {
             opciones: []
         },
         {
-            grupo: "Colour",
-            padre: "Display",
-            claves: ["color", "colour", "colores", "preset", "acento",
-                     "accent", "paleta", "palette", "tema", "theme", "degradado"],
-            glifo: 0xF03D8,      // md-palette
-            desc: "Where the colours come from: the wallpaper, or a preset you pick.",
-            vista: "color",
-            opciones: []
-        },
-        {
             grupo: "Fonts",
             padre: "Display",
             claves: ["font", "fuente", "fonts", "fuentes", "tipografia",
@@ -398,24 +388,6 @@ Singleton {
             glifo: 0xF06D6,        // md-format_font
             desc: "The typeface the shell is written in.",
             vista: "fonts",
-            opciones: []
-        },
-        {
-            grupo: "Windows",
-            padre: "Display",
-            claves: ["ventanas", "windows", "borde", "border", "hueco", "huecos", "gap", "gaps", "redondeo", "rounding", "esquina", "esquinas"],
-            glifo: 0xF10AC,
-            desc: "Borders, gaps and corners of Hyprland's windows.",
-            vista: "ventanas",
-            opciones: []
-        },
-        {
-            grupo: "Effects",
-            padre: "Display",
-            claves: ["efectos", "effects", "blur", "desenfoque", "opacidad", "opacity", "sombra", "sombras", "shadow", "animacion", "animaciones", "animation"],
-            glifo: 0xF00B5,
-            desc: "Blur, opacity, shadows and animations.",
-            vista: "efectos",
             opciones: []
         },
         {
@@ -430,10 +402,13 @@ Singleton {
             vista: "plugins",
             opciones: PluginManager.opcionesAjustes
         }
-    //  Y al final, lo que aporten los plugins con K4.Ajustes. Van los
-    //  últimos a propósito: lo de la barra primero, y lo instalado después,
-    //  que es el orden en que la gente busca.
-    ].concat(Enganches.gruposAjustes)
+    //  And at the end, what the plugins contribute. Option rows
+    //  (`K4.Ajustes`) and whole pages (`K4.Pagina`) both go after the
+    //  bar's own, which is the order people look in. The Display family's
+    //  working pages — colour, windows, effects — live with the theme
+    //  plugin now: they are here because IT says so, not because this
+    //  file lists them.
+    ].concat(Enganches.gruposAjustes).concat(Enganches.gruposPaginas)
 
     //  Las alternativas de cada opción de varias respuestas.
     //

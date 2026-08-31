@@ -48,6 +48,7 @@ singleton Reloj 1.0 Reloj.qml
 
 #  Puntos de enganche: salir en sitios de la barra que no son tuyos.
 Ajustes 1.0 Ajustes.qml
+Pagina 1.0 Pagina.qml
 Lanzador 1.0 Lanzador.qml
 singleton Isla 1.0 Isla.qml
 Sonido 1.0 Sonido.qml
