@@ -1,0 +1,135 @@
+# Neat & Conventional k4 — Refactor Program
+
+Audit-driven program to make the plugin ecosystem fully framework-conformal:
+no cross-plugin reach-ins, no duck-typed host calls, no Arch-only code in the
+Launcher, no undeclared tool dependencies, and the settings ownership rule
+written down.
+
+**Decisions locked with the owner (2026-08-31):**
+
+- Settings model: **codify the central registry** — `services/Settings.qml`
+  stays the host registry for cross-cutting knobs; plugin-private knobs go
+  through `K4.Ajustes`. No page-contribution API will be built.
+- Upstream: this fork has **diverged for good** from k4ditano/k4 — optimize
+  for this repo's cleanliness, no merge constraints.
+- Launcher packages: **extract into its own plugin**. Package management is
+  not the Launcher's job; it leaves through the sanctioned door
+  (`K4.Lanzador` contributed results). No new backends (no nix backend).
+- Tool gating: **extend `requiere` to binaries** (`"requiere": "bin:codex"`).
+
+Commit discipline: each phase is verified (build + restart + `pluginStatus`
++ phase checks) and committed separately, only after the owner confirms.
+
+---
+
+## Phase 0 — Defects & hygiene
+
+1. **Sparse array bug** — `services/Settings.qml` `definicion: [,,` has two
+   holes → `TypeError: Cannot read property 'grupo' of undefined` at
+   AjustesView.qml:136 on every Settings search. Drop the holes.
+2. **Wallpaper dir dedupe** — `plugins/HyprTheme/HyprThemePlugin.qml`
+   duplicates `services/Fondos.qml`'s `/usr/share/wallpapers`,
+   `/usr/share/backgrounds` list. HyprTheme consumes Fondos' single list.
+3. **Name the pill id** — constant (`Island.pillId`); replace the magic
+   `"idle"` strings in `shell.qml` (9 sites) and any in services.
+4. **K4.Sonido XDG path** — `/usr/share/sounds/freedesktop/stereo/` becomes
+   a named constant with a comment (no behavior change).
+
+Verify: `nix build .#k4`, restart, `pluginStatus` 22/0, Settings search
+produces no TypeError in `~/.local/state/k4/k4.log`.
+
+## Phase 1 — Reference formalization
+
+1. **Generic reference injection** — drop the `referencias` map
+   (services/PluginManager.qml): any plugin declaring `property var <x>`
+   where `<x>` matches a catalog id receives the live instance (null when
+   off/broken). Startup warning when a declared property looks like an id
+   but matches none (typo guard).
+2. **Convert reach-ins:**
+   - `LauncherPlugin` declares `property var apps` → replaces
+     LauncherView.qml:505 `PluginManager.instancia("apps")`.
+   - `SettingsPlugin` declares `property var theme` → replaces the 7
+     `PluginManager.instancia("hyprtheme")` sites (AjustesView.qml:839-1007,
+     PortadaFamilia.qml:40); views read via `vista.plugin.theme`.
+   - `shell.qml`'s `_p()` compat layer stays — reaching by id is its job.
+
+Verify: build/restart/IPC; toggle HyprTheme off → colour pages show their
+engine-off state; launcher still lists plugin apps.
+
+## Phase 2 — Contract formalization
+
+1. **One verb, one method** — replace multi-poke sequences in shell.qml's
+   compat layer with single methods plugins own:
+   - `k4 search`: `launcher.buscar(q)` instead of open/query/rebuild pokes.
+   - `k4 askNow/askFollowUp/askScreen/askRegion`: `ask.preguntar(texto)`,
+     `ask.preguntarConImagen(tipo)` instead of openAsk/query/send pokes.
+2. **Declare optional verbs** in `K4.Plugin` as documented no-op stubs:
+   `toggle(tab)`, `openTab(tab)`, `abrirPagina(page)`, `buscar(q)`,
+   `preguntar(texto)` — contract visible, host calls unconditional.
+3. Document in `docs/API.md`.
+
+Verify: IPC round-trip of every touched verb (`k4 askNow hi`, `k4 search
+foo`, `k4 settingsSection wallpaper`, `togglePanel`, `toggleNotifications`,
+`wifi`, `bluetooth`, `sound`, `theme`).
+
+## Phase 3 — Packages extraction (the big one)
+
+New `plugins/Packages/` — id `packages`, `aplicacion: true`, permisos
+`["procesos"]`, self-gating by binary probe.
+
+1. **Moves in:**
+   - Search: `pacman -Ss` / `yay -Ss --aur` + parsing (LauncherPlugin.qml
+     ~31-260).
+   - Installed list (`pacman -Qq`), install (`sudo pacman -S`) and
+     uninstall (`sudo pacman -Rns`) flows.
+   - Updates counting: absorb `services/Paquetes.qml` (checkupdates /
+     `yay -Qua`, 10-min cache) — the service is deleted.
+2. **Sanctioned integration:**
+   - Package rows reach the launcher via `K4.Lanzador` (below apps, by
+     design). Extend the row schema minimally if needed (`insignia` badge
+     text: repo/aur/installed) — rendered generically by Launcher, no
+     package-specific code there.
+   - `elegir` → the plugin's own confirm/progress view in its own island.
+   - Apps' updates badge: `property var paquetes` reference (phase 1).
+   - `k4 install <q>` verb → `_p("packages")?.buscar(q)`;
+     `openPackageSearch` deleted.
+3. **Launcher slimmed:** packages mode, both row templates, all
+   processes/state out (~450 lines); the `mode` concept deleted.
+4. **On NixOS:** binary probe at start; no pacman/yay → zero contributed
+   results, no updates badge, no failed-process warnings in the log.
+
+Verify: clean log on this machine, launcher search intact, plugin row in
+Settings, IPC verbs work. Full install/remove flows need an Arch box — out
+of test reach here; note in commit.
+
+## Phase 4 — Binary requirements
+
+1. New probe service (`services/Binarios.qml`, Consola's `revisar()`
+   pattern — one batched `command -v` sweep at startup, change-notifying).
+2. `PluginManager.requisitoCumplido` learns `"requiere": "bin:<name>"`
+   (tools/plugins.py does not validate `requiere` — confirmed — so no
+   validator change). `motivoDelRequisito` → `"needs <name> installed"`;
+   the existing revive-on-change machinery (`vigilaRequisitos`) wires to
+   the probe.
+3. Apply: Ask catalog entry gets `"requiere": "bin:codex"`. Agentes stays
+   as is (honest cache fallback, has settings).
+
+Verify: temporary `"requiere": "bin:definitely-missing"` on a scratch
+plugin via `pluginReload` → disabled-with-reason; remove the requiere.
+
+## Phase 5 — Codification in docs
+
+1. `services/Settings.qml` header: the registry rule — cross-cutting or
+   previewed knobs live here (`panelShowMedia` is read by Panel AND
+   Settings' preview — cross-cutting); plugin-private knobs use
+   `K4.Ajustes` (as Agentes/Player/Submap/Terminal already do).
+2. `docs/API.md`: optional host verbs, reference injection,
+   `K4.Lanzador` row schema, `bin:` requirements.
+3. `api/LEEME.md` quick-ref sync + one paragraph in `AGENTS.md`.
+
+---
+
+**Execution order:** 0 → 1 → 2 → 3 (depends on 1+2) → 4 → 5.
+
+**Out of scope, flagged:** TerminalIslaView.qml:765's 16 ms timer (looks
+like a game-loop; unverified), any nix package backend.
