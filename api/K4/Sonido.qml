@@ -87,9 +87,14 @@ QtObject {
         }
     }
 
-    //  Los sonidos del escritorio, ya instalados y con el mismo carácter que
-    //  el resto del sistema: "bell", "message", "complete", "dialog-error"…
+    //  The freedesktop sound theme — the standard location every distro
+    //  installs to, so these need nothing shipped.
+    readonly property string _dirSistema:
+        "/usr/share/sounds/freedesktop/stereo/"
+
+    //  Desktop sounds, already installed and in the same voice as the rest
+    //  of the system: "bell", "message", "complete", "dialog-error"…
     function delSistema(nombre) {
-        return "file:///usr/share/sounds/freedesktop/stereo/" + nombre + ".oga"
+        return "file://" + _dirSistema + nombre + ".oga"
     }
 }
