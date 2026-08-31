@@ -94,9 +94,9 @@ ColumnLayout {
             anchors.margins: 8
             spacing: 8
 
-            //  The header: dots and clock only, the two things this page
-            //  can remove from it. The bells and the close stay out of the
-            //  argument — they are not optional.
+            //  The header: the workspace indicator and the clock, the two
+            //  things this page can remove from it. The bells and the close
+            //  stay out of the argument — they are not optional.
             RowLayout {
                 id: cabeceraSketch
                 Layout.fillWidth: true
@@ -116,14 +116,28 @@ ColumnLayout {
                     spacing: 4
                     Layout.alignment: Qt.AlignVCenter
 
+                    //  The mock follows the real dress: dots, or numbers.
                     Repeater {
                         model: 4
                         delegate: Rectangle {
                             required property int index
+                            visible: Settings.panelWorkspaceStyle !== "numbers"
                             width: 5
                             height: 5
                             radius: 3
                             color: index === 1 ? Theme.ink : Theme.surfaceHi
+                        }
+                    }
+
+                    Repeater {
+                        model: 4
+                        delegate: IslandLabel {
+                            required property int index
+                            visible: Settings.panelWorkspaceStyle === "numbers"
+                            text: index + 1
+                            color: index === 1 ? Theme.ink : Theme.surfaceHi
+                            font.pixelSize: 8
+                            font.weight: index === 1 ? Font.DemiBold : Font.Normal
                         }
                     }
                 }

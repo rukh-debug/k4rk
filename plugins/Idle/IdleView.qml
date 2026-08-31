@@ -174,18 +174,39 @@ FadeIn {
                     model: view.escritoriosVisibles
 
                     delegate: Rectangle {
+                        //  Same dress the header wears, chosen in the same
+                        //  place: a dot per desk, or its number.
+                        id: sitio
                         required property var modelData
-                        Layout.preferredWidth: modelData.focused ? 18 : 6
-                        Layout.preferredHeight: 6
+                        readonly property bool numeros:
+                            Settings.panelWorkspaceStyle === "numbers"
+
+                        Layout.preferredWidth: numeros
+                            ? numero.implicitWidth + (modelData.focused ? 10 : 2)
+                            : (modelData.focused ? 18 : 6)
+                        Layout.preferredHeight: numeros ? 16 : 6
                         Layout.alignment: Qt.AlignVCenter
-                        radius: 3
-                        color: modelData.focused ? Theme.ink : Theme.track
+                        radius: numeros ? 8 : 3
+                        color: modelData.focused
+                            ? Theme.ink : (numeros ? "transparent" : Theme.track)
 
                         Behavior on Layout.preferredWidth {
                             NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
                         }
 
                         Behavior on color { ColorAnimation { duration: 200 } }
+
+                        IslandLabel {
+                            id: numero
+                            anchors.centerIn: parent
+                            visible: sitio.numeros
+                            text: sitio.modelData.id
+                            color: sitio.modelData.focused
+                                ? Theme.islandBg : Theme.muted
+                            font.pixelSize: 10
+                            font.weight: sitio.modelData.focused
+                                ? Font.DemiBold : Font.Normal
+                        }
                     }
                 }
             }

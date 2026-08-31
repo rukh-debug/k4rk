@@ -75,6 +75,9 @@ Singleton {
     property bool panelShowMedia: true
     property bool panelShowShortcuts: true
     property bool panelShowWorkspaces: true
+    //  How the workspaces are told apart, in the centre's header and in the
+    //  pill's flash when you switch: a dot per desk, or each desk's number.
+    property string panelWorkspaceStyle: "dots"    // dots · numbers
     property bool panelShowClock: true
     //  Block ids top to bottom: "toggles", "media", "shortcuts".
     property var panelOrder: ["toggles", "media", "shortcuts"]
@@ -284,7 +287,8 @@ Singleton {
             grupo: "Control Centre",
             claves: ["panel", "centro de control", "control center",
                      "control centre", "toggles", "media", "shortcuts",
-                     "accesos", "widgets"],
+                     "accesos", "widgets", "workspace", "workspaces",
+                     "dots", "numbers"],
             glifo: 0xF1947,        // md-view_dashboard_edit
             desc: "What the control centre shows, in what order, and how wide it opens.",
             //  The page carries a sketch of the centre and the block order
@@ -317,8 +321,14 @@ Singleton {
                 { id: "panelShowShortcuts", nombre: "Shortcuts strip",
                   desc: "Pinned apps — pin them from the app drawer",
                   glifo: 0xF003B },   // md-apps
-                { id: "panelShowWorkspaces", nombre: "Workspace dots",
+                { id: "panelShowWorkspaces", nombre: "Workspace indicator",
                   desc: "In the centre's header",
+                  glifo: 0xF15FC },   // md-dots_grid
+                { id: "panelWorkspaceStyle", tipo: "eleccion",
+                  de: "workspaceStyles",
+                  requiere: "panelShowWorkspaces",
+                  nombre: "Workspace style",
+                  desc: "A dot per desk, or its number",
                   glifo: 0xF15FC },   // md-dots_grid
                 { id: "panelShowClock", nombre: "Clock",
                   desc: "In the centre's header",
@@ -444,6 +454,9 @@ Singleton {
             return [{ codigo: 15, nombre: "Left" },
                     { codigo: 50, nombre: "Centre" },
                     { codigo: 85, nombre: "Right" }]
+        if (de === "workspaceStyles")
+            return [{ codigo: "dots",    nombre: "Dots" },
+                    { codigo: "numbers", nombre: "Numbers" }]
         return []
     }
 
@@ -492,7 +505,8 @@ Singleton {
         "shellFont",
         "panelWidth", "panelShowToggles", "panelTileWifi",
         "panelTileBluetooth", "panelTileSound", "panelShowMedia",
-        "panelShowShortcuts", "panelShowWorkspaces", "panelShowClock",
+        "panelShowShortcuts", "panelShowWorkspaces", "panelWorkspaceStyle",
+        "panelShowClock",
         "panelOrder",
         "islandPlacements", "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
         "quickAccess"
