@@ -242,7 +242,7 @@ FadeIn {
                 }
 
                 IslandLabel {
-                    text: `${String(Paquetes.marcadas)} of ${String(Paquetes.pendientes)} selected`
+                    text: `${String(view.plugin.paq.marcadas)} of ${String(view.plugin.paq.pendientes)} selected`
                     color: Theme.muted
                     font.pixelSize: 11
                 }
@@ -261,7 +261,7 @@ FadeIn {
 
                 Repeater {
                     model: view.plugin.modoActualizaciones
-                        ? Paquetes.detalles : []
+                        ? view.plugin.paq.detalles : []
 
                     delegate: Rectangle {
                         id: fila
@@ -270,7 +270,7 @@ FadeIn {
                         //  estado local para que la cuenta de la cabecera,
                         //  el botón del pie y la fila cuenten lo mismo.
                         readonly property bool dentro:
-                            !Paquetes.excluidos[modelData.nombre]
+                            !view.plugin.paq.excluidos[modelData.nombre]
 
                         width: parent.width
                         height: 34
@@ -334,7 +334,7 @@ FadeIn {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Paquetes.alternarExcluida(
+                            onClicked: view.plugin.paq.alternarExcluida(
                                            fila.modelData.nombre)
                         }
                     }
@@ -358,7 +358,7 @@ FadeIn {
             //  —volver a mirar, actualizar— se quedan el clic para ellos.
             MouseArea {
                 anchors.fill: parent
-                enabled: Paquetes.pendientes > 0
+                enabled: view.plugin.paq.pendientes > 0
                 cursorShape: Qt.PointingHandCursor
                 onClicked: view.plugin.modoActualizaciones =
                                !view.plugin.modoActualizaciones
@@ -372,7 +372,7 @@ FadeIn {
 
                 IconGlyph {
                     text: String.fromCodePoint(0xF06B0)  // md-update
-                    color: Paquetes.pendientes > 0 ? Theme.yellow
+                    color: view.plugin.paq.pendientes > 0 ? Theme.yellow
                                                       : Theme.dim
                     font.pixelSize: 14
                 }
@@ -383,26 +383,26 @@ FadeIn {
                     spacing: 0
 
                     IslandLabel {
-                        text: Paquetes.comprobando
+                        text: view.plugin.paq.comprobando
                             ? "Checking for updates…"
-                            : Paquetes.pendientesRepo < 0
+                            : view.plugin.paq.pendientesRepo < 0
                             ? "Updates not checked yet"
-                            : Paquetes.pendientes === 0
+                            : view.plugin.paq.pendientes === 0
                             ? "The system is up to date"
-                            : `${String(Paquetes.pendientes)} updates (${Math.max(0, Paquetes.pendientesRepo)
+                            : `${String(view.plugin.paq.pendientes)} updates (${Math.max(0, view.plugin.paq.pendientesRepo)
                                     + " repos · "
-                                    + Math.max(0, Paquetes.pendientesAur)
+                                    + Math.max(0, view.plugin.paq.pendientesAur)
                                     + " AUR"})`
-                        color: Paquetes.pendientes > 0 ? Theme.ink
+                        color: view.plugin.paq.pendientes > 0 ? Theme.ink
                                                           : Theme.muted
                         font.pixelSize: 11
                     }
 
                     IslandLabel {
-                        visible: Paquetes.nombresPendientes.length > 0
+                        visible: view.plugin.paq.nombresPendientes.length > 0
                         Layout.fillWidth: true
                         elide: Text.ElideRight
-                        text: Paquetes.nombresPendientes.slice(0, 8)
+                        text: view.plugin.paq.nombresPendientes.slice(0, 8)
                             .join("  ·  ")
                         color: Theme.dim
                         font.pixelSize: 9
@@ -410,7 +410,7 @@ FadeIn {
                 }
 
                 IconGlyph {
-                    visible: Paquetes.pendientes > 0
+                    visible: view.plugin.paq.pendientes > 0
                     text: String.fromCodePoint(
                               view.plugin.modoActualizaciones
                                   ? 0xF0140 : 0xF0143)  // chevron down / up
@@ -423,39 +423,39 @@ FadeIn {
                     glyph: String.fromCodePoint(0xF0450)   // md-refresh
                     glyphSize: 13
                     glyphColor: Theme.dim
-                    onActivated: Paquetes.comprobar(true)
+                    onActivated: view.plugin.paq.comprobar(true)
                 }
 
                 //  Sin nada marcado el botón se apaga: una tanda vacía no
                 //  es una orden, es un despiste.
                 Rectangle {
-                    visible: Paquetes.pendientes > 0
+                    visible: view.plugin.paq.pendientes > 0
                     Layout.preferredWidth: actualizarTexto.implicitWidth + 22
                     Layout.preferredHeight: 26
                     radius: 13
-                    color: Paquetes.marcadas === 0 ? Theme.surface
+                    color: view.plugin.paq.marcadas === 0 ? Theme.surface
                         : actualizarRaton.containsMouse
                         ? Qt.lighter(Theme.blue, 1.15) : Theme.blue
 
                     IslandLabel {
                         id: actualizarTexto
                         anchors.centerIn: parent
-                        text: Paquetes.marcadas < Paquetes.pendientes
-                            ? `Update ${String(Paquetes.marcadas)}`
+                        text: view.plugin.paq.marcadas < view.plugin.paq.pendientes
+                            ? `Update ${String(view.plugin.paq.marcadas)}`
                             : "Update"
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
-                        color: Paquetes.marcadas === 0 ? Theme.dim : Theme.ink
+                        color: view.plugin.paq.marcadas === 0 ? Theme.dim : Theme.ink
                     }
 
                     MouseArea {
                         id: actualizarRaton
                         anchors.fill: parent
-                        enabled: Paquetes.marcadas > 0
+                        enabled: view.plugin.paq.marcadas > 0
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            Paquetes.actualizarMarcadas()
+                            view.plugin.paq.actualizarMarcadas()
                             view.plugin.cerrar()
                         }
                     }
@@ -475,8 +475,8 @@ FadeIn {
                 view.plugin.modoActualizaciones = false
                 ev.accepted = true
             } else if ((ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter)
-                       && Paquetes.marcadas > 0) {
-                Paquetes.actualizarMarcadas()
+                       && view.plugin.paq.marcadas > 0) {
+                view.plugin.paq.actualizarMarcadas()
                 view.plugin.cerrar()
                 ev.accepted = true
             }

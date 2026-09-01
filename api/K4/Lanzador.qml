@@ -40,6 +40,10 @@ QtObject {
     //  y si no dices nada, el de tu plugin, que casi siempre es lo que
     //  quieres. Sin icono ninguno la fila sale con un hueco, y un hueco entre
     //  filas que sí lo tienen se lee como que algo está roto.
+    //
+    //  `insignia: { texto, acento }` is optional: a small badge after
+    //  the title, accented (warm) or plain — where a thing comes from,
+    //  which source answered. Rendered by the launcher for anyone.
     property var resultados: []
 
     //  El usuario está escribiendo. Llega con cada tecla, así que si lo tuyo

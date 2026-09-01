@@ -32,12 +32,11 @@ K4Plugin {
     property string query: ""
     property int index: 0
     property var matches: []
-    property string mode: "apps"        // "apps" | "packages"
 
-    property var repoResults: []
-    property var aurResults: []
-    property var installedPackages: ({})
-    property bool aurSearching: false
+    //  The packages plugin, injected by catalog id: the updates note at
+    //  the foot of the list is its to feed — the launcher only shows
+    //  what it is told, and asks it nothing else.
+    property var packages: null
 
     // Al abrir el lanzador se actualiza el índice de aplicaciones del usuario.
     // K4.Apps ya vigila cambios, pero este paso cubre instalaciones que
@@ -52,210 +51,7 @@ K4Plugin {
     islandWidth: 720
     islandHeight: 440
 
-    readonly property int count: mode === "packages" ? packageMatches.length : matches.length
-
-    // repos primero, y dentro de cada origen los nombres más parecidos arriba
-    readonly property var packageMatches: {
-        const q = packageQuery().toLowerCase()
-        const scored = []
-        const all = repoResults.concat(aurResults)
-
-        for (let i = 0; i < all.length; ++i) {
-            const pkg = all[i]
-            const name = pkg.name.toLowerCase()
-            let score = 0
-            if (name === q) score = 0
-            else if (name.indexOf(q) === 0) score = 1
-            else if (name.indexOf(q) !== -1) score = 2
-            else score = 3
-
-            scored.push({
-                repo: pkg.repo,
-                name: pkg.name,
-                version: pkg.version,
-                description: pkg.description,
-                installed: installedPackages[pkg.name] === true,
-                score: score + (pkg.repo === "aur" ? 4 : 0),
-                order: i
-            })
-        }
-
-        scored.sort(function (a, b) {
-            if (a.score !== b.score) return a.score - b.score
-            return a.order - b.order
-        })
-
-        // CachyOS sirve muchos paquetes también desde sus repos propios: se
-        // queda el primero, que es el que pacman elegiría por prioridad
-        const seen = ({})
-        const unique = []
-        for (let j = 0; j < scored.length; ++j) {
-            if (seen[scored[j].name] === true)
-                continue
-            seen[scored[j].name] = true
-            unique.push(scored[j])
-        }
-
-        return unique.slice(0, 60)
-    }
-
-    function packageQuery() {
-        // pacman -Ss interpreta el patrón como regex: fuera todo lo que pueda
-        // romperlo o convertirse en un comodín inesperado
-        return query.replace(/[^A-Za-z0-9 _.+-]/g, "").trim()
-    }
-
-    function parsePackages(text, onlyAur) {
-        const lines = text.split("\n")
-        const packages = []
-        let current = null
-
-        for (let i = 0; i < lines.length; ++i) {
-            const line = lines[i]
-            if (line.length === 0)
-                continue
-
-            if (line.charAt(0) === " " || line.charAt(0) === "\t") {
-                if (current && current.description.length === 0)
-                    current.description = line.trim()
-                continue
-            }
-
-            const match = line.match(/^([^\s\/]+)\/(\S+)\s+(\S+)/)
-            if (!match) {
-                current = null
-                continue
-            }
-
-            if (onlyAur && match[1] !== "aur") {
-                current = null
-                continue
-            }
-
-            current = {
-                repo: match[1],
-                name: match[2],
-                version: match[3],
-                description: ""
-            }
-            packages.push(current)
-        }
-
-        return packages
-    }
-
-    function runRepoSearch() {
-        const q = packageQuery()
-        if (q.length < 2) {
-            repoResults = []
-            return
-        }
-
-        if (repoSearchProcess.running)
-            repoSearchProcess.parar(15)
-
-        repoSearchProcess.command = ["pacman", "-Ss", "--"].concat(q.split(/\s+/))
-        repoSearchProcess.running = true
-    }
-
-    function runAurSearch() {
-        const q = packageQuery()
-        if (q.length < 2) {
-            aurResults = []
-            aurSearching = false
-            return
-        }
-
-        if (aurSearchProcess.running)
-            aurSearchProcess.parar(15)
-
-        aurSearching = true
-        aurSearchProcess.command = ["yay", "-Ss", "--aur", "--color=never", "--"].concat(q.split(/\s+/))
-        aurSearchProcess.running = true
-    }
-
-    function schedulePackageSearch() {
-        repoSearchTimer.restart()
-        aurSearchTimer.restart()
-    }
-
-    // atajo directo al modo instalar, sin pasar por la lista de apps
-    function openPackageSearch(initial) {
-        if (panel) panel.close()
-        Notifs.dismissToast()
-        closing = false
-        open = true
-        query = initial !== undefined ? initial : ""
-        enterPackageMode()
-    }
-
-    function enterPackageMode() {
-        mode = "packages"
-        index = 0
-        repoResults = []
-        aurResults = []
-        installedListProcess.running = true
-        schedulePackageSearch()
-    }
-
-    function leavePackageMode() {
-        mode = "apps"
-        index = 0
-        repoSearchTimer.stop()
-        aurSearchTimer.stop()
-        aurSearching = false
-        rebuild()
-    }
-
-    // Un nombre llega de pacman o yay, pero sigue siendo dato: se cita antes
-    // de meterlo en el guion que recibe la terminal. Así ni una comilla ni un
-    // carácter de shell pueden convertir un paquete en una orden distinta.
-    function shellArgument(value) {
-        return "'" + String(value || "").replace(/'/g, "'\"'\"'") + "'"
-    }
-
-    function installPackage(pkg) {
-        if (!pkg)
-            return
-
-        // yay no puede correr como root (makepkg se niega), y AUR pide revisar
-        // PKGBUILD y responder preguntas: por eso va en una terminal de verdad
-        // y no en un proceso mudo. La island lo es, así que vale igual — y si
-        // se queda corta para leer un PKGBUILD, SUPER+ALT+T la saca a ventana
-        // con la instalación dentro, sin cortarla.
-        const name = shellArgument(pkg.name)
-        const script = "yay -S --needed -- " + name
-            + " && notify-send -a 'Instalar' " + name + " 'Instalado correctamente'"
-            + " || { notify-send -a 'Instalar' -u critical " + name + " 'Installation failed';"
-            + Consola.cierre + " }"
-
-        Consola.ejecutar(script)
-        close()
-    }
-
-    function uninstallPackage(pkg) {
-        if (!pkg || pkg.installed !== true)
-            return
-
-        // pacman enseña qué se va a retirar y pide confirmación antes de tocar
-        // nada. Sirve también para paquetes de AUR: una vez instalados, todos
-        // viven en la misma base local de pacman.
-        const name = shellArgument(pkg.name)
-        const script = "sudo pacman -Rns --confirm -- " + name
-            + " && notify-send -a 'Desinstalar' " + name + " 'Desinstalado correctamente'"
-            + " || { notify-send -a 'Desinstalar' -u critical " + name + " 'Uninstallation failed';"
-            + Consola.cierre + " }"
-
-        Consola.ejecutar(script)
-        close()
-    }
-
-    function uninstallSelected() {
-        if (mode !== "packages" || index < 0 || index >= packageMatches.length)
-            return
-        uninstallPackage(packageMatches[index])
-    }
-
+    readonly property int count: matches.length
     // `conservarSeleccion` lo usa el refresco periódico: sin él, cada segundo
     // se reponía el índice a cero y la lista te devolvía arriba mientras
     // bajabas con las flechas o la rueda.
@@ -301,29 +97,13 @@ K4Plugin {
             }
             return { name: r.titulo || "", genericName: r.desc || "",
                      icon: r.icono || "", _enganche: r,
-                     _imagen: imagen, _glifo: glifo }
+                     _imagen: imagen, _glifo: glifo,
+                     _insignia: r.insignia || null }
         })
-        const list = found.slice(0, 40).concat(extras)
+        matches = found.slice(0, 40).concat(extras)
 
-        if (q.length > 0) {
-            const installEntry = {
-                isInstall: true,
-                name: "Instalar «" + query.trim() + "»",
-                genericName: "Search the official repos and the AUR",
-                icon: ""
-            }
-
-            // se puede alcanzar escribiendo "instalar"/"install", que la sube arriba
-            const triggered = "instalar".indexOf(q) === 0 || "install".indexOf(q) === 0
-            if (triggered)
-                list.unshift(installEntry)
-            else
-                list.push(installEntry)
-        }
-
-        matches = list
         if (conservarSeleccion === true)
-            index = Math.max(0, Math.min(index, list.length - 1))
+            index = Math.max(0, Math.min(index, matches.length - 1))
         else
             index = 0
     }
@@ -359,14 +139,9 @@ K4Plugin {
         }
 
         query = ""
-        mode = "apps"
         closing = false
         if (panel) panel.close()
         Notifs.dismissToast()
-        //  De paso se miran las actualizaciones: el lanzador es la puerta
-        //  que el usuario abre veinte veces al día, y el contador vive en
-        //  el servicio con su caché — no cuesta nada.
-        Paquetes.comprobar(false)
         open = true
         refreshApplications()
     }
@@ -375,19 +150,10 @@ K4Plugin {
         open = false
         closing = true
         query = ""
-        mode = "apps"
-        repoSearchTimer.stop()
-        aurSearchTimer.stop()
-        aurSearching = false
         closeTimer.restart()
     }
 
     function launchSelected() {
-        if (mode === "packages") {
-            installPackage(packageMatches[index])
-            return
-        }
-
         if (matches.length === 0)
             return
 
@@ -397,11 +163,6 @@ K4Plugin {
         if (entry && entry._enganche) {
             close()
             Enganches.elegir(entry._enganche)
-            return
-        }
-
-        if (entry && entry.isInstall === true) {
-            enterPackageMode()
             return
         }
 
@@ -453,24 +214,8 @@ K4Plugin {
     Timer {
         interval: 1000
         repeat: true
-        running: self.open && self.mode === "apps"
+        running: self.open
         onTriggered: self.rebuild(true)
-    }
-
-    K4.Process {
-        id: installedListProcess
-        command: ["pacman", "-Qq"]
-
-        onSalida: function (texto) {
-            const set = ({})
-            const names = texto.split("\n")
-            for (let i = 0; i < names.length; ++i) {
-                const name = names[i].trim()
-                if (name.length > 0)
-                    set[name] = true
-            }
-            self.installedPackages = set
-        }
     }
 
     K4.Process {
@@ -479,49 +224,10 @@ K4Plugin {
         onTerminado: self.rebuild()
     }
 
-    K4.Process {
-        id: repoSearchProcess
-        environment: ({ "LC_ALL": "C" })
-
-        onSalida: function (texto) {
-            self.repoResults = self.parsePackages(texto, false)
-        }
-    }
-
-    K4.Process {
-        id: aurSearchProcess
-        environment: ({ "LC_ALL": "C" })
-
-        onSalida: function (texto) {
-            self.aurResults = self.parsePackages(texto, true)
-            self.aurSearching = false
-        }
-
-        onTerminado: self.aurSearching = false
-    }
-
-    Timer {
-        id: repoSearchTimer
-        interval: 180
-        onTriggered: self.runRepoSearch()
-    }
-
-    Timer {
-        id: aurSearchTimer
-        interval: 500
-        onTriggered: self.runAurSearch()
-    }
-
     K4.Ipc {
         target: "k4.launcher"
         function toggle(): void { self.toggle() }
-        function install(q: string): void { self.openPackageSearch(q) }
-        function search(q: string): void {
-            if (!self.open)
-                self.toggle()
-            self.query = q
-            self.rebuild()
-        }
+        function search(q: string): void { self.buscar(q) }
     }
 
     view: Component {

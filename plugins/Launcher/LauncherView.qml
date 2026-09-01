@@ -51,8 +51,8 @@ FadeIn {
             spacing: 12
 
             IconGlyph {
-                text: view.plugin.mode === "packages" ? Theme.ico.install : Theme.ico.search
-                color: view.plugin.mode === "packages" ? Theme.blue : Theme.muted
+                text: Theme.ico.search
+                color: Theme.muted
                 font.pixelSize: 20
                 Layout.alignment: Qt.AlignVCenter
             }
@@ -65,8 +65,7 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: view.plugin.query.length === 0
-                    text: view.plugin.mode === "packages"
-                        ? "Search packages to install" : "Search applications"
+                    text: "Search applications"
                     color: Theme.dim
                     font.pixelSize: 19
                 }
@@ -88,28 +87,15 @@ FadeIn {
                     text: view.plugin.query
                     onTextEdited: {
                         view.plugin.query = text
-                        if (view.plugin.mode === "packages") {
-                            view.plugin.index = 0
-                            view.plugin.schedulePackageSearch()
-                        } else {
-                            view.plugin.rebuild()
-                        }
+                        view.plugin.rebuild()
                     }
 
                     Keys.onPressed: function (event) {
                         if (event.key === Qt.Key_Escape) {
-                            if (view.plugin.mode === "packages")
-                                view.plugin.leavePackageMode()
-                            else
-                                view.plugin.close()
+                            view.plugin.close()
                             event.accepted = true
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             view.plugin.launchSelected()
-                            event.accepted = true
-                        } else if (event.key === Qt.Key_Delete
-                                   && (event.modifiers & Qt.ControlModifier)
-                                   && view.plugin.mode === "packages") {
-                            view.plugin.uninstallSelected()
                             event.accepted = true
                         } else if (event.key === Qt.Key_Down) {
                             view.plugin.moveSelection(1)
@@ -123,18 +109,10 @@ FadeIn {
             }
 
             IslandLabel {
-                text: view.plugin.mode !== "packages" ? "esc"
-                    : view.plugin.aurSearching ? "searching AUR…" : "esc back to apps"
+                text: "esc"
                 color: Theme.dim
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
-
-                SequentialAnimation on opacity {
-                    running: view.plugin.aurSearching
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.35; duration: 620; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 620; easing.type: Easing.InOutSine }
-                }
             }
         }
 
@@ -150,7 +128,6 @@ FadeIn {
             ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: view.plugin.mode === "apps"
             clip: true
             spacing: 2
             model: view.plugin.matches
@@ -190,8 +167,7 @@ FadeIn {
                         Layout.preferredWidth: 26
                         Layout.preferredHeight: 26
                         Layout.alignment: Qt.AlignVCenter
-                        visible: appRow.modelData.isInstall !== true
-                            && !appRow.propio
+                        visible: !appRow.propio
                         source: appRow.modelData.icon.length > 0
                             ? K4.Apps.icono(appRow.modelData.icon, true) : ""
                     }
@@ -207,26 +183,48 @@ FadeIn {
                         Layout.alignment: Qt.AlignVCenter
                     }
 
-                    IconGlyph {
-                        visible: appRow.modelData.isInstall === true
-                        text: Theme.ico.install
-                        color: Theme.blue
-                        font.pixelSize: 20
-                        Layout.preferredWidth: 26
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: false
                         Layout.alignment: Qt.AlignVCenter
                         spacing: 0
 
-                        IslandLabel {
+                        //  The title, and — for a contributed row that has
+                        //  one — its badge: where a package comes from,
+                        //  which repository answered. Generic on purpose:
+                        //  the launcher renders a badge, not a package.
+                        RowLayout {
                             Layout.fillWidth: true
-                            text: appRow.modelData.name
-                            font.pixelSize: 13
-                            elide: Text.ElideRight
+                            spacing: 7
+
+                            IslandLabel {
+                                text: appRow.modelData.name
+                                font.pixelSize: 13
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+
+                            Rectangle {
+                                visible: !!appRow.modelData._insignia
+                                Layout.preferredWidth: insigniaTxt.implicitWidth + 12
+                                Layout.preferredHeight: 15
+                                Layout.alignment: Qt.AlignVCenter
+                                radius: 7
+                                color: appRow.modelData._insignia
+                                          && appRow.modelData._insignia.acento
+                                          ? "#3a2a12" : Theme.surfaceHi
+
+                                IslandLabel {
+                                    id: insigniaTxt
+                                    anchors.centerIn: parent
+                                    text: appRow.modelData._insignia
+                                        ? appRow.modelData._insignia.texto : ""
+                                    color: appRow.modelData._insignia
+                                              && appRow.modelData._insignia.acento
+                                              ? "#ff9f0a" : Theme.muted
+                                    font.pixelSize: 9
+                                }
+                            }
                         }
 
                         IslandLabel {
@@ -267,176 +265,6 @@ FadeIn {
             }
         }
 
-        // ── resultados de paquetes
-        ListView {
-            //  La barra de la casa: se ve solo si hay más de lo que cabe.
-            ScrollBar.vertical: IslandScrollBar {}
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: view.plugin.mode === "packages"
-            clip: true
-            spacing: 2
-            model: view.plugin.packageMatches
-            currentIndex: view.plugin.index
-            boundsBehavior: Flickable.StopAtBounds
-            onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-
-            delegate: Rectangle {
-                id: packageRow
-                required property var modelData
-                required property int index
-                width: ListView.view.width
-                height: 48
-                radius: 10
-                color: index === view.plugin.index ? Theme.surfaceHi : "transparent"
-
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 12
-
-                    IconGlyph {
-                        text: packageRow.modelData.installed ? Theme.ico.installed : Theme.ico.package
-                        color: packageRow.modelData.installed ? Theme.green : Theme.muted
-                        font.pixelSize: 18
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: false
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 1
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: false
-                            spacing: 7
-
-                            IslandLabel {
-                                text: packageRow.modelData.name
-                                font.pixelSize: 13
-                                font.weight: Font.DemiBold
-                                elide: Text.ElideRight
-                                Layout.maximumWidth: 260
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: repoLabel.implicitWidth + 12
-                                Layout.preferredHeight: 15
-                                Layout.alignment: Qt.AlignVCenter
-                                radius: 7
-                                color: packageRow.modelData.repo === "aur" ? "#3a2a12" : Theme.surfaceHi
-
-                                IslandLabel {
-                                    id: repoLabel
-                                    anchors.centerIn: parent
-                                    text: packageRow.modelData.repo
-                                    color: packageRow.modelData.repo === "aur" ? "#ff9f0a" : Theme.muted
-                                    font.pixelSize: 9
-                                }
-                            }
-
-                            IslandLabel {
-                                text: packageRow.modelData.version
-                                color: Theme.dim
-                                font.pixelSize: 10
-                                elide: Text.ElideRight
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-
-                            Item { Layout.fillWidth: true }
-                        }
-
-                        IslandLabel {
-                            Layout.fillWidth: true
-                            text: packageRow.modelData.installed
-                                ? "Installed · " + packageRow.modelData.description
-                                : packageRow.modelData.description
-                            color: packageRow.modelData.installed ? Theme.green : Theme.muted
-                            font.pixelSize: 10
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    IslandLabel {
-                        visible: packageRow.index === view.plugin.index
-                        text: packageRow.modelData.installed
-                            ? "update ↵" : "install ↵"
-                        color: Theme.muted
-                        font.pixelSize: 10
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-
-                    Rectangle {
-                        id: uninstallAction
-                        visible: packageRow.modelData.installed
-                            && packageRow.index === view.plugin.index
-                        Layout.preferredWidth: uninstallContent.implicitWidth + 18
-                        Layout.preferredHeight: 26
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: 13
-                        color: uninstallMouse.containsMouse ? "#3a1518" : "#2a0f12"
-                        border.width: 1
-                        border.color: Theme.red
-
-                        RowLayout {
-                            id: uninstallContent
-                            anchors.centerIn: parent
-                            spacing: 5
-
-                            IconGlyph {
-                                text: Theme.ico.uninstall
-                                color: Theme.red
-                                font.pixelSize: 11
-                            }
-
-                            IslandLabel {
-                                text: "uninstall"
-                                color: Theme.red
-                                font.pixelSize: 10
-                            }
-                        }
-
-                        MouseArea {
-                            id: uninstallMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: view.plugin.uninstallPackage(packageRow.modelData)
-                        }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    // Dejar el botón rojo fuera del clic general: el resto de
-                    // la fila actualiza/instala; este extremo desinstala.
-                    anchors.rightMargin: uninstallAction.visible
-                        ? uninstallAction.width + 12 : 0
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered: view.plugin.index = packageRow.index
-                    onClicked: {
-                        view.plugin.index = packageRow.index
-                        view.plugin.launchSelected()
-                    }
-                }
-            }
-
-            IslandLabel {
-                anchors.centerIn: parent
-                visible: view.plugin.packageMatches.length === 0
-                text: view.plugin.packageQuery().length < 2
-                    ? "Type at least two letters"
-                    : view.plugin.aurSearching ? "Searching…" : "No package matches"
-                color: Theme.muted
-                font.pixelSize: 13
-            }
-        }
 
         // ── las actualizaciones, de camino ────────────────────────
         //
@@ -444,7 +272,12 @@ FadeIn {
         //  aquí — y SOLO cuando hay algo que hacer: un pie permanente en
         //  un lanzador estilo Spotlight es un mueble que estorba.
         Rectangle {
-            visible: Paquetes.pendientes > 0
+            id: avisoPaquetes
+
+            //  The packages plugin feeds this; without it (off, or no
+            //  backend on this machine) there is simply nothing to say.
+            readonly property var paq: view.plugin.packages
+            visible: paq && paq.pendientes > 0
             Layout.fillWidth: true
             Layout.preferredHeight: 34
             radius: 10
@@ -465,11 +298,17 @@ FadeIn {
                 IslandLabel {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    text: `${String(Paquetes.pendientes)} system updates
-(${Math.max(0, Paquetes.pendientesRepo)
+                    //  Guarded in the binding and not just hidden: a false
+                    //  `visible` does not stop a text binding from
+                    //  evaluating, and the plugin's ref goes null the
+                    //  moment it is switched off.
+                    text: avisoPaquetes.paq
+                        ? `${String(avisoPaquetes.paq.pendientes)} system updates
+(${Math.max(0, avisoPaquetes.paq.pendientesRepo)
                                    + " repos · "
-                                   + Math.max(0, Paquetes.pendientesAur)
+                                   + Math.max(0, avisoPaquetes.paq.pendientesAur)
                                    + " AUR"})`
+                        : ""
                     color: Theme.muted
                     font.pixelSize: 11
                 }
@@ -530,7 +369,8 @@ FadeIn {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            Paquetes.actualizarTodo()
+                            if (view.plugin.packages)
+                                view.plugin.packages.actualizarTodo()
                             view.plugin.close()
                         }
                     }
