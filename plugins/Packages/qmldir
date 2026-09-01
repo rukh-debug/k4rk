@@ -1,0 +1,7 @@
+#  Generated: the types of this folder, so they resolve also when the
+#  plugin is loaded by URL (qs: scheme), where implicit sibling
+#  resolution does not exist.
+#  `python3 tools/plugins.py` checks this stays complete.
+
+PackagesPlugin 1.0 PackagesPlugin.qml
+PackagesView 1.0 PackagesView.qml

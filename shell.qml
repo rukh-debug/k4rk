@@ -177,7 +177,7 @@ Scope {
         function clipboard(): void { _p("clipboard")?.toggle() }
         function system(): void { _p("system")?.toggle() }
         function keys(): void { _p("keys")?.toggle() }
-        function install(query: string): void { _p("launcher")?.openPackageSearch(query) }
+        function install(query: string): void { _p("packages")?.buscar(query) }
         function search(query: string): void {
             _p("launcher")?.buscar(query)
         }

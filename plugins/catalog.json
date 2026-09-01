@@ -161,6 +161,14 @@
    "requiere": "k4term"
   },
   {
+   "id": "packages",
+   "entry": "Packages/PackagesPlugin.qml",
+   "version": "1.0.0",
+   "title": "Packages",
+   "enabledByDefault": true,
+   "icono": "0xF03D7"
+  },
+  {
    "id": "ssh",
    "entry": "Ssh/SshPlugin.qml",
    "version": "1.0.0",

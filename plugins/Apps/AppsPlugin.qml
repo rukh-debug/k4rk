@@ -36,6 +36,34 @@ K4.Plugin {
     //  actualizaciones pendientes, cada una con su interruptor.
     property bool modoActualizaciones: false
 
+    //  The packages plugin, injected by catalog id. It owns updates now;
+    //  when it is not there — off, or no backend on this machine — the
+    //  facade below turns its absence into honest zeros, so the updates
+    //  view reads one shape either way and hides on its own.
+    property var packages: null
+    readonly property var paq: ({
+        pendientes: packages ? packages.pendientes : 0,
+        pendientesRepo: packages ? packages.pendientesRepo : 0,
+        pendientesAur: packages ? packages.pendientesAur : 0,
+        marcadas: packages ? packages.marcadas : 0,
+        comprobando: packages ? packages.comprobando : false,
+        detalles: packages ? packages.detalles : [],
+        excluidos: packages ? packages.excluidos : ({}),
+        nombresPendientes: packages ? packages.nombresPendientes : [],
+        comprobar: function (forzar) {
+            if (packages) packages.comprobar(forzar)
+        },
+        alternarExcluida: function (nombre) {
+            if (packages) packages.alternarExcluida(nombre)
+        },
+        actualizarMarcadas: function () {
+            if (packages) packages.actualizarMarcadas()
+        },
+        actualizarTodo: function () {
+            if (packages) packages.actualizarTodo()
+        }
+    })
+
     //  Las de la barra, filtradas por lo que se escribe. Una apagada NO
     //  desaparece: sale en gris. Que algo se esfume al apagarlo obliga a
     //  adivinar dónde se fue; en gris se ve que está y por qué no se abre.
@@ -58,7 +86,8 @@ K4.Plugin {
         seleccion = 0
         modoActualizaciones = false
         abierto = true
-        Paquetes.comprobar(false)
+        if (packages)
+            packages.comprobar(false)
     }
 
     //  Entrar directo a elegir qué actualizar: lo usa el lanzador.
