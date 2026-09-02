@@ -24,3 +24,4 @@ singleton PluginManager 1.0 PluginManager.qml
 singleton Indicadores 1.0 Indicadores.qml
 singleton Ambiente 1.0 Ambiente.qml
 singleton Consola 1.0 Consola.qml
+singleton Binarios 1.0 Binarios.qml
