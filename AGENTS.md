@@ -43,6 +43,19 @@ Full k4 context (build, IPC surface, bind ownership, tooling):
 - **Binary dependencies are declared, not tried**: `"require":
   "bin:codex"` in the manifest; `services/Binarios.qml` answers and
   revives.
+- **A plugin imports `QtQuick` and `K4`. Nothing else** — no
+  `Quickshell`, no `core/`, no `services/` from a plugin file. What the
+  API does not give goes into `api/K4/` (wrapped) or into a service
+  (host-side). `tools/api.py` polices this and fails the build check.
+- **The plugin docs are the contract, and they are checked**: any change
+  to the plugin system — a new `K4.*` type, a new member on one, a new
+  permission, surface, manifest key, lifecycle rule — lands in the SAME
+  change as the docs for it (`docs/PLUGINS.md` for the guide,
+  `docs/API.md` for the reference, `api/LEEME.md` for the quick-ref).
+  Then run `python3 tools/api.py && python3 tools/guia.py` and leave
+  them green: api.py fails on an undocumented type, guia.py on a doc
+  that lies about the code. A green checker is part of "done" for
+  plugin-system work, like `nix build` is.
 
 # Ops notes (learned the hard way)
 

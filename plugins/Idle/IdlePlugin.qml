@@ -58,13 +58,13 @@ K4Plugin {
     readonly property int derAncho: ladoDerMedido > 0 ? ladoDerMedido : ladoDer
     readonly property int izqAncho: ladoIzqMedido > 0 ? ladoIzqMedido : ladoIzq
 
-    // El centro ya no es solo la hora: al cambiar de escritorio enseña los
-    // puntos en su lugar, y hay que reservar lo que ocupe el más ancho de los
-    // dos o la píldora daría un salto cada vez.
-    // El indicador es una ventana móvil de tres escritorios. Antes se medía
-    // con la lista completa y al hacer persistentes diez el centro se comía
-    // media barra, aunque solo hagan falta el actual y sus vecinos.
-    readonly property int centroAncho: 46
+    //  The centre is the clock's 46 — and while the desks parade, as
+    //  wide as the row they wear: the view hands the number over on
+    //  every show and takes it back on every hide, so the pill lends
+    //  the parade its room for the moment instead of reserving it all
+    //  day. (A fixed reservation for ten desks was the old disease:
+    //  the centre ate half the bar to honor a flash.)
+    property int centroAncho: 46
 
     //  Los cuatro huecos de 11 que separan las tres zonas entre sí y de los
     //  bordes. La vista reparte con estos mismos números, así que si cambian,

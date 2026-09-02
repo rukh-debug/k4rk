@@ -88,9 +88,31 @@ Singleton {
     //  How the workspaces are told apart, in the centre's header and in the
     //  pill's flash when you switch: a dot per desk, or each desk's number.
     property string panelWorkspaceStyle: "dots"    // dots · numbers
+    //  The scratchpad (Hyprland's `special:` desk) among the desks, in
+    //  the header and in the pill's flash. Two readers — same switch.
+    property bool panelShowScratchpad: true
     property bool panelShowClock: true
-    //  Block ids top to bottom: "toggles", "media", "shortcuts".
+    //  Block ids top to bottom: "toggles", "media", "shortcuts", plus
+    //  every registered card as "<plugin>.<name>".
     property var panelOrder: ["toggles", "media", "shortcuts"]
+
+    //  Cards the user has hidden with the editor's eye — Settings owns
+    //  a card's visibility, the plugin does not (the native blocks'
+    //  own switches are the same deal, each in its own key).
+    property var panelHiddenBlocks: []
+
+    //  The universe of block ids the centre obeys: the native three
+    //  plus whatever the registry holds. One source — the two copies
+    //  of the hardcoded list were the old disease (an id accepted by
+    //  one branch and dropped by the other).
+    readonly property var idsBloques: {
+        const todos = ["toggles", "media", "shortcuts"]
+        const cards = Enganches.idsCards
+        for (let i = 0; i < cards.length; ++i)
+            if (todos.indexOf(cards[i]) < 0)
+                todos.push(cards[i])
+        return todos
+    }
 
     //  panelOrder made honest, for the two readers (the centre and its
     //  editor): unknown ids dropped, forgotten ids appended at the end.
@@ -100,14 +122,36 @@ Singleton {
         const fuera = []
         for (let i = 0; i < guardados.length; ++i)
             if (typeof guardados[i] === "string"
-                && ["toggles", "media", "shortcuts"].indexOf(guardados[i]) >= 0
+                && idsBloques.indexOf(guardados[i]) >= 0
                 && fuera.indexOf(guardados[i]) < 0)
                 fuera.push(guardados[i])
-        const todos = ["toggles", "media", "shortcuts"]
+        const todos = idsBloques
         for (let i = 0; i < todos.length; ++i)
             if (fuera.indexOf(todos[i]) < 0)
                 fuera.push(todos[i])
         return fuera
+    }
+
+    //  Whether a centre block is on show, by id — THE rule, read by the
+    //  centre (its Loader), its height count and its editor's sketch.
+    //  A block is on when its switch says so AND it has something to
+    //  show: the toggles with every tile off are a row of nothing. A
+    //  card ("<plugin>.<name>", the dot gives it away) is on unless
+    //  the user hid it with the eye.
+    function bloqueVisible(id) {
+        if (id === "toggles")
+            return panelShowToggles
+                   && (panelTileWifi || panelTileBluetooth
+                       || panelTileSound)
+        if (id === "media")
+            return panelShowMedia
+        if (id === "shortcuts")
+            return panelShowShortcuts
+        if (String(id).indexOf(".") > 0) {
+            const ocultos = panelHiddenBlocks || []
+            return ocultos.indexOf(id) < 0
+        }
+        return false
     }
 
     //  ── dónde abre cada vista ─────────────
@@ -298,7 +342,7 @@ Singleton {
             claves: ["panel", "centro de control", "control center",
                      "control centre", "toggles", "media", "shortcuts",
                      "accesos", "widgets", "workspace", "workspaces",
-                     "dots", "numbers"],
+                     "dots", "numbers", "scratchpad", "special"],
             glifo: 0xF1947,        // md-view_dashboard_edit
             desc: "What the control centre shows, in what order, and how wide it opens.",
             //  The page carries a sketch of the centre and the block order
@@ -339,6 +383,10 @@ Singleton {
                   requiere: "panelShowWorkspaces",
                   nombre: "Workspace style",
                   desc: "A dot per desk, or its number",
+                  glifo: 0xF15FC },   // md-dots_grid
+                { id: "panelShowScratchpad", requiere: "panelShowWorkspaces",
+                  nombre: "Scratchpad desk",
+                  desc: "The special workspace among the desks",
                   glifo: 0xF15FC },   // md-dots_grid
                 { id: "panelShowClock", nombre: "Clock",
                   desc: "In the centre's header",
@@ -491,8 +539,8 @@ Singleton {
         "panelWidth", "panelShowToggles", "panelTileWifi",
         "panelTileBluetooth", "panelTileSound", "panelShowMedia",
         "panelShowShortcuts", "panelShowWorkspaces", "panelWorkspaceStyle",
-        "panelShowClock",
-        "panelOrder",
+        "panelShowClock", "panelShowScratchpad",
+        "panelOrder", "panelHiddenBlocks",
         "islandPlacements", "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
         "quickAccess"
     ]

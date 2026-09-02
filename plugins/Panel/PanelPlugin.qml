@@ -33,22 +33,29 @@ K4Plugin {
 
     //  Header 30, margins 14 + 20, 12 between every pair of neighbours, and
     //  each visible block's own height. With everything on, this is the 280
-    //  the constant used to be.
+    //  the constant used to be. One table for every reader: the native
+    //  blocks' heights live HERE, and the Loader in the view asks the same
+    //  `altoDe` — the two hardcoded lists were the old disease (a block
+    //  resized in one and not the other left the centre with a hole or a
+    //  crop).
+    function altoDe(id) {
+        if (id === "toggles")
+            return 78
+        if (id === "media")
+            return 62
+        if (id === "shortcuts")
+            return 40
+        return Enganches.altoDeCard(id)
+    }
+
     function alturaControles() {
         let bloques = 0, alto = 0
-        const alguna = Settings.panelTileWifi || Settings.panelTileBluetooth
-                       || Settings.panelTileSound
-        if (Settings.panelShowToggles && alguna) {
+        const ids = Settings.panelOrdenEfectivo
+        for (let i = 0; i < ids.length; ++i) {
+            if (!Settings.bloqueVisible(ids[i]))
+                continue
             bloques += 1
-            alto += 78
-        }
-        if (Settings.panelShowMedia) {
-            bloques += 1
-            alto += 62
-        }
-        if (Settings.panelShowShortcuts) {
-            bloques += 1
-            alto += 40
+            alto += altoDe(ids[i])
         }
         return 14 + 30 + 12 * bloques + alto + 20
     }

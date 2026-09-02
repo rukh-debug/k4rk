@@ -11,20 +11,12 @@ FadeIn {
 
     required property var plugin
 
-    //  Whether a centre block is on show, by id. Same rule the editor and
-    //  the plugin's alturaControles apply: a block is on when its switch
-    //  says so AND it has something to show — the toggles with every tile
-    //  off are a row of nothing.
+    //  Whether a centre block is on show, by id. The rule itself lives
+    //  in Settings — `bloqueVisible` — because three read it (this
+    //  view, the height count in the plugin, and the editor's sketch),
+    //  and a rule told three ways drifts.
     function editorVisibilidad(id) {
-        if (id === "toggles")
-            return Settings.panelShowToggles
-                   && (Settings.panelTileWifi || Settings.panelTileBluetooth
-                       || Settings.panelTileSound)
-        if (id === "media")
-            return Settings.panelShowMedia
-        if (id === "shortcuts")
-            return Settings.panelShowShortcuts
-        return false
+        return Settings.bloqueVisible(id)
     }
 
     ColumnLayout {
@@ -109,13 +101,41 @@ FadeIn {
             Item { Layout.fillWidth: true }
 
             RowLayout {
+                id: deskRow
                 spacing: 5
                 Layout.fillWidth: false
                 Layout.fillHeight: false
                 Layout.alignment: Qt.AlignVCenter
 
+                //  One size for every bubble: the widest label in the
+                //  roster, weighed in both dresses (the focused digit
+                //  goes DemiBold and pays for it). A bubble that grows
+                //  with its focus shoves the whole row sideways at every
+                //  desk switch — uniform bubbles move nothing.
+                readonly property real bubbleWidth: {
+                    let w = 0
+                    for (let i = 0; i < Workspaces.shownList.length; ++i) {
+                        const texto = Workspaces.label(Workspaces.shownList[i])
+                        w = Math.max(w, numberMetric.advanceWidth(texto),
+                                        focusMetric.advanceWidth(texto))
+                    }
+                    return Math.max(18, w + 12)
+                }
+
+                FontMetrics {
+                    id: numberMetric
+                    font.family: Theme.uiFont
+                    font.pixelSize: 10
+                }
+                FontMetrics {
+                    id: focusMetric
+                    font.family: Theme.uiFont
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
                 Repeater {
-                    model: Workspaces.list
+                    model: Workspaces.shownList
 
                     delegate: Rectangle {
                         //  The desks in the header are decoration, and the
@@ -129,7 +149,7 @@ FadeIn {
                             Settings.panelWorkspaceStyle === "numbers"
 
                         Layout.preferredWidth: numeros
-                            ? numero.implicitWidth + (modelData.focused ? 12 : 4)
+                            ? deskRow.bubbleWidth
                             : (modelData.focused ? 24 : 8)
                         Layout.preferredHeight: numeros ? 18 : 8
                         radius: numeros ? 9 : 4
@@ -142,7 +162,7 @@ FadeIn {
                             id: numero
                             anchors.centerIn: parent
                             visible: sitio.numeros
-                            text: sitio.modelData.id
+                            text: Workspaces.label(sitio.modelData)
                             color: sitio.modelData.focused
                                 ? Theme.islandBg : Theme.muted
                             font.pixelSize: 10
@@ -205,17 +225,25 @@ FadeIn {
                 required property var modelData
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: hueco.modelData === "toggles" ? 78
-                    : hueco.modelData === "media" ? 62
-                    : hueco.modelData === "shortcuts" ? 40 : 0
+                Layout.preferredHeight: view.plugin.altoDe(hueco.modelData)
                 //  Only while the tab is controls AND the block is on show —
                 //  a hidden block is no height at all, and the centre's own
                 //  height counts on this staying honest (alturaControles).
                 visible: view.plugin.tab === "controls"
                          && editorVisibilidad(hueco.modelData)
+                //  The native blocks are parked here as Components; a
+                //  card ("<plugin>.<name>", the dot gives it away) is
+                //  asked to the registry BY NAME — a Component that
+                //  travelled inside a modelData copy does not
+                //  instantiate.
                 sourceComponent: hueco.modelData === "toggles" ? compToggles
                     : hueco.modelData === "media" ? compMedia
-                    : hueco.modelData === "shortcuts" ? compAccesos : null
+                    : hueco.modelData === "shortcuts" ? compAccesos
+                    : String(hueco.modelData).indexOf(".") > 0
+                      ? Enganches.componenteDeCard(
+                            String(hueco.modelData).split(".")[0],
+                            String(hueco.modelData).split(".")[1])
+                      : null
             }
         }
 

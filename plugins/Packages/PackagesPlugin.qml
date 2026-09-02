@@ -15,8 +15,6 @@
 //  updates are counted once for the whole bar with a ten-minute cache.
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Io
 import K4 as K4
 import "../../core"
 import "../../services"
@@ -476,29 +474,27 @@ K4Plugin {
         onTriggered: self.runAurSearch()
     }
 
-    //  Updates, as raw Quickshell processes — they were that in the
-    //  service, and K4.Process adds nothing here.
-    Process {
+    //  Updates, through the wrapped process like everything else: a
+    //  plugin imports QtQuick and K4, nothing more — and `salida`
+    //  brings the whole text at the end, which is what the count
+    //  wants.
+    K4.Process {
         id: repoUpd
         command: ["checkupdates"]
-        stdout: StdioCollector {
-            onStreamFinished: self.apuntar(this.text, false)
-        }
+        onSalida: function (texto) { self.apuntar(texto, false) }
         //  checkupdates answers 2 when nothing is pending: its way of
         //  saying «up to date», not a failure.
-        onExited: function (codigo) {
+        onTerminado: function (codigo) {
             if (self.pendientesRepo < 0)
                 self.pendientesRepo = 0
         }
     }
 
-    Process {
+    K4.Process {
         id: aurUpd
         command: ["yay", "-Qua"]
-        stdout: StdioCollector {
-            onStreamFinished: self.apuntar(this.text, true)
-        }
-        onExited: function (codigo) {
+        onSalida: function (texto) { self.apuntar(texto, true) }
+        onTerminado: function (codigo) {
             if (self.pendientesAur < 0)
                 self.pendientesAur = 0
         }

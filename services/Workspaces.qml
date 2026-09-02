@@ -13,6 +13,33 @@ Singleton {
         return values
     }
 
+    //  The desks the indicators wear: the whole roster, with the
+    //  scratchpad (Hyprland's `special:` desks, negative ids) sent last
+    //  and only when the Control Centre switch says so.
+    readonly property var shownList: {
+        const normales = []
+        const especiales = []
+        for (let i = 0; i < list.length; ++i) {
+            const e = list[i]
+            if (e.id < 0)
+                especiales.push(e)
+            else
+                normales.push(e)
+        }
+        return Settings.panelShowScratchpad
+            ? normales.concat(especiales) : normales
+    }
+
+    //  What a desk wears in the numbered dress: its id, or — for the
+    //  scratchpad — the name Hyprland keeps after the `special:`.
+    function label(e) {
+        if (e.id >= 0)
+            return String(e.id)
+        const n = String(e.name || "")
+        const corte = n.indexOf(":")
+        return corte >= 0 ? n.slice(corte + 1) : n
+    }
+
     // Cuál tiene el foco. Hace falta como propiedad suelta porque `list` cambia
     // por muchos motivos —una ventana que abre, un nombre que cambia— y lo que
     // interesa señalar es solo el salto de escritorio.

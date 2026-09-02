@@ -27,33 +27,12 @@ FadeIn {
 
     // ── los escritorios asoman al cambiar ─────────────────────────
     property bool mostrandoEscritorios: false
-    property int inicioEscritorios: 0
-    readonly property var escritoriosVisibles:
-        Workspaces.list.slice(inicioEscritorios, inicioEscritorios + 3)
 
-    // Una mirilla de tres: 1·2·3, después 2·3·4, después 3·4·5… El activo
-    // recorre la mirilla y esta solo avanza cuando llega a un borde.
-    function ajustarVentanaEscritorios() {
-        const lista = Workspaces.list
-        if (lista.length <= 3) {
-            inicioEscritorios = 0
-            return
-        }
-        let indice = -1
-        for (let i = 0; i < lista.length; ++i)
-            if (lista[i].focused) {
-                indice = i
-                break
-            }
-        if (indice < 0)
-            return
-        let inicio = Math.max(0, Math.min(inicioEscritorios, lista.length - 3))
-        if (indice < inicio)
-            inicio = indice
-        else if (indice > inicio + 2)
-            inicio = indice - 2
-        inicioEscritorios = Math.max(0, Math.min(inicio, lista.length - 3))
-    }
+    //  The parade shows EVERY desk — the whole roster the Control
+    //  Centre hasn't hidden, scratchpad included. The pill lends the
+    //  centre the width of the row for as long as the parade lasts
+    //  (see `centro` below) and takes it back for the clock.
+    readonly property var escritoriosVisibles: Workspaces.shownList
 
     //  El primer cambio de `activo` es el de arrancar —pasa de -1 al que
     //  toque—, y no es un cambio de escritorio: sin esta guarda la píldora
@@ -61,7 +40,6 @@ FadeIn {
     property bool arrancado: false
 
     Component.onCompleted: {
-        ajustarVentanaEscritorios()
         arranque.start()
     }
 
@@ -74,13 +52,11 @@ FadeIn {
     Connections {
         target: Workspaces
         function onActivoChanged() {
-            view.ajustarVentanaEscritorios()
             if (!view.arrancado)
                 return
             view.mostrandoEscritorios = true
             volver.restart()
         }
-        function onListChanged() { view.ajustarVentanaEscritorios() }
     }
 
     Timer {
@@ -88,6 +64,13 @@ FadeIn {
         interval: 1800
         onTriggered: view.mostrandoEscritorios = false
     }
+
+    //  The parade's room, handed out and taken back: the plugin sizes
+    //  the pill from this, so the desks get their width while they
+    //  show and the clock keeps its 46 the rest of the day.
+    onMostrandoEscritoriosChanged: if (plugin)
+        plugin.centroAncho = mostrandoEscritorios
+            ? Math.max(46, Math.ceil(deskRow.implicitWidth)) : 46
 
     Item {
         anchors.fill: parent
@@ -143,13 +126,22 @@ FadeIn {
         Item {
             id: centro
 
-            //  Colgada de la carátula, no al centro de la caja: la caja ya
-            //  no reserva lo mismo a los dos lados, así que su centro no es
-            //  donde va la hora.
+            // Colgada de la carátula, no al centro de la caja: la caja ya
+            // no reserva lo mismo a los dos lados, así que su centro no es
+            // donde va la hora.
             anchors.left: izquierda.right
             anchors.leftMargin: 11
             anchors.verticalCenter: parent.verticalCenter
-            width: 46
+            //  The clock's 46, or the parade's: while the desks show,
+            //  the centre lends the row its width and the pill breathes
+            //  wide for the moment — reserving parade room all day was
+            //  the old disease (ten desks ate half the bar).
+            width: view.mostrandoEscritorios
+                ? Math.max(46, deskRow.implicitWidth) : 46
+
+            Behavior on width {
+                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
             height: parent.height
 
             IslandLabel {
@@ -164,11 +156,45 @@ FadeIn {
             }
 
             RowLayout {
+                id: deskRow
                 anchors.centerIn: parent
                 spacing: 4
 
                 opacity: view.mostrandoEscritorios ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+                //  The row's real width, published to the plugin the
+                //  moment it dresses up: the pill lends the centre what
+                //  the parade needs (see `centro`), and this is the
+                //  number that says what it needs.
+                onImplicitWidthChanged: if (view.plugin && view.mostrandoEscritorios)
+                    view.plugin.centroAncho = Math.max(46, Math.ceil(implicitWidth))
+
+                //  One size for every bubble, measured over the WHOLE
+                //  roster the switch leaves in — a bubble that gains or
+                //  loses focus never moves its neighbours, and a desk
+                //  joining or leaving the roster doesn't either.
+                readonly property real bubbleWidth: {
+                    let w = 0
+                    for (let i = 0; i < Workspaces.shownList.length; ++i) {
+                        const texto = Workspaces.label(Workspaces.shownList[i])
+                        w = Math.max(w, numberMetric.advanceWidth(texto),
+                                        focusMetric.advanceWidth(texto))
+                    }
+                    return Math.max(16, w + 10)
+                }
+
+                FontMetrics {
+                    id: numberMetric
+                    font.family: Theme.uiFont
+                    font.pixelSize: 10
+                }
+                FontMetrics {
+                    id: focusMetric
+                    font.family: Theme.uiFont
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
 
                 Repeater {
                     model: view.escritoriosVisibles
@@ -182,7 +208,7 @@ FadeIn {
                             Settings.panelWorkspaceStyle === "numbers"
 
                         Layout.preferredWidth: numeros
-                            ? numero.implicitWidth + (modelData.focused ? 10 : 2)
+                            ? deskRow.bubbleWidth
                             : (modelData.focused ? 18 : 6)
                         Layout.preferredHeight: numeros ? 16 : 6
                         Layout.alignment: Qt.AlignVCenter
@@ -200,7 +226,7 @@ FadeIn {
                             id: numero
                             anchors.centerIn: parent
                             visible: sitio.numeros
-                            text: sitio.modelData.id
+                            text: Workspaces.label(sitio.modelData)
                             color: sitio.modelData.focused
                                 ? Theme.islandBg : Theme.muted
                             font.pixelSize: 10

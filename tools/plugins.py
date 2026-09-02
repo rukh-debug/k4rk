@@ -198,6 +198,8 @@ SUPERFICIES = {
     "ventana": re.compile(r"\bK4\.Ventana\b"),
     #  Se le puede llamar desde fuera.
     "ipc": re.compile(r"\bK4\.Ipc\b"),
+    #  Aporta un bloque al centro de control.
+    "centro": re.compile(r"\bK4\.Card\b"),
 }
 
 

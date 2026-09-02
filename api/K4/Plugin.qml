@@ -53,6 +53,22 @@ QtObject {
     // Quién se queda la island cuando varios plugins la piden a la vez.
     // Referencia de los actuales: idle 0 · volume 40 · clock 50 · player 55 ·
     // toast 59 · panel 60 · launcher 80 · ask 90.
+    //
+    //  THE HOVER BAND — offering a view while the mouse rests on the
+    //  pill is not a separate API: it is this ladder plus one readable
+    //  fact. `K4.Isla.raton` says whether the mouse is on the pill,
+    //  and the clock takes the stage exactly like this:
+    //
+    //      active: habilitado && K4.Isla.raton
+    //      priority: 50
+    //
+    //  Pick your slot by who you want to beat: 1–39 stays under the
+    //  clock (you show when the clock plugin is off), 51–54 stands
+    //  over the clock and under the player, 56–58 over the player
+    //  too. Leaving is the binding's job — `raton` clears a moment
+    //  after the mouse goes, `active` follows, the stage returns to
+    //  the pill. `closeOnHoverExit` is for SUMMONED views; a hover
+    //  view never needs it. See `ejemplos/hoverpeek/`.
     property int priority: 50
 
     // ¿Este plugin quiere ser la vista actual ahora mismo?

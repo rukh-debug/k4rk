@@ -68,7 +68,7 @@ Singleton {
                      fuente: fuente }])
     }
 
-    //  This one sweeps all three: it is for when the plugin leaves.
+    // This one sweeps all four: it is for when the plugin leaves.
     function quitarDe(plugin) {
         const quedan = ajustes.filter(function (x) { return x.plugin !== plugin })
         if (quedan.length !== ajustes.length)
@@ -79,6 +79,9 @@ Singleton {
         const quedanP = paginas.filter(function (x) { return x.plugin !== plugin })
         if (quedanP.length !== paginas.length)
             paginas = quedanP
+        const quedanT = cards.filter(function (x) { return x.plugin !== plugin })
+        if (quedanT.length !== cards.length)
+            cards = quedanT
     }
 
     //  Lo que Ajustes añade al final de su lista de grupos.
@@ -195,7 +198,56 @@ Singleton {
         return salida
     }
 
-    // ── resultados en el lanzador ─────────────────────────────────
+    // ── cards contributed to the Control Centre ───────────────────
+    //
+    //  A BLOCK of the centre, shipped by the plugin that does the
+    //  work: rendered among the native toggles/media/shortcuts,
+    //  wherever the stored order says, sized by the height the card
+    //  declares. Each entry: { plugin, name, fuente } — the fuente is
+    //  the K4.Card, the one holding the Component.
+    property var cards: []
+
+    function registrarCard(fuente) {
+        if (!fuente || !fuente.plugin || !fuente.name
+                || !fuente.component)
+            return
+        cards = cards.filter(function (x) {
+            return !(x.plugin === fuente.plugin
+                     && x.name === fuente.name)
+        }).concat([{ plugin: fuente.plugin, name: fuente.name,
+                     fuente: fuente }])
+    }
+
+    //  Same rule as the pages: the Component is asked to the registry
+    //  BY NAME, never through modelData — a Component that travelled
+    //  inside a copy does not instantiate.
+    function componenteDeCard(plugin, name) {
+        for (let i = 0; i < cards.length; ++i)
+            if (cards[i].plugin === plugin && cards[i].name === name)
+                return cards[i].fuente.component
+        return null
+    }
+
+    //  The ids the cards add to the centre's block universe:
+    //  "<plugin>.<name>", the form `panelOrder` stores them in. The
+    //  dotted shape is what tells a card from a native block, so a
+    //  plugin id with a dot would break the promise — RE_ID already
+    //  forbids dots in plugin ids, which is why the form is safe.
+    readonly property var idsCards: cards.map(function (x) {
+        return x.plugin + "." + x.name
+    })
+
+    //  A card's declared height, by "<plugin>.<name>" id. Zero when
+    //  unknown — the caller decides what that means (the centre draws
+    //  nothing at zero height).
+    function altoDeCard(id) {
+        for (let i = 0; i < cards.length; ++i)
+            if (cards[i].plugin + "." + cards[i].name === id)
+                return cards[i].fuente.alto
+        return 0
+    }
+
+    // ── results in the launcher ───────────────────────────────────
     //
     //  Cada entrada: { plugin, fuente }. El lanzador pregunta a todos al
     //  escribir y cada uno contesta cuando puede: nadie bloquea a nadie.

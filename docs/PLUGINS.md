@@ -162,7 +162,8 @@ commands that come next. The rest of this page explains what it wrote.
 ```
 
 - `superficies`: what your plugin **occupies**, as opposed to what it touches.
-  `island` (it has a `view`), `pildora`, `ventana`, `ipc`. It is
+  `island` (it has a `view`), `pildora`, `ventana`, `ipc`, `centro` (a block
+  in the control centre). It is
   optional — a manifest without it still validates — but if you declare it,
   the validator checks it against what your QML actually does, the same way it
   already does with `permisos`. Declaring lets Settings describe your plugin
@@ -569,6 +570,55 @@ island the extension folds with the pill. `extension` must be a binding
 — a new object when your state changes — because mutating the old one
 in place tells no one.
 
+**Your pages, in Settings.** A row of options is a comment; sometimes the
+work wants the whole screen. `K4.Pagina` contributes a page to Settings —
+its sidebar, its search, its scroll — nested under a family or as a
+section of your own:
+
+```qml
+K4.Pagina {
+    plugin: "hola"
+    name: "gretings"            // unique within YOUR plugin
+    titulo: "Greetings"
+    glifo: 0xF02FC
+    desc: "How this plugin greets the desktop"
+    claves: ["hello", "salute"]
+    componente: Component { MiPagina {} }
+}
+```
+
+The `componente` is instantiated only while its page is on screen, in your
+plugin's own context. Root it in a layout that reports `implicitHeight`
+and the window sizes and scrolls it for you. The page leaves the sidebar
+AND the search the moment your plugin is off — nobody renders a page
+whose author is gone.
+
+**Your blocks, in the control centre.** The centre that opens from the bar
+is not a closed list: `K4.Card` puts one block of yours among the natives
+— toggles, media, shortcuts — wherever the stored order says, with the
+same width and the same editor. The user reorders and hides it in
+Settings → Control centre like any native block; visibility is theirs,
+not yours.
+
+```qml
+K4.Card {
+    plugin: "correo"
+    name: "unread"              // unique within YOUR plugin
+    titulo: "Mail"
+    glifo: 0xF01EE
+    alto: 64                    // px the card occupies
+    component: Component { MiFila {} }
+}
+```
+
+`alto` is the height the card OCCUPIES — fixed, like the native blocks'
+own heights — and the centre hands you exactly that room: fill it, don't
+fight it (`width: parent.width`, `height: parent.height` on the root).
+The centre knows the card as `"<plugin>.<name>"`. A card-only plugin has
+no `view` and never asks for the island's stage — it exists to put one
+block in the centre and that is all. `ejemplos/worldclock/` ships a
+working card.
+
 **Your results, in the launcher.** You answer when you can; if yours is
 expensive — a network query — you block nobody. Yours shows up **below**
 the system's applications: that panel is theirs, and you are there to be
@@ -639,6 +689,28 @@ decided by the host comparing priorities, which is the only way two plugins
 do not fight over the screen. Use it to skip animating and polling when
 nobody is watching.
 
+**Taking the stage while the mouse rests.** A hover view is not a separate
+API — it is the ladder plus one readable fact. `K4.Isla.raton` says
+whether the mouse is on the pill, and binding `active` to it takes the
+stage exactly the way the clock does:
+
+```qml
+K4.Plugin {
+    priority: 51                 // pick your slot, see below
+    active: habilitado && K4.Isla.raton
+    islandWidth: 300; islandHeight: 84
+    view: Component { PeekView { plugin: self } }
+}
+```
+
+Pick the priority by who you want to beat: 1–39 stays under the clock
+(you show when the clock plugin is off), 51–54 stands over the clock and
+under the player, 56–58 over the player too. Leaving is the binding's
+job — `raton` clears a moment after the mouse goes, `active` follows,
+and the stage returns to the pill; `closeOnHoverExit` is for summoned
+views and a hover view never needs it. `ejemplos/hoverpeek/` ships one
+working.
+
 All three deregister on their own when your plugin is destroyed — disabled,
 reloaded, uninstalled — and the manager also sweeps by id: a Settings row
 that calls a dead plugin cannot exist.
@@ -685,6 +757,7 @@ The manifest declares what you use; the bar checks it **before listing**:
 | `medios` | `K4.Medios.alternarPausa`, `.siguiente`, `.anterior`, `.buscar` |
 | `notificaciones` | `K4.Notificaciones.limpiar` |
 | `portapapeles` | `K4.Portapapeles` — **even just reading it** |
+| `paginas` | `K4.Pagina` — injecting pages into Settings is UI power |
 
 All nine, and note where the line falls: `ponerVolumen` is watched and
 `K4.Audio` is not, because looking at the volume does nothing to anyone and
@@ -750,3 +823,21 @@ types (Quickshell's URL scheme does not resolve siblings without it —
 `tools/plugins.py` warns if it is missing). Repo plugins CAN use the
 internal services via `"../../services"`, because they update together with
 the bar.
+
+## Keeping this guide true
+
+This page is the contract, and it does not get to lie. Two checkers read
+it against the code on every change:
+
+```sh
+python3 tools/api.py    # every public K4.* type must be mentioned in the quick-ref
+python3 tools/guia.py   # every K4.<Type>.<member> the docs cite must exist;
+                        # every permission and named rule must be in the table
+```
+
+That is why examples here are real paths (`ejemplos/…`) and why snippets
+name real members: the checkers verify both. The standard for anyone —
+human or agent — touching the plugin system is: the change and its
+documentation land together, and the checkers stay green. A type that is
+not documented does not exist for whoever builds against this guide; a
+doc that lies about the code is worse than none.
