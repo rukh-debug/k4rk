@@ -5,6 +5,16 @@ pragma Singleton
 //  Solo vive aquí lo que de verdad cambia algo: un interruptor que no está
 //  conectado a nada es peor que no tenerlo. Cada opción dice qué módulo la
 //  lee, para que no queden huérfanas al refactorizar.
+//
+//  ── the ownership rule ──────────────────────────────────────────
+//  This is the HOST's registry, and it keeps the knobs that are
+//  cross-cutting — read by more than one plugin, or previewed by
+//  Settings' own mock pages (panelShowMedia is Panel's AND the preview's;
+//  the workspace style is Panel's, Idle's and the preview's). A knob
+//  only one plugin reads belongs to that plugin, through `K4.Ajustes` —
+//  as Agentes, Player, Submap and Terminal already do. Whole pages
+//  belong to the plugin that does the work, through `K4.Pagina`. When in
+//  doubt: two readers, this file; one reader, its plugin.
 
 import QtQuick
 import Quickshell

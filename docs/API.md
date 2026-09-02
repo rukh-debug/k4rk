@@ -60,6 +60,30 @@ K4Plugin {
 Repo modules import that root type from `core/`; third-party plugins use the
 same contract as `K4.Plugin`.
 
+### Reaching another plugin: declare its id
+
+Plugins never import each other. A plugin that needs another declares a
+property NAMED like the other's catalog id, and the host fills it with the
+live instance — or `null` when that plugin is off, broken or unloaded:
+
+```qml
+K4Plugin {
+    name: "mine"
+    property var panel: null      // the control centre, or null
+    property var packages: null   // whatever you need, by id
+}
+```
+
+Guard every use (`panel ? panel.open : false`); the reference goes null the
+moment its plugin dies, and comes back when it returns.
+
+### Requiring a binary: `requiere: "bin:…"`
+
+A manifest may declare `"require": "bin:codex"` — the plugin exists only
+when that tool is on `PATH`. The bar probes in one sweep, says so honestly
+in Settings («needs 'codex' installed»), keeps re-probing while it is
+missing, and brings the plugin back by itself the moment the tool appears.
+
 ## Visual components
 
 The bar's look, ready to assemble — every piece takes the palette from

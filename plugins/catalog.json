@@ -65,7 +65,8 @@
    "entry": "Ask/AskPlugin.qml",
    "version": "1.0.0",
    "title": "Ask",
-   "enabledByDefault": true
+   "enabledByDefault": true,
+   "requiere": "bin:codex"
   },
   {
    "id": "hyprtheme",

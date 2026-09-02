@@ -124,13 +124,36 @@ Singleton {
             return Consola.esNuestra
         if (m.requiere === "k4term-isla")
             return Consola.hayIsla
+        if (String(m.requiere).indexOf("bin:") === 0)
+            return Binarios.presente(String(m.requiere).substring(4))
         return true
     }
 
     function motivoDelRequisito(m) {
-        return m && m.requiere === "k4term-isla"
-            ? "needs k4term with its island session"
-            : "needs k4term installed"
+        if (!m || !m.requiere)
+            return ""
+        if (m.requiere === "k4term-isla")
+            return "needs k4term with its island session"
+        if (m.requiere === "k4term")
+            return "needs k4term installed"
+        if (String(m.requiere).indexOf("bin:") === 0)
+            return "needs '" + String(m.requiere).substring(4)
+                   + "' installed"
+        return ""
+    }
+
+    //  Every `bin:` the catalog asks about, probed in one sweep. Called
+    //  whenever the catalog lands, so a newly installed plugin's tool is
+    //  asked for the moment it appears in the list.
+    function _sondearRequisitos() {
+        const nombres = []
+        for (let i = 0; i < catalogo.length; ++i) {
+            const r = String(catalogo[i].requiere || "")
+            if (r.indexOf("bin:") === 0)
+                nombres.push(r.substring(4))
+        }
+        if (nombres.length > 0)
+            Binarios.sondear(nombres)
     }
 
     //  Cuando `Consola` termina de mirar qué hay, se revisa a quién le falta
@@ -140,6 +163,13 @@ Singleton {
         target: Consola
         function onBinarioChanged() { manager.revisarRequisitos() }
         function onHayIslaChanged() { manager.revisarRequisitos() }
+    }
+
+    //  Y lo mismo con las herramientas sueltas: el sondeo contesta —ahora
+    //  hay codex, ahora no lo hay— y las dependencias se re leen.
+    property Connections vigilaBinarios: Connections {
+        target: Binarios
+        function onCambiado() { manager.revisarRequisitos() }
     }
 
     function revisarRequisitos() {
@@ -740,6 +770,7 @@ Singleton {
             }
         }
         catalogoListo = true
+        _sondearRequisitos()
         if (listo)
             _sincronizar()
         else
@@ -784,6 +815,11 @@ Singleton {
     //  se destruye, uno nuevo y habilitado se crea. A los que siguen igual no
     //  se les toca — releer el catálogo no puede costar un parpadeo a los
     //  veinte plugins que no han cambiado.
+    //
+    //  Y crear pide lo mismo que mantener: un requisito incumplido (`bin:`
+    //  ausente, k4term que no está) no entra por la puerta de la relectura —
+    //  sin la mirada de `revisarRequisitos`, cada repaso del catálogo
+    //  resucitaba justo lo que la sonda acababa de retirar.
     function _sincronizar() {
         const vistos = {}
         let cambios = false
@@ -795,7 +831,8 @@ Singleton {
                 registrarError(m.id, m.motivo || "no cargable")
                 continue
             }
-            if (estaHabilitado(m.id) && !_porId[m.id]) {
+            if (estaHabilitado(m.id) && !_porId[m.id]
+                    && requisitoCumplido(m)) {
                 if (_crear(m))
                     cambios = true
             }

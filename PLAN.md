@@ -136,30 +136,26 @@ Verify: clean log on this machine, launcher search intact, plugin row in
 Settings, IPC verbs work. Full install/remove flows need an Arch box — out
 of test reach here; note in commit.
 
-## Phase 5 — Binary requirements
+## Phase 5 — Binary requirements (DONE)
 
-1. New probe service (`services/Binarios.qml`, Consola's `revisar()`
-   pattern — one batched `command -v` sweep at startup, change-notifying).
-2. `PluginManager.requisitoCumplido` learns `"requiere": "bin:<name>"`
-   (tools/plugins.py does not validate `requiere` — confirmed — so no
-   validator change). `motivoDelRequisito` → `"needs <name> installed"`;
-   the existing revive-on-change machinery (`vigilaRequisitos`) wires to
-   the probe.
-3. Apply: Ask catalog entry gets `"requiere": "bin:codex"`. Agentes stays
-   as is (honest cache fallback, has settings).
+`services/Binarios.qml` probes every `bin:` the catalog names in one
+batched `command -v` sweep, re-probes every 30 s while something is
+missing, and notifies on change. `PluginManager.requisitoCumplido`
+understands `"requiere": "bin:<name>"` with an honest "needs 'x'
+installed" reason; `_sincronizar` gates CREATION on requirements too
+(an unmet plugin can no longer resurrect via catalog rescans); Ask
+declares `"require": "bin:codex"`. Verified live in both directions
+with a scratch requirement: destroy, stay-dead across rescans, revive
+on removal.
 
-Verify: temporary `"requiere": "bin:definitely-missing"` on a scratch
-plugin via `pluginReload` → disabled-with-reason; remove the requiere.
+## Phase 6 — Codification in docs (DONE)
 
-## Phase 6 — Codification in docs
+The ownership rule written at the top of `services/Settings.qml`;
+reference-by-id and `bin:` requirements in `docs/API.md`; AGENTS.md
+carries the architecture rules and the ops notes (flake staging, the
+runtime-registry clearing). `api/LEEME.md` covers `K4.Pagina`.
 
-1. `services/Settings.qml` header: the registry rule — cross-cutting or
-   previewed knobs live here (`panelShowMedia` is read by Panel AND
-   Settings' preview — cross-cutting); plugin-private knobs use
-   `K4.Ajustes` (as Agentes/Player/Submap/Terminal already do).
-2. `docs/API.md`: optional host verbs, reference injection,
-   `K4.Lanzador` row schema, `bin:` requirements.
-3. `api/LEEME.md` quick-ref sync + one paragraph in `AGENTS.md`.
+**Execution order:** 0 → 1 → 2 → 3 → 4 → 5 → 6 — all done.
 
 ---
 
