@@ -376,6 +376,14 @@ Singleton {
         //  y desaparecer del catálogo—, y no en una de ellas.
         Indicadores.quitarDe(id)
 
+        //  And its flank capsule, same reasoning: the K4.Capsule
+        //  unregisters itself on destruction, but that is deferred —
+        //  here the pill's flank stops quoting a corpse NOW, through
+        //  the one door all three deaths walk (off, reload, gone from
+        //  the catalog). One capsule per plugin, so quitar(id) is the
+        //  whole sweep.
+        Extensions.quitar(id)
+
         //  Y APAGAR sus IpcHandler, que es lo que desregistra sus targets.
         //
         //  Destruir no desregistra —medido: ni tres segundos después—, así que

@@ -19,16 +19,33 @@ ColumnLayout {
     spacing: 12
 
     //  Every block the centre can show, with what the list rows and the
-    //  sketch need to draw them. Ids are the ones `panelOrder` stores and
-    //  PanelView looks up — one list, two readers, same truth.
-    readonly property var bloques: [
-        { id: "toggles", nombre: "Quick toggles", altura: 40,
-          glifo: 0xF056E },     // md-view_dashboard
-        { id: "media", nombre: "Media", altura: 32,
-          glifo: 0xF0387 },     // md-music_note
-        { id: "shortcuts", nombre: "Shortcuts", altura: 22,
-          glifo: 0xF003B }      // md-apps
-    ]
+    //  sketch need to draw them. The native three, plus every card the
+    //  registry holds — the list is a binding, so a card born later
+    //  shows up the moment its plugin registers it. Ids are the ones
+    //  `panelOrder` stores and PanelView looks up — one list, two
+    //  readers, same truth. The sketch heights are half the real ones,
+    //  which is the sketch's own scale.
+    readonly property var bloques: {
+        const nativos = [
+            { id: "toggles", nombre: "Quick toggles", altura: 40,
+              glifo: 0xF056E },     // md-view_dashboard
+            { id: "media", nombre: "Media", altura: 32,
+              glifo: 0xF0387 },     // md-music_note
+            { id: "shortcuts", nombre: "Shortcuts", altura: 22,
+              glifo: 0xF003B }      // md-apps
+        ]
+        const cards = Enganches.cards
+        for (let i = 0; i < cards.length; ++i) {
+            const f = cards[i].fuente
+            nativos.push({
+                id: cards[i].plugin + "." + cards[i].name,
+                nombre: f.titulo || cards[i].name,
+                altura: Math.max(8, Math.round((f.alto || 0) / 2)),
+                glifo: f.glifo || 0
+            })
+        }
+        return nativos
+    }
 
     function bloque(id) {
         for (let i = 0; i < editor.bloques.length; ++i)
@@ -38,17 +55,36 @@ ColumnLayout {
     }
 
     //  A block is on show when its switch says so AND it has something to
-    //  show — the toggles with every tile off are a row of nothing.
+    //  show — the rule lives in Settings (`bloqueVisible`), read here by
+    //  the sketch and the eye like the centre and its height count read
+    //  it. A rule told three ways drifts.
     function visibleEl(id) {
-        if (id === "toggles")
-            return Settings.panelShowToggles
-                   && (Settings.panelTileWifi || Settings.panelTileBluetooth
-                       || Settings.panelTileSound)
-        if (id === "media")
-            return Settings.panelShowMedia
-        if (id === "shortcuts")
-            return Settings.panelShowShortcuts
-        return false
+        return Settings.bloqueVisible(id)
+    }
+
+    //  The eye, generalized: the native blocks keep their own keys, a
+    //  card ("<plugin>.<name>") joins or leaves `panelHiddenBlocks` —
+    //  Settings owns a card's visibility, the plugin does not.
+    function alternarBloque(id, encendido) {
+        if (id === "toggles") {
+            Settings.poner("panelShowToggles", encendido)
+            return
+        }
+        if (id === "media") {
+            Settings.poner("panelShowMedia", encendido)
+            return
+        }
+        if (id === "shortcuts") {
+            Settings.poner("panelShowShortcuts", encendido)
+            return
+        }
+        const ocultos = (Settings.panelHiddenBlocks || []).slice()
+        const donde = ocultos.indexOf(id)
+        if (encendido && donde >= 0)
+            ocultos.splice(donde, 1)
+        else if (!encendido && donde < 0)
+            ocultos.push(id)
+        Settings.poner("panelHiddenBlocks", ocultos)
     }
 
     //  panelOrder as the bar obeys it, from the service: unknown ids
@@ -112,11 +148,36 @@ ColumnLayout {
                 Item { Layout.fillWidth: true }
 
                 Row {
+                    id: deskRow
                     visible: Settings.panelShowWorkspaces
                     spacing: 4
                     Layout.alignment: Qt.AlignVCenter
 
-                    //  The mock follows the real dress: dots, or numbers.
+                    //  The mock wears the real dress — dots, or numbered
+                    //  bubbles — and the bubbles are one uniform size,
+                    //  measured like the real header measures them.
+                    readonly property real bubbleWidth: {
+                        let w = 0
+                        for (let i = 1; i <= 4; ++i) {
+                            const digits = String(i)
+                            w = Math.max(w, numberMetric.advanceWidth(digits),
+                                            focusMetric.advanceWidth(digits))
+                        }
+                        return Math.max(13, w + 8)
+                    }
+
+                    FontMetrics {
+                        id: numberMetric
+                        font.family: Theme.uiFont
+                        font.pixelSize: 8
+                    }
+                    FontMetrics {
+                        id: focusMetric
+                        font.family: Theme.uiFont
+                        font.pixelSize: 8
+                        font.weight: Font.DemiBold
+                    }
+
                     Repeater {
                         model: 4
                         delegate: Rectangle {
@@ -131,13 +192,21 @@ ColumnLayout {
 
                     Repeater {
                         model: 4
-                        delegate: IslandLabel {
+                        delegate: Rectangle {
                             required property int index
                             visible: Settings.panelWorkspaceStyle === "numbers"
-                            text: index + 1
+                            width: deskRow.bubbleWidth
+                            height: 13
+                            radius: 6.5
                             color: index === 1 ? Theme.ink : Theme.surfaceHi
-                            font.pixelSize: 8
-                            font.weight: index === 1 ? Font.DemiBold : Font.Normal
+
+                            IslandLabel {
+                                anchors.centerIn: parent
+                                text: index + 1
+                                color: index === 1 ? Theme.islandBg : Theme.muted
+                                font.pixelSize: 8
+                                font.weight: index === 1 ? Font.DemiBold : Font.Normal
+                            }
                         }
                     }
                 }
@@ -386,14 +455,7 @@ ColumnLayout {
                     checked: editor.visibleEl(fila.modelData)
                           || (fila.modelData === "toggles"
                               && Settings.panelShowToggles)
-                    onToggled: {
-                        if (fila.modelData === "toggles")
-                            Settings.poner("panelShowToggles", !checked)
-                        else if (fila.modelData === "media")
-                            Settings.poner("panelShowMedia", !checked)
-                        else if (fila.modelData === "shortcuts")
-                            Settings.poner("panelShowShortcuts", !checked)
-                    }
+                    onToggled: editor.alternarBloque(fila.modelData, !checked)
                 }
             }
         }

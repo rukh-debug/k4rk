@@ -38,6 +38,39 @@ public API and renaming them breaks every outside plugin at once.
 - Leave alone: k4term's conf keys (`tamaño`) and shell-integration
   markers (`donde`) — external contract, see AGENTS.md.
 
+## User-created islands: a host system, not a plugin API
+
+NOT implemented — this is the intent, nothing more.
+
+Plugins must NOT be able to create new islands (an `api/K4/Isle`
+experiment was built and removed on purpose: an island is real estate,
+and real estate is the user's call, not a plugin's). What is wanted is
+the opposite door: **by default, with no plugin involved, the user can
+add new islands** — and every new island shares the WHOLE feature set
+of the default one.
+
+The shape of the thing:
+
+- An island is created, placed, and removed by the user, from Settings
+  or the island's own grip — the same ownership model as bar edge and
+  alignment: persistent, user-owned, no code involved to get one.
+- Each new island is a **full instance of the island machinery**, not a
+  stripped sibling: silhouette, edge fusion, gliding, hover behavior,
+  retirement, Placement, input mask, focus — everything the default
+  island already does, instanced.
+- The "different instance" part is the point: each island carries its
+  own selection of what to show — its own modules/plugins assigned per
+  island — so a user can install everything they like and then decide
+  WHICH island each thing lives on. The default arbitration (one
+  activePlugin, priority ladder) likely becomes per-island: each island
+  arbitrates its own roster.
+- Implied groundwork before any of this lands: the island window
+  machinery living in `shell.qml` (one logical island, one arbitration,
+  ~1400 intertwined lines: mask, focus, retirement, multi-screen
+  variants) must be factored into a reusable host-side component —
+  behavior-preserving, verified across hover views, summoned views,
+  hidden-bar retirement, and every monitor.
+
 ## Agentes: per-provider toggles + more providers
 
 NOT implemented yet — this is the plan, nothing more.
@@ -93,3 +126,5 @@ OpenCode and friends, so we can cover most providers with one shape:
 
 References studied: OpenUsage provider docs (opencode, zai pages),
 opencode.ai/docs/go, opencode-go-usage tooling, AIUsageTracker PR #525.
+
+### 4. change all filenames that is in spanish to english and every different occurance of that file, import export docs everything. - do proper research first, so we dont break stuff.

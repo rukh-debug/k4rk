@@ -358,6 +358,38 @@ K4.Pagina {
 The bar's own plugins use the same door — the theme engine ships the
 Display family's Colour, Windows and Effects pages this way.
 
+## Your blocks in the control centre: `K4.Card`
+
+A block of the centre, shipped by the plugin that does the work. It
+renders among the native toggles/media/shortcuts wherever the stored
+order says, with the same width and the same editor: the user reorders
+and hides it in Settings → Control centre like any native block, and it
+disappears with its author.
+
+```qml
+K4.Card {
+    plugin: "correo"
+    name: "unread"            // unique within your plugin
+    titulo: "Mail"
+    glifo: 0xF01EE
+    desc: "One line for the editor row"
+    alto: 64                  // px the card occupies
+    component: Component { MiFila {} }
+}
+```
+
+- The centre knows the card as `"<plugin>.<name>"`.
+- `alto` is fixed, like the native blocks' own heights: the centre sizes
+  itself from it and hands the card exactly that room — fill it, don't
+  fight it.
+- `component` is instantiated only while the centre is open on its
+  controls tab, in your plugin's own context.
+- Visibility is the user's, not yours: the editor's eye hides the card
+  (Settings owns a card's visibility; the native blocks' own switches
+  are the same deal).
+- Declare the `centro` surface in the manifest to have the validator
+  vouch for it. `ejemplos/worldclock/` ships a working card.
+
 ## Your results in the launcher: `K4.Lanzador`
 
 Answer the launcher's queries whenever you can — a slow source blocks
@@ -399,6 +431,13 @@ K4.Lanzador {
   `K4.Isla.colocar(id, fraction, durationMs)` slides the island along it
   for the duration of a scene — a dodge, a paddle, stepping aside — and it
   springs back on timeout, `soltar(id)`, or disable.
+- **The hover band**: offering a view while the mouse rests on the pill is
+  not a separate API — bind `active` to `K4.Isla.raton` and pick a
+  priority by who you want to beat: 1–39 under the clock, 51–54 over the
+  clock and under the player, 56–58 over the player too. Leaving is the
+  binding's job — `raton` clears a moment after the mouse goes and the
+  stage returns to the pill; `closeOnHoverExit` is for summoned views.
+  `ejemplos/hoverpeek/` ships one working.
 
 `ejemplos/efectos/` has every piece working, hand included.
 
