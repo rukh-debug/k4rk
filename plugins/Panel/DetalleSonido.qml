@@ -1,11 +1,12 @@
-//  El detalle de Sonido del centro de control, hermano de DetalleWifi y
+//  The control centre's Sound detail, sibling of DetalleWifi and
 //  DetalleBluetooth.
 //
-//  El azulejo de sonido sabía subir y bajar el volumen general y nada más:
-//  para elegir por dónde sale o mirar la ganancia de un micro había que ir al
-//  módulo de Sonido, cuando lo de al lado —la red, el Bluetooth— se abre aquí
-//  mismo. La lista es la misma pieza que enseña el módulo, así que llegar por
-//  un sitio o por otro da igual.
+//  The sound tile knew how to raise and lower the general volume
+//  and nothing else: to choose where sound comes out or look at a
+//  mic's gain one had to go to the Sound module, while what sits
+//  next to it —network, Bluetooth— opens right here. The list is
+//  the same piece the module shows, so arriving by one road or the
+//  other makes no difference.
 
 import QtQuick
 import QtQuick.Layouts

@@ -1,5 +1,5 @@
-//  El detalle de Wi‑Fi del centro de control. Vivía dentro de
-//  PanelView (870 líneas, siete secciones); ahora es una pieza con nombre.
+//  The control centre's Wi‑Fi detail. It lived inside PanelView
+//  (870 lines, seven sections); now it is a piece with a name.
 
 import QtQuick
 import QtQuick.Controls
@@ -45,7 +45,8 @@ IslandTile {
         }
 
         ListView {
-            //  La barra de la casa: sale sola si hay más de lo que cabe.
+            //  The house scrollbar: comes out on its own when there
+            //  is more than fits.
             ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -77,7 +78,7 @@ IslandTile {
             }
         }
 
-        // contraseña de una red protegida
+        // password of a protected network
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: false

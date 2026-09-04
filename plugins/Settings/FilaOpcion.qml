@@ -1,12 +1,13 @@
-//  Una fila de Ajustes: el icono, el nombre, la explicación y el control.
+//  A Settings row: the icon, the name, the explanation and the control.
 //
-//  Vivía dentro de `SettingsView.qml`, incrustada como delegado. Sale a su
-//  propio fichero porque ahora la usan DOS vistas —el panel de siempre y la
-//  ventana con barra lateral— y dos copias de trescientas líneas divergen a la
-//  primera corrección: se arregla una y la otra sigue mintiendo.
+//  It lived inside `SettingsView.qml`, embedded as a delegate. It
+//  moves to its own file because TWO views use it now —the usual
+//  panel and the sidebar window— and two copies of three hundred
+//  lines diverge at the first fix: one gets fixed and the other
+//  keeps lying.
 //
-//  No sabe dónde la pintan. Recibe la definición de la opción y habla con el
-//  servicio `Settings`, igual que hacía antes.
+//  It does not know where it is painted. It receives the option's
+//  definition and talks to the `Settings` service, same as before.
 
 import QtQuick
 import QtQuick.Layouts
@@ -18,19 +19,19 @@ import "../../services"
 Rectangle {
     id: opcion
     required property var modelData
-    //  Con `!!` y no a secas. `Settings.valor`
-    //  contesta `undefined` a las opciones que aún
-    //  no tienen nada guardado y a las que no son
-    //  interruptores, y asignar eso a un bool es un
-    //  aviso en el log por CADA fila y CADA vez que
-    //  se abren los Ajustes — ruido que tapa los
-    //  avisos de verdad.
+    //  With `!!` and not bare. `Settings.valor`
+    //  answers `undefined` for options with nothing
+    //  saved yet and for those that are not
+    //  switches, and assigning that to a bool is a
+    //  log warning for EVERY row and EVERY time
+    //  Settings opens — noise covering the real
+    //  warnings.
     //
-    //  Coaccionar y no comparar con `true`: esto
-    //  enciende el ICONO de la fila, y una elección
-    //  vale «viaje» y un campo de texto vale una
-    //  URL. Con `=== true` se apagaban todas las
-    //  filas que no fueran un interruptor.
+    //  Coerce and not compare with `true`: this
+    //  lights the row's ICON, and a choice is worth
+    //  «travel» and a text field is worth a URL.
+    //  With `=== true` every row that was not a
+    //  switch went dark.
     readonly property bool activa:
         !!Settings.valor(modelData.id)
 
@@ -40,34 +41,35 @@ Rectangle {
     //  forty-pixel rectangles that all weigh the same.
     readonly property bool esTitulo: modelData.tipo === "titulo"
 
-    //  El valor de una opción de texto, siempre como
-    //  cadena: un registro externo contesta `false`
-    //  cuando todavía no hay nada guardado.
+    //  A text option's value, always as a string:
+    //  an external registry answers `false` when
+    //  nothing is saved yet.
     readonly property string valorTexto: {
         const v = Settings.valor(modelData.id)
         return (v === undefined || v === null || v === false)
             ? "" : String(v)
     }
 
-    // Algunas opciones no pintan nada si su interruptor
-    // maestro está apagado: se atenúan y dejan de
-    // responder, en vez de mentir sobre lo que hacen.
-    //  Y `disponible: false` a secas, para lo que
-    //  no depende de otro ajuste sino del mundo:
-    //  un programa que no está instalado. Sin
-    //  esto, la única forma de decir «esto no
-    //  puede funcionar aquí» era no ofrecerlo, y
-    //  entonces nadie se entera de que existe.
+    // Some options paint nothing when their master
+    // switch is off: they dim and stop responding,
+    // instead of lying about what they do.
+    //  And plain `disponible: false`, for what does
+    //  not depend on another setting but on the
+    //  world: a program not installed. Without
+    //  this, the only way to say «this cannot work
+    //  here» was not offering it, and then nobody
+    //  learns it exists.
     readonly property bool disponible:
         (!modelData.requiere
          || Settings.valor(modelData.requiere))
         && modelData.disponible !== false
 
-    //  Las acciones con red van en dos tiempos: el
-    //  primer toque arma y el segundo ejecuta, y si
-    //  te lo piensas más de unos segundos se
-    //  desarma sola. Un diálogo modal sería más
-    //  aparatoso y no protegería más.
+    //  Network actions go in two beats: the first
+    //  touch arms and the second executes, and if
+    //  you think it over for more than a few
+    //  seconds it disarms itself. A modal dialog
+    //  would be more pompous and protect no
+    //  better.
     property bool armada: false
 
     Timer {
@@ -135,9 +137,9 @@ Rectangle {
         spacing: 11
 
         K4.IconoPlugin {
-            //  Un plugin puede traer su propia
-            //  imagen; el resto de opciones son
-            //  glifos y caen por el mismo sitio.
+            //  A plugin can bring its own image;
+            //  the rest of the options are glyphs
+            //  and fall in the same place.
             imagen: opcion.modelData.imagen || ""
             glifo: opcion.modelData.glifo || 0
             color: opcion.activa ? Theme.ink : Theme.dim
@@ -166,9 +168,9 @@ Rectangle {
                        ? (opcion.modelData.descArmado
                           || opcion.modelData.desc)
                        : opcion.modelData.desc) || ""
-                //  El motivo de un plugin roto va
-                //  en rojo: es la diferencia entre
-                //  «apagado» y «no puede».
+                //  A broken plugin's reason goes
+                //  in red: it is the difference
+                //  between «off» and «cannot».
                 color: opcion.armada ? "#ff9f9f"
                      : (opcion.modelData.error ? Theme.red : Theme.muted)
                 font.pixelSize: 9
@@ -177,10 +179,10 @@ Rectangle {
             }
         }
 
-        //  Un plugin que no puede cargar no lleva
-        //  interruptor: encender lo imposible es
-        //  mentir. Si el fallo fue al cargar, la
-        //  fila entera reintenta.
+        //  A plugin that cannot load carries no
+        //  switch: turning on the impossible is
+        //  lying. If the failure was at load, the
+        //  whole row retries.
         IslandLabel {
             visible: opcion.modelData.error === "recargable"
             text: "retry"
@@ -197,14 +199,14 @@ Rectangle {
             }
         }
 
-        //  ── una acción con red ──────────────
+        //  ── a network action ────────────────
         RowLayout {
             visible: opcion.modelData.tipo === "peligro"
             spacing: 8
             Layout.alignment: Qt.AlignVCenter
 
-            //  Salida sin sustos: cancelar está al
-            //  lado del botón rojo.
+            //  A way out without scares: cancel
+            //  sits next to the red button.
             IslandLabel {
                 visible: opcion.armada
                 text: "cancel"
@@ -263,8 +265,9 @@ Rectangle {
         }
 
         IslandSwitch {
-            //  Solo el tipo por defecto: una elección
-            //  lleva chips y un texto lleva campo.
+            //  Only the default type: a choice
+            //  carries chips and a text carries a
+            //  field.
             visible: !opcion.modelData.tipo
                      && opcion.modelData.error !== "fijo"
             checked: opcion.activa
@@ -272,16 +275,16 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        // ── opciones de varias respuestas
-        //  Las alternativas las da el servicio. Aquí estaba
-        //  `de === "idiomas"` a fuego y cualquier otra cosa
-        //  devolvía una lista vacía, así que añadir una
-        //  elección obligaba a tocar esta pantalla.
+        // ── multi-answer options
+        //  The alternatives come from the service. This used to
+        //  have `de === "idiomas"` hard-wired and anything else
+        //  returned an empty list, so adding a choice forced
+        //  touching this screen.
         //
-        //  Un plugin de fuera no puede añadir su caso al
-        //  servicio: trae las suyas en `alternativas`, tal
-        //  como promete K4.Ajustes desde el principio —
-        //  hasta ahora esa promesa pintaba una fila vacía.
+        //  An outside plugin cannot add its case to the service:
+        //  it brings its own in `alternativas`, exactly as
+        //  K4.Ajustes has promised from the start — until now
+        //  that promise painted an empty row.
         RowLayout {
             visible: opcion.modelData.tipo === "eleccion"
             Layout.fillWidth: false
@@ -329,7 +332,7 @@ Rectangle {
             }
         }
 
-        //  ── opciones numéricas ───────
+        //  ── numeric options ───────────
         //  Widths and heights: a value you nudge, not one you type. Two
         //  steppers and the number between them, in the same chip language
         //  as the choices above — a spinbox with a text field would ask for
@@ -432,9 +435,9 @@ Rectangle {
             }
         }
 
-        // ── opciones de texto libre
-        //  Una URL, un modelo, una clave de API: lo que un
-        //  interruptor no puede decir. El valor se entrega
+        // ── free-text options
+        //  A URL, a model, an API key: what a switch cannot
+        //  say. El valor se entrega
         //  al confirmar —Intro o clic fuera—, no tecla a
         //  tecla: quien guarda escribe un fichero cada vez.
         Rectangle {
@@ -449,7 +452,7 @@ Rectangle {
 
             Behavior on color { ColorAnimation { duration: 120 } }
 
-            //  La pista solo con el campo vacío y sin foco:
+            //  The hint only with the field empty and unfocused:
             //  en cuanto tecleas ya no hace falta.
             IslandLabel {
                 anchors.verticalCenter: parent.verticalCenter
@@ -474,9 +477,9 @@ Rectangle {
                 clip: true
                 selectByMouse: true
                 selectionColor: Theme.blue
-                //  Un secreto se ve mientras se teclea y se
-                //  tapa al parar: se puede corregir sin que
-                //  el token entero quede a la vista.
+                //  A secret shows while typed and covers
+                //  when stopped: it can be corrected without
+                //  the whole token being left in sight.
                 echoMode: opcion.modelData.secreto
                     ? TextInput.PasswordEchoOnEdit
                     : TextInput.Normal
@@ -494,22 +497,22 @@ Rectangle {
         }
     }
 
-    //  Toda la fila conmuta, no solo el interruptor: son
-    //  objetivos de 40 px de alto, sería absurdo obligar a
-    //  apuntar al de 24.
+    //  The whole row toggles, not just the switch: they are
+    //  40 px tall targets, it would be absurd to force aiming
+    //  at the 24 px one.
     //
-    //  Pero solo en las filas de interruptor. En las de varias
-    //  respuestas esta área va POR ENCIMA de los chips —se
-    //  declara después— y les comía el clic: el margen de 54
-    //  px por la derecha deja pasar el último y nada más, así
-    //  que en el selector de idioma solo se podía elegir
-    //  «English». Llevaba ahí desde que existe la pantalla.
-    //  Y en las de texto igual: el clic es para el campo.
+    //  But only on switch rows. On multi-answer ones this area
+    //  sits OVER the chips —it is declared later— and ate their
+    //  clicks: the 54 px right margin lets the last one through
+    //  and nothing else, so in the language picker only
+    //  «English» could be chosen. It had been there since the
+    //  screen exists. And the same on text ones: the click is
+    //  for the field.
     MouseArea {
         id: filaMouse
         enabled: !opcion.modelData.tipo
         anchors.fill: parent
-        anchors.rightMargin: 54     // deja pasar el interruptor
+        anchors.rightMargin: 54     // lets the switch through
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: if (opcion.disponible)

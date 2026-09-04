@@ -1,17 +1,17 @@
-//  Una tarjeta por agente, una fila por límite.
+//  One card per agent, one row per limit.
 //
-//  Lo que uno quiere saber son dos números: por dónde va y cuándo se le
-//  perdona. Así que cada fila es el nombre de la ventana, su barra, su
-//  porcentaje y cuándo reinicia —y nada más.
+//  What one wants to know is two numbers: where you stand and when
+//  it forgives you. So each row is the window's name, its bar, its
+//  percentage and when it resets —and nothing else.
 //
-//  El reinicio va con las dos formas de decirlo, una encima de otra: el día y
-//  la hora arriba y la cuenta atrás debajo. No sobra ninguna. «En 3 h 25 min»
-//  no se cruza con la agenda de nadie, y «hoy a las 19:59» no dice si te da
-//  tiempo a acabar lo que tienes abierto.
+//  The reset carries both ways of saying it, one over the other: day
+//  and time on top and the countdown below. Neither is spare. «In
+//  3 h 25 min» crosses nobody's schedule, and «today at 19:59» does
+//  not say whether you have time to finish what you have open.
 //
-//  La ventana que está contando ahora mismo va en tinta y las demás en gris:
-//  las cinco horas y la semana no aprietan a la vez, y distinguirlas de un
-//  vistazo es media pregunta contestada.
+//  The window counting right now goes in ink and the rest in gray:
+//  the five hours and the week do not squeeze at once, and telling
+//  them apart at a glance is half the question answered.
 
 import QtQuick
 import QtQuick.Layouts
@@ -24,14 +24,15 @@ FadeIn {
 
     required property var plugin
 
-    //  El reloj de la casa, a minutos. Se pasa como argumento a las funciones
-    //  que lo necesitan para que el enlace se entere de que depende de él: una
-    //  cuenta atrás que no se reevalúa se queda congelada en la hora de abrir.
+    //  The house clock, to the minute. Passed as an argument to the
+    //  functions that need it so the binding learns it depends on it:
+    //  a countdown that does not re-evaluate stays frozen at opening
+    //  time.
     readonly property date ahora: Clock.date
 
-    //  Verde hasta bien entrado, ámbar cuando queda menos de la mitad y rojo
-    //  cuando ya conviene medir. Los cortes son los mismos para todos los
-    //  agentes: si cada uno tuviera el suyo, el color dejaría de significar.
+    //  Green until well in, amber when less than half is left and
+    //  red when it pays to measure. The cutoffs are the same for all
+    //  agents: if each had its own, color would stop meaning.
     function tono(pct) {
         if (pct >= 85) return Theme.red
         if (pct >= 60) return Theme.yellow
@@ -63,17 +64,18 @@ FadeIn {
                           : `in ${dias} days`
     }
 
-    //  Los días por su nombre, y en el idioma de la barra. `Qt.formatDate` los
-    //  saca en el del sistema, que aquí ponía «Sun» en medio de una interfaz
-    //  en español. Empieza en domingo porque así los numera `getDay()`.
+    //  Days by name, and in the bar's language. `Qt.formatDate`
+    //  gives them in the system's, which here put «Sun» in the
+    //  middle of a Spanish interface. Starts on Sunday because that
+    //  is how `getDay()` numbers them.
     readonly property var nombresDia: [
         "Sun", "Mon", "Tue", "Wed",
         "Thu", "Fri", "Sat"
     ]
 
-    //  El día y la hora del reinicio. Se dice como lo diría uno: «hoy» y
-    //  «mañana» tienen nombre, la semana que viene se nombra por el día, y más
-    //  allá ya hace falta la fecha.
+    //  The reset's day and time. Said the way one would say it:
+    //  «today» and «tomorrow» have names, next week is named by its
+    //  day, and beyond that the date is needed.
     function cuando(segundos, reloj) {
         if (!segundos)
             return ""
@@ -81,9 +83,10 @@ FadeIn {
         const d = new Date(segundos * 1000)
         const hora = Qt.formatTime(d, "HH:mm")
 
-        //  Los días se cuentan de medianoche a medianoche, no por las horas
-        //  que faltan: a las once de la noche, algo que reinicia dentro de tres
-        //  horas es mañana, y decir «hoy» ahí sería mentira.
+        //  Days are counted midnight to midnight, not by the hours
+        //  left: at eleven at night, something resetting in three
+        //  hours is tomorrow, and saying «today» there would be a
+        //  lie.
         const suyo = new Date(d.getFullYear(), d.getMonth(), d.getDate())
         const nuestro = new Date(reloj.getFullYear(), reloj.getMonth(), reloj.getDate())
         const dias = Math.round((suyo.getTime() - nuestro.getTime()) / 86400000)
@@ -94,14 +97,15 @@ FadeIn {
             return `tomorrow ${hora}`
         if (dias < 7)
             return view.nombresDia[d.getDay()] + " " + hora
-        //  Tan lejos no llega ninguna ventana de hoy, pero si mañana aparece
-        //  una de un mes, la fecha en números no depende de ningún idioma.
+        //  No window today reaches that far, but if one a month out
+        //  shows up tomorrow, the numeric date depends on no
+        //  language.
         return Qt.formatDate(d, "d/M") + " " + hora
     }
 
-    //  De cuándo es el dato. Sale siempre, también cuando es de hace un
-    //  momento: quien lo lee tiene que saber que esto es una foto, no un
-    //  contador en vivo.
+    //  How old the data is. Always shown, even when it is from a
+    //  moment ago: whoever reads it must know this is a snapshot,
+    //  not a live counter.
     function frescura(segundos, reloj) {
         if (!segundos)
             return "no date"
@@ -130,7 +134,7 @@ FadeIn {
         anchors.bottomMargin: 12
         spacing: 8
 
-        // ── cabecera ──────────────────────────────────────────────
+        // ── header ─────────────────────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 20
@@ -168,7 +172,7 @@ FadeIn {
             }
         }
 
-        // ── una tarjeta por agente ────────────────────────────────
+        // ── one card per agent ─────────────────────────────────────
         Repeater {
             model: view.plugin.agentes
 
@@ -215,11 +219,11 @@ FadeIn {
 
                         Item { Layout.fillWidth: true }
 
-                        //  De dónde salió la cifra. Solo se dice cuando es de
-                        //  la caché de la herramienta, que es cuando puede
-                        //  llevar horas de retraso: preguntado al servidor,
-                        //  «hace un momento» ya lo dice todo y añadir «en
-                        //  vivo» sería ruido en la fila.
+                        //  Where the figure came from. Said only
+                        //  when it is from the tool's cache, which
+                        //  is when it can be hours behind: asked of
+                        //  the server, «a moment ago» already says it
+                        //  all and adding «live» would be row noise.
                         IslandLabel {
                             visible: tarjeta.modelData.fuente === "cache"
                             text: "cached"
@@ -234,8 +238,9 @@ FadeIn {
                         }
                     }
 
-                    //  Instalado pero sin haber hablado nunca con el servidor:
-                    //  no hay porcentaje que enseñar y decirlo es la respuesta.
+                    //  Installed but never having talked to the server:
+                    //  there is no percentage to show and saying so
+                    //  is the answer.
                     IslandLabel {
                         visible: !tarjeta.limites.length
                         Layout.fillWidth: true
@@ -261,7 +266,7 @@ FadeIn {
 
                             IslandLabel {
                                 text: fila.modelData.nombre
-                                //  La que cuenta ahora, en tinta; las demás, apagadas.
+                                //  The one counting now, in ink; the rest, dimmed.
                                 color: fila.modelData.activo ? Theme.ink : Theme.muted
                                 font.pixelSize: 10
                                 font.weight: fila.modelData.activo ? Font.DemiBold : Font.Normal
@@ -276,9 +281,10 @@ FadeIn {
                                 maximo: 100
                                 grosor: 6
                                 tono: view.tono(fila.pct)
-                                //  Un cupo recién tocado sigue siendo un cupo
-                                //  tocado: sin mínimo, un 0,4% no se ve y
-                                //  parece que no has gastado nada.
+                                //  A freshly touched quota is still a
+                                //  touched quota: without a minimum,
+                                //  0.4% does not show and it looks
+                                //  like nothing was spent.
                                 minimo: 3
                             }
 
@@ -292,9 +298,10 @@ FadeIn {
                                 Layout.preferredWidth: 40
                             }
 
-                            //  Cuándo se le perdona, en las dos formas. Sin
-                            //  hueco entre las dos líneas: son el mismo dato
-                            //  dicho dos veces, no dos cosas distintas.
+                            //  When it forgives you, both ways. No
+                            //  gap between the two lines: they are
+                            //  the same datum said twice, not two
+                            //  different things.
                             ColumnLayout {
                                 spacing: 0
                                 Layout.preferredWidth: 92
@@ -326,7 +333,7 @@ FadeIn {
 
         Item { Layout.fillHeight: true }
 
-        // ── mientras no hay nada que enseñar ──────────────────────
+        // ── while there is nothing to show ─────────────────────────
         IslandLabel {
             visible: !view.plugin.cargado || !view.plugin.agentes.length
             Layout.fillWidth: true
