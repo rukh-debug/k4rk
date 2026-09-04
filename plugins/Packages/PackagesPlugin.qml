@@ -167,6 +167,13 @@ K4Plugin {
         return packages
     }
 
+    //  A search that asked for the wheel while one was still dying:
+    //  `parar()` is async, so the restart happens in `onTerminado` —
+    //  a `running = true` written right after the kill is a no-op that
+    //  eats the newest query.
+    property bool repoSearchPendiente: false
+    property bool aurSearchPendiente: false
+
     function runRepoSearch() {
         const q = packageQuery()
         if (q.length < 2) {
@@ -174,10 +181,12 @@ K4Plugin {
             return
         }
 
-        if (repoSearchProcess.running)
-            repoSearchProcess.parar(15)
-
         repoSearchProcess.command = ["pacman", "-Ss", "--"].concat(q.split(/\s+/))
+        if (repoSearchProcess.running) {
+            repoSearchPendiente = true
+            repoSearchProcess.parar(15)
+            return
+        }
         repoSearchProcess.running = true
     }
 
@@ -195,11 +204,13 @@ K4Plugin {
             return
         }
 
-        if (aurSearchProcess.running)
-            aurSearchProcess.parar(15)
-
-        aurSearching = true
         aurSearchProcess.command = ["yay", "-Ss", "--aur", "--color=never", "--"].concat(q.split(/\s+/))
+        aurSearching = true
+        if (aurSearchProcess.running) {
+            aurSearchPendiente = true
+            aurSearchProcess.parar(15)
+            return
+        }
         aurSearchProcess.running = true
     }
 
@@ -309,6 +320,9 @@ K4Plugin {
         abierto = false
         paquete = null
     }
+
+    //  The door the host knocks on for Escape and the click-outside.
+    function close() { cerrar() }
 
     // ── updates, counted once for the whole bar ────────────────────
     property int pendientesRepo: -1          // -1 = not looked yet
@@ -448,6 +462,13 @@ K4Plugin {
         onSalida: function (texto) {
             self.repoResults = self.parsePackages(texto, false)
         }
+
+        onTerminado: function (codigo) {
+            if (self.repoSearchPendiente) {
+                self.repoSearchPendiente = false
+                repoSearchProcess.running = true
+            }
+        }
     }
 
     K4.Process {
@@ -459,7 +480,13 @@ K4Plugin {
             self.aurSearching = false
         }
 
-        onTerminado: self.aurSearching = false
+        onTerminado: function (codigo) {
+            self.aurSearching = false
+            if (self.aurSearchPendiente) {
+                self.aurSearchPendiente = false
+                aurSearchProcess.running = true
+            }
+        }
     }
 
     Timer {

@@ -170,7 +170,13 @@ K4Plugin {
         salida.restart()
     }
 
-    function alternar() { abierto ? cerrar() : abrir() }
+    //  The door the host knocks on for Escape and the click-outside: by
+    //  name, `close`, so the catcher can find it. `cerrar` alone was a
+    //  door painted on the wall — the catcher swallowed the click and
+    //  nothing closed.
+    function close() { cerrar() }
+
+    function alternar() { abierto ? cerrar() : open() }
 
     Timer {
         id: salida
@@ -192,10 +198,23 @@ K4Plugin {
 
     property K4.Fichero fSsh: K4.Fichero {
         path: self.rutaSsh
-        onLoaded: self.guardados = self.leerSsh()
+        onLoaded: {
+            self.guardados = self.leerSsh()
+            //  El `connect` por guion espera a esta señal: su alias se
+            //  busca aquí, con la lista ya en memoria.
+            if (self._conectarTrasCargar) {
+                self._conectarTrasCargar = ""
+                self.buscarParaConectar(self._aliasPendiente)
+            }
+        }
         //  Sin fichero no hay nada que leer, y es lo normal la primera vez.
         onLoadFailed: self.guardados = []
     }
+
+    //  Lo que el `connect` por guion deja encargado hasta que la lista
+    //  termine de releerse.
+    property string _conectarTrasCargar: ""
+    property string _aliasPendiente: ""
 
     property K4.Fichero fExtras: K4.Fichero {
         path: self.rutaExtras
@@ -897,17 +916,26 @@ K4Plugin {
         target: "k4.ssh"
 
         //  El selector, que es para lo que se abre esto.
-        function open(): void { self.abrir() }
-        function close(): void { self.cerrar() }
+        function open(): void { self.open() }
+        function close(): void { self.close() }
         function toggle(): void { self.alternar() }
 
         //  Y conectar por guion, sin abrir nada: para atajos propios o para
-        //  llamarlo desde otro sitio.
+        //  llamarlo desde otro sitio. La lista se relee en diferido —la
+        //  búsqueda vive en onLoaded— porque `reload()` es asíncrono y lo
+        //  que ya está en memoria puede ser más viejo que el host que
+        //  acaban de añadir.
         function connect(alias: string): void {
+            self._aliasPendiente = alias
+            self._conectarTrasCargar = "1"
             self.fSsh.reload()
-            const h = self.guardados.find(function (x) { return x.alias === alias })
-            if (h)
-                self.conectar(self.conExtras(h), false)
         }
+    }
+
+    //  La parte diferida del `connect` de arriba: la lista ya releída.
+    function buscarParaConectar(alias) {
+        const h = guardados.find(function (x) { return x.alias === alias })
+        if (h)
+            conectar(conExtras(h), false)
     }
 }

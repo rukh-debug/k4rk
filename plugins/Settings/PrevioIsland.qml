@@ -78,12 +78,6 @@ ColumnLayout {
     //  entero, que es justo lo que se ha venido a ver.
     readonly property int huecos: Fondos.huecos
 
-    readonly property bool hayDock: !!Settings.valor("plugin_dual")
-    readonly property bool dockAparta: {
-        const v = Settings.valor("ext_dual_reservaDock")
-        return v === "reserve" || v === "auto"
-    }
-
     // ── la pantalla ───────────────────────────────────────────────
     Rectangle {
         Layout.fillWidth: true
@@ -204,47 +198,6 @@ ColumnLayout {
                 color: Qt.rgba(1, 1, 1, 0.30)
             }
         }
-
-        //  Y el dock, al lado contrario de la barra: es donde vive.
-        //
-        //  A su alto de verdad —el mismo que la island, `Theme.baseHeight`— y
-        //  con su forma. Los iconos son puntos: el dock real son mil quinientas
-        //  líneas atadas a tus aplicaciones abiertas y a sus ventanas, y montar
-        //  un segundo dock funcionando para mirarlo de reojo no sale a cuenta.
-        //  Lo que aquí importa es cuánto ocupa y dónde se pone.
-        Rectangle {
-            id: muellecito
-
-            visible: previo.hayDock
-            height: Math.max(4, Theme.baseHeight * barrita.escala)
-            width: Math.max(40, height * 7)
-            radius: height / 2.6
-            color: Qt.rgba(0, 0, 0, 0.55)
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.12)
-
-            x: Math.round((parent.width - width) / 2)
-            y: previo.donde === "top"
-                ? parent.height - height - Math.round(4 * barrita.escala * 4)
-                : Math.round(4 * barrita.escala * 4)
-
-            Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-
-            Row {
-                anchors.centerIn: parent
-                spacing: Math.max(2, muellecito.height * 0.22)
-
-                Repeater {
-                    model: 5
-                    delegate: Rectangle {
-                        width: Math.max(2, muellecito.height * 0.5)
-                        height: width
-                        radius: width / 4
-                        color: Qt.rgba(1, 1, 1, 0.55)
-                    }
-                }
-            }
-        }
     }
 
     // ── lo que el dibujo no puede decir ───────────────────────────
@@ -259,15 +212,6 @@ ColumnLayout {
                 return "Windows take the whole screen and the bar floats over them."
             return "Not visible until you take the pointer to the edge."
         }
-        color: Theme.dim
-        font.pixelSize: 10
-        wrapMode: Text.WordWrap
-    }
-
-    IslandLabel {
-        Layout.fillWidth: true
-        visible: previo.hayDock
-        text: "The dock shows in the sketch, but its settings live in Plugins, inside “Dual mode”."
         color: Theme.dim
         font.pixelSize: 10
         wrapMode: Text.WordWrap

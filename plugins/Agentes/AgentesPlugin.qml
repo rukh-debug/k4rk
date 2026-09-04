@@ -77,7 +77,7 @@ K4Plugin {
         let alto = 51                       // márgenes, cabecera y su hueco
         for (let i = 0; i < agentes.length; i++) {
             const filas = Math.max(1, (agentes[i].limites || []).length)
-            alto += 40 + 28 * filas
+            alto += 40 + 30 * filas
         }
         return alto + 8 * (agentes.length - 1)
     }
@@ -196,12 +196,25 @@ K4Plugin {
             }
             return
         }
-        K4.Pildora.registrar("agentes.limite", Math.round(apurado.pct) + "%",
+        //  Re-registrar solo si algo cambió: `apurado` se reengancha en
+        //  cada ronda —el objeto es nuevo aunque el número no lo sea— y
+        //  reordenar toda la píldora cada veinte segundos es ruido que
+        //  nadie pidió.
+        const pct = Math.round(apurado.pct)
+        const color = apurado.pct >= 95 ? Theme.red : Theme.yellow
+        if (_avisoPuesto && _avisoPct === pct && String(_avisoColor) === String(color))
+            return
+        K4.Pildora.registrar("agentes.limite", pct + "%",
                              0xF06A9,
-                             apurado.pct >= 95 ? Theme.red : Theme.yellow,
+                             color,
                              75, true)
         _avisoPuesto = true
+        _avisoPct = pct
+        _avisoColor = color
     }
+
+    property int _avisoPct: -1
+    property var _avisoColor: null
 
     onAprietaChanged: pintarAviso()
     onApuradoChanged: pintarAviso()

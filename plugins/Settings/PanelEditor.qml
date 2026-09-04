@@ -237,7 +237,12 @@ ColumnLayout {
                         editor.bloque(hueco.modelData)
                     visible: editor.visibleEl(hueco.modelData)
                     Layout.fillWidth: true
-                    Layout.preferredHeight: visible ? bloque.altura : 0
+                    //  `bloque` can be null for one frame: `orden` and
+                    //  `bloques` re-evaluate in engine order when a card
+                    //  registers, and the model can know an id before the
+                    //  list does. Guarded, that frame draws a blank slot
+                    //  instead of throwing.
+                    Layout.preferredHeight: visible && bloque ? bloque.altura : 0
                     radius: 8
                     color: Theme.islandBg
 
@@ -248,7 +253,7 @@ ColumnLayout {
                         spacing: 8
 
                         IconGlyph {
-                            text: String.fromCodePoint(hueco.bloque.glifo)
+                            text: String.fromCodePoint(hueco.bloque ? hueco.bloque.glifo : 0xF0431)
                             color: Theme.dim
                             font.pixelSize: 10
                             renderType: Text.NativeRendering
@@ -256,7 +261,7 @@ ColumnLayout {
                         }
 
                         IslandLabel {
-                            text: hueco.bloque.nombre
+                            text: hueco.bloque ? hueco.bloque.nombre : hueco.modelData
                             color: Theme.muted
                             font.pixelSize: 9
                             Layout.alignment: Qt.AlignVCenter
@@ -358,7 +363,7 @@ ColumnLayout {
                 spacing: 10
 
                 IconGlyph {
-                    text: String.fromCodePoint(fila.bloque.glifo)
+                    text: String.fromCodePoint(fila.bloque ? fila.bloque.glifo : 0xF0431)
                     color: Theme.ink
                     font.pixelSize: 15
                     renderType: Text.NativeRendering
@@ -371,7 +376,7 @@ ColumnLayout {
                     spacing: 1
 
                     IslandLabel {
-                        text: fila.bloque.nombre
+                        text: fila.bloque ? fila.bloque.nombre : fila.modelData
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
                     }
