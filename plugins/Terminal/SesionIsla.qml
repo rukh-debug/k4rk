@@ -103,7 +103,11 @@ QtObject {
             if (m.que === "marco") {
                 sesion.marco = m
             } else if (m.que === "config") {
-                sesion.estela = m.estela
+                //  `estela` sin guarda era el único campo sin ella: un
+                //  k4term que no lo mande deja `undefined`, que se hace 0
+                //  y mata el rastro del cursor sin decir nada.
+                if (m.estela !== undefined)
+                    sesion.estela = m.estela
                 if (m.fuente)
                     sesion.fuente = m.fuente
                 if (m.tamano)

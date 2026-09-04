@@ -235,6 +235,12 @@ K4Plugin {
 
     function cerrar() { abierto = false }
 
+    //  La puerta en la que llama el host para Escape y el clic fuera. Sin
+    //  ella el capturador se tragaba el clic sin cerrar nada: lo peor de
+    //  los dos mundos. La sesión no muere — cerrar la vista es cerrar la
+    //  vista.
+    function close() { cerrar() }
+
     //  ── el portapapeles ───────────────────────────────────────────
     //
     //  La sesión no tiene ninguno: no es una ventana, no habla con el
@@ -822,7 +828,10 @@ K4Plugin {
             }
 
             buscar.pid = resto
-            buscar.running = true
+            if (buscar.running)
+                buscar.relanzar = true
+            else
+                buscar.running = true
         }
     }
 
@@ -1245,7 +1254,18 @@ K4Plugin {
     K4.Process {
         id: buscar
         property string pid: ""
+        //  Un clic en el indicador que llega mientras el `hyprctl clients`
+        //  anterior sigue vivo: asignar `pid` y `running` ahí es un no-op
+        //  y ese clic se perdía. El pid queda apuntado y `onTerminado`
+        //  relanza la búsqueda con él.
+        property bool relanzar: false
         command: ["hyprctl", "clients", "-j"]
+        onTerminado: function (codigo) {
+            if (buscar.relanzar) {
+                buscar.relanzar = false
+                buscar.running = true
+            }
+        }
         onSalida: function (texto) {
             let ventanas = []
             try {
@@ -1263,7 +1283,6 @@ K4Plugin {
             enfoque.pid = buscar.pid
             enfoque.running = true
         }
-        onTerminado: running = false
     }
 
     //  Hyprland 0.56 ya no traga `dispatch focuswindow pid:N`: su parser Lua

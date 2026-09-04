@@ -329,9 +329,18 @@ K4Plugin {
     }
 
     // ── aplicar en caliente ───────────────────────────────────────
+    //
+    //  Lo que espera su turno: el último paso de un arrastre puede llegar
+    //  mientras el `hyprctl eval` anterior sigue vivo, y un `running = true`
+    //  ahí es un no-op que se comería ese paso. Espera a `onTerminado`.
+    property bool applyPendiente: false
+
     function apply() {
         evalProcess.command = ["hyprctl", "eval", luaBody()]
-        evalProcess.running = true
+        if (evalProcess.running)
+            applyPendiente = true
+        else
+            evalProcess.running = true
         saveState()
     }
 
@@ -345,6 +354,7 @@ K4Plugin {
 
         ensureRequire()
         saveState()
+        _refrescarPersistido()
     }
 
     // Añade el require al final de hyprland.lua si no está. Va el último a
@@ -361,6 +371,17 @@ K4Plugin {
 
     function isPersisted() {
         return entryView.text().indexOf("config.k4-theme") !== -1
+    }
+
+    //  The badge in every section binds to THIS, not to `isPersisted()`:
+    //  a method result is not a notifiable, and a binding that calls one
+    //  never re-evaluates — the badge kept saying «session only» after a
+    //  save until the whole motor was rebuilt. It is refreshed wherever
+    //  the file can change: on load, and after `persist()`.
+    property bool persistido: false
+
+    function _refrescarPersistido() {
+        persistido = isPersisted()
     }
 
     // ── estado propio, para reabrir con los mismos valores ────────
@@ -908,10 +929,26 @@ K4Plugin {
 
     // ── archivos ──────────────────────────────────────────────────
     K4.Fichero { id: themeView; path: self.themeFile }
-    K4.Fichero { id: entryView; path: self.entryFile; blockLoading: true }
+    //  entryView: besides being the persist target, its text is what
+    //  `persistido` is derived from — recomputed when it loads, so a
+    //  fresh bar says the truth about yesterday's save.
+    K4.Fichero {
+        id: entryView
+        path: self.entryFile
+        blockLoading: true
+        onLoaded: self._refrescarPersistido()
+    }
     K4.Fichero { id: stateView; path: self.stateFile; blockLoading: true }
 
-    K4.Process { id: evalProcess }
+    K4.Process {
+        id: evalProcess
+        onTerminado: function (codigo) {
+            if (self.applyPendiente) {
+                self.applyPendiente = false
+                evalProcess.running = true
+            }
+        }
+    }
 
     K4.Process {
         // el estado vive en ~/.local/state/k4, que puede no existir aún

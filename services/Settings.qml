@@ -188,13 +188,22 @@ Singleton {
     //  Writing one placement. side "" is the row's «Follow the bar» chip:
     //  the entry leaves the map instead of storing a copy of the bar's own
     //  placement, so moving the bar later moves the views that follow it.
-    function ponerPlacement(id, side, align) {
+    //
+    //  Two doors: `ponerPlacementMemoria` moves the dot without touching
+    //  the disk — the drag calls it on every move, and a drag is dozens of
+    //  moves — and `ponerPlacement` is the same write plus the save. The
+    //  drag saves once, on release.
+    function ponerPlacementMemoria(id, side, align) {
         const d = Object.assign({}, islandPlacements || {})
         if (side === "")
             delete d[id]
         else
             d[id] = { side: side, align: align }
         islandPlacements = d
+    }
+
+    function ponerPlacement(id, side, align) {
+        ponerPlacementMemoria(id, side, align)
         guardar()
     }
 

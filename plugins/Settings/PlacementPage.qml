@@ -275,6 +275,10 @@ ColumnLayout {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        //  A click is one placement and one save. A drag
+                        //  is dozens of moves: the dot follows in memory
+                        //  and the disk is written once, on release —
+                        //  not per pixel.
                         onPressed: function (mouse) {
                             const c = monitor.colocacionEn(mouse.x, mouse.y)
                             Settings.ponerPlacement(tarjeta.idVista,
@@ -283,6 +287,11 @@ ColumnLayout {
                         onPositionChanged: function (mouse) {
                             if (!pressed)
                                 return
+                            const c = monitor.colocacionEn(mouse.x, mouse.y)
+                            Settings.ponerPlacementMemoria(tarjeta.idVista,
+                                c.side, c.align)
+                        }
+                        onReleased: function (mouse) {
                             const c = monitor.colocacionEn(mouse.x, mouse.y)
                             Settings.ponerPlacement(tarjeta.idVista,
                                 c.side, c.align)

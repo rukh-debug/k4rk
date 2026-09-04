@@ -18,9 +18,7 @@ RowLayout {
 
     property var motor: null
 
-    readonly property bool puesto: !!guardar.motor
-        && typeof guardar.motor.isPersisted === "function"
-        && guardar.motor.isPersisted()
+    readonly property bool puesto: !!guardar.motor && guardar.motor.persistido
 
     Layout.fillWidth: true
     Layout.preferredHeight: 24
