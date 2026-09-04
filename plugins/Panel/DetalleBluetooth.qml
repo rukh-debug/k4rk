@@ -1,5 +1,5 @@
-//  El detalle de Bluetooth del centro de control. Vivía dentro de
-//  PanelView (870 líneas, siete secciones); ahora es una pieza con nombre.
+//  The control centre's Bluetooth detail. It lived inside PanelView
+//  (870 lines, seven sections); now it is a piece with a name.
 
 import QtQuick
 import QtQuick.Controls
@@ -46,7 +46,8 @@ IslandTile {
         }
 
         ListView {
-            //  La barra de la casa: sale sola si hay más de lo que cabe.
+            //  The house scrollbar: comes out on its own when there
+            //  is more than fits.
             ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true

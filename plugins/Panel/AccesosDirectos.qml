@@ -1,15 +1,17 @@
-//  La franja de accesos directos del centro de control, reordenable.
+//  The control centre's shortcuts strip, reorderable.
 //
-//  No usa RowLayout sino posiciones calculadas, y es por el arrastre: un
-//  Layout coloca a sus hijos él, así que mientras arrastras uno el Layout te
-//  lo devuelve a su sitio y no se puede mover. Con `x` calculada y un
-//  Behavior, el que arrastras sigue al ratón y los demás se apartan solos con
-//  una animación — que además es lo que hace entender que se están
-//  reordenando y no simplemente moviendo.
+//  It uses no RowLayout but computed positions, and it is because
+//  of dragging: a Layout places its children itself, so while you
+//  drag one the Layout gives it back its place and it cannot move.
+//  With a computed `x` and a Behavior, the dragged one follows the
+//  mouse and the others step aside on their own with an animation —
+//  which is moreover what makes one understand they are being
+//  reordered and not simply moved.
 //
-//  El clic y el arrastre comparten un solo MouseArea: si al soltar no hubo
-//  movimiento real, era un clic y se abre. Con dos áreas separadas —una para
-//  pulsar y otra para arrastrar— siempre gana una y la otra parece rota.
+//  Click and drag share a single MouseArea: if on release there was
+//  no real movement, it was a click and it opens. With two separate
+//  areas —one to click, one to drag— one always wins and the other
+//  looks broken.
 
 import QtQuick
 import K4 as K4
@@ -19,15 +21,16 @@ import "../../services"
 Item {
     id: franja
 
-    //  Qué hacer al abrir uno: lo pone el panel, que es quien sabe cerrarse.
+    //  What to do on opening one: the panel sets it, being the one
+    //  that knows how to close itself.
     signal abrir(string id)
 
     readonly property int esp: 10
     readonly property int altura: 40
 
-    //  Los que se pintan: los guardados que además existen y están
-    //  encendidos. Esta lista no cambia mientras se arrastra: el orden nuevo
-    //  se dibuja con ranuras y solo se guarda al soltar.
+    //  The ones painted: the saved ones that also exist and are on.
+    //  This list does not change while dragging: the new order is
+    //  drawn with slots and only saved on release.
     readonly property var disponibles: {
         const apps = PluginManager.aplicaciones
         const salida = []
@@ -43,23 +46,25 @@ Item {
         return salida
     }
 
-    //  Durante el arrastre el MODELO NO SE TOCA.
+    //  While dragging, the MODEL IS NOT TOUCHED.
     //
-    //  Lo intenté al revés —reordenar la lista en cada movimiento— y el
-    //  arrastre se moría a la primera: al cambiar el modelo, el Repeater
-    //  destruye y recrea sus celdas, y la que se estaba arrastrando se
-    //  llevaba consigo el agarre del ratón. Se soltaba sola y el clic acababa
-    //  abriendo otra cosa.
+    //  It was tried the other way —reordering the list on every
+    //  move— and the drag died at the first one: on the model
+    //  changing, the Repeater destroys and recreates its cells, and
+    //  the one being dragged took the mouse grip with it. It let go
+    //  by itself and the click ended up opening something else.
     //
-    //  Así que durante el arrastre solo hay dos números —de dónde salió y
-    //  dónde va— y cada celda calcula qué RANURA le toca. Es puro dibujo. El
-    //  modelo se reordena una sola vez, al soltar.
+    //  So while dragging there are only two numbers —where it came
+    //  from and where it goes— and each cell computes which SLOT is
+    //  its own. It is pure drawing. The model is reordered once,
+    //  on release.
     property int arrastrando: -1
     property int destino: -1
 
     readonly property var lista: disponibles
 
-    //  Uno más que los accesos: el botón que abre el cajón entero.
+    //  One more than the shortcuts: the button opening the whole
+    //  drawer.
     readonly property int anchoCelda:
         lista.length > 0
             ? (width - esp * lista.length) / (lista.length + 1)
@@ -67,9 +72,10 @@ Item {
 
     function posicion(i) { return i * (anchoCelda + esp) }
 
-    //  Qué ranura ocupa cada celda mientras se arrastra: la arrastrada va a
-    //  la de destino y las que quedan en medio se corren un sitio, que es lo
-    //  que hace ver que se está reordenando y no solo moviendo.
+    //  Which slot each cell takes while dragging: the dragged one
+    //  goes to the target's and those caught in between shift one
+    //  place, which is what makes reordering visible and not just
+    //  moving.
     function ranuraDe(i) {
         if (arrastrando < 0 || destino < 0 || arrastrando === destino)
             return i
@@ -82,21 +88,22 @@ Item {
         return i
     }
 
-    //  Y aquí sí: una sola vez, al soltar.
+    //  And here yes: once, on release.
     //
-    //  Recibe de dónde y a dónde en vez de leerlos de `arrastrando`, porque
-    //  quien llama tiene que haberlos puesto ya a -1: si no, el modelo cambia
-    //  con el arrastre todavía «vivo», las ranuras se calculan sobre la lista
-    //  NUEVA con el desplazamiento VIEJO, y la franja queda con un hueco y una
-    //  celda de menos. Se veía.
+    //  It receives from and to instead of reading them off
+    //  `arrastrando`, because the caller must have set them to -1
+    //  already: otherwise the model changes with the drag still
+    //  «alive», the slots are computed over the NEW list with the
+    //  OLD shift, and the strip is left with a gap and one cell
+    //  missing. It showed.
     function aplicar(de, a) {
         if (de < 0 || a < 0 || de === a)
             return
         const ids = disponibles.map(function (x) { return x.id })
         ids.splice(a, 0, ids.splice(de, 1)[0])
-        //  Los guardados que ahora no se pintan —un plugin apagado— se
-        //  conservan al final: apagar algo no debe borrar que lo tenías
-        //  anclado.
+        //  Saved ones not painted now —a plugin off— are kept at the
+        //  end: turning something off must not erase that you had it
+        //  pinned.
         const resto = (Settings.quickAccess || []).filter(function (id) {
             return ids.indexOf(id) < 0
         })
@@ -112,8 +119,8 @@ Item {
             required property var modelData
             required property int index
 
-            //  Los visuales los lleva el MouseArea de abajo: la baldosa no
-            //  escucha para no pelearse con el arrastre.
+            //  The visuals are carried by the MouseArea below: the
+            //  tile does not listen so as not to fight the drag.
             pulsable: false
             activa: raton.containsMouse || franja.arrastrando === index
 
@@ -123,22 +130,24 @@ Item {
             radius: 12
             z: franja.arrastrando === index ? 2 : 1
 
-            //  La x SIEMPRE es un enlace, nunca una asignación. Asignarla a
-            //  mano rompe el enlace para siempre, y como la fila todavía no
-            //  tiene ancho cuando se crean las celdas, todas se quedaban
-            //  apiladas en el cero — se veía una sola.
+            //  The x is ALWAYS a binding, never an assignment.
+            //  Assigning it by hand breaks the binding forever, and
+            //  since the row has no width yet when the cells are
+            //  created, they all stayed piled at zero — a single one
+            //  showed.
             //
-            //  Así que hay dos fuentes y manda la de arrastrar mientras dure:
-            //  al soltar, `arrastrando` vuelve a -1, el enlace recupera su
-            //  sitio y el Behavior lo lleva hasta él con una animación.
+            //  So there are two sources and the dragging one rules
+            //  while it lasts: on release, `arrastrando` returns to
+            //  -1, the binding recovers its place and the Behavior
+            //  carries it there with an animation.
             property real desplazado: 0
 
             x: franja.arrastrando === index
                 ? desplazado
                 : franja.posicion(franja.ranuraDe(index))
 
-            //  El que se arrastra NO anima —tiene que ir pegado al ratón—;
-            //  los que se apartan, sí.
+            //  The dragged one does NOT animate —it must stay glued
+            //  to the mouse—; the ones stepping aside do.
             Behavior on x {
                 enabled: franja.arrastrando !== celda.index
                 NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
@@ -183,9 +192,9 @@ Item {
                 onPositionChanged: function (ev) {
                     if (franja.arrastrando !== celda.index)
                         return
-                    //  Un umbral corto: sin él, el temblor de la mano al
-                    //  hacer clic ya cuenta como arrastre y el acceso no se
-                    //  abre nunca.
+                    //  A short threshold: without it, the hand's
+                    //  tremble on a click already counts as a drag
+                    //  and the shortcut never opens.
                     if (!movido && Math.abs(ev.x - cogidoEn) < 6)
                         return
                     movido = true
@@ -201,9 +210,10 @@ Item {
                 }
 
                 onReleased: {
-                    //  Todo a mano ANTES de tocar nada: al reordenar, esta
-                    //  misma celda se destruye y recrea, así que leerla
-                    //  después es leer un cadáver.
+                    //  Everything by hand BEFORE touching anything:
+                    //  on reordering, this very cell is destroyed and
+                    //  recreated, so reading it afterwards is reading
+                    //  a corpse.
                     const hubo = movido
                     const de = franja.arrastrando
                     const a = franja.destino
@@ -221,8 +231,9 @@ Item {
         }
     }
 
-    //  El cajón entero, siempre el último y quieto: no se reordena porque no
-    //  es un acceso directo, es la salida a todos los demás.
+    //  The whole drawer, always last and still: it does not
+    //  reorder because it is not a shortcut, it is the way out to
+    //  all the others.
     K4.Baldosa {
         x: franja.posicion(franja.lista.length)
         width: franja.anchoCelda

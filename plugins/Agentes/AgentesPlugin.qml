@@ -1,19 +1,20 @@
-//  Cómo van los límites de los CLI de agentes.
+//  How the agent CLIs' limits are doing.
 //
-//  Claude Code y Codex cortan por ventanas —las cinco horas, la semana, y en
-//  Claude además un cupo aparte para Fable— y averiguar por dónde vas obliga
-//  a abrir cada herramienta y preguntárselo. Esto lo enseña de un vistazo.
+//  Claude Code and Codex cut by windows —the five hours, the week,
+//  and in Claude also a separate quota for Fable— and finding out
+//  where you stand forces opening each tool and asking it. This
+//  shows it at a glance.
 //
-//  El dato no se le pide a nadie: los dos programas ya guardan en disco lo que
-//  el servidor les contestó la última vez, y `tools/agentes.py` lo lee y lo
-//  deja en la misma forma para los dos. La contrapartida es que el dato es de
-//  la última vez que corrió la herramienta, así que cada tarjeta dice de
-//  cuándo es el suyo. Un porcentaje viejo enseñado como si fuera de ahora
-//  engaña más que no enseñar nada.
+//  The data is asked of nobody: both programs already save to disk
+//  what the server last answered them, and `tools/agentes.py` reads
+//  it and leaves it in the same shape for both. The flip side is
+//  that the data is from the last time the tool ran, so each card
+//  says when its own is from. An old percentage shown as if current
+//  deceives more than showing nothing.
 //
-//  Sondear solo mientras está abierto es a propósito: sin píldora que
-//  alimentar, nadie mira estos números con la island plegada, y un proceso
-//  cada medio minuto toda la sesión para eso no se paga.
+//  Probing only while open is on purpose: with no pill to feed,
+//  nobody looks at these numbers with the island folded, and a
+//  process every half minute all session does not pay for that.
 
 import QtQuick
 import K4 as K4
@@ -31,20 +32,21 @@ K4Plugin {
 
     property bool abierto: false
 
-    //  Lo que devolvió el lector: una entrada por CLI instalado.
+    //  What the reader returned: one entry per installed CLI.
     property var agentes: []
     property bool cargado: false
 
-    // ── el aviso ──────────────────────────────────────────────────
+    // ── the warning ───────────────────────────────────────────────
     //
-    //  La píldora no está para llevar la cuenta —para eso se abre el módulo—
-    //  sino para el momento en que la cuenta importa: cuando queda poco y
-    //  todavía puedes decidir a qué lo gastas. Por eso aparece pasado un
-    //  umbral y desaparece sola, y por eso se puede apagar entera.
+    //  The pill is not there to keep the count —for that one opens
+    //  the module— but for the moment the count matters: when little
+    //  is left and you can still decide what to spend it on. Hence
+    //  it appears past a threshold and leaves on its own, and hence
+    //  it can be turned off entirely.
     property bool avisar: true
     property int umbral: 85
 
-    //  El límite más apurado de todos, sea de quien sea.
+    //  The tightest limit of all, whoever's it is.
     readonly property var apurado: {
         let peor = null
         for (let i = 0; i < agentes.length; ++i) {
@@ -61,20 +63,21 @@ K4Plugin {
     readonly property bool aprieta: avisar && apurado !== null
                                     && apurado.pct >= umbral
 
-    // lo aparta al abrirse; lo inyecta el host
+    // steps aside when it opens; the host injects it
     property var panel: null
 
     islandWidth: 560
 
-    //  El alto lo mandan los datos: cada agente es una tarjeta y cada límite
-    //  una fila. Las cuentas son las del delegado de la vista —10 de margen,
-    //  18 de cabecera, 6 de hueco y 24+4 por fila—; si allí cambian, aquí
-    //  también, porque una tarjeta más alta que su hueco se ve cortada.
+    //  The data dictates the height: each agent is a card and each
+    //  limit a row. The arithmetic is the view delegate's —10 margin,
+    //  18 header, 6 gap and 24+4 per row—; if it changes there, it
+    //  changes here too, because a card taller than its slot shows
+    //  cut off.
     islandHeight: {
         if (!cargado || !agentes.length)
             return 132
 
-        let alto = 51                       // márgenes, cabecera y su hueco
+        let alto = 51                       // margins, header and its gap
         for (let i = 0; i < agentes.length; i++) {
             const filas = Math.max(1, (agentes[i].limites || []).length)
             alto += 40 + 30 * filas
@@ -82,38 +85,41 @@ K4Plugin {
         return alto + 8 * (agentes.length - 1)
     }
 
-    //  El teclado entero mientras está abierto, y no `tecladoOpcional`.
+    //  The whole keyboard while open, and not `tecladoOpcional`.
     //
-    //  Parece de más para un módulo que solo se mira, y lo probé así primero.
-    //  Pero «opcional» es OnDemand, y OnDemand significa que el compositor da
-    //  el teclado SOLO si pinchas la superficie: abriéndolo desde el centro de
-    //  aplicaciones, desde el lanzador o por atajo no la pinchas nunca, así
-    //  que el ESC que el host ya trae no llegaba jamás. Cerraba con ESC solo
-    //  si antes le habías puesto el ratón encima, que es la clase de arreglo
-    //  que parece que funciona hasta que lo usas.
+    //  It seems excessive for a module one only looks at, and it was
+    //  tried that way first. But «optional» is OnDemand, and OnDemand
+    //  means the compositor gives the keyboard ONLY if you click the
+    //  surface: opening it from the application center, from the
+    //  launcher or by shortcut, you never click it, so the ESC the
+    //  host already carries never arrived. It closed with ESC only
+    //  if you had first put the mouse over it, which is the kind of
+    //  fix that seems to work until you use it.
     //
-    //  Se paga tenerlo: mientras esté abierto, ninguna ventana recibe teclas.
-    //  Se paga a gusto porque esto se abre, se mira y se cierra —el centro de
-    //  aplicaciones hace lo mismo por la misma razón— y porque la tecla con
-    //  la que se cierra tiene que funcionar siempre, no casi siempre.
+    //  Having it is paid for: while open, no window receives keys.
+    //  It is paid gladly because this opens, is looked at and closes
+    //  —the application center does the same for the same reason—
+    //  and because the key it closes with must always work, not
+    //  almost always.
     grabKeyboard: abierto
 
-    //  NO se cierra al salir el ratón.
+    //  It does NOT close on mouse exit.
     //
-    //  Esto se abre a propósito —desde el lanzador o por su píldora— y se
-    //  QUEDA MIRANDO: son cinco cifras que hay que leer, y para leerlas uno
-    //  aparta el ratón. Con el cierre por salida, apartarlo lo cerraba al
-    //  segundo. Peor todavía abriéndolo desde el lanzador: el puntero estaba
-    //  dentro de la island —era el lanzador— y al cambiar de plugin quedaba
-    //  fuera, así que se cerraba solo sin que nadie hubiera movido nada.
+    //  This opens on purpose —from the launcher or by its pill— and
+    //  STAYS TO BE LOOKED AT: they are five figures to read, and to
+    //  read them one moves the mouse away. With close-on-exit,
+    //  moving it away closed it within a second. Worse still opened
+    //  from the launcher: the pointer was inside the island —it was
+    //  the launcher— and on switching plugins it ended up outside,
+    //  so it closed itself without anybody having moved anything.
     //
-    //  Cerrar sigue siendo fácil y de tres maneras: ESC (que este plugin se
-    //  queda el teclado para que funcione siempre), el aspa de la cabecera, y
-    //  volver a abrirlo.
+    //  Closing stays easy and three ways: ESC (this plugin keeps the
+    //  keyboard so it always works), the header cross, and opening
+    //  it again.
     closeOnHoverExit: false
 
     handlesBackgroundTap: true
-    onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón
+    onBackgroundTapped: {}   // swallows the click: closing is the button's business
 
     function toggle() {
         abierto = !abierto
@@ -134,10 +140,10 @@ K4Plugin {
             lector.running = true
     }
 
-    //  Preguntarle al servidor por TU uso, con el token que Claude Code ya
-    //  tiene en disco. Es lectura de tu propia cuenta y no gasta cupo. Se
-    //  puede apagar, y entonces se lee la caché de disco de la herramienta —
-    //  que es correcta pero va con horas de retraso.
+    //  Ask the server about YOUR usage, with the token Claude Code
+    //  already has on disk. It is a read of your own account and
+    //  spends no quota. It can be turned off, and then the tool's
+    //  disk cache is read — correct but hours behind.
     property bool enVivo: true
 
     K4.Process {
@@ -160,8 +166,9 @@ K4Plugin {
         onLineaError: function (linea) { console.warn("agentes:", linea) }
     }
 
-    //  Mientras está a la vista se vuelve a mirar de vez en cuando: si estás
-    //  trabajando con el agente en otra ventana, el porcentaje se mueve solo.
+    //  While in view it is looked at again now and then: if you
+    //  are working with the agent in another window, the percentage
+    //  moves on its own.
     Timer {
         interval: 20000
         repeat: true
@@ -169,9 +176,10 @@ K4Plugin {
         onTriggered: self.refrescar()
     }
 
-    //  Y de fondo, solo si hay aviso que dar y solo cada cinco minutos. Es la
-    //  única razón para leer con la island plegada, así que se apaga con el
-    //  aviso: quien no lo quiera no paga ni un proceso.
+    //  And in the background, only when there is a warning to give
+    //  and only every five minutes. It is the only reason to read
+    //  with the island folded, so it turns off with the warning:
+    //  whoever does not want it pays not one process.
     Timer {
         interval: 300000
         repeat: true
@@ -180,12 +188,12 @@ K4Plugin {
         onTriggered: self.refrescar()
     }
 
-    // ── la píldora ────────────────────────────────────────────────
+    // ── the pill ──────────────────────────────────────────────────
 
-    //  Se lleva la cuenta de si está puesta en vez de llamar a `quitar` cada
-    //  vuelta: el servicio reconstruye la lista entera en cada llamada, y
-    //  quitar lo que ya no estaba redibujaba la píldora de todo el mundo cada
-    //  cinco minutos para nada.
+    //  Whether it is up is tracked instead of calling `quitar` every
+    //  round: the service rebuilds the whole list on every call, and
+    //  removing what was no longer there redrew everybody's pill
+    //  every five minutes for nothing.
     property bool _avisoPuesto: false
 
     function pintarAviso() {
@@ -196,10 +204,10 @@ K4Plugin {
             }
             return
         }
-        //  Re-registrar solo si algo cambió: `apurado` se reengancha en
-        //  cada ronda —el objeto es nuevo aunque el número no lo sea— y
-        //  reordenar toda la píldora cada veinte segundos es ruido que
-        //  nadie pidió.
+        //  Re-register only if something changed: `apurado` re-hooks
+        //  every round —the object is new though the number is not—
+        //  and reordering the whole pill every twenty seconds is
+        //  noise nobody asked for.
         const pct = Math.round(apurado.pct)
         const color = apurado.pct >= 95 ? Theme.red : Theme.yellow
         if (_avisoPuesto && _avisoPct === pct && String(_avisoColor) === String(color))
@@ -227,7 +235,7 @@ K4Plugin {
         }
     }
 
-    // ── lo que el usuario decide ──────────────────────────────────
+    // ── what the user decides ─────────────────────────────────────
 
     property var guardado: K4.Guardado {
         plugin: "agents"
@@ -311,8 +319,9 @@ K4Plugin {
         function refresh(): void { self.refrescar() }
     }
 
-    //  Buscar «claude» o «límites» en el lanzador tiene que traer esto: es lo
-    //  que uno escribe cuando la pregunta es «¿cuánto me queda?».
+    //  Searching «claude» or «limits» in the launcher must bring
+    //  this: it is what one types when the question is «how much is
+    //  left for me?».
     K4.Lanzador {
         plugin: "agents"
         onBuscando: function (texto) {

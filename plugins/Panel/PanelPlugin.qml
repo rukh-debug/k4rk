@@ -1,5 +1,5 @@
-//  Centro de control: Wi‑Fi, Bluetooth, volumen, reproducción, accesos y
-//  notificaciones. Cuatro pestañas dentro de la misma vista.
+//  Control centre: Wi‑Fi, Bluetooth, volume, playback, shortcuts and
+//  notifications. Four tabs inside the same view.
 
 import QtQuick
 import K4 as K4
@@ -60,18 +60,19 @@ K4Plugin {
         return 14 + 30 + 12 * bloques + alto + 20
     }
 
-    // solo mientras se escribe la contraseña de una red
-    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
-    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
-    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
-    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
+    // only while typing a network's password
+    //  The whole keyboard while open: «optional» is OnDemand and the
+    //  compositor only gives it if you CLICK the surface, so opened
+    //  from the application center or by shortcut not even ESC
+    //  arrived. See `tecladoOpcional` in api/K4/Plugin.qml.
     grabKeyboard: open
 
     handlesBackgroundTap: true
     onBackgroundTapped: toggle()
 
     function toggle(wanted) {
-        // pedir una pestaña que no es la que se ve cambia a ella en vez de cerrar
+        // asking for a tab that is not the visible one switches to
+        // it instead of closing
         const wantsTab = wanted !== undefined && wanted.length > 0
         open = !open || (wantsTab && wanted !== tab)
 
@@ -87,8 +88,9 @@ K4Plugin {
     function openTab(wanted) {
         tab = wanted
         open = true
-        //  Las bases —el nivel natural de cada aparato— son un proceso, y solo
-        //  hacen falta cuando se está mirando la lista.
+        //  The baselines —each device's natural level— are a
+        //  process, and only needed while the list is being looked
+        //  at.
         if (wanted === "sound")
             Audio.mirarBases()
         Wifi.cancelPsk()
@@ -97,7 +99,7 @@ K4Plugin {
 
     function close() { open = false }
 
-    // El escáner solo mientras se mira la lista correspondiente.
+    // The scanner only while the matching list is being looked at.
     Binding {
         target: Wifi
         property: "scanning"
@@ -110,13 +112,14 @@ K4Plugin {
         value: self.open && self.tab === "bluetooth"
     }
 
-    // Una notificación aparta el panel.
+    // A notification steps the panel aside.
     Connections {
         target: Notifs
         function onNotified() { self.open = false }
     }
 
-    // Se cierra solo al salir el ratón, pero no si el lanzador está encima.
+    // It closes on its own when the mouse leaves, but not if the
+    // launcher is on top.
     closeOnHoverExit: true
     onHoverTimedOut: {
         if (!launcher || !launcher.open)

@@ -1,18 +1,19 @@
-//  Una pantalla de mentira que enseña cómo va a quedar.
+//  A fake screen showing how it will look.
 //
-//  Las tres opciones de arriba —dónde vive, cómo se alinea y cómo ocupa el
-//  sitio— se explican mal con palabras. «Reservar sitio» y «Encima» suenan
-//  parecido y hacen cosas muy distintas con tus ventanas, y la única forma de
-//  saber cuál querías era aplicarlo, mirar el escritorio y deshacerlo.
+//  The three options above —where it lives, how it aligns and how it
+//  takes space— explain badly in words. «Reserve space» and «On top»
+//  sound alike and do very different things to your windows, and
+//  the only way to know which one you wanted was to apply it, look
+//  at the desktop and undo it.
 //
-//  Aquí se ve antes: la barra donde va a estar, con su alineación, y una
-//  ventana de mentira que se aparta o no según lo que elijas. Se actualiza al
-//  tocar cualquiera de las tres.
+//  Here it is seen before: the bar where it will be, with its
+//  alignment, and a fake window that steps aside or not depending
+//  on what you choose. It updates on touching any of the three.
 //
-//  Dibuja también el dock si lo tienes puesto, porque comparte la pantalla con
-//  la barra y una previsualización que lo omitiera estaría mintiendo por
-//  omisión. Sus opciones no están aquí —viven en Plugins, dentro de «Modo
-//  dual»— y por eso lo dice abajo.
+//  The dock too, if you have it up, because it shares the screen
+//  with the bar and a preview omitting it would be lying by
+//  omission. Its options are not here —they live in Plugins, inside
+//  «Dual mode»— and that is said below.
 
 import QtQuick
 import QtQuick.Layouts
@@ -25,8 +26,9 @@ ColumnLayout {
 
     spacing: 8
 
-    //  Lo que se está mirando. Sin valor guardado se usa lo mismo que usa la
-    //  barra de fábrica, o la previsualización mentiría en un arranque limpio.
+    //  What is being looked at. With no saved value the same the
+    //  factory bar uses is taken, or the preview would lie on a
+    //  clean start.
     readonly property string donde: {
         const v = Settings.valor("barPosition")
         return v === "bottom" ? "bottom" : "top"
@@ -42,29 +44,29 @@ ColumnLayout {
         return typeof v === "string" && v.length > 0 ? v : "reserve"
     }
 
-    //  ¿Aparta las ventanas? «Reserva» siempre; «completa» sí salvo cuando algo
-    //  está a pantalla completa, y eso en un dibujo quieto no se distingue, así
-    //  que se dibuja como que sí y se cuenta debajo.
+    //  Does it push windows aside? «Reserve» always; «auto» yes
+    //  except when something is fullscreen, and that cannot be told
+    //  apart in a still drawing, so it draws as if yes and is
+    //  explained below.
     readonly property bool aparta: previo.sitio === "reserve"
                                    || previo.sitio === "auto"
     readonly property bool escondida: previo.sitio === "hidden"
 
-    //  El dock, si está. Sus ajustes son del plugin `dual`, así que se leen por
-    //  su id con prefijo: los de fuera viven en otro cajón.
-    //  El alto del monitor donde estás, para que la escala del croquis sea la
-    //  tuya y no una inventada.
+    //  The height of the monitor you are on, so the sketch's scale
+    //  is yours and not an invented one.
     readonly property real altoPantalla: Island.altoPantalla
 
-    // ── tu fondo de escritorio, de verdad ─────────────────────────
+    // ── your desktop wallpaper, the real one ─────────────────────
     //
-    //  El croquis con un gris inventado enseña la forma pero no cómo QUEDA.
-    //  Con el fondo real deja de ser un diagrama.
+    //  A sketch with an invented gray shows the shape but not how it
+    //  LOOKS. With the real wallpaper it stops being a diagram.
     //
-    //  Lo sabe `Fondos`, el servicio: cuál está puesto, dónde vive su fotograma
-    //  si es un vídeo, y cuántos huecos tiene Hyprland. Antes esto era una orden
-    //  de shell con `md5sum` porque esa información vivía dentro del plugin del
-    //  tema y no había forma de preguntársela. Ahora es una property: cero
-    //  procesos, y se entera sola cuando cambias de fondo.
+    //  `Fondos`, the service, knows it: which one is set, where its
+    //  frame lives if it is a video, and how many gaps Hyprland has.
+    //  This used to be a shell command with `md5sum` because that
+    //  information lived inside the theme plugin and there was no way
+    //  to ask it. Now it is a property: zero processes, and it learns
+    //  on its own when you change wallpaper.
     readonly property string poster: {
         const r = Fondos.actualDe("")
         if (r.length === 0)
@@ -72,13 +74,14 @@ ColumnLayout {
         return "file://" + (Fondos.esQuieto(r) ? r : Fondos.posterDe(r))
     }
 
-    //  Los huecos de Hyprland. La ventana de mentira los respeta, y no es un
-    //  adorno: tu escritorio tiene huecos, así que una ventana que llegara a los
-    //  bordes estaría enseñando algo que no pasa — y de paso taparía el fondo
-    //  entero, que es justo lo que se ha venido a ver.
+    //  Hyprland's gaps. The fake window respects them, and it is
+    //  not decoration: your desktop has gaps, so a window reaching
+    //  the edges would be showing something that does not happen —
+    //  and would cover the whole wallpaper on the way, which is
+    //  exactly what one came to see.
     readonly property int huecos: Fondos.huecos
 
-    // ── la pantalla ───────────────────────────────────────────────
+    // ── the screen ────────────────────────────────────────────────
     Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: Math.round(width * 9 / 16)
@@ -89,13 +92,14 @@ ColumnLayout {
         border.color: Qt.rgba(1, 1, 1, 0.07)
         clip: true
 
-        //  Un escritorio de mentira, y CLARO a propósito.
+        //  A fake desktop, and BRIGHT on purpose.
         //
-        //  La island es negra —`Theme.islandBg` es #000000 con el tinte del
-        //  tema— así que sobre un fondo oscuro no se vería: en tu pantalla se
-        //  ve porque está encima del fondo de escritorio. Un croquis en el que
-        //  la barra es invisible no enseña nada, así que aquí el suelo es un
-        //  gris azulado que hace de fondo de pantalla.
+        //  The island is black —`Theme.islandBg` is #000000 with the
+        //  theme's tint— so on a dark wallpaper it would not show:
+        //  on your screen it shows because it sits on top of the
+        //  desktop wallpaper. A sketch where the bar is invisible
+        //  teaches nothing, so here the floor is a bluish gray
+        //  standing in for the wallpaper.
         Rectangle {
             anchors.fill: parent
             gradient: Gradient {
@@ -105,28 +109,31 @@ ColumnLayout {
             }
         }
 
-        //  Y encima, tu fondo, si se ha podido resolver. El degradado de arriba
-        //  se queda debajo como red: si el fichero no está —fondo recién
-        //  cambiado, caché aún sin hacer— esto no carga y no se ve un hueco
-        //  negro, se ve el degradado.
+        //  And on top, your wallpaper, if it could be resolved. The
+        //  gradient above stays underneath as a net: if the file is
+        //  not there —wallpaper just changed, cache not yet made—
+        //  this does not load and no black hole shows, the gradient
+        //  does.
         Image {
             anchors.fill: parent
             visible: status === Image.Ready
             source: previo.poster
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            //  Se pinta pequeño; pedirle a Qt que lo baje al vuelo ahorra
-            //  tener una textura de 1920 de ancho para ocupar 700.
+            //  It paints small; asking Qt to downscale on the fly
+            //  spares a 1920-wide texture to fill 700.
             sourceSize.width: 900
         }
 
-        //  La ventana de mentira. Es la que enseña de verdad la diferencia
-        //  entre reservar sitio y ponerse encima: aquí se aparta o no.
+        //  The fake window. It is what truly shows the difference
+        //  between reserving space and sitting on top: here it steps
+        //  aside or not.
         Rectangle {
             id: ventanita
 
-            //  Lo que la barra le quita, a la misma escala que todo: si
-            //  reserva, son sus 34 px de verdad llevados al croquis.
+            //  What the bar takes from it, at the same scale as
+            //  everything: if it reserves, its real 34 px carried into
+            //  the sketch.
             readonly property int hueco: previo.aparta && !previo.escondida
                 ? Math.round(Theme.baseHeight * barrita.escala) : 0
 
@@ -152,18 +159,21 @@ ColumnLayout {
             }
         }
 
-        //  La barra. Y es LA barra: la misma `SiluetaIsla` que dibuja la de
-        //  verdad, con su ala y su radio, no un rectángulo redondeado que se
-        //  le parezca. Lo único que cambia es la escala.
+        //  The bar. And it IS the bar: the same `SiluetaIsla` that
+        //  draws the real one, with its wing and its radius, not a
+        //  rounded rectangle that looks like it. The only thing that
+        //  changes is the scale.
         //
-        //  Escondida se dibuja como el filo que asoma, que es exactamente lo
-        //  que se ve en esa opción hasta que acercas el ratón al borde.
+        //  Hidden it draws as the peeking edge, which is exactly
+        //  what that option shows until you bring the mouse to the
+        //  edge.
         Item {
             id: barrita
 
-            //  A escala de verdad: lo que mide la island ahora mismo, llevado
-            //  a lo que mide este croquis respecto a la pantalla. Así la
-            //  proporción no es una estimación, es la de tu monitor.
+            //  At true scale: what the island measures right now,
+            //  carried into what this sketch measures against the
+            //  screen. This way the proportion is not an estimate, it
+            //  is your monitor's.
             readonly property real escala: parent.height / previo.altoPantalla
             readonly property real anchoReal: Math.max(160, Island.rect.ancho || 380)
 
@@ -181,16 +191,17 @@ ColumnLayout {
             SiluetaIsla {
                 anchors.fill: parent
                 visible: !previo.escondida
-                //  El ala y el radio, a la misma escala que todo lo demás: si
-                //  se dejaran en su tamaño de siempre, a este tamaño el
-                //  trazado se cruza y sale un champiñón.
+                //  The wing and the radius, at the same scale as
+                //  everything else: left at their usual size, at this
+                //  size the path crosses itself and out comes a
+                //  mushroom.
                 ala: Math.max(1, Theme.wing * barrita.escala)
                 cuerpoRadio: Math.max(1, 20 * barrita.escala)
                 relleno: Theme.islandBg
                 lado: previo.donde === "bottom" ? "bottom" : "top"
             }
 
-            //  El filo, para la opción escondida.
+            //  The edge, for the hidden option.
             Rectangle {
                 anchors.fill: parent
                 visible: previo.escondida

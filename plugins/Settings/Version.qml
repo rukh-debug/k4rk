@@ -1,26 +1,29 @@
-//  ¿Hay k4 nuevo?
+//  Is there a new k4?
 //
-//  El actualizador es `./instalar` y lleva ahí desde el principio —hace el
-//  `git pull`, repasa los paquetes y los atajos y ofrece reiniciar la barra—,
-//  pero la barra no lo mencionaba nunca: te enterabas de que había versión
-//  nueva si se te ocurría lanzarlo a mano. Esto es la mitad que faltaba: mirar,
-//  y decirlo donde se mira todo lo demás.
+//  The updater is `./instalar` and has been there from the start —it
+//  does the `git pull`, goes over packages and shortcuts and offers
+//  to restart the bar—, but the bar never mentioned it: you learned
+//  there was a new version if it occurred to you to run it by hand.
+//  This is the missing half: looking, and saying it where everything
+//  else is looked at.
 //
-//  Se averiguan TRES cosas y las tres hacen falta:
+//  THREE things are found out and all three are needed:
 //
-//   · en qué commit estás, que es lo que contesta «¿qué versión tengo?» —hasta
-//     ahora no se enseñaba en ninguna parte—;
-//   · cuántos commits te lleva `origin`, que es la novedad de verdad;
-//   · y si tienes cambios sin guardar. Esto último no es un detalle: con el
-//     árbol sucio `./instalar` NO toca el código a propósito —perder trabajo de
-//     alguien por «actualizar» es exactamente lo que no puede pasar— así que
-//     enseñar «hay novedad» sin decir eso es mandar a alguien a pulsar un botón
-//     que no va a hacer nada, y encima sin explicar por qué.
+//   · which commit you are on, which is what answers «what version
+//     do I have?» —until now shown nowhere—;
+//   · how many commits `origin` is ahead, which is the real news;
+//   · and whether you have uncommitted changes. This last one is not
+//     a detail: with a dirty tree `./instalar` does NOT touch the
+//     code on purpose —losing somebody's work to an «update» is
+//     exactly what must not happen— so showing «there is news»
+//     without saying that is sending somebody to press a button that
+//     will do nothing, and without explaining why.
 //
-//  Todo en UN proceso y no en cuatro: son cuatro órdenes de git encadenadas,
-//  cada una con su fallo posible, y coordinarlas desde QML es cuatro `onSalida`
-//  con una máquina de estados por el medio. En `sh` son seis líneas y el fallo
-//  de cada una se contesta ahí mismo.
+//  All in ONE process and not four: they are four chained git
+//  commands, each with its possible failure, and coordinating them
+//  from QML is four `onSalida` with a state machine in between. In
+//  `sh` they are six lines and each one's failure is answered right
+//  there.
 
 import QtQuick
 import K4 as K4
@@ -28,30 +31,33 @@ import K4 as K4
 QtObject {
     id: version
 
-    //  Lo que se ha averiguado.
+    //  What has been found out.
     //
-    //  `detras` en -1 es «todavía no se sabe», que NO es lo mismo que 0: con
-    //  cero se dice «al día» y con -1 no se dice nada, que es lo honesto
-    //  mientras no se haya podido mirar.
+    //  `detras` at -1 means «not known yet», which is NOT the same
+    //  as 0: at zero one says «up to date» and at -1 one says
+    //  nothing, which is the honest thing while it could not be
+    //  looked at.
     property string commit: ""
     property int detras: -1
     property bool sucio: false
 
-    //  Y por qué no se sabe, cuando no se sabe. Vacío es «se sabe».
+    //  And why it is not known, when it is not. Empty means «known».
     //
     //   "no-git"      not a git clone: installed by hand or unzipped.
     //   "no-remote"   the branch tracks nothing, so there is nothing to compare against.
     //   "no-network"  nothing could be fetched. Whatever is shown then comes
-    //                 de la última vez que hubo red, y hay que decirlo.
+    //                 from the last time there was network, and that
+    //                 must be said.
     property string pega: ""
 
     property bool mirando: false
 
     readonly property bool hayNovedad: version.detras > 0
 
-    //  Cuándo se miró por última vez, para no salir a la red cada vez que se
-    //  abren los Ajustes. En memoria y no guardado a disco: al reiniciar la
-    //  barra volver a mirar es justo lo que se quiere, no lo que hay que evitar.
+    //  When it was last looked at, so it does not hit the network
+    //  every time Settings opens. In memory and not saved to disk:
+    //  on a bar restart, looking again is exactly what is wanted,
+    //  not what is to be avoided.
     property double ultima: 0
     readonly property int gracia: 10 * 60 * 1000
 
@@ -65,38 +71,42 @@ QtObject {
         ojeada.running = true
     }
 
-    //  Y actualizar es lanzar el instalador donde se pueda ver.
+    //  And updating is launching the installer where it can be seen.
     //
-    //  En una terminal y no en un proceso callado a propósito: `./instalar`
-    //  pregunta —si reinicia la barra, si instala lo que falta— y puede pedir la
-    //  contraseña al gestor de paquetes. Con k4term además sale DENTRO de la
-    //  island, así que actualizar la barra se ve en la propia barra.
+    //  In a terminal and not in a silent process, on purpose:
+    //  `./instalar` asks —whether to restart the bar, whether to
+    //  install what is missing— and may ask the package manager's
+    //  password. With k4term it moreover comes out INSIDE the
+    //  island, so updating the bar is seen in the bar itself.
     function actualizar() {
         K4.Terminal.ejecutar("cd " + JSON.stringify(K4.Paths.raiz)
                              + " && ./instalar;" + K4.Terminal.cierre)
     }
 
     property K4.Process ojeada: K4.Process {
-        //  `$0` es el nombre y `$1` el primer argumento: por eso el "sh" suelto
-        //  entre el guion y la raíz. Es el mismo apaño que usa el modo dual para
-        //  lanzar aplicaciones sin heredar el directorio de la barra.
+        //  `$0` is the name and `$1` the first argument: hence the
+        //  loose "sh" between the script and the root. The same
+        //  workaround dual mode uses to launch applications without
+        //  inheriting the bar's directory.
         command: ["sh", "-c", [
             'cd "$1" 2>/dev/null || exit 0',
             'c=$(git rev-parse --short HEAD 2>/dev/null) || { echo hitch=no-git; exit 0; }',
             'echo "commit=$c"',
             '[ -n "$(git status --porcelain 2>/dev/null)" ] && echo dirty=1',
-            //  Sin rama de seguimiento no hay nada con lo que comparar, y
-            //  `rev-list HEAD..@{u}` fallaría en silencio dejando un -1 sin
-            //  explicación. Se pregunta antes para poder decir cuál es la pega.
+            //  Without a tracking branch there is nothing to compare
+            //  against, and `rev-list HEAD..@{u}` would fail
+            //  silently leaving a -1 with no explanation. It is
+            //  asked first so the hitch can be named.
             'git rev-parse --abbrev-ref "@{u}" >/dev/null 2>&1 || { echo hitch=no-remote; exit 0; }',
-            //  Y si la red falla NO se sale: el `rev-list` de después sigue
-            //  valiendo contra lo último que se trajo. Se contesta con la cuenta
-            //  vieja y con la pega puesta, que es más útil que no contestar.
+            //  And if the network fails it does NOT exit: the
+            //  `rev-list` below still counts against the last thing
+            //  fetched. It answers with the old count and the hitch
+            //  set, which is more useful than not answering.
             'git fetch --quiet 2>/dev/null || echo hitch=no-network',
             'n=$(git rev-list --count "HEAD..@{u}" 2>/dev/null) && echo "behind=$n"'
         ].join("\n"), "sh", K4.Paths.raiz]
 
-        //  En inglés, que es como se parsea igual en cualquier máquina.
+        //  In English, the way it parses the same on any machine.
         environment: ({ "LC_ALL": "C" })
 
         onSalida: function (texto) {

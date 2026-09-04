@@ -27,7 +27,7 @@ FadeIn {
         anchors.bottomMargin: 20
         spacing: 12
 
-        // ── cabecera
+        // ── header
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
@@ -63,8 +63,9 @@ FadeIn {
                 Layout.preferredHeight: 24
                 Layout.alignment: Qt.AlignVCenter
                 radius: 12
-                // Rojo al pasar por encima y con su icono: en gris sobre gris
-                // y sin símbolo parecía una etiqueta más, no algo que se pulsa.
+                // Red on hover and with its icon: in gray on gray and
+                // without a symbol it looked like one more label, not
+                // something clickable.
                 color: clearAllMouse.containsMouse ? Theme.red : Theme.surfaceHi
 
                 Behavior on color { ColorAnimation { duration: 120 } }
@@ -267,8 +268,9 @@ FadeIn {
                     visible: Settings.panelTileWifi
                     Layout.fillWidth: true
                 Layout.fillHeight: true
-                // el círculo del icono lleva su propio MouseArea encima, así
-                // que pulsarlo conmuta la radio y el resto abre el detalle
+                // the icon's circle carries its own MouseArea on top,
+                // so clicking it toggles the radio and the rest opens
+                // the detail
                 onPulsada: view.plugin.openTab("wifi")
 
                 ColumnLayout {
@@ -404,9 +406,9 @@ FadeIn {
                 visible: Settings.panelTileSound
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                //  El deslizador se lleva casi todo el azulejo y tiene su
-                //  propio ratón; lo que queda —la fila del título— abre el
-                //  detalle, igual que en el de Wi‑Fi.
+                //  The slider takes almost the whole tile and has its
+                //  own mouse; what is left —the title row— opens the
+                //  detail, same as in the Wi‑Fi one.
                 onPulsada: view.plugin.openTab("sound")
 
                 ColumnLayout {
@@ -425,8 +427,9 @@ FadeIn {
                         IslandLabel { text: "Sound"; font.pixelSize: 12; font.weight: Font.DemiBold }
                         Item { Layout.fillWidth: true }
                         IslandLabel {
-                            //  Qué aparato suena, que es lo que se viene a
-                            //  mirar aquí; el volumen ya lo dice la barra.
+                            //  Which device is playing, which is what
+                            //  one comes to look at here; the bar
+                            //  already says the volume.
                             text: Audio.salidaActiva
                                 ? Audio.nombreDe(Audio.salidaActiva)
                                 : (Audio.muted ? "Muted" : Audio.volume + "%")
@@ -492,10 +495,11 @@ FadeIn {
         }
         }
 
-        // ── reproducción, compacta ────────────────────────────────
-        // Ocupaba media pestaña con una carátula de 52 px. En el centro de
-        // control de macOS "Reproduciendo" es una fila discreta, no el
-        // protagonista: aquí baja a 62 px de alto y gana el ancho entero.
+        // ── playback, compact ─────────────────────────────────────
+        // It used to take half a tab with a 52 px cover. In macOS's
+        // control centre "Playing" is a discreet row, not the
+        // protagonist: here it drops to 62 px tall and gains the
+        // whole width.
         Component {
             id: compMedia
 
@@ -576,12 +580,13 @@ FadeIn {
         }
         }
 
-        // ── accesos directos ──────────────────────────────────────
+        // ── shortcuts ──────────────────────────────────────────────
         //
-        //  Los que el usuario haya anclado, con su icono y su nombre sacados
-        //  del catálogo, y al final el botón que abre el cajón entero. Se
-        //  anclan con la chincheta del centro de aplicaciones y se reordenan
-        //  arrastrándolos aquí mismo, que es donde se ven.
+        //  Whatever the user pinned, with its icon and name taken
+        //  from the catalog, and at the end the button opening the
+        //  whole drawer. They get pinned with the application
+        //  center's pin and reordered by dragging them right here,
+        //  where they are seen.
         Component {
             id: compAccesos
 
@@ -596,7 +601,7 @@ FadeIn {
         }
         }
 
-        // ── pestaña de notificaciones
+        // ── the notifications tab
         IslandTile {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -604,7 +609,8 @@ FadeIn {
             visible: view.plugin.tab === "notifications"
 
             ListView {
-                //  La barra de la casa: sale sola si hay más de lo que cabe.
+                //  The house scrollbar: comes out on its own when
+                //  there is more than fits.
                 ScrollBar.vertical: IslandScrollBar {}
                 anchors.fill: parent
                 anchors.margins: 10
@@ -626,9 +632,10 @@ FadeIn {
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
-                    // Además de llevar a la aplicación, se traga los clics para
-                    // que un fallo cerca de la ✕ no llegue al fondo de la
-                    // island (que cerraría el panel).
+                    // Besides taking you to the application, it
+                    // swallows clicks so a miss near the ✕ does not
+                    // reach the island's background (which would
+                    // close the panel).
                     MouseArea {
                         id: cardMouse
                         anchors.fill: parent
@@ -685,7 +692,7 @@ FadeIn {
                         }
                     }
 
-                    // los botones que manda la aplicación
+                    // the buttons the application sends
                     Row {
                         anchors.left: notificationBody.left
                         anchors.top: notificationBody.bottom
@@ -770,13 +777,13 @@ FadeIn {
             }
         }
 
-        // ── detalle Wi‑Fi, en su propia pieza
+        // ── the Wi‑Fi detail, in its own piece
         DetalleWifi { view: view }
 
         // ── detalle Bluetooth, en su propia pieza
         DetalleBluetooth { view: view }
 
-        // ── detalle de Sonido: por dónde sale y por dónde entra
+        // ── the Sound detail: where it comes out and where it goes in
         DetalleSonido { view: view }
     }
 }
