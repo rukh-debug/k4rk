@@ -77,7 +77,7 @@ K4Plugin {
 Guard every use (`panel ? panel.open : false`); the reference goes null the
 moment its plugin dies, and comes back when it returns.
 
-### Requiring a binary: `requiere: "bin:…"`
+### Requiring a binary: `require: "bin:…"`
 
 A manifest may declare `"require": "bin:codex"` — the plugin exists only
 when that tool is on `PATH`. The bar probes in one sweep, says so honestly
@@ -269,6 +269,10 @@ Call it from Hyprland with:
 ```sh
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hello toggle
 ```
+
+The target is `k4.<id>`. Two house plugins carry older names — `k4.term`
+(terminal) and `k4.theme` (hyprtheme) — kept for the muscle memory that
+already types them; anything new follows the convention.
 
 - `K4.Ventana`: a full-screen `wlr-layer-shell` surface that does not reserve
   layout space. `capa` picks the level: `"encima"` above everything (the

@@ -292,7 +292,29 @@ def host_compatible(requisito, version_host):
 
 def leer_catalogo():
     datos = json.loads(CATALOGO.read_text())
-    return datos, datos.get("plugins") or []
+    return datos, [normalizar(p) for p in datos.get("plugins") or []]
+
+
+#  The manifest vocabulary is English now; the Spanish keys it grew up
+#  with are read as aliases so nothing already in the wild breaks on the
+#  rename. English wins when both are present.
+ALIAS = {
+    "require": "requiere",
+    "icon": "icono",
+    "permissions": "permisos",
+    "application": "aplicacion",
+    "surfaces": "superficies",
+}
+
+
+def normalizar(m):
+    """One vocabulary: English keys, with the Spanish ones honored as aliases."""
+    n = dict(m)
+    for ingles, viejo in ALIAS.items():
+        if ingles not in n and viejo in m:
+            n[ingles] = m[viejo]
+        n.pop(viejo, None)
+    return n
 
 
 def validar_repo(plugins, fallos):
@@ -321,6 +343,35 @@ def validar_repo(plugins, fallos):
             fallos.append(f"{ident}: debe declarar exactamente un name")
         elif nombres[0] != ident:
             fallos.append(f"{ident}: name QML es {nombres[0]!r}")
+
+        #  House plugins get the same honesty the door demands of strangers:
+        #  what they touch declared, what they are said out loud, an icon to
+        #  be found by. Repo manifests are written by hand, and hands drift.
+        desc = item.get("description")
+        if not isinstance(desc, str) or not desc.strip():
+            fallos.append(f"{ident}: falta description")
+        icono = item.get("icon")
+        if not isinstance(icono, str) or not icono:
+            fallos.append(f"{ident}: falta icon")
+        elif not re.fullmatch(r"0[xX][0-9a-fA-F]{4,6}", icono) \
+                and not ((RAIZ / "plugins" / str(entrada)).parent / icono).is_file():
+            fallos.append(f"{ident}: icon no es un códice ni un fichero")
+        declarados = set(item.get("permissions") or [])
+        raros = declarados - set(PERMISOS)
+        if raros:
+            fallos.append(f"{ident}: permisos desconocidos: "
+                          + ", ".join(sorted(raros)))
+        usados = set()
+        for qml in (RAIZ / "plugins" / str(entrada)).parent.glob("**/*.qml"):
+            cuerpo = "\n".join(re.sub(r"//.*$", "", l)
+                               for l in qml.read_text().split("\n"))
+            for permiso, patron in PERMISOS.items():
+                if patron.search(cuerpo):
+                    usados.add(permiso)
+        sin_declarar = usados - declarados
+        if sin_declarar:
+            fallos.append(f"{ident}: usa sin declarar: "
+                          + ", ".join(sorted(sin_declarar)))
 
     carpetas = {p.name for p in (RAIZ / "plugins").iterdir()
                 if p.is_dir() and (p / (p.name + "Plugin.qml")).is_file()}
@@ -371,15 +422,15 @@ def medida_png(ruta):
 def revisar_icono(carpeta, icono, item):
     """Valida el icono declarado. Devuelve el motivo del fallo, o None.
 
-    Como efecto, deja en `item` lo que la barra necesita: `icono` si es un
-    códice, `iconoFichero` (ruta absoluta) si es una imagen. Se separan aquí
+    Como efecto, deja en `item` lo que la barra necesita: `icon` si es un
+    códice, `iconFile` (ruta absoluta) si es una imagen. Se separan aquí
     para que el QML no tenga que adivinar de qué clase es.
     """
     if not isinstance(icono, str) or not icono:
         return f"icono debe ser un códice o un fichero, no {icono!r}"
 
     if re.fullmatch(r"0[xX][0-9a-fA-F]{4,6}", icono):
-        item["icono"] = icono
+        item["icon"] = icono
         return None
 
     #  Un fichero de la propia carpeta: nada de rutas absolutas ni de subir
@@ -407,8 +458,8 @@ def revisar_icono(carpeta, icono, item):
                     f"{ICONO_MINIMO}x{ICONO_MINIMO}: más pequeño se ve "
                     f"borroso justo donde más se mira")
 
-    item.pop("icono", None)
-    item["iconoFichero"] = str(ruta)
+    item.pop("icon", None)
+    item["iconFile"] = str(ruta)
     return None
 
 
@@ -421,7 +472,7 @@ def validar_carpeta(d, ids_repo, version_host):
     """
     item = {"id": d.name, "title": d.name, "externo": True,
             "enabledByDefault": False, "cargable": True,
-            "permisos": [], "version": "0"}
+            "permissions": [], "version": "0"}
 
     #  Dos cosas a la vez, y las dos hacen falta:
     #
@@ -443,13 +494,13 @@ def validar_carpeta(d, ids_repo, version_host):
     if not manifiesto.is_file():
         return mal("sin-manifiesto", "sin plugin.json")
     try:
-        m = json.loads(manifiesto.read_text())
+        m = normalizar(json.loads(manifiesto.read_text()))
     except Exception as exc:
         return mal("manifiesto-ilegible", f"plugin.json ilegible: {exc}",
                    str(exc))
 
-    for clave in ("id", "title", "version", "description", "permisos", "host",
-                  "aplicacion"):
+    for clave in ("id", "title", "version", "description", "permissions", "host",
+                  "application"):
         if clave in m:
             item[clave] = m[clave]
     ident = m.get("id")
@@ -476,15 +527,15 @@ def validar_carpeta(d, ids_repo, version_host):
     #  El icono, que puede ser un códice de la Nerd Font o una imagen propia.
     #  Se valida aquí para que uno mal puesto sea un error de instalación y no
     #  un cuadradito vacío en el centro de aplicaciones.
-    if m.get("icono") is not None:
-        fallo = revisar_icono(d, m.get("icono"), item)
+    if m.get("icon") is not None:
+        fallo = revisar_icono(d, m.get("icon"), item)
         if fallo:
             #  El icono trae su propia frase ya escrita; el código es común
             #  porque para el usuario todos son «ese icono no vale».
             return mal("icono-malo", fallo)
 
     #  El análisis de permisos: lo que el QML usa contra lo declarado.
-    declarados = set(m.get("permisos") or [])
+    declarados = set(m.get("permissions") or [])
     raros = declarados - set(PERMISOS)
     if raros:
         return mal("permisos-raros",
@@ -510,14 +561,14 @@ def validar_carpeta(d, ids_repo, version_host):
     #  no existía ayer. Pero quien la declare se compromete, y entonces sí se
     #  comprueba contra lo que el QML hace de verdad — que es lo que la
     #  vuelve útil y no un adorno del manifiesto.
-    sup_declaradas = m.get("superficies")
+    sup_declaradas = m.get("surfaces")
     if sup_declaradas is not None:
         sup_declaradas = set(sup_declaradas or [])
         #  Y se pasan al resultado, que si no se validan y se tiran: la tienda
         #  y el informe de un envío preguntan por ellas y les llegaba una
         #  lista vacía aunque el manifiesto las declarase. Toda la gracia de
         #  las superficies es que alguien las VEA antes de encender el plugin.
-        item["superficies"] = sorted(sup_declaradas)
+        item["surfaces"] = sorted(sup_declaradas)
         raras = sup_declaradas - set(SUPERFICIES)
         if raras:
             return mal("superficies-raras",
@@ -717,9 +768,9 @@ def _describir(item):
               f"  ·  v{item.get('version', '0')}"]
     if item.get("description"):
         lineas.append(f"  {item['description']}")
-    permisos = item.get("permisos") or []
-    lineas.append("  Permisos: " + (", ".join(permisos) if permisos
-                                    else "ninguno"))
+    permisos = item.get("permissions") or []
+    lineas.append("  Permissions: " + (", ".join(permisos) if permisos
+                                       else "none"))
     return "\n".join(lineas)
 
 
@@ -1181,8 +1232,8 @@ def json_examinar(url, subcarpeta=None, commit=None):
                    "title": i.get("title", i["id"]),
                    "version": i.get("version", "0"),
                    "description": i.get("description", ""),
-                   "permisos": i.get("permisos") or [],
-                   "superficies": i.get("superficies") or [],
+                   "permissions": i.get("permissions") or [],
+                   "surfaces": i.get("surfaces") or [],
                    "host": i.get("host", ""),
                },
                repo=url,
@@ -1234,7 +1285,7 @@ def json_instalados():
             "motivo": item.get("motivo", ""),
             "detalle": item.get("detalle", ""),
             "dice": item.get("dice", ""),
-            "permisos": item.get("permisos") or [],
+            "permissions": item.get("permissions") or [],
             "repo": o.get("repo", ""),
             "carpeta": o.get("carpeta", ""),
             "commit": o.get("commit", ""),
@@ -1405,10 +1456,10 @@ PLANTILLA_MANIFIESTO = """{
   "entry": "%(clase)sPlugin.qml",
   "version": "0.1.0",
   "title": "%(titulo)s",
-  "description": "Un plugin recién nacido",
+  "description": "A freshly born plugin",
   "host": ">=1.1.0",
-  "permisos": [],
-  "superficies": ["island"]
+  "permissions": [],
+  "surfaces": ["island"]
 }
 """
 

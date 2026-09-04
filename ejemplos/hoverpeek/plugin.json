@@ -5,6 +5,8 @@
   "title": "Hover peek",
   "description": "The hover-band example: a view that takes the island while the mouse rests on the pill",
   "host": ">=1.1.0",
-  "permisos": [],
-  "superficies": ["island"]
+  "permissions": [],
+  "surfaces": [
+    "island"
+  ]
 }

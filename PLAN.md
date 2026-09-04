@@ -1,165 +1,146 @@
-# Neat & Conventional k4 — Refactor Program
+# Plugin Audit: fixes, standardization, English sweep
 
-Audit-driven program to make the plugin ecosystem fully framework-conformal:
-no cross-plugin reach-ins, no duck-typed host calls, no Arch-only code in the
-Launcher, no undeclared tool dependencies, and the settings ownership rule
-written down.
+Audit-driven program over every repo plugin (23 folders, ~21k lines): fix
+the bugs the audit verified, standardize against the current contract
+(dual-read manifest keys, honest `permisos`, contract verbs, `colocable`
+correctness, registration ids), and translate the Spanish that remains —
+UI strings and comments — per the TODO.md discipline (translate, never
+summarize).
 
-**Decisions locked with the owner (2026-08-31):**
+**Decisions locked with the owner (2026-09-02):**
 
-- Settings model: **codify the central registry** — `services/Settings.qml`
-  stays the host registry for cross-cutting knobs; plugin-private knobs go
-  through `K4.Ajustes`. No page-contribution API will be built.
-- Upstream: this fork has **diverged for good** from k4ditano/k4 — optimize
-  for this repo's cleanliness, no merge constraints.
-- Launcher packages: **extract into its own plugin**. Package management is
-  not the Launcher's job; it leaves through the sanctioned door
-  (`K4.Lanzador` contributed results). No new backends (no nix backend).
-- Tool gating: **extend `requiere` to binaries** (`"requiere": "bin:codex"`).
+- **Manifest vocabulary**: dual-read now — code accepts English
+  `icon`/`application`/`permissions`/`require` alongside the Spanish
+  keys; repo catalog, docs and examples write English. Wild Spanish
+  manifests keep working; the TODO sweep finishes the rename later.
+- **IPC names**: `k4.term`/`k4.theme` stay (muscle memory); the
+  deviation is documented, `k4.<id>` remains the rule for new plugins.
+- **Contract verbs**: the Ask trio (`openAsk`/`withScreenshot`/
+  `withRegion`) and Packages' `actualizarTodo`/friends become
+  documented `K4.Plugin` verbs — stubs + docs in the same change
+  (the docs-must-follow law).
+- **Scope**: bugs + standardization + English now; `K4.Card` adoption
+  (Packages/Agentes/System) is its own future task.
 
-Commit discipline: each phase is verified (build + restart + `pluginStatus`
-+ phase checks) and committed separately, only after the owner confirms.
-
----
-
-## Phase 0 — Defects & hygiene
-
-1. **Sparse array bug** — `services/Settings.qml` `definicion: [,,` has two
-   holes → `TypeError: Cannot read property 'grupo' of undefined` at
-   AjustesView.qml:136 on every Settings search. Drop the holes.
-2. **Wallpaper dir dedupe** — `plugins/HyprTheme/HyprThemePlugin.qml`
-   duplicates `services/Fondos.qml`'s `/usr/share/wallpapers`,
-   `/usr/share/backgrounds` list. HyprTheme consumes Fondos' single list.
-3. **Name the pill id** — constant (`Island.pillId`); replace the magic
-   `"idle"` strings in `shell.qml` (9 sites) and any in services.
-4. **K4.Sonido XDG path** — `/usr/share/sounds/freedesktop/stereo/` becomes
-   a named constant with a comment (no behavior change).
-
-Verify: `nix build .#k4`, restart, `pluginStatus` 22/0, Settings search
-produces no TypeError in `~/.local/state/k4/k4.log`.
-
-## Phase 1 — Reference formalization
-
-1. **Generic reference injection** — drop the `referencias` map
-   (services/PluginManager.qml): any plugin declaring `property var <x>`
-   where `<x>` matches a catalog id receives the live instance (null when
-   off/broken). Startup warning when a declared property looks like an id
-   but matches none (typo guard).
-2. **Convert reach-ins:**
-   - `LauncherPlugin` declares `property var apps` → replaces
-     LauncherView.qml:505 `PluginManager.instancia("apps")`.
-   - `SettingsPlugin` declares `property var theme` → replaces the 7
-     `PluginManager.instancia("hyprtheme")` sites (AjustesView.qml:839-1007,
-     PortadaFamilia.qml:40); views read via `vista.plugin.theme`.
-   - `shell.qml`'s `_p()` compat layer stays — reaching by id is its job.
-
-Verify: build/restart/IPC; toggle HyprTheme off → colour pages show their
-engine-off state; launcher still lists plugin apps.
-
-## Phase 2 — Settings pages & placement (DONE, direction-adjusted)
-
-Added mid-program by owner request. Sub-parts, as landed:
-
-- **2.0** Null-guarded every `motor.*` read in the Display-family
-  widgets; the engine-off notice moved above the wallpaper grid; the
-  Display hero says "The theme plugin is off" instead of a misleading
-  "No wallpaper set"; FilaOpcion undefined-warnings fixed.
-- **2.1 `K4.Pagina`** — plugins contribute whole Settings pages:
-  registered in `Enganches.paginas`, appended to
-  `Settings.definicion`, rendered by one generic Loader that asks the
-  registry for the Component by (plugin, name) — never through
-  modelData copies. Swept with the plugin: off author, no page.
-- **2.4 migration** — Colour/Windows/Effects moved out of AjustesView
-  into HyPrTheme as `K4.Pagina { padre: "Display" }` contributions
-  (widgets physically in `plugins/HyprTheme/`); Wallpaper and Fonts
-  stay host-owned. The null-motor bug class died by construction.
-- **2.2 informational (toggles reverted)** — per-page enable/disable
-  was built (`services/Paginas.qml`) and reverted by owner decision:
-  the plugin's own switch is the decision; FilaPlugin tells what it
-  buys in a "What it adds" group (pages + destination, launcher
-  results). While here: toggling a plugin no longer resets Settings to
-  its first page (the island's content is one Loader keyed on the
-  visible view, not a Repeater over the churning instance list), and
-  plugin rows keep their open state across roster rebuilds
-  (`AjustesView.filasAbiertas`).
-- **2.3 placement derived** — `K4.Plugin.colocable` contract property;
-  `PlacementPage.vistas` derives from live instances instead of a
-  hardcoded 16-entry list. HyPrTheme dropped from the cards (it no
-  longer has a surface); disabled plugins show no card.
-- **2.5 docs** — `docs/API.md` + `api/LEEME.md`: K4.Pagina,
-  `colocable`, the `"paginas"` permission for external contributors
-  (tools/plugins.py PERMISOS). *Pending.*
-
-## Phase 3 — Contract formalization
-
-1. **One verb, one method** — replace multi-poke sequences in shell.qml's
-   compat layer with single methods plugins own:
-   - `k4 search`: `launcher.buscar(q)` instead of open/query/rebuild pokes.
-   - `k4 askNow/askFollowUp/askScreen/askRegion`: `ask.preguntar(texto)`,
-     `ask.preguntarConImagen(tipo)` instead of openAsk/query/send pokes.
-2. **Declare optional verbs** in `K4.Plugin` as documented no-op stubs:
-   `toggle(tab)`, `openTab(tab)`, `abrirPagina(page)`, `buscar(q)`,
-   `preguntar(texto)` — contract visible, host calls unconditional.
-3. Document in `docs/API.md`.
-
-Verify: IPC round-trip of every touched verb (`k4 askNow hi`, `k4 search
-foo`, `k4 settingsSection wallpaper`, `togglePanel`, `toggleNotifications`,
-`wifi`, `bluetooth`, `sound`, `theme`).
-
-## Phase 4 — Packages extraction (the big one)
-
-New `plugins/Packages/` — id `packages`, `aplicacion: true`, permisos
-`["procesos"]`, self-gating by binary probe.
-
-1. **Moves in:**
-   - Search: `pacman -Ss` / `yay -Ss --aur` + parsing (LauncherPlugin.qml
-     ~31-260).
-   - Installed list (`pacman -Qq`), install (`sudo pacman -S`) and
-     uninstall (`sudo pacman -Rns`) flows.
-   - Updates counting: absorb `services/Paquetes.qml` (checkupdates /
-     `yay -Qua`, 10-min cache) — the service is deleted.
-2. **Sanctioned integration:**
-   - Package rows reach the launcher via `K4.Lanzador` (below apps, by
-     design). Extend the row schema minimally if needed (`insignia` badge
-     text: repo/aur/installed) — rendered generically by Launcher, no
-     package-specific code there.
-   - `elegir` → the plugin's own confirm/progress view in its own island.
-   - Apps' updates badge: `property var paquetes` reference (phase 1).
-   - `k4 install <q>` verb → `_p("packages")?.buscar(q)`;
-     `openPackageSearch` deleted.
-3. **Launcher slimmed:** packages mode, both row templates, all
-   processes/state out (~450 lines); the `mode` concept deleted.
-4. **On NixOS:** binary probe at start; no pacman/yay → zero contributed
-   results, no updates badge, no failed-process warnings in the log.
-
-Verify: clean log on this machine, launcher search intact, plugin row in
-Settings, IPC verbs work. Full install/remove flows need an Arch box — out
-of test reach here; note in commit.
-
-## Phase 5 — Binary requirements (DONE)
-
-`services/Binarios.qml` probes every `bin:` the catalog names in one
-batched `command -v` sweep, re-probes every 30 s while something is
-missing, and notifies on change. `PluginManager.requisitoCumplido`
-understands `"requiere": "bin:<name>"` with an honest "needs 'x'
-installed" reason; `_sincronizar` gates CREATION on requirements too
-(an unmet plugin can no longer resurrect via catalog rescans); Ask
-declares `"require": "bin:codex"`. Verified live in both directions
-with a scratch requirement: destroy, stay-dead across rescans, revive
-on removal.
-
-## Phase 6 — Codification in docs (DONE)
-
-The ownership rule written at the top of `services/Settings.qml`;
-reference-by-id and `bin:` requirements in `docs/API.md`; AGENTS.md
-carries the architecture rules and the ops notes (flake staging, the
-runtime-registry clearing). `api/LEEME.md` covers `K4.Pagina`.
-
-**Execution order:** 0 → 1 → 2 → 3 → 4 → 5 → 6 — all done.
+Commit discipline: one plugin (or one coherent host slice) per commit,
+each verified (checkers green → `nix build` → restart ritual →
+`pluginStatus` 25/0 → log grep 0 → tray canary → phase smokes) before
+the next.
 
 ---
 
-**Execution order:** 0 → 1 → 2 (done) → 3 → 4 (depends on 1+3) → 5 → 6.
+## Phase 0 — Host contract
 
-**Out of scope, flagged:** TerminalIslaView.qml:765's 16 ms timer (looks
-like a game-loop; unverified), any nix package backend.
+1. **Dual-read manifest keys** — `services/PluginManager.qml` and
+   `tools/plugins.py` accept English `icon`/`application`/
+   `permissions`/`require` alongside `icono`/`aplicacion`/`permisos`/
+   `requiere`, English preferred. `plugins/catalog.json` rewritten to
+   English keys. Docs teach English keys with a "Spanish aliases still
+   accepted" note; `ejemplos/*` manifests updated. Fixes the doc lie
+   where `"require"` silently no-ops today.
+2. **Emergency catalog refresh** — `PluginManager.qml` fallback lists
+   all 23 plugins, not 15.
+3. **`validar_repo` hardening** — `tools/plugins.py` gains the
+   user-plugin checks for repo plugins too: permissions declared for
+   spawners, icon + description present. Catalog brought honest:
+   `permissions: ["procesos"]` for the ~10 spawners, description +
+   icon on all 23.
+4. **`PluginManager.qml:592`** — `· pide:` → English (`· needs:`).
+5. **IPC deviation note** — one line in `docs/API.md` marking
+   `k4.term`/`k4.theme` as legacy names.
+
+## Phase 1 — Bug fixes
+
+**Commit A (stuck-state + races):**
+
+- **Ssh** — `alternar()` and the IPC lambdas call the real `open()`
+  (SshPlugin.qml:173, :900-902; today they hit the base
+  `K4.Plugin.abrir()` → `toggle()` → a direct `active` write that
+  breaks the `active: abierto || cerrando` binding and deploys a
+  keyboard-less, viewless island). Add `close()` for the
+  Escape/outside-click door. IPC `connect` re-runs its lookup after
+  `fSsh.onLoaded` instead of searching stale data (:906-910).
+- **Packages** — pending-query flag restarted from `onTerminado`
+  instead of `parar(); running = true` (which drops the newest search,
+  :177-203). Add `close()` (:308).
+- **HyPrTheme** — notifiable `persistido` property; `GuardarTema.qml`
+  binds to it instead of a method result that never re-evaluates
+  (:21-23). `pendiente` flag in `apply()` re-fired in `onTerminado` so
+  the last drag step lands (HyPrThemePlugin.qml:332-336).
+- **Terminal** — same pending-flag fix for the pill-click
+  `hyprctl clients` restart (:824-826). Add `close()` (:236). Guard
+  the `estela` config field (SesionIsla.qml:106).
+
+**Commit B (Settings + Agentes):**
+
+- **Settings** — `bloque()` null-guard at the five PanelEditor call
+  sites (kills the transient registration-race TypeError,
+  PanelEditor.qml:236-374). Placement dot updates the in-memory map
+  live and saves on release only (PlacementPage.qml:283-289). Delete
+  the dead `dual`-plugin branch (PrevioIsland.qml:81-85).
+- **Agentes** — skip pill re-register when `(pct, color)` unchanged
+  (:206-207). Island height `28`→`30` per limit row (:73-83).
+
+## Phase 2 — Standardization
+
+1. **Registration-id migrations** (the orphan-bug class; one-shot
+   value migrations per the TODO pattern — read old, write new):
+   - Agentes: `K4.Guardado`/`K4.Ajustes`/`K4.Lanzador`/pill id
+     `agentes` → `agents`; option ids `enVivo/avisar/umbral` →
+     English with value migration; `agentes.limite` → `agents.limit`.
+   - Pantallas: `K4.Guardado plugin:` `pantallas` → `displays` with
+     state-file migration.
+   - Player: `asomarAlCambiar` → `peekOnChange` with value migration.
+   - HyPrTheme: state-file keys `fondos/transicion/paletaAuto` →
+     English, one-shot rewrite of `~/.local/state/k4/hyprtheme.json`.
+2. **Contract verbs + docs** — `K4.Plugin` gains stubs for the Ask
+   family (`openWith`/`withScreenshot`/`withRegion`) and Packages
+   (`updateAll`/`refresh`); `shell.qml`, `AppsPlugin.qml`,
+   `LauncherView.qml` route through them; `docs/API.md` +
+   `docs/PLUGINS.md` verb lists updated in the same change.
+3. **colocable** — remove from Toast (transient, never a Placement
+   card); add to Sonido (summoned view, gets a Placement card).
+4. **Titles/versions** — catalog↔QML title alignment
+   (Notifications/Displays/Applications/Control centre); version
+   bumps for every plugin meaningfully touched.
+
+## Phase 3 — English sweep (one plugin per commit)
+
+- **UI strings first** (one commit, user-visible):
+  `pantallas.py` messages + its generated lua headers (marker regex
+  renamed in tandem, writer+reader together); Ask chips
+  `nueva/copiar/ampliar/guardar/abrir` → `new/copy/zoom/save/open`;
+  HyPrTheme `aplicado` → `applied` + the Spanish line written into
+  the user's `hyprland.lua` (text is free — `isPersisted()` matches
+  a different marker); `registro.json` `_meta` keys → English with
+  `tools/plugins.py` dual-reading during transition; qmldid template
+  header in `tools/plugins.py`.
+- **Comments, biggest-first**: Terminal (689) → HyPrTheme (454) → Ssh
+  (210) → Settings leftovers (162: PrevioIsland/FilaOpcion/Version) →
+  Agentes (102) → Panel (94) → Session (89) → Idle (74) → Apps (72)
+  → Ask (64) → Launcher (45) → Toast (40) → Clock (28) →
+  System/Player/Tray/Sonido/Clipboard/Keys (<25 each).
+  Packages/Volume/Submap are already clean.
+
+**Out of scope (external contracts, untouched)**: k4term conf keys,
+`claves.json` fields, OSC markers, `--heredar`, bilingual launcher
+keywords, `EN_ESPANOL` flag aliases. Spanish identifiers and file
+names stay for the TODO.md identifier phase.
+
+---
+
+## Verification protocol (every commit)
+
+1. `python3 tools/api.py && python3 tools/guia.py && python3
+   tools/plugins.py` — all green.
+2. `nix build .#k4 -o /tmp/opencode/k4-test --print-out-paths`.
+3. Restart ritual: kill quickshell by pid, wait for death, clear
+   `/run/user/1000/quickshell/{by-id,by-pid,by-path}`,
+   `setsid nohup /tmp/opencode/k4-test/bin/k4 --no-duplicate`.
+4. `pluginStatus` → 25 plugins / 0 errors; log grep
+   (TypeError|Cannot read|is not defined) → 0; tray canary.
+5. Phase smokes: `k4.ssh open` + outside-click closes; fast-typing
+   package search never stalls; theme slider's last drag step lands;
+   Placement drag = one disk write; Terminal pill click after motion;
+   disable/reload agents+displays leaves no orphan rows; migrated
+   settings survive a restart with old state files present.

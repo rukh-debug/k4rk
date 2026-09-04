@@ -50,19 +50,27 @@ Singleton {
     property var catalogo: [
         { id: "idle", title: "Pill", version: "1.0.0", enabled: true, configurable: false },
         { id: "volume", title: "Volume", version: "1.0.0", enabled: true },
+        { id: "sound", title: "Sound", version: "1.0.0", enabled: true },
         { id: "clock", title: "Clock", version: "1.0.0", enabled: true },
         { id: "player", title: "Player", version: "1.0.0", enabled: true },
         { id: "toast", title: "Notifications", version: "1.0.0", enabled: true },
-        { id: "panel", title: "Control center", version: "1.0.0", enabled: true },
+        { id: "panel", title: "Control centre", version: "1.0.0", enabled: true },
         { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
         { id: "ask", title: "Ask", version: "1.0.0", enabled: true },
         { id: "hyprtheme", title: "Hyprland theme", version: "1.0.0", enabled: true },
+        { id: "displays", title: "Displays", version: "1.0.0", enabled: true },
         { id: "tray", title: "Tray", version: "1.0.0", enabled: true },
         { id: "settings", title: "Settings", version: "1.0.0", enabled: true, configurable: false },
         { id: "clipboard", title: "Clipboard", version: "1.0.0", enabled: true },
         { id: "system", title: "System", version: "1.0.0", enabled: true },
         { id: "keys", title: "Shortcuts", version: "1.0.0", enabled: true },
-        { id: "session", title: "Session", version: "1.0.0", enabled: true }
+        { id: "session", title: "Session", version: "1.0.0", enabled: true },
+        { id: "apps", title: "Applications", version: "1.0.0", enabled: true },
+        { id: "terminal", title: "Terminal", version: "1.0.0", enabled: true },
+        { id: "packages", title: "Packages", version: "1.0.0", enabled: true },
+        { id: "ssh", title: "Servers", version: "1.0.0", enabled: true },
+        { id: "agents", title: "Agents", version: "1.0.0", enabled: true },
+        { id: "submap", title: "Submap", version: "1.0.0", enabled: true }
     ]
 
     signal cambiado(string id, bool habilitado)
@@ -118,26 +126,26 @@ Singleton {
     //  todavía no se sabe. Se crean todos y, cuando la respuesta llega, se
     //  destruye lo que no puede ser.
     function requisitoCumplido(m) {
-        if (!m || !m.requiere)
+        if (!m || !m.require)
             return true
-        if (m.requiere === "k4term")
+        if (m.require === "k4term")
             return Consola.esNuestra
-        if (m.requiere === "k4term-isla")
+        if (m.require === "k4term-isla")
             return Consola.hayIsla
-        if (String(m.requiere).indexOf("bin:") === 0)
-            return Binarios.presente(String(m.requiere).substring(4))
+        if (String(m.require).indexOf("bin:") === 0)
+            return Binarios.presente(String(m.require).substring(4))
         return true
     }
 
     function motivoDelRequisito(m) {
-        if (!m || !m.requiere)
+        if (!m || !m.require)
             return ""
-        if (m.requiere === "k4term-isla")
+        if (m.require === "k4term-isla")
             return "needs k4term with its island session"
-        if (m.requiere === "k4term")
+        if (m.require === "k4term")
             return "needs k4term installed"
-        if (String(m.requiere).indexOf("bin:") === 0)
-            return "needs '" + String(m.requiere).substring(4)
+        if (String(m.require).indexOf("bin:") === 0)
+            return "needs '" + String(m.require).substring(4)
                    + "' installed"
         return ""
     }
@@ -148,7 +156,7 @@ Singleton {
     function _sondearRequisitos() {
         const nombres = []
         for (let i = 0; i < catalogo.length; ++i) {
-            const r = String(catalogo[i].requiere || "")
+            const r = String(catalogo[i].require || "")
             if (r.indexOf("bin:") === 0)
                 nombres.push(r.substring(4))
         }
@@ -177,7 +185,7 @@ Singleton {
             return
         for (let i = 0; i < catalogo.length; ++i) {
             const m = catalogo[i]
-            if (!m.requiere)
+            if (!m.require)
                 continue
             const puede = requisitoCumplido(m)
             if (!puede && _porId[m.id]) {
@@ -570,9 +578,9 @@ Singleton {
             const m = catalogo[i]
             if (m.id !== id)
                 continue
-            return { imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
-                     glifo: m.icono ? parseInt(m.icono, 16)
-                          : (m.externo ? 0xF0431 : 0xF06A5) }
+            return { imagen: m.iconFile ? "file://" + m.iconFile : "",
+                     glifo: m.icon ? parseInt(m.icon, 16)
+                           : (m.externo ? 0xF0431 : 0xF06A5) }
         }
         return { imagen: "", glifo: 0xF06A5 }
     }
@@ -587,9 +595,9 @@ Singleton {
             const error = errores[m.id] || ""
             let desc = "Turn this plugin on or off"
             if (m.externo) {
-                desc = m.description || "Plugin de usuario"
-                if (m.permisos && m.permisos.length > 0)
-                    desc += "  ·  pide: " + m.permisos.join(", ")
+                desc = m.description || "User plugin"
+                if (m.permissions && m.permissions.length > 0)
+                    desc += "  ·  needs: " + m.permissions.join(", ")
             }
             const sinRequisito = !requisitoCumplido(m)
             if (m.cargable === false)
@@ -612,10 +620,10 @@ Singleton {
                      //  plugin puede traer su propia imagen en vez de un
                      //  códice; van en campos distintos para que la vista no
                      //  tenga que adivinar de qué clase es.
-                     imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
-                     glifo: m.icono ? parseInt(m.icono, 16)
-                          : (m.externo ? 0xF0431 : 0xF06A5) }
-        })
+                      imagen: m.iconFile ? "file://" + m.iconFile : "",
+                      glifo: m.icon ? parseInt(m.icon, 16)
+                           : (m.externo ? 0xF0431 : 0xF06A5) }
+         })
 
     //  Las aplicaciones: lo que sale en el centro de aplicaciones y en los
     //  accesos directos. Se declara en el catálogo o en el manifiesto
@@ -623,7 +631,7 @@ Singleton {
     //  de cargar nada — y para que un plugin apagado siga saliendo, en gris,
     //  en vez de desaparecer sin explicación.
     readonly property var aplicaciones: catalogo
-        .filter(function (m) { return m.aplicacion === true })
+        .filter(function (m) { return m.application === true })
         .map(function (m) {
             return { id: m.id,
                      //  Los títulos del catálogo están escritos en el
@@ -631,8 +639,8 @@ Singleton {
                      //  como sus accesos directos, así que se traducen antes
                      //  de publicarla y reaccionan al cambio de idioma.
                      nombre: (m.title || m.id),
-                     imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
-                     glifo: m.icono ? parseInt(m.icono, 16) : 0xF0431,
+                     imagen: m.iconFile ? "file://" + m.iconFile : "",
+                     glifo: m.icon ? parseInt(m.icon, 16) : 0xF0431,
                      externo: m.externo === true,
                      habilitado: estaHabilitado(m.id),
                      disponible: m.cargable !== false
@@ -740,12 +748,33 @@ Singleton {
     //  estar vieja tiene que ir con la etiqueta puesta.
     property string catalogoDe: ""
 
+    //  Manifest vocabulary: English is what the tools emit now. Lists
+    //  written before the rename — the on-disk cache above all — still
+    //  speak the Spanish keys, so they are translated once, on the way in,
+    //  and everything downstream reads one vocabulary.
+    function _normalizarClaves(m) {
+        const viejos = { requiere: "require", icono: "icon",
+                         iconoFichero: "iconFile", permisos: "permissions",
+                         aplicacion: "application", superficies: "surfaces" }
+        const n = {}
+        for (const k in m) {
+            const nuevo = viejos[k]
+            if (nuevo) {
+                if (n[nuevo] === undefined)
+                    n[nuevo] = m[k]
+            } else if (n[k] === undefined) {
+                n[k] = m[k]
+            }
+        }
+        return n
+    }
+
     function _aplicarCatalogo(bruto) {
         try {
             const d = JSON.parse(bruto)
             if (d.plugins && Array.isArray(d.plugins) && d.plugins.length > 0) {
                 catalogo = d.plugins.map(function (m) {
-                    return Object.assign({}, m, {
+                    return Object.assign(_normalizarClaves(m), {
                         enabled: m.enabledByDefault !== false
                     })
                 })

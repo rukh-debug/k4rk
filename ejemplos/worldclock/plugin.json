@@ -5,6 +5,8 @@
   "title": "World clock card",
   "description": "The Control Centre card example: a row of clocks among the native blocks",
   "host": ">=1.1.0",
-  "permisos": [],
-  "superficies": ["centro"]
+  "permissions": [],
+  "surfaces": [
+    "centro"
+  ]
 }
