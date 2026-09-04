@@ -10,7 +10,8 @@ K4.Plugin {
     colocable: true
     active: abierto
     islandWidth: 920
-    // La distribución es compacta; Escritorios necesita algo más de tablero.
+    // The layout tab is compact; Workspaces needs a bit more
+    // board.
     islandHeight: tab === "pantallas" ? 510 : 540
     grabKeyboard: abierto
     handlesBackgroundTap: true

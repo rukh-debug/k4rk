@@ -1,8 +1,9 @@
-//  Portapapeles: el historial de lo copiado, con búsqueda.
+//  Clipboard: the history of what was copied, with search.
 //
-//  Se abre con el teclado, se escribe para filtrar y se pulsa Intro para
-//  devolver algo al portapapeles. Lo que se fija no caduca nunca, que es lo
-//  que lo convierte en un cajón de cosas que se pegan cien veces al día.
+//  It opens with the keyboard, one types to filter and Enter puts
+//  something back on the clipboard. What is pinned never expires,
+//  which is what turns it into a drawer of things pasted a hundred
+//  times a day.
 
 import QtQuick
 import K4 as K4
@@ -14,8 +15,9 @@ K4Plugin {
 
     name: "clipboard"
     title: "Clipboard"
-    // Por encima del lanzador: si los dos están abiertos, mandas tú con el
-    // que acabas de pedir, y este se pide siempre a propósito.
+    // Above the launcher: if both are open, you rule with the one
+    // just asked for, and this one is always asked for on
+    // purpose.
     priority: 82
     colocable: true
     active: habilitado && (open || closing)
@@ -65,7 +67,7 @@ K4Plugin {
         onTriggered: self.closing = false
     }
 
-    // ── teclado ───────────────────────────────────────────────────
+    // ── keyboard ──────────────────────────────────────────────────
     function mover(paso) {
         if (count === 0)
             return
@@ -85,7 +87,7 @@ K4Plugin {
         if (!e)
             return
         Clipboard.borrar(e.id)
-        // el que ocupe su sitio pasa a estar seleccionado
+        // whatever takes its place becomes selected
         index = Math.max(0, Math.min(index, count - 2))
     }
 
@@ -95,8 +97,9 @@ K4Plugin {
             Clipboard.fijar(e.id)
     }
 
-    // La lista se rehace sola cuando entra una copia nueva: si el índice se
-    // queda fuera, se recorta en vez de apuntar a nada.
+    // The list rebuilds itself when a new copy comes in: if the
+    // index falls outside, it is clamped instead of pointing at
+    // nothing.
     onCountChanged: if (index >= count) index = Math.max(0, count - 1)
 
     K4.Ipc {

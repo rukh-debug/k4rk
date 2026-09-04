@@ -10,15 +10,17 @@ FadeIn {
     property var panel: null
     property var tray: null
 
-    //  Quién la ha abierto y en qué modo. Se lo pasa el plugin —el host no
-    //  inyecta nada— y de aquí sale la única pregunta que esta vista le hace:
-    //  si esto es un ASOMO, que se enseña y se va, o el reproductor entero.
+    //  Whoever opened it and in which mode. The plugin passes it in
+    //  —the host injects nothing— and out of it comes the only
+    //  question this view asks: whether this is a PEEK, shown and
+    //  gone, or the whole player.
     property var plugin: null
 
-    //  Asomándose: carátula, título y artista, y nada más. Lo de abajo —la
-    //  línea de tiempo, el transporte, las notificaciones recientes— es para
-    //  cuando vienes a usarlo, no para enterarte de que ha cambiado la
-    //  canción. Un vídeo de treinta segundos no merece media island.
+    //  Peeking: cover, title and artist, and nothing else. What is
+    //  below —the timeline, the transport, the recent
+    //  notifications— is for when you come to use it, not to learn
+    //  the song changed. A thirty-second video deserves no half
+    //  island.
     readonly property bool asomo: !!(view.plugin && view.plugin.asomando)
 
     readonly property var player: Media.activePlayer
@@ -26,15 +28,17 @@ FadeIn {
         ? Math.max(0, Math.min(1, player.position / player.length))
         : 0
 
-    // MPRIS no notifica la posición: se sondea solo mientras esta vista existe
+    // MPRIS does not notify position: it is polled only while this
+    // view exists
     Component.onCompleted: Media.watchPosition()
     Component.onDestruction: Media.unwatchPosition()
 
-    // ── el asomo: la píldora, contando qué suena ──────────────────
+    // ── the peek: the pill, telling what plays ────────────────────
     //
-    //  Alto de píldora y una sola línea. El reproductor entero es para cuando
-    //  vienes a usarlo; enterarse de que ha cambiado la canción no merece
-    //  media island, y menos cada treinta segundos con un vídeo cualquiera.
+    //  Pill height and a single line. The whole player is for when
+    //  you come to use it; learning the song changed deserves no
+    //  half island, and less so every thirty seconds with any
+    //  video.
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 12
@@ -59,8 +63,9 @@ FadeIn {
             maximumLineCount: 1
         }
 
-        //  El artista solo si cabe holgado: en una línea, un título largo y un
-        //  artista largo acaban siendo dos recortes y ninguno se lee.
+        //  The artist only if it fits comfortably: on one line, a
+        //  long title and a long artist end up two clips and neither
+        //  reads.
         IslandLabel {
             Layout.alignment: Qt.AlignVCenter
             Layout.maximumWidth: 96
@@ -87,7 +92,7 @@ FadeIn {
         anchors.bottomMargin: 14
         spacing: 13
 
-        // ── pista
+        // ── the track
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
@@ -134,9 +139,10 @@ FadeIn {
                 Layout.leftMargin: 4
             }
 
-            // Con música sonando, la island que se abre al pasar el ratón es
-            // esta y no la del reloj: lo que aquí no sea pulsable no tiene
-            // otra forma de tocarse con el ratón.
+            // With music playing, the island opening on hover is
+            // this one and not the clock's: whatever is not
+            // clickable here has no other way to be touched with
+            // the mouse.
             Minimizados {
                 interactive: true
                 Layout.leftMargin: 4
@@ -149,8 +155,8 @@ FadeIn {
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            // Igual que en el reloj: es aquí, con la island ya desplegada,
-            // donde los iconos de bandeja se pueden pulsar.
+            // Same as in the clock: it is here, with the island
+            // already unfolded, where tray icons can be clicked.
             TrayRow {
                 max: 4
                 iconSize: 16
@@ -161,15 +167,16 @@ FadeIn {
             }
         }
 
-        // ── línea de tiempo
+        // ── the timeline
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
             Layout.preferredHeight: 12
             spacing: 8
-            //  Las dos condiciones en UNA: ya traía la suya, y QML no admite
-            //  `visible` dos veces —«Property value set multiple times», y el
-            //  plugin entero se queda sin cargar—.
+            //  Both conditions in ONE: it already carried its own,
+            //  and QML admits `visible` twice —«Property value set
+            //  multiple times», and the whole plugin fails to
+            //  load—.
             visible: Media.hasTimeline
 
             IslandLabel {
@@ -279,7 +286,7 @@ FadeIn {
             }
         }
 
-        // Lo que acaba de llegar, también con música sonando.
+        // What just arrived, also with music playing.
         NotifStrip {
             max: 3
             Layout.fillWidth: true

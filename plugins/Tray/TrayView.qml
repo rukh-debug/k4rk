@@ -12,7 +12,8 @@ FadeIn {
 
     readonly property var selected: plugin.selected
 
-    // Abre el menú DBus de la aplicación seleccionada y expone sus entradas.
+    // Opens the selected application's DBus menu and exposes its
+    // entries.
     K4.MenuBandeja {
         id: opener
         menu: view.selected && view.selected.hasMenu ? view.selected.menu : null
@@ -26,7 +27,7 @@ FadeIn {
         anchors.bottomMargin: 16
         spacing: 12
 
-        // ── cabecera
+        // ── header
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
@@ -65,13 +66,13 @@ FadeIn {
             }
         }
 
-        // ── cuerpo
+        // ── body
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 12
 
-            // ── aplicaciones
+            // ── applications
             Rectangle {
                 Layout.preferredWidth: 250
                 Layout.fillHeight: true
@@ -79,7 +80,8 @@ FadeIn {
                 color: Theme.surface
 
                 ListView {
-                    //  La barra de la casa: sale sola si hay más de lo que cabe.
+                    //  The house scrollbar: comes out on its own when there
+            //  is more than fits.
                     ScrollBar.vertical: IslandScrollBar {}
                     anchors.fill: parent
                     anchors.margins: 8
@@ -116,7 +118,8 @@ FadeIn {
                                 Layout.preferredHeight: 22
                                 Layout.alignment: Qt.AlignVCenter
 
-                                // NeedsAttention: el icono late para que se note
+                                // NeedsAttention: the icon pulses to be
+                                // noticed
                                 SequentialAnimation on opacity {
                                     running: appRow.modelData.status === 2
                                     loops: Animation.Infinite
@@ -169,8 +172,9 @@ FadeIn {
                             }
                             onDoubleClicked: Tray.primary(appRow.modelData)
 
-                            // la rueda se la pasamos a la aplicación, que es lo
-                            // que espera un icono de bandeja (volumen, etc.)
+                            // the wheel is passed to the application,
+                            // which is what a tray icon expects
+                            // (volume, etc.)
                             onWheel: function (wheel) {
                                 appRow.modelData.scroll(wheel.angleDelta.y, false)
                             }
@@ -191,7 +195,7 @@ FadeIn {
                 }
             }
 
-            // ── menú de la seleccionada
+            // ── the selected one's menu
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -239,8 +243,9 @@ FadeIn {
                             }
                         }
 
-                        // abrir la aplicación: las que solo traen menú no
-                        // responden a activate(), así que ahí no se ofrece
+                        // open the application: ones bringing only a
+                        // menu do not answer activate(), so it is not
+                        // offered there
                         Rectangle {
                             visible: view.selected !== null && !view.selected.onlyMenu
                             Layout.preferredWidth: openLabel.implicitWidth + 24
@@ -275,7 +280,8 @@ FadeIn {
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.surfaceHi }
 
                     ListView {
-                        //  La barra de la casa: sale sola si hay más de lo que cabe.
+                        //  The house scrollbar: comes out on its own when there
+            //  is more than fits.
                         ScrollBar.vertical: IslandScrollBar {}
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -290,7 +296,7 @@ FadeIn {
                             width: ListView.view.width
                             height: entryRow.modelData.isSeparator ? 9 : 30
 
-                            // separador
+                            // separator
                             Rectangle {
                                 visible: entryRow.modelData.isSeparator
                                 anchors.verticalCenter: parent.verticalCenter
@@ -317,7 +323,8 @@ FadeIn {
                                     anchors.rightMargin: 10
                                     spacing: 8
 
-                                    // casilla o radio, si la entrada lo es
+                                    // checkbox or radio, if the entry is
+                                    // one
                                     IconGlyph {
                                         visible: entryRow.modelData.buttonType !== 0
                                         text: entryRow.modelData.checkState === Qt.Checked

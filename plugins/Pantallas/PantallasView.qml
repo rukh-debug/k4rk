@@ -271,7 +271,7 @@ K4.Aparicion {
         }
     }
 
-    // Distribución: el centro es una mesa, no un formulario.
+    // Layout: the centre is a table, not a form.
     Item {
         id: displaysPage
         x: 18
@@ -386,7 +386,8 @@ K4.Aparicion {
 
                     Behavior on color { ColorAnimation { duration: 130 } }
 
-                    // El pequeño bisel hace que se lea como pantalla, no tarjeta.
+                    // The small bezel makes it read as a screen, not a
+                    // card.
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 5

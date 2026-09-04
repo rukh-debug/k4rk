@@ -1,8 +1,8 @@
-//  El estado del equipo de un vistazo.
+//  The machine's state at a glance.
 //
-//  Arriba las cuatro que importan —CPU, RAM, GPU y red— cada una con su
-//  historia de los dos últimos minutos; abajo quién se lo está comiendo, con
-//  su botón para cortarlo.
+//  On top the four that matter —CPU, RAM, GPU and network— each
+//  with its last two minutes of history; below whoever is eating
+//  it, with its button to cut it off.
 
 import QtQuick
 import QtQuick.Controls
@@ -23,7 +23,7 @@ FadeIn {
         anchors.bottomMargin: 12
         spacing: 7
 
-        // ── cabecera ──────────────────────────────────────────────
+        // ── header ─────────────────────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 20
@@ -52,7 +52,8 @@ FadeIn {
 
             Item { Layout.fillWidth: true }
 
-            // el disco no cambia en dos minutos: no merece gráfica, solo cifra
+            // disk does not change in two minutes: it deserves no
+            // graph, only a figure
             IslandLabel {
                 visible: Sistema.discoTotal > 0
                 text: "disk " + Math.round(Sistema.discoUsado) + " / "
@@ -79,7 +80,7 @@ FadeIn {
             }
         }
 
-        // ── las cuatro medidas ────────────────────────────────────
+        // ── the four measurements ──────────────────────────────────
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
@@ -125,7 +126,8 @@ FadeIn {
                                 font.weight: Font.DemiBold
                             }
 
-                            // el detalle de cada una: qué modelo, qué interfaz
+                            // each one's detail: which model, which
+                            // interface
                             IslandLabel {
                                 text: tarjeta.esGpu ? Sistema.gpuNombre
                                     : tarjeta.esRed ? Sistema.redIface : ""
@@ -193,7 +195,8 @@ FadeIn {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 20
                             tono: tarjeta.modelData.tono
-                            // la red no tiene tope: se escala con lo que haya
+                            // network has no cap: it scales with
+                            // whatever there is
                             techo: tarjeta.esRed ? 0 : 100
                             valores: {
                                 if (tarjeta.modelData.id === "cpu") return Sistema.cpuHist
@@ -207,10 +210,10 @@ FadeIn {
             }
         }
 
-        // ── quién se lo come ──────────────────────────────────────
-        //  Los márgenes y anchos son los mismos que los de las filas: si no
-        //  cuadran al píxel, un rótulo de columna desalineado confunde más que
-        //  no ponerlo.
+        // ── who eats it ────────────────────────────────────────────
+        //  Margins and widths are the same as the rows': if they do
+        //  not match to the pixel, a misaligned column label
+        //  confuses more than not putting one.
         RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 9
@@ -250,12 +253,14 @@ FadeIn {
                 horizontalAlignment: Text.AlignRight
             }
 
-            // el hueco del botón de matar, que en las filas siempre ocupa
+            // the kill button's slot, which in the rows always
+            // takes space
             Item { Layout.preferredWidth: 28 }
         }
 
         ListView {
-            //  La barra de la casa: sale sola si hay más de lo que cabe.
+            //  The house scrollbar: comes out on its own when there
+            //  is more than fits.
             ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true

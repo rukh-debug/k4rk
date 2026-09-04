@@ -1,8 +1,9 @@
-//  Una gráfica de barras con las últimas muestras.
+//  A bar chart with the latest samples.
 //
-//  Barras y no una línea a propósito: con cuarenta y cinco valores en doscientos
-//  píxeles una polilínea es un garabato, y las barras se leen igual de lejos.
-//  La última va encendida, que es la que dice cómo está la cosa ahora.
+//  Bars and not a line on purpose: with forty-five values in two
+//  hundred pixels a polyline is a scribble, and bars read just as
+//  well from afar. The last one is lit, the one saying how things
+//  are now.
 
 import QtQuick
 import "../../core"
@@ -11,11 +12,12 @@ Item {
     id: grafica
 
     property var valores: []
-    property real techo: 100            // 0 si hay que calcularlo de los datos
+    property real techo: 100            // 0 if it must be computed from the data
     property color tono: Theme.blue
 
-    // Cuando el techo es dinámico —la red no tiene máximo— se toma el mayor de
-    // la ventana, con un suelo para que el ruido de fondo no llene la gráfica.
+    // When the ceiling is dynamic —network has no maximum— the
+    // window's greatest is taken, with a floor so background noise
+    // does not fill the chart.
     readonly property real limite: {
         if (techo > 0)
             return techo
@@ -39,8 +41,8 @@ Item {
                 id: hueco
                 required property int index
 
-                // Las muestras se pintan pegadas a la derecha: la historia
-                // entra por la izquierda según se llena.
+                // Samples paint glued to the right: the history
+                // enters from the left as it fills.
                 readonly property int desde: grafica.cuantas - grafica.valores.length
                 readonly property real valor: index >= desde
                     ? grafica.valores[index - desde] : -1

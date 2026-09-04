@@ -1,6 +1,6 @@
-//  Aviso emergente de notificación. Caduca solo salvo que tengas el ratón
-//  encima (de eso se encarga el host), y un clic en el fondo lo descarta en
-//  vez de abrir el centro de control.
+//  A notification toast. It expires on its own unless the mouse sits
+//  on it (the host's care), and a click on the background dismisses
+//  it instead of opening the control centre.
 
 import QtQuick
 import K4 as K4
@@ -13,37 +13,44 @@ K4Plugin {
     name: "toast"
     title: "Notifications"
 
-    //  59 y no 70, que es lo que hace que la lista de abajo y la prioridad
-    //  digan lo MISMO. `enReposo` ya declaraba a quién puede relevar el toast
-    //  —píldora, reloj, reproductor, volumen— pero la prioridad decía otra
-    //  cosa: con 70 también le ganaba al centro de control, al sonido o a la
-    //  mazmorra si se abrían DESPUÉS, porque la banda solo se decide al abrirse
-    //  el aviso. En 59 queda justo por encima de las de reposo y por debajo de
-    //  todo lo que abres tú, que es lo que la lista ya decía.
+    //  59 and not 70, which is what makes the list below and the
+    //  priority say the SAME. `enReposo` already declared whom the
+    //  toast may relieve —pill, clock, player, volume— but the
+    //  priority said something else: at 70 it also beat the control
+    //  centre, sound or the dungeon if they opened AFTERWARD,
+    //  because the band is only decided when the notice opens. At
+    //  59 it sits just above the resting ones and below everything
+    //  you open, which is what the list already said.
     priority: 59
 
-    //  Y si te abre algo la island mientras está puesto, se va. Un aviso ya ha
-    //  dicho lo suyo con salir; quedarse tapando lo que acabas de abrir es
-    //  cobrarte el aviso dos veces. La notificación NO se pierde: sigue en la
-    //  lista y en el centro de control, lo que se va es el emergente.
+    //  And if the island opens something for you while it is up, it
+    //  goes. A notice has already said its piece by showing; staying
+    //  to cover what you just opened is charging you twice for it.
+    //  The notification is NOT lost: it stays in the
+    //  list and in the control centre; what leaves is the
+    //  toast.
     transitorio: true
 
     function close() { Notifs.dismissToast() }
 
-    //  ¿La island la tiene alguien DE VERDAD? Las vistas de reposo (píldora,
-    //  reloj, reproductor) no cuentan: a esas el toast siempre las relevó y
-    //  debe seguir haciéndolo. Al juego abierto o al editor a medias, ya no:
-    //  ahí la notificación sale en banda aparte y nadie pierde la pantalla.
+    //  Does somebody REALLY hold the island? The resting views
+    //  (pill, clock, player) do not count: the toast always relieved
+    //  those and must keep doing so. To the open game or the
+    //  half-done edit, no longer:
+    //  there the notification comes out in a separate band and
+    //  nobody loses the screen.
     readonly property var enReposo: ["", "toast", "idle", "clock", "player",
                                      "volume"]
 
-    //  El modo se fija AL ABRIRSE cada toast: que cerrar la island a mitad
-    //  no haga saltar el aviso de la banda a la island.
+    //  The mode is fixed WHEN EACH toast opens: so that closing the
+    //  island halfway does not make the notice jump from the band to
+    //  the island.
     //
-    //  Y se decide con quién la tenía ANTES del toast, no con el ocupante
-    //  del momento: en cuanto toastOpen se enciende, el propio toast puede
-    //  haberse adjudicado ya la island —el orden de señales no promete
-    //  nada— y mirarla entonces siempre decía «toast, o sea reposo».
+    //  And it is decided by whoever held it BEFORE the toast, not
+    //  by the moment's occupant: as soon as toastOpen lights up, the
+    //  toast itself may have already claimed the island —signal
+    //  order promises nothing— and looking at it then always said
+    //  «toast, that is rest».
     property bool enBanda: false
     property string _dueñoReal: ""
 
@@ -65,7 +72,7 @@ K4Plugin {
 
     active: habilitado && Notifs.toastOpen && !enBanda
 
-    //  La banda vive fuera de la island y solo mientras hace falta.
+    //  The band lives outside the island and only while needed.
     property var banda: K4.Cargador {
         active: self.habilitado && Notifs.toastOpen && self.enBanda
         BandaToast {}
@@ -73,10 +80,12 @@ K4Plugin {
 
     islandWidth: 440
 
-    // El toast crece un poco cuando la aplicación manda botones de acción.
+    // The toast grows a little when the application sends action
+    // buttons.
     islandHeight: Notifs.buttons(Notifs.latest).length > 0 ? 112 : 96
 
-    // Pulsar el cuerpo lleva a la aplicación: su acción por defecto si la
+    // Clicking the body leads to the application: its default
+    // action if it
     // manda y, si no, enfocar su ventana. Antes solo descartaba el aviso.
     handlesBackgroundTap: true
     onBackgroundTapped: {

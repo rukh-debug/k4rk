@@ -74,7 +74,7 @@ K4Plugin {
         SessionView { plugin: self }
     }
 
-    // ── el menú ───────────────────────────────────────────────────
+    // ── the menu ───────────────────────────────────────────────────
     function abrir() {
         index = 0
         confirmando = -1
@@ -90,8 +90,8 @@ K4Plugin {
         modo = "menu"
     }
 
-    // The rehearsal: the same check the lock will do, without locking. If
-    // aquí entra, allí entrará.
+    // The rehearsal: the same check the lock will do, without
+    // locking. If it gets in here, it will get in there.
     function comprobarClave() {
         modo = "comprobar"
         open = true
@@ -117,7 +117,8 @@ K4Plugin {
         if (!a)
             return
 
-        // primera pulsación en algo irreversible: pregunta, no obedece
+        // first press on something irreversible: it asks, it does
+        // not obey
         if (a.confirma && confirmando !== i) {
             index = i
             confirmando = i
