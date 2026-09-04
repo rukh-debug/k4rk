@@ -1,11 +1,12 @@
-//  La terminal de la casa, vista desde la barra.
+//  The house terminal, seen from the bar.
 //
-//  k4term vive fuera (Rust, libghostty + GPUI) y esta es su embajada: abre
-//  ventanas por IPC y convierte en aviso lo que la terminal cuenta.
+//  k4term lives outside (Rust, libghostty + GPUI) and this is its embassy:
+//  it opens windows over IPC and turns what the terminal reports into
+//  notifications.
 //
-//  El plugin no ocupa la island nunca. Es una pieza de servicio con forma de
-//  plugin, y está bien así: se enciende y se apaga desde Ajustes como todo lo
-//  demás, y su target de IPC se desregistra solo al apagarlo.
+//  The plugin never occupies the island. It is a service piece shaped like
+//  a plugin, and that is fine: it turns on and off from Settings like
+//  everything else, and its IPC target unregisters itself when off.
 //
 //      quickshell ipc -p shell.qml call k4.term abrir
 //      quickshell ipc -p shell.qml call k4.term aqui
@@ -21,64 +22,66 @@ K4Plugin {
 
     name: "terminal"
     title: "Terminal"
-    //  Por encima del reproductor y del reloj, por debajo del lanzador: si
-    //  estás escribiendo en ella, ninguna canción te la quita.
+    //  Above the player and the clock, below the launcher: if you are
+    //  typing in it, no song takes it away from you.
     priority: 75
     colocable: true
     active: abierto
 
-    //  ── la terminal de la island ──────────────────────────────────
+    //  ── the island terminal ───────────────────────────────────────
     //
-    //  Para lo rápido: un `systemctl restart`, un `git status`, mirar cómo va
-    //  algo. La sesión vive en k4term-isla, fuera de la barra, así que cerrar
-    //  la vista no para nada y volver a abrirla te devuelve donde estabas.
+    //  For the quick things: a `systemctl restart`, a `git status`, checking
+    //  on something. The session lives in k4term-isla, outside the bar, so
+    //  closing the view stops nothing and reopening brings you back where
+    //  you were.
     property bool abierto: false
 
-    //  La estela del cursor y la letra las dice la SESIÓN, que lee los
-    //  ajustes de k4term y los vigila: así la isla y la ventana usan lo mismo
-    //  tocando un solo sitio. Se declaran abajo, junto a la lista.
+    //  The cursor trail and the font are said by the SESSION, which reads
+    //  k4term's settings and watches them: the island and the window use the
+    //  same by touching a single place. They are declared below, next to
+    //  the list.
 
     grabKeyboard: abierto
     islandWidth: 900
 
-    //  La island crece con lo que hay dentro, que es lo que se espera de
-    //  ella: un `ls` de tres líneas no tiene por qué abrir un cajón de medio
-    //  monitor.
+    //  The island grows with what is inside it, which is what one expects
+    //  of it: a three-line `ls` has no business opening a drawer half a
+    //  monitor tall.
     //
-    //  Ojo al lazo, que es la trampa de esto: la island decide cuántas filas
-    //  tiene el PTY, así que «lo escrito» nunca puede pasar de lo que cabe y
-    //  medir el contenido para decidir el tamaño no lleva a ninguna parte.
-    //  Lo que funciona es al revés: se abre pequeña y se ensancha cuando se
-    //  LLENA, y se recoge cuando se queda medio vacía —después de un `clear`,
-    //  por ejemplo—. Con margen entre las dos condiciones para que no baile.
+    //  Watch the loop, which is the trap here: the island decides how many
+    //  rows the PTY has, so «what is written» can never exceed what fits,
+    //  and measuring content to decide size leads nowhere. What works is
+    //  the other way around: it opens small, widens when it FILLS, and
+    //  folds when half empty —after a `clear`, say—. With margin between
+    //  the two conditions so it does not jitter.
     //
-    //  La medida de la letra se toma AQUÍ y la vista la usa de aquí, aunque
-    //  quien pinta es ella. Tenerla en los dos sitios costó caro: el alto de
-    //  la island se calculaba con 18 y la vista dividía por la métrica de
-    //  verdad, 17. Salía una fila más de las que cabían, o sea que `usadas`
-    //  nunca llegaba a `filas_n`, o sea que la condición de crecer no se
-    //  cumplía NUNCA: la island se quedaba en su tamaño mínimo para siempre y
-    //  un programa de pantalla completa —claude, vim— se pintaba aplastado en
-    //  siete filas con el cursor al fondo de la caja.
+    //  The font measurement is taken HERE and the view uses it from here,
+    //  even though the view is the one painting. Keeping it in both places
+    //  was expensive: the island's height was computed with 18 while the
+    //  view divided by the real metric, 17. Out came one row more than
+    //  fit, meaning `usadas` never reached `filas_n`, meaning the grow
+    //  condition NEVER held: the island stayed at its minimum size
+    //  forever, and a full-screen program —claude, vim— painted squashed
+    //  into seven rows with the cursor at the bottom of the box.
     //
-    //  El margen y el pie ocupan lo que ocupan; el resto son filas enteras.
-    //  El margen, el pie y la tira de pestañas de arriba. Lo que sobra son
-    //  filas enteras.
+    //  The margin and the foot take what they take; the rest is whole
+    //  rows. The margin, the foot and the tab strip on top. What is left
+    //  over is whole rows.
     readonly property int chrome: 62
     readonly property real altoLinea: Math.ceil(metricas.height)
 
-    //  El ancho de celda, en píxeles ENTEROS y recalculado cuando cambia la
-    //  letra. Las dos primeras líneas del bloque no sobran, y costaron caro:
-    //  `advanceWidth` es una FUNCIÓN, y un enlace de QML solo se reevalúa
-    //  cuando cambia una PROPIEDAD que haya leído. Sin nombrar la familia y el
-    //  cuerpo, esto se calculaba UNA vez —con la fuente todavía sin resolver—
-    //  y se quedaba con el ancho de la tipografía de reserva para siempre:
-    //  13,8 px de celda para una letra que mide 7,8. El texto se pintaba a su
-    //  ancho y el cursor a casi el doble, así que se separaba hacia la derecha
-    //  cuanto más larga era la línea.
+    //  Cell width, in WHOLE pixels, recomputed when the font changes. The
+    //  first two lines of the block are not decoration, and they were
+    //  expensive: `advanceWidth` is a FUNCTION, and a QML binding only
+    //  re-evaluates when a PROPERTY it read changes. Without naming the
+    //  family and the size, this computed ONCE —with the font still
+    //  unresolved— and kept the fallback typography's width forever: a
+    //  13.8 px cell for a letter that measures 7.8. The text painted at
+    //  its width and the cursor at almost double, so it drifted right the
+    //  longer the line.
     //
-    //  Y entero porque así se pinta: con `NativeRendering` los avances se
-    //  redondean a píxel, o sea que una celda fraccionaria no la respeta nadie.
+    //  And whole because that is how it paints: with `NativeRendering`
+    //  advances round to pixels, meaning nobody honors a fractional cell.
     readonly property real anchoCelda: {
         const _familia = metricas.font.family
         const _cuerpo = metricas.font.pixelSize
@@ -93,26 +96,28 @@ K4Plugin {
     readonly property int filasMinimas: 6
     readonly property int filasMaximas: 26
 
-    //  Crecer y recoger, a ritmo constante y con UN solo número.
+    //  Growing and folding, at a steady pace and with ONE number.
     //
-    //  Antes esto iba a empujones: cada marco que llegaba lleno subía el
-    //  destino unas filas y una animación corría detrás. Y se veía, porque el
-    //  destino solo se mueve cuando llega un marco —cada 30 a 120 ms—: la
-    //  animación llegaba, se paraba y esperaba al siguiente empujón. Medido en
-    //  una sola crecida: 555, 111, 938 y 733 px/s. Eso es la escalera.
+    //  This used to go in shoves: every full frame that arrived raised the
+    //  target a few rows and an animation ran behind it. And it showed,
+    //  because the target only moves when a frame arrives —every 30 to
+    //  120 ms—: the animation caught up, stopped, and waited for the next
+    //  shove. Measured over a single growth: 555, 111, 938 and 733 px/s.
+    //  That is the staircase.
     //
-    //  Peor era lo otro: el alto animado y las filas del PTY se calculaban por
-    //  separado, así que la caja y el texto de dentro no se movían a la vez —
-    //  encogía uno y luego el otro.
+    //  Worse was the other thing: the animated height and the PTY's rows
+    //  were computed separately, so the box and the text inside did not
+    //  move together —one shrank, then the other.
     //
-    //  Ahora hay un solo número, `filasReales`, que avanza hacia `objetivo` a
-    //  ritmo fijo. De él salen LAS DOS COSAS: el alto de la island y las filas
-    //  que se le piden a la sesión. Al salir del mismo sitio no pueden ir
-    //  desacompasados, y al avanzar de continuo no hay escalones.
-    //  Crecer es una cosa y recoger es otra. Crecer acompaña a algo que está
-    //  pasando —la salida del mandato llegando— y quiere ir a su ritmo. Al
-    //  recoger ya no hay nada que mirar: lo que sobra es hueco vacío, y
-    //  arrastrarlo a la misma velocidad se hace largo.
+    //  Now there is one number, `filasReales`, advancing toward `objetivo`
+    //  at a fixed pace. BOTH THINGS come out of it: the island's height
+    //  and the rows asked of the session. Coming from the same place they
+    //  cannot fall out of step, and advancing continuously there are no
+    //  stairs. Growing is one thing and folding is another. Growing
+    //  accompanies something happening —the command's output arriving—
+    //  and wants its own pace. When folding there is nothing left to
+    //  watch: what is left over is empty space, and dragging it along at
+    //  the same speed takes long.
     readonly property real filasPorSegundo: 22
     readonly property real filasPorSegundoAlRecoger: 65
     property real velocidad: filasPorSegundo
@@ -121,30 +126,31 @@ K4Plugin {
     property real filasReales: objetivo
     readonly property int filasDeseadas: Math.max(filasMinimas, Math.round(filasReales))
 
-    //  Lo mueve el motor de animación y no un Timer, y no es un detalle: un
-    //  Timer de 16 ms no dispara a sesenta por segundo —medido, salía a menos
-    //  de la mitad del ritmo pedido—, mientras que esto va con el refresco de
-    //  la pantalla.
+    //  The animation engine moves it, not a Timer, and that is not a
+    //  detail: a 16 ms Timer does not fire sixty times a second —measured,
+    //  it came out under half the asked pace—, while this rides the
+    //  screen's refresh.
     //
-    //  Y en `Behavior`, no en `SmoothedAnimation on`: esa segunda forma corre
-    //  UNA vez y al terminar se apaga, así que cambiar el destino después no
-    //  hacía nada. Se vio claro — la island crecía hasta la mitad y se
-    //  plantaba ahí.
+    //  And in a `Behavior`, not in `SmoothedAnimation on`: that second
+    //  form runs ONCE and switches off when done, so changing the target
+    //  afterwards did nothing. It was plain to see — the island grew
+    //  halfway and planted itself there.
     Behavior on filasReales { SmoothedAnimation { velocity: self.velocidad } }
 
     onMarcoChanged: {
         if (!marco)
             return
 
-        //  Lo primero que llega del otro lado apaga el camino de la conexión.
-        //  Regla de dedo, y conviene decirlo: lo del primer cuarto de segundo
-        //  es el eco de lo que se acaba de teclear; a partir de ahí, cualquier
-        //  salida —el prompt de allí o un «connection refused»— significa que
-        //  la espera terminó. Y un tope, por si no llega nada nunca.
-        //  Y si el `ssh` ha terminado, se sale del sitio: fuera el color y
-        //  fuera la píldora. Lo dice el bloque del mandato —la shell de aquí,
-        //  no la de allí— y vale igual para una salida limpia que para un
-        //  corte de red.
+        //  The first thing to arrive from the other side turns off the
+        //  connection path. Rule of thumb, worth saying: what comes in the
+        //  first quarter second is the echo of what was just typed; past
+        //  that, any output —the far prompt or a «connection refused»—
+        //  means the wait is over. And a cap, in case nothing ever
+        //  arrives.
+        //  And if the `ssh` has ended, leave the place: color gone and
+        //  pill gone. The command's block says so —this side's shell, not
+        //  the far one— and it counts the same for a clean exit as for a
+        //  network cut.
         if (sesion && sesion.conectadoA && marco.ultimo
                 && marco.ultimo.estado !== "corre") {
             salirDe(claveIsla(sesion.numero))
@@ -153,38 +159,40 @@ K4Plugin {
             sesion.conectadoA = ""
         }
 
-        //  Con un mandato aún por escribir no se apaga nada: los marcos que
-        //  llegan ahora son de la sesión recién nacida sacando su prompt, no
-        //  respuesta de nadie. Apagarlo aquí dejaba el camino sin verse jamás.
+        //  With a command still to be typed nothing switches off: the
+        //  frames arriving now are the newborn session putting out its
+        //  prompt, not anybody's answer. Switching off here left the path
+        //  unseen forever.
         if (Consola.conectando && !pendiente) {
             const esperado = Date.now() - Consola.conectandoDesde
             if (esperado > 250)
                 Consola.conectado()
         }
-        //  «Se ha llenado» es llegar a la última fila o a la penúltima. Lo de
-        //  la penúltima no es una concesión: un programa de pantalla completa
-        //  se ajusta SIEMPRE al hueco que le das, así que nunca se desborda y
-        //  nunca pide más — y si su última fila queda en blanco, como el
-        //  diálogo de claude, con la condición estricta la island no crecería
-        //  jamás y el programa se quedaría apretado para siempre.
+        //  «Full» means reaching the last row or the one before. The
+        //  one-before is not a concession: a full-screen program ALWAYS
+        //  fits the space it is given, so it never overflows and never
+        //  asks for more — and if its last row stays blank, like
+        //  claude's dialog, with the strict condition the island would
+        //  never grow and the program would stay cramped forever.
         if (marco.usadas >= marco.filas_n - 1) {
-            //  Mientras siga llena, hacia arriba sin parar. En cuanto deje de
-            //  estarlo se queda donde esté: no hay destino que perseguir a
-            //  saltos, solo una dirección.
+            //  While it stays full, upward without stopping. The moment
+            //  it stops being, it stays where it is: no target to chase
+            //  in jumps, only a direction.
             recoger.stop()
             velocidad = filasPorSegundo
             objetivo = filasMaximas
         } else if (marco.usadas * 2 <= marco.filas_n && filasReales > filasMinimas) {
-            //  Vaciada del todo —un `clear`, salir de un programa— se recoge
-            //  YA: no hay nada que confirmar, y esperar ahí es lo que se
-            //  sentía como un retraso raro antes de que la caja reaccionara.
+            //  Emptied completely —a `clear`, leaving a program— it folds
+            //  NOW: there is nothing to confirm, and waiting there was
+            //  what felt like an odd delay before the box reacted.
             //
-            //  Medio vacía es otra cosa y esa sí espera un poco: al pulsar
-            //  Intro la pantalla se queda un instante con menos de lo que
-            //  tenía antes de que llegue la salida del mandato, y reaccionar a
-            //  ese hueco daba un tirón hacia abajo justo antes de crecer
-            //  —medido: 26 px de bajada y 73 de subida a continuación—. Con
-            //  esperar dos marcos basta para distinguirlo.
+            //  Half empty is another thing and that one does wait a
+            //  beat: pressing Enter the screen is left for an instant
+            //  with less than it had before the command's output
+            //  arrives, and reacting to that gap gave a downward yank
+            //  right before growing —measured: 26 px down and 73 up
+            //  right after—. Waiting two frames is enough to tell them
+            //  apart.
             if (marco.usadas <= 2) {
                 recoger.stop()
                 encoger()
@@ -215,12 +223,12 @@ K4Plugin {
         }
     }
 
-    //  Cada sesión nueva empieza recogida.
+    //  Every new session starts folded.
 
-    //  Sin animación por encima: `filasReales` YA se mueve de continuo, y
-    //  ponerle una animación detrás solo añadiría un retardo entre el alto y
-    //  las filas que se le piden a la sesión, que es justo lo que hacía que la
-    //  caja y el texto no fueran al unísono.
+    //  No animation on top: `filasReales` ALREADY moves continuously, and
+    //  putting an animation behind it would only add delay between the
+    //  height and the rows asked of the session, which is exactly what
+    //  kept the box and the text out of step.
     islandHeight: Math.min(560, chrome + filasReales * altoLinea)
     closeOnHoverExit: false
     handlesBackgroundTap: true
@@ -235,23 +243,23 @@ K4Plugin {
 
     function cerrar() { abierto = false }
 
-    //  La puerta en la que llama el host para Escape y el clic fuera. Sin
-    //  ella el capturador se tragaba el clic sin cerrar nada: lo peor de
-    //  los dos mundos. La sesión no muere — cerrar la vista es cerrar la
-    //  vista.
+    //  The door the host knocks on for Escape and the click-outside.
+    //  Without it the catcher swallowed the click without closing
+    //  anything: the worst of both worlds. The session does not die —
+    //  closing the view is closing the view.
     function close() { cerrar() }
 
-    //  ── el portapapeles ───────────────────────────────────────────
+    //  ── the clipboard ─────────────────────────────────────────────
     //
-    //  La sesión no tiene ninguno: no es una ventana, no habla con el
-    //  compositor y no puede. Lo tiene la barra, así que copiar y pegar pasan
-    //  por aquí — y de propina, lo copiado entra en el historial de copias de
-    //  la casa como cualquier otra copia.
+    //  The session has none: it is not a window, it does not talk to the
+    //  compositor and it cannot. The bar has it, so copy and paste go
+    //  through here — and as a bonus, what is copied enters the house's
+    //  copy history like any other copy.
     //
-    //  Para pegar se le pregunta al compositor en el momento y no a la caché
-    //  del servicio: entre lo que el servicio vio por última vez y lo que hay
-    //  ahora puede haber una copia de otra aplicación, y pegar lo de antes es
-    //  de las cosas que uno no perdona.
+    //  For pasting the compositor is asked at the moment and not the
+    //  service's cache: between what the service last saw and what is
+    //  there now there may be another application's copy, and pasting
+    //  the old one is among the things one does not forgive.
     function alCopiar(texto) {
         if (texto)
             K4.Sistema.copiar(texto)
@@ -273,15 +281,17 @@ K4Plugin {
         onTerminado: running = false
     }
 
-    //  La primaria se pone al soltar la selección, como en cualquier terminal
-    //  de siempre: seleccionas, pegas con el botón de en medio.
+    //  The primary is set on releasing the selection, as in any
+    //  old-school terminal: you select, you paste with the middle
+    //  button.
     function copiarPrimaria(texto) {
         if (texto)
             K4.Sistema.lanzar(["wl-copy", "--primary", "--", String(texto)])
     }
 
-    //  Lo que la sesión contesta cuando se le pide un trozo del historial. El
-    //  motivo dice a qué venía: sin él, una copia y una nota llegarían iguales.
+    //  What the session answers when asked for a piece of history. The
+    //  reason says what it came for: without it, a copy and a note would
+    //  arrive identical.
     function alRecibirTexto(contenido, motivo) {
         if (motivo === "primaria") {
             copiarPrimaria(contenido)
@@ -294,9 +304,9 @@ K4Plugin {
         K4.Sistema.copiar(contenido)
     }
 
-    //  Un enlace escrito en la terminal, abierto con lo que el escritorio
-    //  tenga puesto. El `www.` a secas no es una dirección para nadie: sin
-    //  esquema, xdg-open se lo pasaría al navegador como si fuera un fichero.
+    //  A link written in the terminal, opened with whatever the desktop
+    //  has set. Bare `www.` is an address for nobody: without a scheme,
+    //  xdg-open would hand it to the browser as if it were a file.
     function abrirEnlace(url) {
         const limpio = String(url || "")
         if (!limpio)
@@ -304,12 +314,13 @@ K4Plugin {
         K4.Sistema.abrir(limpio.indexOf("www.") === 0 ? "https://" + limpio : limpio)
     }
 
-    //  ── buscar ────────────────────────────────────────────────────
+    //  ── search ────────────────────────────────────────────────────
     //
-    //  Rebuscar en el historial lo hace la sesión, que es quien lo tiene; aquí
-    //  solo se guarda qué se busca y si lo último cayó en algo, para que la
-    //  caja lo diga. Lo amarillo de la pantalla lo pinta la vista con lo que
-    //  ve, sin preguntar nada.
+    //  Digging through history is the session's job, it is the one
+    //  holding it; here only what is searched and whether the last one
+    //  landed on something are kept, so the box can say so. The yellow
+    //  on screen is painted by the view from what it sees, asking
+    //  nothing.
     property string aguja: ""
     property bool sinRastro: false
     property int filaHallada: -1
@@ -325,30 +336,33 @@ K4Plugin {
         filaHallada = hay ? fila : -1
     }
 
-    //  A la nota del día: el último mandato con su salida, o la sesión entera.
-    //  Si no hay Edinot abierto, la sesión lo dice y aquí sale como aviso.
+    //  To today's note: the last command with its output, or the whole
+    //  session. If no Edinot is open, the session says so and it comes
+    //  out here as a notification.
     function anotar(entera) { mandar({ que: "nota", entera: entera === true }) }
 
-    //  ── modo tranquilo ────────────────────────────────────────────
+    //  ── quiet mode ────────────────────────────────────────────────
     //
-    //  Atenúa lo anterior al último mandato. En una sesión de agente de dos
-    //  horas, saber dónde empieza lo nuevo vale más que cualquier color.
-    //  Arranca como lo digan los ajustes de k4term y se enciende y apaga con
-    //  la tecla, que es como se usa: para un rato, no para siempre.
+    //  Dims what came before the last command. In a two-hour agent
+    //  session, knowing where the new part starts is worth more than
+    //  any color. It starts as k4term's settings say and turns on and
+    //  off with the key, which is how it gets used: for a while, not
+    //  forever.
     property bool tranquilo: conf.tranquilo === "si" || conf.tranquilo === "1"
     function alternarTranquilo() { tranquilo = !tranquilo }
 
-    //  ── correr un mandato de la casa aquí dentro ──────────────────
+    //  ── running a house command in here ───────────────────────────
     //
-    //  Actualizar el sistema abría una ventana aparte. Teniendo esto, lo suyo
-    //  es verlo en la island: se asoma sola, lo enseña, y si la cierras el
-    //  mandato sigue corriendo — que es justo para lo que sirve una sesión que
-    //  no depende de la vista.
+    //  Updating the system used to open a separate window. With this
+    //  around, the right thing is to see it in the island: it surfaces
+    //  on its own, shows it, and if you close it the command keeps
+    //  running — which is exactly what a session that does not depend
+    //  on the view is for.
     //
-    //  Se ofrece a Consola en vez de que Consola nos busque: un servicio no
-    //  puede depender de que un plugin exista, y este se apaga desde Ajustes
-    //  como cualquier otro. Al apagarlo se retira la oferta y todo vuelve a
-    //  abrirse en ventana.
+    //  It offers itself to Consola instead of Consola looking for us: a
+    //  service cannot depend on a plugin existing, and this one turns
+    //  off from Settings like any other. When off, the offer is
+    //  withdrawn and everything opens in a window again.
     Component.onCompleted: Consola.registrarIsla(function (guion) {
         self.correrAqui(guion)
     })
@@ -359,16 +373,16 @@ K4Plugin {
             K4.Sistema.lanzar(Consola.orden(guion))
             return
         }
-        //  Los mandatos de la casa van SIEMPRE a una terminal nueva, no a la
-        //  que tengas delante: si estabas con claude a medias, meterle un
-        //  `yay -Syu` por encima sería una faena.
+        //  House commands ALWAYS go to a new terminal, not the one in
+        //  front of you: if you were halfway through claude, dropping a
+        //  `yay -Syu` on top would be a dirty trick.
         nueva()
         abierto = true
         mandar({ que: "pinta" })
-        //  Siempre con espera, porque siempre es una sesión recién nacida: el
-        //  texto que llegue antes de que la shell saque su prompt lo repite el
-        //  tty en crudo y el mandato se ve dos veces, una suelta arriba y otra
-        //  en su sitio.
+        //  Always with a wait, because it is always a newborn session:
+        //  text arriving before the shell puts out its prompt is
+        //  repeated raw by the tty and the command shows twice, once
+        //  loose at the top and once in its place.
         pendiente = guion
         esperarPrompt.restart()
     }
@@ -376,21 +390,22 @@ K4Plugin {
     property string pendiente: ""
 
     function escribirMandato(guion) {
-        //  Ctrl-U delante: si habías dejado algo a medio escribir, el mandato
-        //  se pegaría detrás y saldría un engendro.
+        //  Ctrl-U in front: if you had left something half-written, the
+        //  command would paste behind it and some chimera would come out.
         //
-        //  Y RETORNO al final, no salto de línea. Parece lo mismo y no lo es:
-        //  la tecla Intro manda un retorno, y el editor de línea de la shell
-        //  espera eso. Con `\n` el mandato se queda escrito y sin ejecutar —
-        //  comprobado en vivo, la línea entera ahí quieta.
-        //  Si la conexión lleva contraseña, la terminal se la queda ANTES de
-        //  que el mandato salga: cuando el otro lado la pida, la escribe ella.
-        //  Aquí no se guarda ni se enseña; en cuanto se entrega, se borra.
+        //  And RETURN at the end, not a newline. They look the same and
+        //  are not: the Enter key sends a return, and the shell's line
+        //  editor expects that. With `\n` the command stays written and
+        //  unexecuted — checked live, the whole line sitting there.
+        //  If the connection carries a password, the terminal keeps it
+        //  BEFORE the command goes out: when the far side asks for it,
+        //  the terminal types it. It is neither stored nor shown here;
+        //  the moment it is handed over, it is erased.
         if (Consola.claveConexion) {
-            //  Si el binario de enfrente es anterior a esto, la orden se la
-            //  traga en silencio y la contraseña no se teclea nunca. Se dice,
-            //  que quedarse esperando sin saber por qué es lo peor que puede
-            //  pasar aquí.
+            //  If the binary on the other side predates this, it swallows
+            //  the order silently and the password never gets typed. It
+            //  is said out loud, because waiting without knowing why is
+            //  the worst that can happen here.
             if (sesion && sesion.sabeClaves) {
                 mandar({ que: "clave", valor: Consola.claveConexion })
             } else {
@@ -403,16 +418,17 @@ K4Plugin {
 
         mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\r" })
 
-        //  El cuarto de segundo de gracia se cuenta desde AQUÍ, que es cuando
-        //  el mandato sale de verdad: la sesión de la isla se estrena y espera
-        //  a que la shell saque su prompt, así que entre pulsar Intro y esto
-        //  pasa casi medio segundo — y el eco llegaba «tarde» y apagaba el
-        //  camino antes de empezar.
+        //  The quarter-second of grace counts from HERE, which is when
+        //  the command truly leaves: the island session is brand new and
+        //  waits for the shell to put out its prompt, so between
+        //  pressing Enter and this almost half a second passes — and the
+        //  echo arrived «late» and switched the path off before it
+        //  started.
         if (Consola.conectando) {
             Consola.conectandoDesde = Date.now()
 
-            //  El sitio se apunta en la sesión —no en el plugin— porque puede
-            //  haber varias, cada una en su servidor.
+            //  The place is noted on the session —not the plugin— because
+            //  there can be several, each on its own server.
             if (sesion) {
                 sesion.conectadoA = Consola.conectando
                 if (Consola.tinteConexion)
@@ -434,15 +450,16 @@ K4Plugin {
     }
 
     function toggle() {
-        //  Sin k4term-isla no hay mini-terminal —habla un protocolo que es
-        //  nuestro— pero tampoco hay por qué no hacer nada: se abre una
-        //  ventana con la terminal que haya.
+        //  Without k4term-isla there is no mini-terminal —it speaks a
+        //  protocol that is ours— but there is no reason to do nothing
+        //  either: a window opens with whatever terminal there is.
         if (!Consola.hayIsla) {
             K4.Sistema.lanzar(Consola.abrir(""))
             return
         }
-        //  La primera sesión no se arranca hasta que la pides: quien no use la
-        //  terminal de la island no paga ni un proceso.
+        //  The first session does not start until you ask for it:
+        //  whoever does not use the island terminal does not pay a
+        //  single process.
         if (vivas.length === 0)
             nueva()
         abierto = !abierto
@@ -450,14 +467,14 @@ K4Plugin {
             mandar({ que: "pinta" })
     }
 
-    //  Sacarla a lo grande: la sesión SE MUDA, no se copia. Se le pide que
-    //  ofrezca su PTY por un socket y se abre una ventana que lo recoge; lo
-    //  que estuviera corriendo dentro —un agente, un `make`— sigue como si
-    //  nada, porque lo que cambia de manos es el maestro y a él lo que lo ata
-    //  es el esclavo, que no se toca.
+    //  Taking it big: the session MOVES, it is not copied. It is asked
+    //  to offer its PTY over a socket and a window opens to collect it;
+    //  whatever was running inside —an agent, a `make`— carries on as
+    //  if nothing, because what changes hands is the master and what
+    //  ties it is the slave, which is untouched.
     //
-    //  Sin k4term no hay a quién dársela: entonces se abre lo que haya, que es
-    //  lo que se hacía antes de que esto existiera.
+    //  Without k4term there is nobody to hand it to: then whatever
+    //  there is opens, which is what was done before this existed.
     function sacar() {
         if (!sesion || !Consola.esNuestra) {
             K4.Sistema.lanzar(Consola.abrir(""))
@@ -466,8 +483,9 @@ K4Plugin {
         mandar({ que: "emigrar" })
     }
 
-    //  La sesión ya está en el socket: se abre la ventana que se la lleva. Al
-    //  cogerla, el proceso de la isla se apaga solo y la pestaña se va con él.
+    //  The session is on the socket already: the window that takes it
+    //  away opens. On picking it up, the island's process turns itself
+    //  off and the tab goes with it.
     function alEmigrar(socket) {
         if (!socket)
             return
@@ -475,15 +493,15 @@ K4Plugin {
         abierto = false
     }
 
-    //  ── las sesiones ──────────────────────────────────────────────
+    //  ── the sessions ──────────────────────────────────────────────
     //
-    //  Varias, no una. Tener claude en una y codex en otra es justo para lo
-    //  que sirve una terminal que vive fuera de la vista: cambias de una a
-    //  otra y las dos siguen corriendo.
+    //  Several, not one. Having claude in one and codex in another is
+    //  exactly what a terminal that lives outside the view is for: you
+    //  switch between them and both keep running.
     //
-    //  La lista es un ListModel y no un contador porque hay que poder cerrar
-    //  la de en medio: con un número, el Instantiator siempre se llevaría la
-    //  última.
+    //  The list is a ListModel and not a counter because the middle one
+    //  must be closable: with a number, the Instantiator would always
+    //  take away the last one.
     property ListModel listaSesiones: ListModel {}
     property var vivas: []
     property int actual: 0
@@ -497,10 +515,11 @@ K4Plugin {
     readonly property string fuente: sesion ? sesion.fuente : "MesloLGS Nerd Font Mono"
     readonly property bool arrancado: vivas.length > 0
 
-    //  El tamaño de letra sale de los ajustes de k4term —los mismos que la
-    //  ventana— y encima va el zoom de esta vista, que es de aquí y de ahora:
-    //  agrandar para leer un rato no es cambiar tu preferencia. Se guarda
-    //  entre aperturas porque quien lo agranda suele quererlo agrandado.
+    //  The font size comes from k4term's settings —the same as the
+    //  window's— and on top goes this view's zoom, which belongs here
+    //  and to now: enlarging to read for a while is not changing your
+    //  preference. It is kept across openings because whoever enlarges
+    //  it usually wants it enlarged.
     readonly property int cuerpoBase: sesion ? sesion.cuerpo : 13
     property int zoom: 0
     readonly property int cuerpo: Math.max(8, Math.min(30, cuerpoBase + zoom))
@@ -514,8 +533,8 @@ K4Plugin {
             required property int sid
             required property string socket
             numero: sid
-            //  Si viene con socket, esta sesión no arranca una shell: adopta
-            //  la que una ventana acaba de soltar.
+            //  If it comes with a socket, this session does not start a
+            //  shell: it adopts the one a window has just let go.
             heredar: socket
             onDonde: function (ruta) { self.alDecirDonde(ruta) }
             onDifunta: self.alMorir(numero)
@@ -535,9 +554,10 @@ K4Plugin {
             self.vivas = v
         }
         onObjectRemoved: function (indice, objeto) {
-            //  Lo que esa terminal tuviera anunciado se va con ella. Aquí y no
-            //  en `cerrarSesion`, que este es el único sitio por el que pasan
-            //  LOS DOS finales: el que cierras tú y el que se muere solo.
+            //  Whatever that terminal had announced goes with it. Here
+            //  and not in `cerrarSesion`, because this is the only place
+            //  BOTH endings pass through: the one you close and the one
+            //  that dies on its own.
             self.limpiarIsla(objeto.numero)
             const v = self.vivas.slice()
             v.splice(indice, 1)
@@ -552,11 +572,11 @@ K4Plugin {
     function nueva(socket) {
         listaSesiones.append({ sid: ++contador, socket: socket || "" })
         actual = vivas.length - 1
-        //  Recogida: cada terminal nueva empieza pequeña, como al abrir. Se
-        //  toca SOLO el objetivo: escribir en `filasReales` rompería su
-        //  enlace con él —y con `nueva()` corriendo la primera vez que abres
-        //  la isla, la caja se quedaba desenganchada desde el minuto uno y no
-        //  volvía a crecer nunca—.
+        //  Folded: every new terminal starts small, as on opening. ONLY
+        //  the target is touched: writing to `filasReales` would break its
+        //  binding to it —and with `nueva()` running the first time you
+        //  open the island, the box stayed unhooked from minute one and
+        //  never grew again—.
         objetivo = filasMinimas
         return vivas[actual]
     }
@@ -571,10 +591,11 @@ K4Plugin {
     function siguiente() { if (vivas.length > 1) irA((actual + 1) % vivas.length) }
     function anterior() { if (vivas.length > 1) irA((actual - 1 + vivas.length) % vivas.length) }
 
-    //  Cerrar una sesión se lleva TODO lo suyo, y la píldora de conexión es
-    //  lo suyo: la conexión se ha ido con ella. Antes solo se quitaba al
-    //  terminar el `ssh`, así que cerrar la pestaña —o matarla— dejaba la
-    //  píldora anunciando para siempre un servidor del que ya no queda nada.
+    //  Closing a session takes ALL of its own with it, and the
+    //  connection pill is its own: the connection has gone with it. It
+    //  used to be removed only at the end of the `ssh`, so closing the
+    //  tab —or killing it— left the pill forever announcing a server
+    //  of which nothing remains.
     function olvidarSesion(numero) {
         salirDe(claveIsla(numero))
     }
@@ -595,45 +616,49 @@ K4Plugin {
             }
     }
 
-    //  La sesión contesta dónde está. Ya no se usa para sacarla —ahora la
-    //  sesión se muda entera, no se abre otra en su sitio— pero sigue siendo
-    //  la forma de saber en qué directorio anda: lo aprovecha quien quiera
-    //  abrir algo «aquí mismo».
+    //  The session answers where it is. It is no longer used to take
+    //  it out —the session now moves whole, another is not opened in
+    //  its place— but it remains the way to know which directory it
+    //  walks in: whoever wants to open something «right here» makes
+    //  use of it.
     function alDecirDonde(ruta) {
         ultimoDirectorio = String(ruta || "")
     }
 
     property string ultimoDirectorio: ""
 
-    //  Despierta a los dos servicios que le hacen falta: un singleton de QML
-    //  no se instancia hasta que alguien lo mira. El del ambiente publica el
-    //  tema para la terminal —apagar este plugin deja de publicarlo, que es
-    //  justo lo que tiene que pasar— y el de la consola averigua qué
-    //  terminal hay instalada, que lo necesita hasta el actualizador.
+    //  Wakes the two services it needs: a QML singleton does not
+    //  instantiate until someone looks at it. The environment one
+    //  publishes the theme for the terminal —turning this plugin off
+    //  stops publishing it, which is exactly what should happen— and
+    //  the console one finds out which terminal is installed, which
+    //  even the updater needs.
     readonly property string ambiente: Ambiente.ruta
     readonly property string cual: Consola.binario
 
-    //  ── trabajos en curso ─────────────────────────────────────────
+    //  ── work in progress ──────────────────────────────────────────
     //
-    //  Lo que se está cociendo ahora mismo, por pid de la ventana que lo
-    //  corre. La terminal solo cuenta los que llevan unos segundos vivos, así
-    //  que aquí no llega el ruido de un `ls`: si algo está apuntado, es
-    //  porque de verdad merece un hueco en la píldora.
+    //  What is cooking right now, by the pid of the window running it.
+    //  The terminal only counts those alive for a few seconds, so an
+    //  `ls`'s noise never reaches here: if something is noted down, it
+    //  truly deserves a slot on the pill.
     property var trabajos: ({})
 
-    //  La cuenta va aparte y no calculada del mapa: reasignar a una propiedad
-    //  `var` el MISMO objeto que ya tenía no notifica a nadie, y el latido se
-    //  quedaba parado con el indicador clavado en cero. De ahí también que
-    //  aquí se copie el mapa en vez de tocarlo por dentro.
+    //  The count is kept apart and not computed from the map:
+    //  reassigning to a `var` property the SAME object it already had
+    //  notifies nobody, and the heartbeat stayed stopped with the
+    //  indicator nailed at zero. Hence also the map being copied here
+    //  instead of touched inside.
     property int enCurso: 0
 
-    //  De aquí para arriba, además del indicador, un aviso al terminar.
+    //  From here upward, besides the indicator, a notification on
+    //  finishing.
     readonly property int avisoSegundos: 20
 
     function idDe(pid) { return "terminal." + pid }
 
-    //  Un reloj de píldora: cabe en dos dedos de ancho y no baila al pasar de
-    //  los sesenta, que es lo que importa cuando está al lado de la hora.
+    //  A pill clock: it fits two fingers wide and does not dance past
+    //  sixty, which is what matters when it sits next to the time.
     function reloj(ms) {
         const s = Math.max(0, Math.round(ms / 1000))
         if (s < 60)
@@ -642,17 +667,19 @@ K4Plugin {
         return m + ":" + String(s % 60).padStart(2, "0")
     }
 
-    //  `llevaba` son los segundos que el mandato acumulaba cuando la terminal
-    //  se decidió a contarlo: el reloj de la píldora arranca ahí y no en cero,
-    //  o enseñaría menos tiempo del que de verdad lleva trabajando.
-    //  Los agentes de consola son otra cosa que un mandato largo: no están
-    //  «tardando», están pensando, y uno los deja correr a propósito. Se les
-    //  da su propio glifo para distinguirlos de un vistazo.
+    //  `llevaba` is the seconds the command had accumulated when the
+    //  terminal decided to count it: the pill's clock starts there and
+    //  not at zero, or it would show less time than it has truly been
+    //  working.
+    //  Console agents are something other than a long command: they are
+    //  not «taking long», they are thinking, and one leaves them
+    //  running on purpose. They get their own glyph to tell apart at a
+    //  glance.
     readonly property var agentes: ["claude", "codex", "aider", "gemini", "opencode", "goose"]
 
-    //  El programa a secas: sin la ruta por delante y sin sus argumentos.
-    //  `/usr/bin/python3 tools/goteo.py` es «python3», que es lo que se lee
-    //  de un vistazo en una pestaña de dos dedos.
+    //  The bare program: no path in front and no arguments.
+    //  `/usr/bin/python3 tools/goteo.py` is «python3», which is what
+    //  reads at a glance in a two-finger tab.
     function programaDe(mandato) {
         const primero = String(mandato).trim().split(/\s+/)[0] || ""
         return primero.split("/").pop()
@@ -662,13 +689,15 @@ K4Plugin {
         return agentes.indexOf(programaDe(mandato)) >= 0
     }
 
-    //  Con qué se dibuja lo que corre: glifo y color. Está aparte porque lo
-    //  usan la píldora y la tira de pestañas de la isla, y dos copias de esta
-    //  decisión acabarían diciendo cosas distintas de lo mismo.
+    //  What runs is drawn with: glyph and color. Kept apart because
+    //  the pill and the island's tab strip both use it, and two copies
+    //  of this decision would end up saying different things about the
+    //  same subject.
     //
-    //  Es pura —solo mira el mandato—, así que un enlace de QML puede
-    //  llamarla sin miedo mientras lea por su cuenta el mapa de donde saca el
-    //  mandato: lo que no reevalúa un enlace es la función, no el dato.
+    //  It is pure —it only looks at the command—, so a QML binding may
+    //  call it without fear as long as it reads on its own the map it
+    //  takes the command from: what a binding does not re-evaluate is
+    //  the function, not the data.
     function insigniaDe(mandato) {
         const agente = esAgente(mandato)
         return { glifo: agente ? Theme.ico.ask.codePointAt(0) : 0xF018D,
@@ -687,34 +716,38 @@ K4Plugin {
                              insignia.glifo, insignia.color, 30, true)
     }
 
-    //  Los que te esperan van con el id aparte: un mandato largo y un agente
-    //  que ha acabado su turno son dos cosas distintas y pueden coincidir.
+    //  Those waiting for you go with their own id: a long command and
+    //  an agent that has finished its shift are two different things
+    //  and can coincide.
     function idEspera(pid) { return "terminal.espera." + pid }
 
-    //  Y quiénes la tienen puesta. Al registro de píldoras no se le puede
-    //  preguntar, así que sin esta lista no hay forma de saber a quién hay
-    //  que vigilar: una campana puede quedarse sola mucho después de que su
-    //  mandato acabara, y es justo la que más se nota si sobrevive a su
-    //  ventana. Va aparte de `trabajos` porque son cosas distintas.
+    //  And who wears it. The pill registry cannot be asked, so
+    //  without this list there is no way to know whom to watch: a
+    //  bell can stay alone long after its command ended, and it is
+    //  exactly the one most noticed if it outlives its window. Kept
+    //  apart from `trabajos` because they are different things.
     property var esperas: ({})
 
     function esperando(pid, titulo) {
         const nombre = String(titulo || "").trim() || "Terminal"
-        //  La campana del tema: dice «te llaman» sin necesidad de leerlo, y
-        //  en amarillo, que reclama sin alarmar.
+        //  The theme's bell: it says «they are calling you» without
+        //  needing to be read, and in yellow, which demands without
+        //  alarming.
         K4.Pildora.registrar(idEspera(pid), nombre.slice(0, 18), Theme.ico.bell.codePointAt(0),
                              Theme.yellow, 29, true)
-        //  Se guarda CON QUIÉN, no un `true`: al atenderla hay que poder
-        //  retirar su notificación, y para eso hace falta saber cuál era.
+        //  It is kept WITH WHOM, not a `true`: on attending it, its
+        //  notification must be removable, and for that one needs to
+        //  know which one it was.
         const e = Object.assign({}, esperas)
         e[pid] = nombre
         esperas = e
 
-        //  De QUÉ ventana es este aviso. Sin esto, pulsarlo buscaba «una
-        //  ventana de k4term» y con dos abiertas se iba a la más vieja, que es
-        //  la de al lado: el aviso te llevaba a la terminal equivocada. Las de
-        //  la isla no tienen ventana —su clave es `isla.N`— y ahí no hay pid
-        //  que apuntar.
+        //  WHICH window this notice belongs to. Without this,
+        //  clicking it looked for «a k4term window» and with two open
+        //  it went to the older one, which is the one next door: the
+        //  notice took you to the wrong terminal. The island ones have
+        //  no window —their key is `isla.N`— and there is no pid to
+        //  note there.
         if (String(pid).indexOf("isla.") !== 0)
             Notifs.apuntarDestino("k4term", nombre, pid)
 
@@ -726,9 +759,10 @@ K4Plugin {
         K4.Pildora.quitar(idEspera(pid))
         if (esperas[pid] === undefined)
             return
-        //  La píldora y la notificación cuentan lo MISMO: quitar una y dejar la
-        //  otra deja la mitad del aviso puesta, y esa mitad es la que sale
-        //  luego en la tira de debajo del reloj.
+        //  The pill and the notification tell the SAME thing:
+        //  removing one and leaving the other leaves half the notice
+        //  up, and that half is what later shows in the strip under
+        //  the clock.
         Notifs.descartarDeApp("k4term", esperas[pid])
         Notifs.olvidarDestino("k4term", esperas[pid])
         const e = Object.assign({}, esperas)
@@ -736,20 +770,21 @@ K4Plugin {
         esperas = e
     }
 
-    //  ── ir a la terminal ES atenderla ─────────────────────────────
+    //  ── going to the terminal IS attending it ─────────────────────
     //
-    //  La campana pide una cosa concreta: que vayas. Una vez estás ahí ya ha
-    //  hecho lo suyo, y seguir pidiéndolo desde la píldora es ruido. Hasta
-    //  ahora solo se iba pulsándola, que es pedir el mismo gesto dos veces: el
-    //  de ir a la terminal y el de decirle a la barra que has ido.
+    //  The bell asks for one concrete thing: that you come. Once you
+    //  are there it has done its part, and keeping asking from the
+    //  pill is noise. Until now you only went by clicking it, which is
+    //  asking for the same gesture twice: going to the terminal and
+    //  telling the bar you went.
     //
-    //  Dos caminos porque hay dos terminales. La de ventana se entera por el
-    //  pid de la que toma el foco —que es la clave con la que se apuntó—; la
-    //  de la isla, por la pestaña que se está viendo, que es la misma regla
-    //  con la que `alLlamar` decide no molestar.
+    //  Two paths because there are two terminals. The window one
+    //  learns from the pid of whichever takes focus —the key it was
+    //  noted with—; the island one, from the tab being watched, which
+    //  is the same rule `alLlamar` uses to decide not to bother.
     //
-    //  El trabajo en curso NO se toca: ese indicador cuenta algo que sigue
-    //  pasando y mirarlo no lo acaba.
+    //  Work in progress is NOT touched: that indicator counts
+    //  something still happening and looking at it does not end it.
     property Connections foco: Connections {
         target: Ventanas
         function onPidActivoChanged() {
@@ -779,7 +814,8 @@ K4Plugin {
             K4.Pildora.actualizar(idDe(pid), { texto: reloj(ahora - trabajos[pid].desde) })
     }
 
-    //  Solo late mientras hay algo que contar: sin trabajos, ni un despertar.
+    //  It only beats while there is something to count: no jobs, no
+    //  waking up.
     property Timer latido: Timer {
         interval: 1000
         repeat: true
@@ -787,36 +823,38 @@ K4Plugin {
         onTriggered: self.tictac()
     }
 
-    //  Pulsar el indicador lleva a la ventana que está trabajando. Se
-    //  pregunta primero por ella: si ya no existe —la mataron sin avisar— el
-    //  indicador se cura solo, y pulsarlo es el único momento en el que
-    //  compensa comprobarlo.
+    //  Clicking the indicator takes you to the working window. It is
+    //  asked for first: if it no longer exists —killed without
+    //  warning— the indicator heals itself, and clicking it is the
+    //  only moment worth checking.
     property Connections clics: Connections {
         target: K4.Pildora
         function onInvocado(id) {
             if (String(id).indexOf("terminal.") !== 0)
                 return
-            //  El de las terminales abiertas no lleva a ninguna ventana: abre
-            //  la island por donde la dejaste.
+            //  The open-terminals one leads to no window: it opens
+            //  the island where you left it.
             if (id === self.idAbiertas) {
                 self.abierto = true
                 self.mandar({ que: "pinta" })
                 return
             }
-            //  Ir a la ventana quita el aviso de que te espera: ya la has
-            //  atendido, que es lo que el indicador estaba pidiendo.
+            //  Going to the window removes the waiting notice: you
+            //  have attended it, which is what the indicator was
+            //  asking.
             const espera = String(id).indexOf("terminal.espera.") === 0
             const resto = String(id).substring(espera ? "terminal.espera.".length
                                                       : "terminal.".length)
-            //  Por `dejarDeEsperar` y no quitando la píldora a mano: así el
-            //  clic retira también la notificación y borra el apunte, que es
-            //  lo mismo que hace ir a la terminal. Quitando solo la píldora,
-            //  el aviso seguía en el panel y en la tira del reloj.
+            //  Through `dejarDeEsperar` and not by removing the pill by
+            //  hand: this way the click also withdraws the
+            //  notification and erases the note, the same thing going
+            //  to the terminal does. Removing only the pill, the
+            //  notice stayed in the panel and in the clock's strip.
             if (espera)
                 self.dejarDeEsperar(resto)
 
-            //  Si es de la isla, no hay ventana a la que ir: se abre la
-            //  terminal por esa misma sesión.
+            //  If it is from the island, there is no window to go to:
+            //  the terminal opens on that very session.
             if (resto.indexOf("isla.") === 0) {
                 const donde = self.indiceDe(parseInt(resto.substring(5), 10))
                 if (donde >= 0) {
@@ -835,12 +873,13 @@ K4Plugin {
         }
     }
 
-    //  ── lo que se cuece en las terminales de la isla ──────────────
+    //  ── what cooks in the island terminals ────────────────────────
     //
-    //  Lo mismo que ya hacía la ventana, pero llegando por el canal de la
-    //  sesión en vez de por el IPC. Y con una ventaja que el IPC no daba:
-    //  sabemos de QUÉ terminal viene, así que pulsar el indicador te trae a
-    //  ella en vez de buscar una ventana que no existe.
+    //  The same the window already did, but arriving over the
+    //  session's channel instead of IPC. And with an advantage IPC
+    //  never gave: we know WHICH terminal it comes from, so clicking
+    //  the indicator brings you to it instead of looking for a window
+    //  that does not exist.
     function claveIsla(numero) { return "isla." + numero }
 
     function indiceDe(numero) {
@@ -850,8 +889,8 @@ K4Plugin {
         return -1
     }
 
-    //  Un indicador de una terminal que ya no está es una puerta a ninguna
-    //  parte: pulsarlo no puede llevarte a nada.
+    //  An indicator for a terminal that is no longer there is a door
+    //  to nowhere: clicking it cannot take you anywhere.
     function limpiarIsla(numero) {
         const clave = claveIsla(numero)
         olvidar(clave)
@@ -869,31 +908,34 @@ K4Plugin {
             avisar(mandato, salida, segundos)
     }
 
-    //  La campana solo merece aviso si NO la estás viendo. Teniendo esa
-    //  terminal delante ya te has enterado, y avisarte sería ruido — que es
-    //  justo la regla que la ventana aplica con el foco.
+    //  The bell only deserves a notice if you are NOT watching it.
+    //  With that terminal in front of you you have already found out,
+    //  and notifying you would be noise — which is exactly the rule
+    //  the window applies with focus.
     function alLlamar(numero, titulo) {
         const mirando = abierto && vivas[actual] && vivas[actual].numero === numero
         if (mirando)
             return
-        //  Con quién te llama, no un «Terminal» a secas: el sentido de esto es
-        //  saber CUÁL de tus agentes ha acabado su turno. El título que pide
-        //  la aplicación es lo que mejor lo dice; el mandato, si no lo hay.
+        //  Who is calling you, not a bare «Terminal»: the point of
+        //  this is knowing WHICH of your agents has finished its
+        //  shift. The title the application asks for says it best; the
+        //  command, if there is none.
         const donde = indiceDe(numero)
         const quien = (donde >= 0 && vivas[donde].titulo)
             || titulo || "Terminal"
         esperando(claveIsla(numero), quien)
     }
 
-    //  ── a qué estás conectado ─────────────────────────────────────
+    //  ── what you are connected to ─────────────────────────────────
     //
-    //  Una píldora por sesión que está dentro de un servidor. Se apunta con la
-    //  clave de quien la abre —el pid de la ventana o la sesión de la isla—
-    //  para que dos conexiones a la vez no se pisen.
+    //  One pill per session that is inside a server. Noted with the
+    //  key of whoever opens it —the window's pid or the island
+    //  session— so two simultaneous connections do not step on each
+    //  other.
     function idConexion(clave) { return "terminal.ssh." + clave }
 
-    //  A dónde está conectada cada una, por su clave. Hace falta para poder
-    //  decir de QUÉ servidor se ha salido: la ventana solo manda su pid.
+    //  Where each one is connected, by its key. Needed to be able to
+    //  say WHICH server was left: the window only sends its pid.
     property var dentroDe: ({})
 
     function entrarEn(clave, destino) {
@@ -918,23 +960,25 @@ K4Plugin {
         }
     }
 
-    //  Una ventana puede irse sin decir adiós —la matan, se cuelga, se va la
-    //  sesión entera— y su píldora se quedaría anunciando un sitio del que no
-    //  queda nada. Se comprueba cada pocos segundos, y SOLO mientras haya
-    //  alguna de ventana: las de la isla no lo necesitan, que esas sesiones
-    //  son nuestras y sabemos cuándo se van.
+    //  A window can leave without saying goodbye —killed, hung, the
+    //  whole session gone— and its pill would keep announcing a place
+    //  of which nothing remains. Checked every few seconds, and ONLY
+    //  while there is a window one: the island ones do not need it,
+    //  those sessions are ours and we know when they leave.
     //
-    //  Y va por las TRES familias, no solo por la de los servidores: el adiós
-    //  de la ventana (`k4.term limpiar`) sale de k4term cuando muere su shell,
-    //  y cerrar la ventana no pasa por ahí —el proceso se va en el acto y la
-    //  shell se entera después, cuando ya no hay quien lo cuente—. Un mandato
-    //  largo o una campana se quedaban entonces en la isla para siempre, con
-    //  el reloj subiendo. Aquí no se confía en que nadie se despida.
+    //  And it goes over all THREE families, not just the servers': the
+    //  window's goodbye (`k4.term clear`) comes from k4term when its
+    //  shell dies, and closing the window does not pass there —the
+    //  process is gone at once and the shell learns later, when there
+    //  is nobody left to tell—. A long command or a bell then stayed
+    //  on the pill forever, with the clock climbing. Here nobody is
+    //  trusted to say goodbye.
     readonly property var pidsVigilados: {
         const vistos = ({})
         const anotar = function (clave) {
-            //  Las de la isla fuera: sus claves son `isla.N`, no pids, y de
-            //  esas sesiones ya sabemos cuándo se van.
+            //  The island ones out: their keys are `isla.N`, not
+            //  pids, and of those sessions we already know when they
+            //  leave.
             if (String(clave).indexOf("isla.") !== 0)
                 vistos[String(clave)] = true
         }
@@ -963,8 +1007,9 @@ K4Plugin {
         vivos.running = true
     }
 
-    //  Al que ya no está se le quitan las tres de golpe: cada una se sabe
-    //  ignorar si no era suya, y así no hay que averiguar de qué murió.
+    //  Whoever is gone gets all three removed at once: each one knows
+    //  how to ignore itself if it was not its own, and so nobody has
+    //  to figure out what it died of.
     function despedir(pid) {
         salirDe(pid)
         olvidar(pid)
@@ -981,15 +1026,16 @@ K4Plugin {
         }
     }
 
-    //  ── «tienes terminales abiertas» ──────────────────────────────
+    //  ── «you have terminals open» ─────────────────────────────────
     //
-    //  Con la vista escondida no hay NADA que recuerde que ahí dentro sigue
-    //  corriendo algo, y una sesión que sobrevive a su propia vista es
-    //  justamente la que se olvida. Un indicador con la cuenta lo dice, y
-    //  pulsarlo la trae de vuelta.
+    //  With the view hidden there is NOTHING to remind you that
+    //  something is still running in there, and a session that
+    //  outlives its own view is exactly the one that gets forgotten.
+    //  An indicator with the count says it, and clicking it brings it
+    //  back.
     //
-    //  Solo cuando está escondida: teniéndola delante, contarte que la tienes
-    //  abierta sobra.
+    //  Only while hidden: with it in front of you, telling you it is
+    //  open is redundant.
     readonly property string idAbiertas: "terminal.abiertas"
 
     function refrescarAbiertas() {
@@ -1005,10 +1051,11 @@ K4Plugin {
     onAbiertoChanged: { refrescarAbiertas(); atendidaIsla() }
     onActualChanged: atendidaIsla()
 
-    //  Trabajos largos: la terminal avisa al terminar y aquí se convierte en
-    //  notificación, que es la vía por la que la casa entera enseña avisos.
-    //  El mandato se recorta porque un `find` con veinte argumentos no cabe
-    //  en un toast y lo que importa es reconocerlo, no leerlo entero.
+    //  Long jobs: the terminal notifies on ending and here it becomes
+    //  a notification, which is the road the whole house uses for
+    //  notices. The command is trimmed because a twenty-argument
+    //  `find` does not fit a toast and what matters is recognizing it,
+    //  not reading it whole.
     function resumir(mandato) {
         const limpio = String(mandato).trim()
         return limpio.length > 48 ? limpio.slice(0, 47) + "…" : limpio
@@ -1026,9 +1073,9 @@ K4Plugin {
     K4.Ipc {
         target: "k4.term"
 
-        //  Sin decir dónde, en tu casa. Hay que ser explícito: lo que se
-        //  hereda al lanzar desde aquí es el directorio de la barra, que no
-        //  le importa a nadie.
+        //  Without saying where, at home. Explicit on purpose: what is
+        //  inherited when launching from here is the bar's directory,
+        //  which nobody cares about.
         function open(): void {
             K4.Sistema.lanzar(Consola.abrir(K4.Sistema.entorno("HOME")))
         }
@@ -1037,39 +1084,41 @@ K4Plugin {
             K4.Sistema.lanzar(Consola.abrir(ruta))
         }
 
-        //  Donde la casa corra las cosas: la island si la hay, y si no una
-        //  ventana. Antes esto abría ventana siempre, y era incoherente con
-        //  que Actualizar sí se vea en la island.
+        //  Where the house runs things: the island if there is one,
+        //  and if not a window. This used to always open a window,
+        //  inconsistent with Update indeed showing in the island.
         function run(mandato: string): void {
             if (mandato)
                 Consola.ejecutar(mandato)
         }
 
-        //  Lo de la island, a lo grande y en el mismo sitio.
+        //  The island one, big and in the same place.
         function popOut(): void { self.sacar() }
 
-        //  El gesto único: mudar la sesión al otro lado, sea cual sea el otro
-        //  lado. Si estás mirando una ventana de k4term, se vuelve a la
-        //  island; si no, la de la island se va a una ventana. Dos atajos
-        //  para lo mismo no tenían sentido, y encima el de la ventana no
-        //  llegaba mientras la island se quedaba el teclado.
+        //  The single gesture: move the session to the other side,
+        //  whichever the other side is. If you are looking at a
+        //  k4term window, it comes back to the island; if not, the
+        //  island one goes to a window. Two shortcuts for the same
+        //  thing made no sense, and the window one did not even arrive
+        //  while the island kept the keyboard.
         function move(): void { quien.running = true }
 
-        //  Abrir donde estás mirando: se pregunta a Hyprland por la ventana
-        //  con foco y se baja por el árbol de procesos hasta el último hijo
-        //  —el intérprete que de verdad tiene el directorio— para leerle el
-        //  cwd. Si algo falla, cae en abrir sin más.
+        //  Open where you are looking: Hyprland is asked for the
+        //  focused window and the process tree is walked down to the
+        //  last child —the interpreter that truly holds the directory—
+        //  to read its cwd. If anything fails, it falls back to just
+        //  opening.
         function here(): void { donde.running = true }
 
-        //  Empieza algo largo: a la píldora. Quien decide qué es «largo» es
-        //  la terminal, que es la que tiene el reloj puesto.
+        //  Something long starts: to the pill. Whoever decides what
+        //  «long» is, is the terminal, the one wearing the clock.
         function start(pid: string, mandato: string, llevaba: string): void {
             self.apuntar(pid, mandato, llevaba)
         }
 
-        //  Y al acabar: fuera de la píldora, y aviso si de verdad ha llevado
-        //  su rato. El indicador aparece antes que el aviso a propósito —
-        //  primero enterarse de que trabaja, luego de que terminó.
+        //  And on ending: off the pill, and a notice if it truly took
+        //  a while. The indicator appears before the notice on purpose
+        //  — first learn that it works, then that it finished.
         function end(pid: string, mandato: string, salida: string,
                      segundos: string): void {
             self.olvidar(pid)
@@ -1077,17 +1126,18 @@ K4Plugin {
                 self.avisar(mandato, salida, segundos)
         }
 
-        //  La ventana se cierra con algo dentro: se lleva su indicador.
+        //  The window closes with something inside: its indicator goes
+        //  with it.
         function clear(pid: string): void {
             self.olvidar(pid)
             self.dejarDeEsperar(pid)
         }
 
-        //  La terminal de la island, para lo rápido.
+        //  The island terminal, for the quick things.
         function island(): void { self.toggle() }
 
-        //  Una ventana devuelve su sesión: se abre una pestaña que la adopta.
-        //  La ventana se cierra sola en cuanto se la hayan quitado.
+        //  A window gives its session back: a tab opens to adopt it.
+        //  The window closes itself as soon as it has been taken.
         function adopt(socket: string): void {
             if (!socket)
                 return
@@ -1095,8 +1145,9 @@ K4Plugin {
             self.abierto = true
         }
 
-        //  Las de tener varias: abrir otra, moverse entre ellas y cerrar la
-        //  que sobra. Lo mismo que las teclas, para quien prefiera un guion.
+        //  The having-several ones: opening another, moving between
+        //  them and closing the spare. The same as the keys, for
+        //  whoever prefers a script.
         function newSession(): void {
             if (!Consola.hayIsla)
                 return
@@ -1109,28 +1160,30 @@ K4Plugin {
         function goTo(n: string): void { self.irA(parseInt(n, 10) - 1) }
         function closeTerminal(): void { self.cerrarSesion(self.actual) }
 
-        //  Teclear en la que tengas delante, sin abrir ninguna nueva. Es lo
-        //  que distingue esto de `ejecutar`, que siempre estrena terminal.
+        //  Type into the one in front of you, opening no new one. That
+        //  is what tells this apart from `run`, which always breaks in a
+        //  fresh terminal.
         function write(texto: string): void {
-            //  Los saltos de línea se convierten en retornos por lo mismo que
-            //  al pegar: es lo que manda la tecla Intro, y con `\n` la línea
-            //  se queda escrita sin ejecutarse.
+            //  Newlines become returns for the same reason as when
+            //  pasting: that is what the Enter key sends, and with `\n`
+            //  the line stays written without executing.
             if (texto)
                 self.mandar({ que: "texto",
                               valor: String(texto).replace(/\r\n|\n/g, "\r") })
         }
 
-        //  Una terminal que toca la campana sin tener el foco casi siempre es
-        //  un agente que ha terminado su turno y te espera. Se apunta en la
-        //  píldora —con su propio glifo, que no es lo mismo que un mandato
-        //  largo— y se avisa una vez.
+        //  A terminal ringing the bell without focus is almost always
+        //  an agent that finished its shift and waits for you. Noted
+        //  on the pill —with its own glyph, not the same as a long
+        //  command— and notified once.
         function bell(pid: string, titulo: string): void {
             self.esperando(pid, titulo)
         }
 
-        //  Estás dentro de un sitio. Lo dice la ventana al conectar y la
-        //  píldora lo enseña: con tres terminales abiertas, saber a cuál
-        //  máquina pertenece cada una no debería exigir mirar el prompt.
+        //  You are inside a place. The window says it on connecting and
+        //  the pill shows it: with three terminals open, knowing which
+        //  machine each belongs to should not require reading the
+        //  prompt.
         function connected(pid: string, destino: string): void {
             self.entrarEn(pid, destino)
         }
@@ -1139,8 +1192,8 @@ K4Plugin {
             self.salirDe(pid)
         }
 
-        //  Un recado suelto de la terminal: no tiene dónde decir «guardado»
-        //  sin taparse a sí misma, y la isla sí.
+        //  A loose message from the terminal: it has nowhere to say
+        //  «saved» without covering itself, and the island does.
         function notify(titulo: string, cuerpo: string): void {
             K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "5000",
                                titulo, cuerpo])
@@ -1157,13 +1210,13 @@ K4Plugin {
                            cuerpo])
     }
 
-    //  ── los ajustes de k4term, en los Ajustes de la casa ──────────
+    //  ── k4term's settings, in the house's Settings ────────────────
     //
-    //  k4term los lee de ~/.config/k4term/k4term.conf y los sigue en
-    //  caliente, así que tocar aquí un interruptor se ve en las ventanas
-    //  abiertas sin reabrir nada. Se escribe LÍNEA A LÍNEA y no el fichero
-    //  entero a propósito: quien lo haya editado a mano tiene derecho a que
-    //  no se le borren sus comentarios ni sus claves.
+    //  k4term reads them from ~/.config/k4term/k4term.conf and follows
+    //  them live, so flipping a switch here shows in the open windows
+    //  without reopening anything. Written LINE BY LINE and not the
+    //  whole file on purpose: whoever hand-edited it has the right to
+    //  keep their comments and their keys.
 
     readonly property string ficheroConf: K4.Sistema.entorno("HOME") + "/.config/k4term/k4term.conf"
 
@@ -1207,15 +1260,16 @@ K4Plugin {
         plugin: "terminal"
         grupo: "Terminal"
 
-        //  Solo si hay k4term. Son SUS ajustes: sin él, esta sección ofrecía
-        //  cambiar el tamaño de letra y el cristal de una terminal que no está
-        //  instalada, y lo escribía en un fichero que no lee nadie. Con la
-        //  lista vacía, la sección entera no sale.
+        //  Only if k4term is around. They are ITS settings: without
+        //  it, this section offered to change the font size and glass
+        //  of a terminal that is not installed, writing to a file
+        //  nobody reads. With the list empty, the whole section does
+        //  not show.
         //
-        //  La detección de Consola tarda —es un proceso que corre al
-        //  arrancar—, así que esto vale «no» durante los primeros
-        //  milisegundos; lo que hace que aparezca después es que K4.Ajustes se
-        //  vuelve a registrar cuando `opciones` cambia.
+        //  Consola's detection takes a while —a process running at
+        //  startup—, so this reads «no» for the first milliseconds;
+        //  what makes it appear later is K4.Ajustes registering again
+        //  when `opciones` changes.
         opciones: !Consola.esNuestra ? [] : [
             { id: "tamaño", nombre: "Font size",
               desc: "Window only; the island uses its own space",
@@ -1254,10 +1308,10 @@ K4Plugin {
     K4.Process {
         id: buscar
         property string pid: ""
-        //  Un clic en el indicador que llega mientras el `hyprctl clients`
-        //  anterior sigue vivo: asignar `pid` y `running` ahí es un no-op
-        //  y ese clic se perdía. El pid queda apuntado y `onTerminado`
-        //  relanza la búsqueda con él.
+        //  An indicator click arriving while the previous `hyprctl
+        //  clients` is still alive: assigning `pid` and `running`
+        //  there is a no-op and that click was lost. The pid is noted
+        //  and `onTerminado` relaunches the search with it.
         property bool relanzar: false
         command: ["hyprctl", "clients", "-j"]
         onTerminado: function (codigo) {
@@ -1285,9 +1339,9 @@ K4Plugin {
         }
     }
 
-    //  Hyprland 0.56 ya no traga `dispatch focuswindow pid:N`: su parser Lua
-    //  se atraganta con los dos puntos del selector. La vía viva es `eval`,
-    //  la misma que usa el tema de Hyprland en esta casa.
+    //  Hyprland 0.56 no longer swallows `dispatch focuswindow pid:N`:
+    //  its Lua parser chokes on the selector's colon. The living way
+    //  is `eval`, the same the Hyprland theme uses in this house.
     K4.Process {
         id: enfoque
         property string pid: ""
@@ -1297,9 +1351,9 @@ K4Plugin {
         onTerminado: running = false
     }
 
-    //  Quién está delante ahora mismo. Con eso se decide hacia dónde muda la
-    //  sesión: la barra no puede preguntarle a una ventana de GPUI, pero sí
-    //  puede llamarla — y al proceso de una ventana se le llama con una señal.
+    //  Whoever is in front right now. With that, where the session
+    //  moves is decided: the bar cannot ask a GPUI window, but it can
+    //  call it — and a window's process is called with a signal.
     K4.Process {
         id: quien
         command: ["hyprctl", "activewindow", "-j"]
@@ -1314,9 +1368,10 @@ K4Plugin {
                 K4.Sistema.lanzar(["kill", "-USR1", String(v.pid)])
                 return
             }
-            //  Mudar es mover algo que existe. Sin sesión en la island no hay
-            //  nada que llevarse, y abrir una terminal nueva aquí sería una
-            //  sorpresa: pasó en la primera prueba y no se entiende.
+            //  Moving is carrying something that exists. Without a
+            //  session in the island there is nothing to take, and
+            //  opening a new terminal here would be a surprise: it
+            //  happened in the first test and makes no sense.
             if (self.sesion)
                 self.sacar()
         }

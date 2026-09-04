@@ -1,12 +1,13 @@
-//  Una sesión de terminal dentro de la barra.
+//  A terminal session inside the bar.
 //
-//  Es un `k4term-isla` y lo que hace falta para hablarle: se le mandan órdenes
-//  en JSON por líneas y él devuelve marcos con la rejilla ya resuelta. Nada
-//  más — quién se enseña, en qué orden y con qué teclas se cambia es asunto
-//  del plugin.
+//  It is a `k4term-isla` and what it takes to talk to it: commands go
+//  over as JSON lines and it answers frames with the grid already
+//  resolved. Nothing more — who is shown, in what order and with which
+//  keys is the plugin's business.
 //
-//  Está en su propio fichero justamente para que haya VARIAS: antes esto vivía
-//  suelto dentro del plugin y por eso solo podía existir una.
+//  It lives in its own file precisely so there can be SEVERAL: this
+//  used to live loose inside the plugin, and that is why only one
+//  could exist.
 
 import QtQuick
 import K4 as K4
@@ -15,66 +16,71 @@ import "../../services"
 QtObject {
     id: sesion
 
-    //  Una sesión que ya existe esperando en ese socket: viene de una ventana
-    //  que la devuelve. Con esto el binario no abre ninguna shell — adopta la
-    //  que hay, con lo que estuviera corriendo dentro.
+    //  A session that already exists waiting on that socket: it comes
+    //  from a window giving it back. With this the binary opens no
+    //  shell — it adopts the one there, with whatever was running
+    //  inside it.
     property string heredar: ""
 
-    //  A qué servidor está conectada ahora mismo, si lo está. Lo apunta el
-    //  plugin al mandar el `ssh` y lo borra cuando ese mandato termina.
+    //  Which server it is connected to right now, if any. The plugin
+    //  notes it when sending the `ssh` and erases it when that command
+    //  ends.
     property string conectadoA: ""
 
-    //  Un número que no se repite, para poder referirse a ella aunque se
-    //  cierren otras por el medio. No se llama `id` porque en QML esa palabra
-    //  está cogida.
+    //  A number that does not repeat, to be able to refer to it even
+    //  when others close in between. It is not called `id` because in
+    //  QML that word is taken.
     property int numero: 0
 
-    //  Lo último que ha mandado.
+    //  The last thing it sent.
     property var marco: null
     property int estela: 8
-    //  Si el binario que hay enfrente sabe teclear contraseñas. Lo dice él al
-    //  arrancar; uno anterior no dice nada y se queda en false.
+    //  Whether the binary on the other side can type passwords. It
+    //  says so at startup; an older one says nothing and stays
+    //  false.
     property bool sabeClaves: false
     property string fuente: "MesloLGS Nerd Font Mono"
     property int cuerpo: 13
 
-    //  Cómo llamarla en el selector: lo que diga la aplicación de dentro, y si
-    //  no ha dicho nada, dónde está.
+    //  What to call it in the selector: whatever the application
+    //  inside says, and if it has said nothing, where it is.
     readonly property string titulo: marco && marco.titulo ? marco.titulo : ""
     readonly property string cwd: marco && marco.cwd ? marco.cwd : ""
 
-    //  Se pide y se contesta: el plugin la usa para saber dónde sacar una
-    //  ventana con esta misma sesión dentro.
+    //  Asked and answered: the plugin uses it to know where to open a
+    //  window with this same session inside.
     signal donde(string ruta)
 
-    //  Lo que se está cociendo aquí dentro. La sesión cuenta hechos; qué se
-    //  enseña y cuándo lo decide el plugin, que es el único que sabe si estás
-    //  mirando esta terminal ahora mismo.
+    //  What is cooking in here. The session reports facts; what is
+    //  shown and when is the plugin's call, the only one knowing
+    //  whether you are watching this terminal right now.
     signal trabajo(string estado, string mandato, int salida, int segundos)
     signal campana(string titulo)
 
-    //  Lo que la aplicación de dentro ha pedido copiar (OSC 52). Aquí no hay
-    //  portapapeles: lo tiene la barra, así que se le pasa a ella.
+    //  What the application inside asked to copy (OSC 52). There is
+    //  no clipboard here: the bar has it, so it is passed to it.
     signal portapapeles(string texto)
 
-    //  Un trozo del historial que se pidió con `texto_de`. Vuelve con el
-    //  motivo por el que se pidió, que es lo que distingue copiar de mandar a
-    //  una nota — si no, la respuesta no diría a qué venía.
+    //  A piece of history asked for with `texto_de`. It comes back
+    //  with the reason it was asked for, which is what tells copying
+    //  apart from sending to a note — otherwise the answer would not
+    //  say what it came for.
     signal texto(string contenido, string motivo)
 
-    //  Dónde cayó una búsqueda, y si cayó en algo.
+    //  Where a search landed, and whether it landed on anything.
     signal buscado(bool hay, int fila)
 
-    //  Un recado suelto para el usuario: aquí dentro no hay sitio para
-    //  decirle «guardado» sin taparse a sí misma.
+    //  A loose message for the user: in here there is no room to say
+    //  «saved» without covering itself.
     signal aviso(string texto)
 
-    //  «Ahí queda la sesión»: por ese socket se la puede llevar una ventana.
-    //  Hasta que alguien la coja, aquí no se ha soltado nada.
+    //  «There stays the session»: through that socket a window can
+    //  take it away. Until somebody picks it up, nothing has been let
+    //  go here.
     signal emigrando(string socket)
 
-    //  Se murió sola —un `exit`, la shell cerrada—, para que el plugin la
-    //  quite de la lista en vez de dejar un hueco muerto.
+    //  It died on its own —an `exit`, the shell closed—, so the
+    //  plugin takes it off the list instead of leaving a dead slot.
     signal difunta()
 
     property bool viva: true
@@ -103,19 +109,20 @@ QtObject {
             if (m.que === "marco") {
                 sesion.marco = m
             } else if (m.que === "config") {
-                //  `estela` sin guarda era el único campo sin ella: un
-                //  k4term que no lo mande deja `undefined`, que se hace 0
-                //  y mata el rastro del cursor sin decir nada.
+                //  `estela` without a guard was the only field
+                //  without one: a k4term that does not send it leaves
+                //  `undefined`, which becomes 0 and kills the cursor
+                //  trail without a word.
                 if (m.estela !== undefined)
                     sesion.estela = m.estela
                 if (m.fuente)
                     sesion.fuente = m.fuente
                 if (m.tamano)
                     sesion.cuerpo = Math.round(m.tamano)
-                //  Qué sabe hacer el binario que hay enfrente. Un k4term
-                //  anterior a las contraseñas no manda esto, y entonces no se
-                //  le mandan: mejor decirlo que quedarse esperando una
-                //  contraseña que nadie va a teclear.
+                //  What the binary on the other side can do. A
+                //  k4term older than passwords does not send this,
+                //  and then none are sent to it: better said than
+                //  left waiting for a password nobody will type.
                 sesion.sabeClaves = m.claves === true
             } else if (m.que === "donde") {
                 sesion.donde(m.ruta || "")
@@ -137,10 +144,11 @@ QtObject {
         }
 
         onTerminado: {
-            //  Muerta sin haber pintado NADA: o el binario ya no está, o no
-            //  arranca. En los dos casos la respuesta es la misma —volver a
-            //  mirar qué hay instalado—, y así el plugin se apaga solo con su
-            //  motivo en vez de intentarlo una y otra vez.
+            //  Dead having painted NOTHING: either the binary is no
+            //  longer there, or it does not start. In both cases the
+            //  answer is the same —look again at what is installed—,
+            //  and so the plugin turns itself off with its reason
+            //  instead of trying over and over.
             if (!sesion.marco)
                 Consola.revisar()
             sesion.viva = false
