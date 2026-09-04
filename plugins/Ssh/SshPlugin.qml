@@ -1,20 +1,21 @@
-//  Los servidores de uno, a dos golpes.
+//  Your servers, two keystrokes away.
 //
-//  Escribes tres letras y entras. Nada más — pero con dos decisiones detrás
-//  que conviene tener claras:
+//  You type three letters and you are in. Nothing more — but with two
+//  decisions behind it worth having clear:
 //
-//  **Los hosts viven en `~/.ssh/config`, no en una base de datos nuestra.**
-//  Es lo que hace que guardar aquí sirva también para `ssh` a pelo, `scp`,
-//  `git`, `rsync` y cualquier cosa que hable ssh. Un vault propio sería más
-//  fácil de escribir y te dejaría preso de k4.
+//  **Hosts live in `~/.ssh/config`, not in a database of ours.**
+//  That is what makes saving here serve bare `ssh`, `scp`,
+//  `git`, `rsync` and anything that speaks ssh too. A vault of our own would
+//  be easier to write and would leave you a prisoner of k4.
 //
-//  **Contraseñas, ninguna.** Ni en claro ni cifradas por nosotros: se conecta
-//  con claves y agente, que es como se hace. Si no tienes clave, esto te la
-//  crea y te la manda al servidor — el resto lo lleva ssh, que para eso está.
+//  **Passwords, none.** Not in the clear, not encrypted by us: you connect
+//  with keys and agent, which is how it is done. If you have no key, this
+//  creates one for you and sends it to the server — ssh carries the rest,
+//  that is what it is there for.
 //
-//  Lo que sí es nuestro va en `~/.config/k4term/hosts.json`: lo que el fichero
-//  de ssh no sabe decir —favoritos, cuándo entraste por última vez, etiquetas—
-//  y que no tiene por qué ensuciar una configuración que leen otros programas.
+//  What IS ours goes in `~/.config/k4term/hosts.json`: what the ssh file
+//  cannot say —favourites, when you last went in, tags— and that has no
+//  business dirtying a configuration other programs read.
 
 import QtQuick
 import K4 as K4
@@ -26,8 +27,8 @@ K4Plugin {
 
     name: "ssh"
     title: "Servers"
-    //  Como el portapapeles: se pide a propósito, así que manda sobre lo que
-    //  esté puesto.
+    //  Like the clipboard: it is asked for on purpose, so it wins over
+    //  whatever is already up.
     priority: 82
     colocable: true
     active: abierto || cerrando
@@ -42,22 +43,25 @@ K4Plugin {
     property string busqueda: ""
     property int indice: 0
 
-    //  Dos caras de la misma ventana: la lista para elegir y el formulario
-    //  para configurar. Se cambia de una a otra sin cerrar nada, que abrir un
-    //  diálogo encima de un diálogo es de las cosas que hacen que uno deje de
-    //  usar algo.
+    //  Two faces of the same window: the list to choose from and the form to
+    //  configure. You go from one to the other without closing anything,
+    //  because opening a dialogue on top of a dialogue is one of the things
+    //  that make someone stop using something.
     property string modo: "lista"
     property var borrador: ({})
     property int campo: 0
 
-    //  Los campos, en el orden en que se rellenan. Los cuatro primeros van a
-    //  `~/.ssh/config` —los entiende ssh y los aprovechan scp, git y todo lo
-    //  demás—; los tres últimos son nuestros y viven en `hosts.json`.
-    //  Los campos de la ficha. Es una lista calculada y no una constante por
-    //  un motivo: la contraseña solo se ofrece si hay una terminal NUESTRA
-    //  —la ventana o la de la isla—, porque el tecleo automático lo hace la
-    //  terminal mirando su propio PTY y eso kitty o alacritty no lo hacen.
-    //  Un campo que se rellena y luego no hace nada es peor que no tenerlo.
+    //  The fields, in the order they get filled in. The first four go to
+    //  `~/.ssh/config` —ssh understands them, and scp, git and everything
+    //  else takes advantage—; the last three are ours and live in
+    //  `hosts.json`.
+    //  The fields of the card. It is a computed list and not a constant for
+    //  a reason: the password is only offered if there is a terminal of OURS
+    //  —the window one or the island one—, because the automatic typing is
+    //  done by the terminal watching its own PTY, and kitty or alacritty
+    //  do not do that.
+    //  A field that gets filled in and then does nothing is worse than not
+    //  having it.
     readonly property bool puedeContrasena: Consola.esNuestra || Consola.hayIsla
 
     readonly property var campos: puedeContrasena ? camposTodos
@@ -67,9 +71,10 @@ K4Plugin {
         { id: "alias",      nombre: "Name",     ayuda: "what you are going to call it",          suyo: false },
         { id: "host",       nombre: "Typewriter",    ayuda: "domain or IP",                  suyo: false },
         { id: "usuario",    nombre: "User",    ayuda: "empty = yours",               suyo: false },
-        //  La contraseña no va ni al `ssh_config` ni a `hosts.json`: esos dos
-        //  se abren y se copian sin pensar. Vive en `claves.json` con 600, y
-        //  en la ficha se enseña con puntos salvo que pidas verla (ctrl+O).
+        //  The password goes neither into `ssh_config` nor into `hosts.json`:
+        //  those two get opened and copied without thinking. It lives in
+        //  `claves.json` with 600, and on the card it is shown as dots unless
+        //  you ask to see it (ctrl+O).
         { id: "contrasena", nombre: "Password", ayuda: "if it logs in with a password instead of a key", suyo: false, secreto: true },
         { id: "puerto",     nombre: "Port",     ayuda: "empty = 22",                    suyo: false },
         { id: "clave",      nombre: "Key",      ayuda: "path to the private key, if not the usual one", suyo: false },
@@ -80,9 +85,9 @@ K4Plugin {
         { id: "tuneles",    nombre: "Tunnels",    ayuda: "8080:localhost:80 · socks:1080 · R:9000:localhost:9000", suyo: true }
     ]
 
-    //  Si la contraseña se enseña o va con puntos. Se apaga al abrir la ficha
-    //  y al cerrarla: que se quede encendida de la vez anterior es justo lo
-    //  que no se espera.
+    //  Whether the password is shown or goes as dots. It switches off when
+    //  the card opens and when it closes: staying on from the previous time
+    //  is exactly what nobody expects.
     property bool verClave: false
 
     function editar(h) {
@@ -143,10 +148,11 @@ K4Plugin {
         cerrando = false
         abierto = true
         claves.running = true
-        //  `~/.ssh` con los permisos que ssh exige. Si lo crea por su cuenta
-        //  quien escriba el fichero, sale con los de todo el mundo (755) y
-        //  ssh se planta: para él, un directorio que otros pueden mirar no es
-        //  sitio para claves. Comprobado — nos pasó al guardar el primero.
+        //  `~/.ssh` with the permissions ssh demands. If it is created on
+        //  its own by whoever writes the file, it comes out with everyone's
+        //  (755) and ssh digs its heels in: to it, a directory others can
+        //  look into is no place for keys. Proven — it happened to us when
+        //  saving the first one.
         permisos.running = true
     }
 
@@ -155,8 +161,9 @@ K4Plugin {
         onTerminado: running = false
     }
 
-    //  Y el fichero, solo para ti. No lleva secretos, pero dice a qué máquinas
-    //  entras y con qué usuario, que tampoco es cosa de nadie.
+    //  And the file, yours only. It carries no secrets, but it says which
+    //  machines you enter and as which user, which is nobody's business
+    //  either.
     property K4.Process cerrarFichero: K4.Process {
         command: ["sh", "-c", "chmod 600 ~/.ssh/config 2>/dev/null"]
         onTerminado: running = false
@@ -184,12 +191,11 @@ K4Plugin {
         onTriggered: self.cerrando = false
     }
 
-    //  ── lo que dice ~/.ssh/config ─────────────────────────────────
+    //  ── what ~/.ssh/config says ─────────────────────────────────
     //
-    //  Un analizador pequeño y a propósito tolerante: de las cincuenta
-    //  opciones que admite ssh solo se leen las cinco que sirven para
-    //  enseñar y conectar. Lo demás se respeta sin tocarlo — este fichero es
-    //  del usuario, no nuestro.
+    //  A small and deliberately tolerant parser: of the fifty options ssh
+    //  admits, only the five that serve to show and connect get read. The
+    //  rest is respected untouched — this file is the user's, not ours.
     readonly property string rutaSsh: K4.Sistema.entorno("HOME") + "/.ssh/config"
     readonly property string rutaExtras: K4.Sistema.entorno("HOME") + "/.config/k4term/hosts.json"
 
@@ -200,19 +206,20 @@ K4Plugin {
         path: self.rutaSsh
         onLoaded: {
             self.guardados = self.leerSsh()
-            //  El `connect` por guion espera a esta señal: su alias se
-            //  busca aquí, con la lista ya en memoria.
+            //  The script-side `connect` waits for this signal: its alias
+            //  is looked up here, with the list already in memory.
             if (self._conectarTrasCargar) {
                 self._conectarTrasCargar = ""
                 self.buscarParaConectar(self._aliasPendiente)
             }
         }
-        //  Sin fichero no hay nada que leer, y es lo normal la primera vez.
+        //  Without a file there is nothing to read, and that is the normal
+        //  thing the first time.
         onLoadFailed: self.guardados = []
     }
 
-    //  Lo que el `connect` por guion deja encargado hasta que la lista
-    //  termine de releerse.
+    //  What the script-side `connect` leaves on order until the list
+    //  finishes re-reading itself.
     property string _conectarTrasCargar: ""
     property string _aliasPendiente: ""
 
@@ -228,13 +235,14 @@ K4Plugin {
         onLoadFailed: self.extras = ({})
     }
 
-    //  ── las contraseñas ───────────────────────────────────────────
+    //  ── the passwords ───────────────────────────────────────────
     //
-    //  En su propio fichero y con 600, como en la ventana: `claves.json` no
-    //  sale nunca de aquí, y ni el `ssh_config` ni `hosts.json` lo tocan. Van
-    //  en claro, con el mismo trato que una clave privada sin frase — en este
-    //  equipo no hay servicio de secretos que funcione, y el día que lo haya
-    //  esto es lo único que cambia.
+    //  In their own file and with 600, like in the window: `claves.json`
+    //  never leaves here, and neither `ssh_config` nor `hosts.json` touches
+    //  it. They go in the clear, with the same treatment as a private key
+    //  without a passphrase — on this machine there is no secrets service
+    //  that works, and the day there is one, this is the only thing that
+    //  changes.
     readonly property string rutaClaves: K4.Sistema.entorno("HOME") + "/.config/k4term/claves.json"
 
     property var contrasenas: ({})
@@ -256,8 +264,8 @@ K4Plugin {
         return c ? String(c) : ""
     }
 
-    //  Una contraseña vacía BORRA la que hubiera: es la única forma de
-    //  quitarla desde la ficha.
+    //  An empty password DELETES whatever one was there: it is the only way
+    //  to remove it from the card.
     function guardarClave(alias, clave) {
         const nombre = String(alias || "")
         if (!nombre)
@@ -272,8 +280,8 @@ K4Plugin {
         cerrarClaves.running = true
     }
 
-    //  El fichero recién escrito sale con los permisos de todo el mundo, y
-    //  esto no es un fichero cualquiera.
+    //  The freshly written file comes out with everyone's permissions, and
+    //  this is not just any file.
     property K4.Process cerrarClaves: K4.Process {
         command: ["sh", "-c",
                   "chmod 700 ~/.config/k4term 2>/dev/null; " +
@@ -286,8 +294,8 @@ K4Plugin {
         let actual = null
 
         texto.split("\n").forEach(function (linea) {
-            //  Los comentarios fuera, y la separación puede ser espacio o
-            //  igual: `Port 22` y `Port=22` son lo mismo para ssh.
+            //  Comments out, and the separator can be a space or an
+            //  equals: `Port 22` and `Port=22` are the same thing to ssh.
             const limpia = linea.replace(/#.*$/, "").trim()
             if (limpia.length === 0)
                 return
@@ -298,8 +306,8 @@ K4Plugin {
             const valor = limpia.slice(corte).replace(/^[\s=]+/, "").trim()
 
             if (clave === "host") {
-                //  Los patrones (`Host *`) son valores por defecto, no sitios
-                //  a los que ir: no se enseñan.
+                //  Patterns (`Host *`) are default values, not places to
+                //  go: they are not shown.
                 const nombres = valor.split(/\s+/)
                 const primero = nombres.length > 0 ? nombres[0] : ""
                 actual = null
@@ -323,11 +331,11 @@ K4Plugin {
         return lista
     }
 
-    //  ── la lista que se ve ────────────────────────────────────────
+    //  ── the list you see ────────────────────────────────────────
     //
-    //  Primero los favoritos, luego por cuándo entraste —lo de ayer suele ser
-    //  lo de hoy— y al final por nombre. Ordenar por uso es lo que hace que
-    //  con tres letras el primero sea casi siempre el bueno.
+    //  Favourites first, then by when you last went in —yesterday's is
+    //  usually today's— and last by name. Sorting by use is what makes three
+    //  letters enough for the first one to almost always be the right one.
     function conExtras(h) {
         const e = extras[h.alias] || ({})
         return { alias: h.alias, host: h.host || h.alias, usuario: h.usuario,
@@ -346,9 +354,9 @@ K4Plugin {
         const salida = []
 
         for (let i = 0; i < guardados.length; ++i) {
-            //  Los alias de agentes no son un sitio más al que ir: son la
-            //  puerta de atrás de uno que ya está en la lista. Se ven como una
-            //  marca en el suyo, no como una fila aparte.
+            //  Agent aliases are not one more place to go: they are the back
+            //  door of one that is already in the list. They show as a mark
+            //  on its row, not as a row of their own.
             if (esAliasAgentes(guardados[i].alias))
                 continue
             const h = conExtras(guardados[i])
@@ -367,9 +375,9 @@ K4Plugin {
             return a.alias.localeCompare(b.alias)
         })
 
-        //  Conexión al vuelo: si lo escrito parece un destino y no es ninguno
-        //  de los guardados, se ofrece ir directamente. Es lo que uno hace la
-        //  primera vez, antes de tener nada guardado.
+        //  Connection on the fly: if what is typed looks like a destination
+        //  and is none of the saved ones, going there directly is offered.
+        //  It is what you do the first time, before having anything saved.
         const destino = self.comoDestino(busqueda)
         if (destino) {
             const yaEsta = salida.some(function (h) {
@@ -388,9 +396,9 @@ K4Plugin {
 
     readonly property int cuantos: lista.length
 
-    //  ¿Esto que has escrito parece un sitio? `usuario@maquina:puerto`, con
-    //  las dos primeras partes opcionales. Se pide un punto o dos letras y
-    //  media para no ofrecer «conectar a p» mientras escribes.
+    //  Does what you have typed look like a site? `usuario@maquina:puerto`,
+    //  with the first two parts optional. A dot, or two and a half letters,
+    //  is required — no offering «connect to p» while you type.
     function comoDestino(texto) {
         const t = String(texto).trim()
         if (t.length < 3 || /\s/.test(t))
@@ -409,20 +417,21 @@ K4Plugin {
         indice = Math.max(0, Math.min(cuantos - 1, indice + paso))
     }
 
-    //  ── conectar ──────────────────────────────────────────────────
+    //  ── connect ──────────────────────────────────────────────────
     //
-    //  El mandato se compone igual para los dos sitios; lo único que cambia es
-    //  dónde sale. En la isla va por `K4.Terminal`, que abre pestaña nueva —lo
-    //  que quieres, para no pisar lo que tuvieras a medias.
+    //  The command is put together the same for both places; the only thing
+    //  that changes is where it comes out. On the island it goes through
+    //  `K4.Terminal`, which opens a new tab —what you want, so as not to
+    //  step on whatever you had half-done.
     function mandato(h) {
         if (!h)
             return ""
         const partes = ["ssh"]
         if (h.puerto)
             partes.push("-p", h.puerto)
-        //  Un host guardado se llama por su alias y ya está: lo demás lo pone
-        //  el propio ssh leyendo su configuración, incluida la clave y el
-        //  salto. Solo el destino al vuelo lleva usuario delante.
+        //  A saved host is called by its alias and that is it: ssh itself
+        //  puts in the rest by reading its configuration, key and jump
+        //  included. Only the on-the-fly destination gets a user in front.
         partes.push(h.rapido && h.usuario ? h.usuario + "@" + h.host : h.alias)
         return partes.join(" ")
     }
@@ -432,32 +441,33 @@ K4Plugin {
         if (!guion)
             return
 
-        //  Lo que pediste que se corriera al entrar va detrás, en la misma
-        //  línea: así entra por el mismo sitio y no hay que adivinar cuándo
-        //  ha terminado de arrancar la sesión de allí.
+        //  What you asked to have run on entry goes behind, on the same
+        //  line: that way it goes in through the same door and nobody has to
+        //  guess when the session over there has finished starting up.
         if (h.alConectar)
             guion += " -t " + JSON.stringify(String(h.alConectar))
 
         if (!h.rapido)
             apuntarVisita(h.alias)
 
-        //  Los túneles, con la conexión: se levantan aquí y se caen cuando la
-        //  terminal avise de que se salió.
+        //  The tunnels, along with the connection: they come up here and
+        //  they fall when the terminal reports that you left.
         abrirTuneles(h)
 
         if (enVentana === true) {
-            //  Por `Consola` y no a pelo: es quien sabe que wezterm y
-            //  gnome-terminal no aceptan `-e` como las demás, y quien envuelve
-            //  con uwsm para que la ventana no se muera con la barra. Estaba
-            //  escrito a mano y las dos cosas fallaban.
-            //  Y con la salida de emergencia de la casa detrás: una ventana
-            //  que se cierra sola con el «connection refused» a medio leer no
-            //  sirve de nada. Solo si falla — al salir de una sesión buena,
-            //  cerrarse es lo que uno espera.
+            //  Through `Consola` and not bare: it is the one that knows
+            //  wezterm and gnome-terminal do not take `-e` like the rest,
+            //  and the one that wraps with uwsm so the window does not die
+            //  with the bar. It used to be written by hand and both things
+            //  failed.
+            //  And with the house's emergency exit behind: a window that
+            //  closes itself with the «connection refused» half read is good
+            //  for nothing. Only if it fails — coming out of a good session,
+            //  closing is what one expects.
             K4.Sistema.lanzar(Consola.orden(guion + " || { " + Consola.cierre + " }"))
         } else {
-            //  Que la terminal sepa que lo que viene es una conexión y pinte
-            //  el camino mientras tanto.
+            //  So the terminal knows that what is coming is a connection,
+            //  and paints the way in the meantime.
             Consola.conectandoA(h.rapido && h.usuario
                                 ? h.usuario + "@" + h.host : h.alias,
                                 h.tinte || "",
@@ -470,11 +480,11 @@ K4Plugin {
 
     function elegir(enVentana) { conectar(lista[indice], enVentana) }
 
-    //  ── lo nuestro: favoritos y visitas ───────────────────────────
+    //  ── ours: favourites and visits ───────────────────────────
     function tocar(alias, cambio) {
-        //  Copiar y no tocar por dentro: reasignar a una propiedad `var` el
-        //  mismo objeto que ya tenía no avisa a nadie, y la lista se quedaría
-        //  igual en pantalla.
+        //  Copy, do not poke inside: reassigning to a `var` property the
+        //  same object it already had tells nobody, and the list would stay
+        //  the same on screen.
         const nuevo = Object.assign({}, extras)
         nuevo[alias] = Object.assign({}, nuevo[alias] || ({}), cambio)
         extras = nuevo
@@ -489,13 +499,13 @@ K4Plugin {
             tocar(h.alias, { favorito: !h.favorito })
     }
 
-    //  ── guardar y borrar en ~/.ssh/config ─────────────────────────
+    //  ── save and delete in ~/.ssh/config ─────────────────────────
     //
-    //  Se escribe el bloque y se deja el resto del fichero intacto: ahí puede
-    //  haber cosas de años que no son nuestras.
-    //  Guardar lo del formulario. Es también EDITAR: si ese host ya estaba
-    //  —o se le ha cambiado el nombre— su bloque viejo se va y se escribe el
-    //  nuevo, para que no haya dos caminos que mantener.
+    //  The block gets written and the rest of the file is left untouched:
+    //  there can be years-old things in there that are not ours.
+    //  Saving what the form holds. It is also EDIT: if that host was already
+    //  there —or it has been renamed— its old block goes and the new one is
+    //  written, so that there are no two paths to keep up.
     function guardarBorrador() {
         const b = borrador
         const alias = String(b.alias || b.host || "").trim()
@@ -503,8 +513,8 @@ K4Plugin {
             return false
 
         let texto = fSsh.text() || ""
-        //  Fuera el bloque anterior: el suyo y, si se ha renombrado, el que
-        //  tuviera el nombre nuevo.
+        //  Out with the previous block: its own and, if it has been renamed,
+        //  the one that had the new name.
         texto = sinBloque(texto, alias)
         if (b.original && b.original !== alias)
             texto = sinBloque(texto, b.original)
@@ -514,9 +524,10 @@ K4Plugin {
 
         let bloque = "\nHost " + alias + "\n"
         bloque += "    HostName " + String(b.host).trim() + "\n"
-        //  La huella de una máquina nueva se acepta sola; la que CAMBIA sigue
-        //  parando la conexión. Igual que en la ventana, y por lo mismo: así
-        //  no sale la pregunta y no hay que contestarla a la vista de nadie.
+        //  The fingerprint of a new machine is accepted on its own; one that
+        //  CHANGES still stops the connection. Same as in the window, and
+        //  for the same reason: this way the question never comes up, and
+        //  nobody has to answer it in front of anyone.
         bloque += "    StrictHostKeyChecking accept-new\n"
         const deSsh = [["User", b.usuario], ["Port", b.puerto],
                        ["IdentityFile", b.clave], ["ProxyJump", b.salto]]
@@ -530,7 +541,7 @@ K4Plugin {
         cerrarFichero.running = true
         relee.restart()
 
-        //  Y lo nuestro, que ssh no sabe guardar.
+        //  And ours, which ssh does not know how to save.
         const etiquetas = String(b.etiquetas || "").trim()
         tocar(alias, {
             favorito: b.favorito === true,
@@ -552,9 +563,9 @@ K4Plugin {
         return true
     }
 
-    //  El fichero sin el bloque de ese host. «Host» y luego un separador: ni
-    //  `HostName` ni `HostKeyAlias` empiezan bloque, y darlos por buenos deja
-    //  líneas huérfanas en el fichero de otro.
+    //  The file without that host's block. «Host» and then a separator:
+    //  neither `HostName` nor `HostKeyAlias` starts a block, and taking them
+    //  for good leaves orphan lines in someone else's file.
     function sinBloque(texto, alias) {
         const lineas = String(texto).split("\n")
         const salida = []
@@ -575,9 +586,9 @@ K4Plugin {
         return salida.length > 0 ? salida.join("\n") + "\n" : ""
     }
 
-    //  `text()` no ve lo que se acaba de escribir con `setText`: hay que
-    //  recargar y dejar que `onLoaded` rehaga la lista. Leerlo ahí mismo la
-    //  dejaba en cero con el fichero ya escrito.
+    //  `text()` does not see what was just written with `setText`: it has to
+    //  reload and let `onLoaded` rebuild the list. Reading it right there
+    //  left the list at zero with the file already written.
     Timer {
         id: relee
         interval: 120
@@ -591,10 +602,10 @@ K4Plugin {
         fExtras.setText(JSON.stringify(extras, null, 2) + "\n")
     }
 
-    //  Guardar lo escrito al vuelo no es escribirlo y ya: se abre el
-    //  formulario con lo que se sabe y se completa el resto. Antes se guardaba
-    //  a ciegas con el nombre de la máquina y no había forma de tocar nada
-    //  más, que es justo lo que uno quiere hacer a continuación.
+    //  Saving what was typed on the fly is not write-it-and-done: the form
+    //  opens with what is known and the rest gets completed. It used to be
+    //  saved blind under the machine's name with no way to touch anything
+    //  else, which is just what you want to do next.
     function guardarActual() {
         const h = lista[indice]
         if (h)
@@ -613,22 +624,23 @@ K4Plugin {
         delete nuevo[h.alias]
         extras = nuevo
         fExtras.setText(JSON.stringify(extras, null, 2) + "\n")
-        //  Y su contraseña: guardar el secreto de una máquina a la que ya no
-        //  vas es lo peor de los dos mundos.
+        //  And its password: keeping the secret of a machine you no longer
+        //  go to is the worst of both worlds.
         guardarClave(h.alias, "")
 
         indice = Math.max(0, Math.min(indice, cuantos - 2))
     }
 
-    //  ── la clave, si no tienes ninguna ────────────────────────────
+    //  ── the key, if you have none ────────────────────────────
     //
-    //  Sin clave, entrar pide contraseña cada vez. Se puede guardar —está el
-    //  campo, y va a `claves.json` con 600— pero una clave es mejor: no viaja,
-    //  no caduca y no hay que teclearla. Crear una y mandarla al servidor es
-    //  el paso que lo arregla para siempre, y se hace EN LA
-    //  TERMINAL a propósito: `ssh-keygen` pregunta por la frase de paso y
-    //  `ssh-copy-id` por la contraseña del servidor, y eso lo tienes que
-    //  teclear tú, no un diálogo nuestro.
+    //  Without a key, getting in asks for a password every time. It can be
+    //  saved —the field is there, and it goes to `claves.json` with 600— but
+    //  a key is better: it does not travel, it does not expire, and it does
+    //  not have to be typed. Creating one and sending it to the server is
+    //  the step that fixes it for good, and it is done IN THE
+    //  TERMINAL on purpose: `ssh-keygen` asks for the passphrase and
+    //  `ssh-copy-id` for the server's password, and that you have to type
+    //  yourself, not one of our dialogues.
     property int cuantasClaves: -1
 
     property K4.Process claves: K4.Process {
@@ -647,25 +659,27 @@ K4Plugin {
         cerrar()
     }
 
-    //  ── la puerta de los agentes ──────────────────────────────────
+    //  ── the agents' door ──────────────────────────────────
     //
-    //  Un agente que corre en la terminal ya tiene tu shell, así que puede
-    //  lanzar `ssh` él solo; lo que no puede es teclear una contraseña. Darle
-    //  la tuya sería darle TODO, así que se le da otra cosa: una clave propia
-    //  (`~/.ssh/k4-agentes`), un alias propio (`casa-agentes`) y, en el
-    //  servidor, lo que tú quieras dejarle en su `authorized_keys`. Se revoca
-    //  borrando una línea allí, sin tocar nada tuyo.
+    //  An agent running in the terminal already has your shell, so it can
+    //  launch `ssh` on its own; what it cannot do is type a password. Giving
+    //  it yours would be giving it EVERYTHING, so it is given something else:
+    //  a key of its own (`~/.ssh/k4-agentes`), an alias of its own
+    //  (`casa-agentes`) and, on the server, whatever you choose to leave it
+    //  in its `authorized_keys`. It is revoked by deleting one line there,
+    //  without touching anything of yours.
     //
-    //  Lo que hace falta hacer ALLÍ —mandar la clave, o quitarla— se corre en
-    //  la terminal, a la vista: pide tu contraseña y toca su fichero, y esas
-    //  dos cosas no se hacen a escondidas.
+    //  What needs doing THERE —sending the key, or removing it— runs in the
+    //  terminal, in plain sight: it asks for your password and touches its
+    //  file, and those two things are not done behind anyone's back.
     readonly property string claveAgentes: K4.Sistema.entorno("HOME") + "/.ssh/k4-agentes"
 
-    //  El sello de la clave, que es lo que permite quitarla del servidor sin
-    //  adivinar: se busca esa marca en su `authorized_keys` y se borra la
-    //  línea. TIENE que salir igual aquí y en la ventana —el mismo fichero,
-    //  no `$HOSTNAME`, que en la sesión de la barra viene vacío y dejaba dos
-    //  sellos distintos: el puesto por un lado no lo encontraba el otro.
+    //  The key's stamp, which is what allows removing it from the server
+    //  without guessing: that mark is looked for in its `authorized_keys`
+    //  and the line is deleted. It HAS to come out the same here and in the
+    //  window —the same file, not `$HOSTNAME`, which in the bar's session
+    //  arrives empty and left two different stamps: the one put in by one
+    //  side was not found by the other.
     property string nombreEquipo: "k4"
 
     property K4.Fichero fEquipo: K4.Fichero {
@@ -705,8 +719,8 @@ K4Plugin {
             fSsh.setText(sinBloque(texto, aliasAgentes(h.alias)))
             cerrarFichero.running = true
             relee.restart()
-            //  Y allí: fuera la línea de esa clave. Se busca por su marca, que
-            //  para eso la lleva.
+            //  And over there: out with the line for that key. It is looked
+            //  up by its mark, which is why it carries one.
             K4.Terminal.ejecutar("ssh " + h.alias
                 + " \"sed -i '/" + marca + "/d' ~/.ssh/authorized_keys\"")
             cerrar()
@@ -724,12 +738,12 @@ K4Plugin {
         if (h.puerto)
             bloque += "    Port " + h.puerto + "\n"
         bloque += "    IdentityFile " + claveAgentes + "\n"
-        //  Sin `IdentitiesOnly` ssh ofrece también tus claves y el agente
-        //  entraría como tú: justo lo que esta puerta viene a evitar.
+        //  Without `IdentitiesOnly` ssh offers your keys too, and the agent
+        //  would get in as you: just what this door is here to prevent.
         bloque += "    IdentitiesOnly yes\n"
-        //  Y que no pregunte NADA: esta puerta es para lo que no tiene a nadie
-        //  delante, así que una clave que no vale tiene que dar error al
-        //  instante y no dejar al agente esperando un prompt que no ve.
+        //  And that it asks NOTHING: this door is for what has nobody in
+        //  front of it, so a key that is no good has to fail on the spot,
+        //  not leave the agent waiting for a prompt it cannot see.
         bloque += "    BatchMode yes\n"
         bloque += "    StrictHostKeyChecking accept-new\n"
 
@@ -744,21 +758,22 @@ K4Plugin {
         cerrar()
     }
 
-    //  ── los túneles ───────────────────────────────────────────────
+    //  ── the tunnels ───────────────────────────────────────────
     //
-    //  Un túnel es otro `ssh` corriendo por su cuenta (`ssh -N`), así que vive
-    //  fuera de la terminal: no ocupa pestaña, no se ve, y por eso mismo se
-    //  olvida. La píldora es el sitio de la casa para lo que corre por detrás
-    //  —ahí están los mandatos largos y los agentes—, así que ahí van: cada
-    //  túnel el suyo, y pulsarlo lo mata.
+    //  A tunnel is another `ssh` running on its own (`ssh -N`), so it lives
+    //  outside the terminal: it takes no tab, it cannot be seen, and for
+    //  that very reason it gets forgotten. The pill is the house's place for
+    //  what runs behind —that is where the long commands and the agents
+    //  are—, so there they go: each tunnel its own, and pressing it kills
+    //  it.
     //
-    //  Se levantan al conectar y se caen al salir. Podrían vivir solos, pero
-    //  entonces habría que acordarse de apagarlos; atados a la sesión, hacen
-    //  lo que uno espera sin pensarlo.
+    //  They come up on connect and fall on exit. They could live on their
+    //  own, but then you would have to remember to turn them off; tied to
+    //  the session, they do what one expects without thinking about it.
     property ListModel tuneles: ListModel {}
 
-    //  `8080:localhost:80` (local), `R:9000:localhost:9000` (remoto),
-    //  `socks:1080` o `D:1080` (SOCKS). Separados por espacios o comas.
+    //  `8080:localhost:80` (local), `R:9000:localhost:9000` (remote),
+    //  `socks:1080` or `D:1080` (SOCKS). Separated by spaces or commas.
     function leerTuneles(texto) {
         const salida = []
         String(texto || "").split(/[\s,]+/).forEach(function (trozo) {
@@ -806,9 +821,10 @@ K4Plugin {
         function onSalioDe(destino) { self.cerrarTuneles(destino) }
     }
 
-    //  Cada túnel, su proceso y su píldora. El `Instantiator` los crea y los
-    //  destruye con la lista, que es lo que hace que cerrar la conexión los
-    //  apague sin tener que ir matando nada a mano.
+    //  Each tunnel, its process and its pill. The `Instantiator` creates and
+    //  destroys them with the list, which is what makes closing the
+    //  connection shut them off without having to go killing anything by
+    //  hand.
     property Instantiator tuneleros: Instantiator {
         model: self.tuneles
 
@@ -821,11 +837,11 @@ K4Plugin {
 
             readonly property string clave: "terminal.tunel." + destino + "." + spec
 
-            //  Reconexión: un túnel que se cae por un corte de red debe volver
-            //  solo, pero con cuidado — si el fallo es del otro lado (puerto
-            //  ocupado, permiso denegado) reintentar cada segundo es una
-            //  ametralladora. Se espera cada vez un poco más, hasta medio
-            //  minuto.
+            //  Reconnection: a tunnel that falls because of a network cut
+            //  must come back on its own, but carefully — if the failure is
+            //  on the other side (port taken, permission denied), retrying
+            //  every second is a machine gun. It waits a little longer each
+            //  time, up to half a minute.
             property int intentos: 0
 
             property var proceso: K4.Process {
@@ -853,25 +869,26 @@ K4Plugin {
         }
     }
 
-    //  ── llevarle nuestra integración al servidor ──────────────────
+    //  ── taking our integration to the server ──────────────────
     //
-    //  Los bloques, el filete del margen y el aviso de «te está esperando»
-    //  funcionan porque la shell de aquí los emite. Por SSH, la shell es la de
-    //  ALLÍ: sin esto, entrar en un servidor apaga media terminal.
+    //  The blocks, the margin rule and the «it is waiting for you» notice
+    //  work because the shell here emits them. Over SSH, the shell is the
+    //  one from THERE: without this, entering a server switches off half the
+    //  terminal.
     //
-    //  Se manda por una tubería (`k4term --integracion zsh | ssh …`) en vez de
-    //  copiar un fichero: así no hace falta saber dónde vive el repo, que en
-    //  una barra instalada no se sabe. Y se corre EN LA TERMINAL porque puede
-    //  pedirte la contraseña del servidor.
+    //  It is sent through a pipe (`k4term --integracion zsh | ssh …`)
+    //  instead of copying a file: that way there is no need to know where
+    //  the repo lives, which in an installed bar nobody knows. And it runs
+    //  IN THE TERMINAL because it may ask you for the server's password.
     function llevarIntegracion() {
         const h = lista[indice]
         if (!h || !Consola.esNuestra)
             return
         const destino = h.rapido && h.usuario ? h.usuario + "@" + h.host : h.alias
 
-        //  La línea del rc lleva su propia marca para poder quitarla luego, y
-        //  se comprueba antes de escribir: instalarlo dos veces dejaría la
-        //  shell emitiendo cada marcador por duplicado.
+        //  The rc line carries its own mark so it can be taken out later,
+        //  and it is checked before writing: installing it twice would leave
+        //  the shell emitting every marker twice over.
         const guion =
             "set -e; " +
             "echo '→ copying the integration to " + destino + "'; " +
@@ -894,8 +911,8 @@ K4Plugin {
         cerrar()
     }
 
-    //  Pulsar la píldora de un túnel lo cierra: es lo que uno espera de algo
-    //  que está ahí precisamente para recordarte que sigue abierto.
+    //  Pressing a tunnel's pill closes it: it is what one expects of
+    //  something that is there precisely to remind you it is still open.
     property Connections clicsPildora: Connections {
         target: K4.Pildora
         function onInvocado(id) {
@@ -915,16 +932,16 @@ K4Plugin {
     K4.Ipc {
         target: "k4.ssh"
 
-        //  El selector, que es para lo que se abre esto.
+        //  The picker, which is what this opens for.
         function open(): void { self.open() }
         function close(): void { self.close() }
         function toggle(): void { self.alternar() }
 
-        //  Y conectar por guion, sin abrir nada: para atajos propios o para
-        //  llamarlo desde otro sitio. La lista se relee en diferido —la
-        //  búsqueda vive en onLoaded— porque `reload()` es asíncrono y lo
-        //  que ya está en memoria puede ser más viejo que el host que
-        //  acaban de añadir.
+        //  And to connect by script, without opening anything: for your own
+        //  keybinds or to call it from somewhere else. The list is re-read
+        //  deferred —the lookup lives in onLoaded— because `reload()` is
+        //  asynchronous and what is already in memory can be older than the
+        //  host that was just added.
         function connect(alias: string): void {
             self._aliasPendiente = alias
             self._conectarTrasCargar = "1"
@@ -932,7 +949,7 @@ K4Plugin {
         }
     }
 
-    //  La parte diferida del `connect` de arriba: la lista ya releída.
+    //  The deferred part of the `connect` above: the list already re-read.
     function buscarParaConectar(alias) {
         const h = guardados.find(function (x) { return x.alias === alias })
         if (h)

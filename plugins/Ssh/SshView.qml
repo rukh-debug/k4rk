@@ -1,12 +1,12 @@
-//  La lista de servidores.
+//  The server list.
 //
-//  Se escribe para filtrar, como en el lanzador y en el portapapeles: la
-//  misma pieza y las mismas teclas, que una casa donde cada cajón se abre de
-//  otra forma no es una casa.
+//  You type to filter, like in the launcher and the clipboard: the same
+//  piece and the same keys, because a house where every drawer opens a
+//  different way is not a house.
 //
-//  Cada fila dice lo justo para reconocer el sitio —el alias grande, el
-//  destino de verdad en pequeño— y nada más. El resto (la clave, el salto) lo
-//  sabe ssh y no hay por qué repetirlo aquí.
+//  Each row says just enough to recognise the place —the alias big, the
+//  real destination small— and nothing more. The rest (the key, the jump)
+//  ssh knows, and there is no reason to repeat it here.
 
 import QtQuick
 import QtQuick.Controls
@@ -19,14 +19,15 @@ FadeIn {
 
     required property var plugin
 
-    //  Sin esto hay que hacer clic antes de poder escribir: la raíz de la
-    //  island se queda el foco y la superficie tarda en recibirlo.
+    //  Without this you have to click before you can type: the island's
+    //  root keeps the focus and the surface is slow to receive it.
     FocoInicial { id: foco; objetivo: entrada }
     Component.onCompleted: foco.reclamar()
 
-    //  Y lo mismo al pasar al formulario: el campo activo se apunta aquí y se
-    //  le reclama el foco con la misma pieza. Sin esto el formulario sale
-    //  pintado pero sordo — se veía perfecto y no recibía ni una tecla.
+    //  And the same when moving to the form: the active field is noted here
+    //  and its focus claimed with the same piece. Without this the form
+    //  comes out painted but deaf — it looked perfect and did not receive a
+    //  single key.
     property Item entradaActiva: null
     FocoInicial { id: focoCampo; objetivo: vista.entradaActiva }
 
@@ -49,7 +50,7 @@ FadeIn {
         anchors.bottomMargin: 10
         spacing: 8
 
-        // ── búsqueda ──────────────────────────────────────────────
+        // ── search ──────────────────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 26
@@ -108,9 +109,10 @@ FadeIn {
                     } else if (ev.key === Qt.Key_PageUp) {
                         vista.plugin.mover(-6); ev.accepted = true
                     } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
-                        //  Con shift, en ventana grande. Es el mismo par que
-                        //  en la terminal: la isla para lo rápido, la ventana
-                        //  cuando sabes que vas a estar un rato.
+                        //  With shift, in a big window. It is the same pair
+                        //  as in the terminal: the island for the quick
+                        //  thing, the window when you know you will be a
+                        //  while.
                         vista.plugin.elegir(conShift); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_S) {
                         vista.plugin.guardarActual(); ev.accepted = true
@@ -149,7 +151,7 @@ FadeIn {
             }
         }
 
-        // ── la lista ──────────────────────────────────────────────
+        // ── the list ────────────────────────────────────────────
         ListView {
             id: filas
             ScrollBar.vertical: IslandScrollBar {}
@@ -186,8 +188,9 @@ FadeIn {
                     anchors.rightMargin: 11
                     spacing: 10
 
-                    //  Un destino al vuelo se distingue de uno guardado: el
-                    //  primero es un salto al vacío, el segundo tu casa.
+                    //  An on-the-fly destination stands apart from a saved
+                    //  one: the first is a jump into the void, the second
+                    //  your home.
                     IconGlyph {
                         text: String.fromCodePoint(fila.modelData.rapido ? 0xF0432
                                                  : (fila.modelData.favorito ? 0xF04CE
@@ -205,8 +208,9 @@ FadeIn {
                         RowLayout {
                             spacing: 7
 
-                            //  La puerta de los agentes, si está abierta. Es un
-                            //  permiso: se ve o no se revisa nunca.
+                            //  The agents' door, if it is open. It is a
+                            //  permission: either you see it, or it never
+                            //  gets reviewed.
                             IconGlyph {
                                 visible: fila.modelData.agentes === true
                                 text: String.fromCodePoint(0xF0493)   // md-cog
@@ -226,10 +230,10 @@ FadeIn {
                                 Layout.maximumWidth: 330
                             }
 
-                            //  Las etiquetas, si las hay: son de las nuestras
-                            //  —van en hosts.json— y sirven para agrupar sin
-                            //  carpetas, que en una lista que se filtra
-                            //  escribiendo las carpetas sobran.
+                            //  The tags, if there are any: they are ours
+                            //  —they go in hosts.json— and they serve to
+                            //  group without folders, which in a list you
+                            //  filter by typing are superfluous.
                             Repeater {
                                 model: fila.modelData.etiquetas
 
@@ -266,9 +270,9 @@ FadeIn {
                         }
                     }
 
-                    //  Guardar lo que acabas de escribir, sin teclas que
-                    //  aprenderse: el atajo está, pero el botón es lo que se
-                    //  ve la primera vez.
+                    //  Saving what you have just typed, with no keys to
+                    //  learn: the keybind is there, but the button is what
+                    //  gets seen the first time.
                     Rectangle {
                         visible: fila.modelData.rapido && fila.elegida
                         Layout.preferredWidth: guardar.implicitWidth + 18
@@ -302,8 +306,8 @@ FadeIn {
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton
                     cursorShape: Qt.PointingHandCursor
-                    //  El botón de guardar va por encima: si el ratón está en
-                    //  él, esta zona no se queda el clic.
+                    //  The save button goes on top: if the mouse is over
+                    //  it, this area does not keep the click.
                     z: -1
                     onPositionChanged: vista.plugin.indice = fila.index
                     onClicked: function (ev) {
@@ -315,11 +319,11 @@ FadeIn {
             }
         }
 
-        //  ── el pie ────────────────────────────────────────────────
+        //  ── the footer ────────────────────────────────────────────
         //
-        //  Lo que se puede hacer aquí, y —si no tienes ninguna clave— lo que
-        //  de verdad hace falta antes que nada. Ese aviso desaparece solo en
-        //  cuanto exista una.
+        //  What can be done here, and —if you have no key at all— what is
+        //  really needed before anything else. That notice disappears on
+        //  its own as soon as one exists.
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
@@ -342,12 +346,12 @@ FadeIn {
         }
     }
 
-    //  ── configurar un servidor ────────────────────────────────────
+    //  ── configuring a server ────────────────────────────────
     //
-    //  La misma ventana cambia de cara en vez de abrir un diálogo encima:
-    //  arriba lo que ssh entiende —y que por tanto aprovechan también scp,
-    //  git y compañía— y abajo lo nuestro, separado por una línea para que se
-    //  vea de un vistazo qué va a dónde.
+    //  The same window changes face instead of opening a dialogue on top:
+    //  above, what ssh understands —and which scp, git and company
+    //  therefore take advantage of too— and below, ours, separated by a
+    //  line so that what goes where can be seen at a glance.
     ColumnLayout {
         visible: vista.plugin.modo === "editar"
         anchors.fill: parent
@@ -377,8 +381,8 @@ FadeIn {
                 Layout.fillWidth: true
             }
 
-            //  Favorito aquí también: es parte de cómo lo quieres, no una
-            //  acción aparte.
+            //  Favourite here too: it is part of how you want it, not a
+            //  separate action.
             Rectangle {
                 Layout.preferredWidth: estrella.implicitWidth + 20
                 Layout.preferredHeight: 22
@@ -417,9 +421,9 @@ FadeIn {
                 Layout.fillWidth: true
                 spacing: 6
 
-                //  Una raya antes de lo nuestro: arriba lo que entiende ssh,
-                //  abajo lo que solo entendemos aquí. Va en su propia fila —no
-                //  dentro de la del campo— o empujaría la etiqueta a un lado.
+                //  A line before ours: above what ssh understands, below
+                //  what only we understand here. It goes in its own row —not
+                //  inside the field's— or it would push the label aside.
                 Rectangle {
                     visible: filaCampo.modelData.suyo
                              && !vista.plugin.campos[Math.max(0, filaCampo.index - 1)].suyo
@@ -469,22 +473,24 @@ FadeIn {
                         text: vista.plugin.borrador[filaCampo.modelData.id] || ""
                         onTextEdited: vista.plugin.ponerCampo(filaCampo.modelData.id, text)
 
-                        //  El campo secreto va con puntos hasta que pidas
-                        //  verlo: nadie quiere su contraseña en pantalla por
-                        //  defecto con alguien detrás.
+                        //  The secret field goes with dots until you ask to
+                        //  see it: nobody wants their password on screen by
+                        //  default with someone behind them.
                         echoMode: filaCampo.modelData.secreto && !vista.plugin.verClave
                             ? TextInput.Password : TextInput.Normal
                         passwordCharacter: "•"
                         passwordMaskDelay: 0
 
-                        //  El foco lo lleva el campo activo, y se pide cuando
-                        //  cambia: así las flechas mueven de campo y lo que se
-                        //  teclea va siempre al que está marcado.
+                        //  The active field carries the focus, and it is
+                        //  asked for when it changes: this way the arrows
+                        //  move between fields and whatever gets typed always
+                        //  goes to the one that is marked.
                         focus: filaCampo.activo
                         onActiveFocusChanged: if (activeFocus) vista.plugin.campo = filaCampo.index
 
-                        //  El activo se apunta en la vista para que el foco
-                        //  sepa a quién ir, y se le pide en cuanto cambia.
+                        //  The active one is noted in the view so the focus
+                        //  knows who to go to, and asked for as soon as it
+                        //  changes.
                         Component.onCompleted: if (filaCampo.activo) vista.entradaActiva = entradaCampo
 
                         Connections {
@@ -509,13 +515,13 @@ FadeIn {
                             if (ev.key === Qt.Key_Escape) {
                                 vista.plugin.cancelarEdicion(); ev.accepted = true
                             } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
-                                //  Intro guarda desde cualquier campo: es un
-                                //  formulario de ocho líneas, no un trámite.
+                                //  Enter saves from any field: it is an
+                                //  eight-line form, not a formality.
                                 vista.plugin.guardarBorrador(); ev.accepted = true
                             } else if ((ev.modifiers & Qt.ControlModifier)
                                        && ev.key === Qt.Key_O) {
-                                //  El ojo del formulario, con tecla: aquí no
-                                //  hay ratón que llevar hasta un icono.
+                                //  The form's eye, with a key: there is no
+                                //  mouse here to walk over to an icon.
                                 vista.plugin.verClave = !vista.plugin.verClave
                                 ev.accepted = true
                             } else if (ev.key === Qt.Key_Down
