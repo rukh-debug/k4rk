@@ -1,12 +1,14 @@
-//  Una capa del fondo: lo que se pinta de UN fichero.
+//  One wallpaper layer: what gets painted from ONE file.
 //
-//  Sale del lienzo porque para hacer transiciones hacen falta DOS a la vez —la
-//  que se va y la que llega— y tener el juego entero de dibujantes duplicado a
-//  mano en el mismo fichero era pedir que se descuadraran.
+//  It comes out of the canvas because transitions need TWO at once —
+//  the leaving one and the arriving one— and having the whole drawing
+//  kit duplicated by hand in the same file was asking for them to
+//  fall out of step.
 //
-//  No sabe nada de transiciones ni de pantallas: se le da una ruta, un tipo y
-//  si le toca moverse, y pinta. Quién está delante y cuánto se ve lo decide el
-//  lienzo, que es quien tiene las dos.
+//  It knows nothing of transitions or screens: it is given a path, a
+//  type and whether it must move, and it paints. Who is in front and
+//  how much is visible the canvas decides, being the one holding
+//  both.
 
 import QtQuick
 import QtMultimedia
@@ -18,29 +20,33 @@ Item {
     property string ruta: ""
     property string tipo: "nada"
 
-    //  ¿Le toca moverse? Es la pausa por oclusión, que decide el lienzo. Una
-    //  capa que no se ve no descomprime ni un fotograma.
+    //  Is it its turn to move? This is the occlusion pause, which
+    //  the canvas decides. A layer that cannot be seen decompresses
+    //  not one frame.
     property bool animando: true
 
-    //  Para que la foto se pida al tamaño de la pantalla y no al del fichero.
+    //  So the photo is requested at the screen's size and not the
+    //  file's.
     property int anchoPantalla: 1920
     property int altoPantalla: 1080
 
-    //  Quien sabe si hay una copia del vídeo a la medida de esta pantalla. Lo
-    //  pone el lienzo; sin él se reproduce el original y ya, que esta capa
-    //  tiene que seguir valiendo suelta.
+    //  Whoever knows whether there is a copy of the video cut to
+    //  this screen. The canvas sets it; without it the original
+    //  plays and that is that, since this layer must keep working
+    //  loose.
     property var plugin: null
 
-    //  Y la ruta que se REPRODUCE, que no siempre es la que se pidió: para un
-    //  vídeo más grande que la pantalla, su copia cacheada. Es la misma idea
-    //  que el `sourceSize` de la foto de aquí abajo, y por las mismas razones
-    //  —ver `videoAMedida` en HyprThemePlugin.qml, con los números medidos—.
+    //  And the path that PLAYS, not always the one asked for: for
+    //  a video bigger than the screen, its cached copy. Same idea as
+    //  the photo's `sourceSize` below, and for the same reasons —see
+    //  `videoAMedida` in HyprThemePlugin.qml, with the measured
+    //  numbers—.
     readonly property string rutaVideo: capa.tipo !== "video" ? ""
         : (capa.plugin ? capa.plugin.videoAMedida(capa.ruta, capa.anchoPantalla)
                        : capa.ruta)
 
-    //  Pedirla SÍ tiene efecto, así que se hace desde manejadores y nunca
-    //  desde un binding.
+    //  Asking DOES have an effect, so it is done from handlers and
+    //  never from a binding.
     function pedirAMedida() {
         if (capa.plugin && capa.tipo === "video" && capa.ruta.length > 0)
             capa.plugin.pedirEscalado(capa.ruta, capa.anchoPantalla)
@@ -49,8 +55,9 @@ Item {
     onAnchoPantallaChanged: capa.pedirAMedida()
     Component.onCompleted: capa.pedirAMedida()
 
-    //  Negro debajo: si la imagen no llena —una foto vertical en un monitor
-    //  apaisado— lo que asoma es esto y no el escritorio de detrás.
+    //  Black underneath: if the image does not fill —a portrait
+    //  photo on a landscape monitor— what peeks out is this and not
+    //  the desktop behind.
     Rectangle {
         anchors.fill: parent
         color: "black"
@@ -63,9 +70,9 @@ Item {
         source: capa.tipo === "quieto" ? "file://" + capa.ruta : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        //  A la resolución de la pantalla y no a la del fichero: una foto de
-        //  6000 px en un monitor de 1920 son 140 MB de textura para enseñar
-        //  exactamente lo mismo.
+        //  At the screen's resolution and not the file's: a 6000 px
+        //  photo on a 1920 monitor is 140 MB of texture to show
+        //  exactly the same.
         sourceSize.width: capa.anchoPantalla
         sourceSize.height: capa.altoPantalla
     }
@@ -75,11 +82,11 @@ Item {
         visible: capa.tipo === "animado"
         source: capa.tipo === "animado" ? "file://" + capa.ruta : ""
         fillMode: Image.PreserveAspectCrop
-        //  Un AnimatedImage sigue descomprimiendo fotogramas aunque su Item
-        //  esté invisible, así que la pausa tiene que decírselo.
+        //  An AnimatedImage keeps decompressing frames even with
+        //  its Item invisible, so the pause must be told to it.
         playing: visible && capa.animando
-        //  Sin caché: un GIF de fondo son megas que no se van a reusar y que se
-        //  quedarían en la caché de imágenes de todo el motor.
+        //  No cache: a wallpaper GIF is megabytes that will not be
+        //  reused and would sit in the whole engine's image cache.
         cache: false
     }
 
@@ -94,18 +101,20 @@ Item {
         id: reproductor
         videoOutput: salida
         loops: MediaPlayer.Infinite
-        //  La copia si ya está, y si no el original. Al terminar la copia esto
-        //  cambia y el reproductor vuelve a empezar: un salto, una vez, en un
-        //  fondo. Barato comparado con lo que se ahorra a partir de entonces.
+        //  The copy if already there, else the original. When the
+        //  copy finishes this changes and the player restarts: one
+        //  jump, once, in a wallpaper. Cheap against what it saves
+        //  from then on.
         source: capa.rutaVideo.length > 0 ? "file://" + capa.rutaVideo : ""
-        //  Sin AudioOutput a propósito, y no es un olvido: un fondo no suena.
-        //  Sin salida de audio el descodificador ni abre la pista.
+        //  No AudioOutput on purpose, and not an oversight: a
+        //  wallpaper makes no sound. Without audio output the
+        //  decoder does not even open the track.
         onSourceChanged: if (source != "") capa.acompasar()
     }
 
-    //  `pause` y no `stop`: parar rebobina, así que al destapar la ventana el
-    //  fondo volvería a empezar desde el principio en vez de seguir donde
-    //  estaba.
+    //  `pause` and not `stop`: stopping rewinds, so on uncovering
+    //  the window the wallpaper would start over from the beginning
+    //  instead of continuing where it was.
     function acompasar() {
         if (capa.tipo !== "video" || capa.ruta.length === 0)
             return
@@ -117,8 +126,8 @@ Item {
 
     onAnimandoChanged: capa.acompasar()
 
-    //  Los dos, y en un solo manejador: en QML no se puede declarar
-    //  `onTipoChanged` dos veces.
+    //  Both, and in one handler: QML cannot declare `onTipoChanged`
+    //  twice.
     onTipoChanged: {
         capa.acompasar()
         capa.pedirAMedida()
@@ -130,9 +139,10 @@ Item {
         reproductor.playbackState === MediaPlayer.PlayingState
     readonly property string fallo: String(reproductor.errorString || "")
 
-    //  ¿Ya hay algo que enseñar? Lo pregunta el lienzo antes de empezar una
-    //  transición: fundir hacia un vídeo que todavía no ha descodificado su
-    //  primer fotograma es fundir hacia negro y luego dar un salto.
+    //  Is there anything to show yet? The canvas asks before
+    //  starting a transition: fading toward a video that has not
+    //  decoded its first frame is fading toward black and then
+    //  jumping.
     readonly property bool listo: capa.tipo === "nada" ? true
         : capa.tipo === "video" ? reproductor.hasVideo
         : true

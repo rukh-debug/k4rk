@@ -1,13 +1,14 @@
-//  El color y los presets, de los ajustes de Hyprland.
+//  The color and the presets, from Hyprland's settings.
 //
-//  Vivía dentro de `HyprThemeView`, la pantalla propia del plugin del tema.
-//  Sale aquí porque esa pantalla ha desaparecido: todo lo que se configura
-//  vive ahora en la ventana de Ajustes, y tener dos sitios donde tocar lo
-//  mismo era exactamente lo que se venía a arreglar.
+//  It lived inside `HyprThemeView`, the theme plugin's own screen. It
+//  comes out here because that screen is gone: everything it
+//  configured now lives in the Settings window, and having two
+//  places to touch the same thing was exactly what needed fixing.
 //
-//  El `motor` es quien sabe aplicarlo —el plugin del tema, que escribe el Lua
-//  de Hyprland—. Llega como objeto y no como import: un plugin no depende de
-//  otro, y sin motor esto no se enseña.
+//  The `motor` is the one knowing how to apply it —the theme plugin,
+//  which writes Hyprland's Lua—. It arrives as an object and not as
+//  an import: a plugin does not depend on another, and without a
+//  motor this is not shown.
 
 import QtQuick
 import QtQuick.Layouts
@@ -19,7 +20,7 @@ import "../../services"
 ColumnLayout {
     id: raiz
 
-    //  Quien sabe escribir esto en la config de Hyprland.
+    //  Whoever knows how to write this into Hyprland's config.
     property var motor: null
 
     //  The engine can be off — its plugin is a switch like any other. Every
@@ -27,7 +28,7 @@ ColumnLayout {
     //  still instead of throwing.
     readonly property bool vivo: !!raiz.motor
 
-    //  Cualquier retoque a mano deja de ser «el preset tal cual».
+    //  Any hand tweak stops being «the preset as is».
     function tocado() {
         if (!raiz.motor)
             return
@@ -35,17 +36,17 @@ ColumnLayout {
         raiz.motor.apply()
     }
 
-    //  Sin `anchors.fill`: eso era de cuando esto vivía dentro de una pantalla
-    //  propia. Aquí lo coloca la columna de la sección, y mezclar anchors con
-    //  Layout deja el widget del tamaño equivocado.
+    //  No `anchors.fill`: that was from when this lived inside its
+    //  own screen. Here the section's column places it, and mixing
+    //  anchors with Layout leaves the widget the wrong size.
     Layout.fillWidth: true
     spacing: 14
 
-    //  ── el color, ¿lo pone el fondo o lo pones tú? ──
+    //  ── the color: does the wallpaper set it, or do you? ──
     //
-    //  Va lo primero porque es la decisión que manda sobre todo lo
-    //  demás de esta pestaña: con el fondo mandando, elegir un
-    //  preset es apagarlo.
+    //  It goes first because it is the decision ruling over
+    //  everything else on this tab: with the wallpaper ruling,
+    //  choosing a preset turns it off.
     Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: 46
@@ -81,8 +82,8 @@ ColumnLayout {
                 }
             }
 
-            //  Lo que ha salido del fondo, para que se vea que no es
-            //  magia: los tres colores que se están repartiendo.
+            //  What came out of the wallpaper, so it shows it is
+            //  not magic: the three colors being handed out.
             Repeater {
                 model: raiz.vivo && raiz.motor.paletaAuto
                     ? [raiz.motor.accentFrom, raiz.motor.accentTo,
@@ -154,7 +155,7 @@ ColumnLayout {
                     anchors.rightMargin: 12
                     spacing: 10
 
-                    // muestra del degradado que tendrá el borde activo
+                    // a sample of the gradient the active border will wear
                     Rectangle {
                         Layout.preferredWidth: 34
                         Layout.preferredHeight: 34

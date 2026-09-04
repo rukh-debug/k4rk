@@ -1,12 +1,14 @@
-//  «Esto ya está en tu config, o solo en esta sesión» — y el botón de guardar.
+//  «This is already in your config, or only in this session» — and the
+//  save button.
 //
-//  El tema de Hyprland se aplica al instante pero no se escribe solo: hasta que
-//  no pulsas, vive en la sesión y se va al reiniciar. Eso hay que decirlo donde
-//  se toca, no en otra pantalla, así que esta barra acompaña a cada sección que
-//  escribe el Lua.
+//  The Hyprland theme applies at once but does not write itself:
+//  until you press, it lives in the session and leaves on restart.
+//  That must be said where it is touched, not on another screen, so
+//  this bar accompanies every section that writes the Lua.
 //
-//  Los fondos NO la llevan: esos se guardan solos al elegirlos, y ofrecer un
-//  «Guardar» que no hace falta es enseñar una duda que no existe.
+//  Wallpapers do NOT carry it: those save themselves on choosing,
+//  and offering a «Save» nobody needs is showing a doubt that does
+//  not exist.
 
 import QtQuick
 import QtQuick.Layouts
