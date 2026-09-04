@@ -11,7 +11,7 @@ FadeIn {
     required property var plugin
 
     property int focusAttempts: 0
-    property string ampliada: ""     // imagen que se está viendo a tamaño grande
+    property string ampliada: ""     // image being viewed at full size
 
     Component.onCompleted: {
         focusAttempts = 0
@@ -19,8 +19,9 @@ FadeIn {
         Qt.callLater(function () { askInput.forceActiveFocus() })
     }
 
-    // La layer surface tarda en recibir el foco de teclado: se reintenta unas
-    // cuantas veces en vez de dar por hecho que llegó a la primera.
+    // The layer surface takes a moment to receive keyboard focus:
+    // it is retried a few times instead of assuming it arrived on
+    // the first try.
     Timer {
         id: focusTimer
         interval: 140
@@ -36,7 +37,7 @@ FadeIn {
         }
     }
 
-    // ── imagen a tamaño grande, por encima de la conversación
+    // ── the full-size image, over the conversation
     Rectangle {
         id: visor
         anchors.fill: parent
@@ -118,7 +119,7 @@ FadeIn {
         anchors.bottomMargin: 14
         spacing: 10
 
-        // ── cabecera: qué se envía y control de la sesión
+        // ── header: what gets sent and session control
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
@@ -199,7 +200,8 @@ FadeIn {
                         }
                     }
 
-                    // clic: adjunta lo ofrecido, o quita lo ya adjuntado
+                    // click: attaches the offered one, or removes the
+                    // already attached
                     MouseArea {
                         id: attachmentMouse
                         anchors.fill: parent
@@ -219,7 +221,7 @@ FadeIn {
 
             Item { Layout.fillWidth: true }
 
-            // acciones sobre la conversación
+            // actions on the conversation
             Repeater {
                 model: [
                     { key: "new", glyph: Theme.ico.ask, label: "new" },
@@ -285,9 +287,11 @@ FadeIn {
                 }
             }
 
-            //  Apartar y olvidar, a la vista. Cerrar con Escape ya apartaba
-            //  la conversación, pero un gesto que no se ve no existe: el −
-            //  la deja esperando en la píldora y la ✕ la tira de verdad.
+            //  Set aside and forget, in plain sight. Closing with
+            //  Escape already set the conversation aside, but a
+            //  gesture that cannot be seen does not exist: the −
+            //  leaves it waiting in the pill and the ✕ truly throws
+            //  it away.
             MediaButton {
                 visible: view.plugin.messages.length > 0
                 glyph: String.fromCodePoint(0xEABA)
@@ -306,9 +310,10 @@ FadeIn {
             }
         }
 
-        // ── conversación
+        // ── the conversation
         ListView {
-            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            //  The house scrollbar: shows only if there is more than
+            //  fits.
             ScrollBar.vertical: IslandScrollBar {}
             id: conversationList
             Layout.fillWidth: true
@@ -343,9 +348,10 @@ FadeIn {
                     radius: 14
                     color: messageRow.mine ? Theme.surfaceHi : "transparent"
 
-                    // Formato de verdad: negrita, cursiva, código y enlaces
-                    // pulsables. Antes se pedía a Codex que respondiera en
-                    // texto plano justamente porque esto no existía.
+                    // True formatting: bold, italics, code and
+                    // clickable links. Codex used to be asked to
+                    // answer in plain text precisely because this
+                    // did not exist.
                     TextEdit {
                         id: messageText
                         x: messageRow.mine ? 14 : 0
@@ -366,7 +372,7 @@ FadeIn {
                             K4.Sistema.lanzar(["xdg-open", enlace])
                         }
 
-                        // el cursor avisa de que el enlace se puede pulsar
+                        // the cursor warns the link can be clicked
                         MouseArea {
                             anchors.fill: parent
                             acceptedButtons: Qt.NoButton
@@ -375,7 +381,7 @@ FadeIn {
                         }
                     }
 
-                    // ── imagen adjunta o devuelta
+                    // ── attached or returned image
                     Rectangle {
                         id: miniatura
                         visible: messageRow.imagen.length > 0
@@ -400,7 +406,7 @@ FadeIn {
                             sourceSize.width: 320
                         }
 
-                        // acciones, solo al pasar por encima
+                        // actions, only on hover
                         Rectangle {
                             anchors.left: parent.left
                             anchors.right: parent.right
@@ -420,14 +426,14 @@ FadeIn {
                                         { g: Theme.ico.forward, t: "open" }
                                     ]
 
-                                    //  Item por fuera y la fila dentro: el
-                                    //  MouseArea no puede colgar del layout.
-                                    //  Un hijo directo es una celda más y el
-                                    //  layout le impone la geometría, así que
-                                    //  el `anchors.fill` no se aplicaba y —sin
-                                    //  tamaño implícito— la zona quedaba en
-                                    //  0×0: ni se iluminaban al pasar por
-                                    //  encima ni hacían nada al pulsarlas.
+                                    //  Item outside with the row inside: a
+                                    //  MouseArea cannot hang off the layout.
+                                    //  A direct child is one more cell and
+                                    //  the layout imposes geometry on it, so
+                                    //  `anchors.fill` did not apply and —
+                                    //  with no implicit size— the zone stayed
+                                    //  0×0: they neither lit on hover nor
+                                    //  did anything when clicked.
                                     delegate: Item {
                                         id: accion
                                         required property var modelData

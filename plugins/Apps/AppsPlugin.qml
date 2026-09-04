@@ -1,17 +1,20 @@
-//  El centro de aplicaciones: todo lo que la barra sabe abrir, en una rejilla.
+//  The application centre: everything the bar knows how to open,
+//  in a grid.
 //
-//  La barra tiene once cosas que son aplicaciones —la mazmorra, el editor, el
-//  portapapeles, los atajos…— y hasta ahora la única forma de llegar a ellas
-//  era saberse el atajo o el nombre del comando. Eso está bien para quien la
-//  configuró y es invisible para todos los demás, y sobre todo deja fuera a
-//  los plugins instalados: un juego que te bajas no tiene atajo hasta que te
-//  lo pones.
+//  The bar has eleven things that are applications —the dungeon,
+//  the editor, the clipboard, the shortcuts...— and until now the
+//  only way to reach them was knowing the shortcut or the command's
+//  name. That is fine for whoever configured it and invisible to
+//  everybody else, and above all it leaves installed plugins out:
+//  a game you download has no shortcut until you give it one.
 //
-//  Es el cajón de aplicaciones del móvil, y a propósito: rejilla, buscador
-//  arriba, escribes y filtras, Enter abre. Nadie tiene que aprender nada.
+//  It is the phone's app drawer, on purpose: grid, search box on
+//  top, you type and it filters, Enter opens. Nobody has to learn
+//  anything.
 //
-//  Qué sale aquí lo dice el catálogo (`aplicacion: true`), no el código: así
-//  un plugin de fuera entra solo con declararlo en su manifiesto.
+//  What shows here is said by the catalog (`application: true`),
+//  not the code: this way an outside plugin walks in just by
+//  declaring it in its manifest.
 
 import QtQuick
 import K4 as K4
@@ -32,8 +35,8 @@ K4.Plugin {
     property bool abierto: false
     property string busqueda: ""
     property int seleccion: 0
-    //  Con esto puesto, la rejilla se aparta y sale la lista de
-    //  actualizaciones pendientes, cada una con su interruptor.
+    //  With this set, the grid steps aside and the pending-updates
+    //  list comes out, each with its switch.
     property bool modoActualizaciones: false
 
     //  The packages plugin, injected by catalog id. It owns updates now;
@@ -66,7 +69,8 @@ K4.Plugin {
 
     //  Las de la barra, filtradas por lo que se escribe. Una apagada NO
     //  desaparece: sale en gris. Que algo se esfume al apagarlo obliga a
-    //  adivinar dónde se fue; en gris se ve que está y por qué no se abre.
+    //  guess where it went; in gray one sees it is there and why it
+    //  does not open.
     readonly property var lista: {
         const todas = PluginManager.aplicaciones
         const q = busqueda.trim().toLowerCase()
@@ -90,7 +94,7 @@ K4.Plugin {
             packages.refresh(false)
     }
 
-    //  Entrar directo a elegir qué actualizar: lo usa el lanzador.
+    //  Straight into choosing what to update: the launcher uses it.
     function abrirActualizaciones() {
         abrirse()
         modoActualizaciones = true
@@ -114,9 +118,9 @@ K4.Plugin {
     function cerrar() { abierto = false }
     function close() { cerrar() }
 
-    //  Abrir la elegida: se cierra ANTES, que si no las dos piden la island a
-    //  la vez y gana la de más prioridad —que es esta— y parece que no ha
-    //  pasado nada.
+    //  Opening the chosen one: it closes FIRST, otherwise both ask
+    //  for the island at once and the higher priority wins —this
+    //  one— and it looks like nothing happened.
     function lanzar(id) {
         cerrar()
         PluginManager.abrirAplicacion(id)
@@ -131,30 +135,33 @@ K4.Plugin {
         if (lista.length === 0)
             return
         let n = seleccion + dx + dy * columnas
-        //  En los bordes se queda, no da la vuelta: saltar de la última a la
-        //  primera con una flecha desorienta más de lo que ayuda.
+        //  At the edges it stays, it does not wrap: jumping from the
+        //  last to the first with one arrow disorients more than it
+        //  helps.
         seleccion = Math.max(0, Math.min(lista.length - 1, n))
     }
 
-    //  Y anunciarse en el lanzador de aplicaciones del escritorio.
+    //  And announcing itself in the desktop's application launcher.
     //
-    //  Los dos cajones se quedan separados a propósito —son preguntas
-    //  distintas: «abre un programa de mi ordenador» son cientos de entradas,
-    //  «abre una parte de la barra» son once, y mezclarlas entierra las
-    //  once—. Pero separarlos deja un agujero: escribir «portapapeles» en
-    //  SUPER+Space y que no salga NADA es exactamente la sensación de que
-    //  algo no funciona, aunque esté a un atajo de distancia.
+    //  The two drawers stay separate on purpose —they are different
+    //  questions: «open a program on my machine» is hundreds of
+    //  entries, «open a part of the bar» is eleven, and mixing them
+    //  buries the eleven—. But separating them leaves a hole:
+    //  typing «clipboard» into SUPER+Space and getting NOTHING is
+    //  exactly the feeling that something is broken, even one
+    //  shortcut away.
     //
-    //  Así que se anuncian: dos cajones, una sola búsqueda que encuentra
-    //  todo. Y lo hace este módulo y no cada plugin, porque el que sabe qué
-    //  es una «aplicación de la barra» es este.
+    //  So they announce themselves: two drawers, one search that
+    //  finds everything. And this module does it and not each
+    //  plugin, because the one knowing what a «bar application» is
+    //  is this one.
     property var enElLanzador: K4.Lanzador {
         plugin: "apps"
 
         onBuscando: function (texto) {
             const q = texto.trim().toLowerCase()
-            //  Con una letra sale medio mundo; a partir de dos ya es una
-            //  intención.
+            //  With one letter half the world comes out; from two on
+            //  it is an intention.
             if (q.length < 2) {
                 resultados = []
                 return
@@ -165,10 +172,11 @@ K4.Plugin {
                         && a.nombre.toLowerCase().indexOf(q) >= 0
                 })
                 .map(function (a) {
-                    //  Cada una con SU icono, en los dos campos que el
-                    //  lanzador entiende. Iba en `icono`, que es el nombre de
-                    //  un icono del escritorio, y ninguna aplicación de la
-                    //  barra tiene uno: salían todas sin icono.
+                    //  Each with ITS OWN icon, in the two fields the
+                    //  launcher understands. It used to go in
+                    //  `icono`, which is a desktop icon's name, and
+                    //  no bar application has one: they all came out
+                    //  iconless.
                     return { id: a.id, titulo: a.nombre,
                              desc: "Bar application",
                              imagen: a.imagen, glifo: a.glifo }

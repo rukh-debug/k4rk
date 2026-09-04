@@ -1,9 +1,10 @@
-//  El menú de sesión, y el ensayo de la contraseña.
+//  The session menu, and the password rehearsal.
 //
-//  Fila de tarjetas grandes: son seis acciones como mucho y algunas apagan el
-//  ordenador, así que lo que interesa es que se distingan de un vistazo y que
-//  no se acierte ninguna por error. Las que no tienen vuelta atrás preguntan
-//  antes, y la que pregunta se pone roja: la confirmación se ve, no se supone.
+//  A row of big cards: they are six actions at most and some power
+//  off the machine, so what matters is that they stand apart at a
+//  glance and that none gets hit by mistake. The ones with no way
+//  back ask first, and the one asking turns red: the confirmation
+//  is seen, not supposed.
 
 import QtQuick
 import QtQuick.Layouts
@@ -18,15 +19,16 @@ FadeIn {
 
     focus: true
 
-    //  El foco se reparte según el modo, y hay que ser explícito porque las
-    //  dos mitades lo quieren para cosas distintas: en el menú lo necesita
-    //  esta raíz, que es quien lee las flechas y el Intro; en el ensayo lo
-    //  necesita el campo de la contraseña.
+    //  Focus is split by mode, and it pays to be explicit because
+    //  the two halves want it for different things: in the menu
+    //  this root needs it, the one reading arrows and Enter; in the
+    //  rehearsal the password field needs it.
     //
-    //  Reclamarlo aquí sin mirar el modo era peor que no reclamarlo: el panel
-    //  del ensayo se abría sin cursor y las teclas se quedaban en esta raíz,
-    //  que en ese modo no hace nada con ellas. Y no se ve venir, porque las
-    //  teclas no van a ninguna parte en vez de ir a otro sitio.
+    //  Claiming it here without looking at the mode was worse than
+    //  not claiming it: the rehearsal panel opened with no cursor
+    //  and the keys stayed in this root, which in that mode does
+    //  nothing with them. And it gives no warning, because the keys
+    //  go nowhere instead of going somewhere else.
     Component.onCompleted: view.repartirFoco()
 
     Connections {
@@ -55,7 +57,7 @@ FadeIn {
         }
     }
 
-    // ── el menú ───────────────────────────────────────────────────
+    // ── the menu ───────────────────────────────────────────────────
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 14
@@ -106,8 +108,9 @@ FadeIn {
                     colorBase: Theme.surface
                     colorActiva: preguntando ? Qt.rgba(1, 0.27, 0.23, 0.16) : Theme.surfaceHi
 
-                    // El borde solo aparece en la señalada: marca dónde estás
-                    // sin encender seis cajas a la vez.
+                    // The border only appears on the pointed one: it
+                    // marks where you are without lighting six boxes
+                    // at once.
                     Rectangle {
                         anchors.fill: parent
                         radius: parent.radius
@@ -144,9 +147,10 @@ FadeIn {
 
                     onPulsada: view.plugin.ejecutar(casilla.index)
 
-                    // Señalar con el ratón mueve la selección, pero no
-                    // arrastra la confirmación pendiente: pasar por encima de
-                    // «Apagar» no debe dejarlo a un clic de apagarse.
+                    // Pointing with the mouse moves the selection, but
+                    // does not drag the pending confirmation along:
+                    // passing over «Power off» must not leave it one
+                    // click from powering off.
                     onHoveredChanged: if (hovered) view.plugin.index = index
                 }
             }
@@ -165,8 +169,9 @@ FadeIn {
 
             Item { Layout.fillWidth: true }
 
-            // La red de seguridad. Bloquear sin saber si la contraseña abre es
-            // la única forma de quedarse fuera de tu propia sesión.
+            // The safety net. Locking without knowing whether the
+            // password opens is the only way to lock yourself out of
+            // your own session.
             Rectangle {
                 Layout.preferredWidth: ensayoTexto.implicitWidth + 18
                 Layout.preferredHeight: 18
@@ -192,7 +197,7 @@ FadeIn {
         }
     }
 
-    // ── el ensayo ─────────────────────────────────────────────────
+    // ── the rehearsal ─────────────────────────────────────────────
     ColumnLayout {
         id: ensayoCaja
 
@@ -201,16 +206,18 @@ FadeIn {
         spacing: 10
         visible: view.plugin.modo === "comprobar"
 
-        //  El foco hace falta en dos momentos distintos: al cambiar de modo
-        //  desde el menú, y al crearse ya en modo ensayo —que es lo que pasa
-        //  llegando por IPC, y entonces `visible` nunca cambia porque nace
-        //  valiendo true—. Reclamar solo en uno de los dos deja el panel
-        //  abierto sin poder escribir.
+        //  Focus is needed at two different moments: switching mode
+        //  from the menu, and being born already in rehearsal mode —
+        //  which is what happens arriving over IPC, and then
+        //  `visible` never changes because it is born true—.
+        //  Claiming it at only one of the two leaves the panel open
+        //  and unable to type.
         FocoInicial { id: focoEnsayo; objetivo: ensayo }
 
-        // Al vaciar el campo desde aquí hay que avisar, porque el propio
-        // vaciado dispara onTextChanged y borraría el resultado que acabamos
-        // de dar: te quedarías sin saber si la contraseña valía.
+        // Emptying the field from here must give notice, because
+        // the emptying itself fires onTextChanged and would erase
+        // the result just given: you would be left not knowing
+        // whether the password was any good.
         property bool limpiando: false
 
         K4.Autenticacion {

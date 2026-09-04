@@ -1,7 +1,7 @@
-//  Píldora plegada: carátula · espacios de trabajo · hora · visualizador, más
-//  los iconos de la bandeja si hay alguno.
-//  Siempre activo con prioridad 0, así que es el fondo de armario: se ve
-//  cuando ningún otro módulo quiere la island.
+//  Folded pill: cover · workspaces · time · visualizer, plus the
+//  tray icons if there are any.
+//  Always active at priority 0, so it is the wardrobe back: it shows
+//  when no other module wants the island.
 
 import QtQuick
 import "../../core"
@@ -15,43 +15,47 @@ K4Plugin {
     priority: 0
     active: habilitado
 
-    // el módulo de bandeja, que se abre al pulsar los iconos; lo inyecta el host
+    // the tray module, which opens when its icons are clicked; the
+    // host injects it
     property var tray: null
 
-    // cuántos iconos caben sin que la píldora se desmadre; el resto se resume
+    // how many icons fit before the pill runs wild; the rest summarize
     readonly property int trayShown: Math.min(Tray.count, 4)
     readonly property int trayWidth: Tray.count === 0 || !Settings.trayInPill
         ? 0 : trayShown * 18 + (Tray.count > trayShown ? 18 : 0) + 6
 
-    // Cada flanco ocupa lo suyo y la hora se queda quieta por el ancla que se
-    // publica abajo, no por reservar lo mismo a los dos lados. La simetría
-    // hacía que cada píxel de indicador costase dos, y con dos o tres agentes
-    // la island se iba de ancho hasta dejar de parecerse a una island.
-    // La carátula y las barras van juntas a la izquierda, así que el hueco de
-    // las barras se reserva ahí y no enfrente.
-    //  Las extensiones de flanco (K4.Capsule → services/Extensions.qml):
-    //  lo que la cápsula gana a cada lado mientras un plugin tiene algo
-    //  que decir ahí. La píldora solo le hace sitio en el flanco que
-    //  toque — el anclaje para que el cuerpo no se mueva lo hace el
-    //  host con estos mismos números.
+    // Each flank takes its own and the time stays still thanks to the
+    // anchor published below, not by reserving the same on both
+    // sides. Symmetry made every indicator pixel cost two, and with
+    // two or three agents the island went so wide it stopped
+    // resembling an island.
+    // The cover and the bars travel together on the left, so the
+    // bars' slot is reserved there and not across.
+    //  Flank extensions (K4.Capsule → services/Extensions.qml):
+    //  what the capsule gains on each side while a plugin has
+    //  something to say there. The pill only makes room on the
+    //  flank in question — the anchoring that keeps the body still
+    //  is done by the host with these same numbers.
     readonly property int ladoIzq: (Media.isPlaying ? 53 : 0)
         + Extensions.leftWidth
-    // Lo mismo para las cápsulas de lo que has dejado a medias: cada una puede
-    // llegar a 116 px con su icono y su detalle recortado.
+    // The same for the capsules of what you left half-done: each can
+    // reach 116 px with its icon and its clipped detail.
     readonly property int minimizadosWidth: Modulos.count * 116
 
     readonly property int ladoDer: trayWidth
         + minimizadosWidth + Indicadores.anchoAproximado
         + Extensions.rightWidth
 
-    //  La medida REAL de cada fila, publicada por la vista. Las sumas de arriba
-    //  se quedan como arranque y red de seguridad: en cuanto la vista existe,
-    //  manda lo medido — y añadir un indicador nuevo deja de exigir acordarse
-    //  de sumar su hueco aquí, que es como se pisó dos veces la hora.
+    //  Each row's REAL measurement, published by the view. The sums
+    //  above stay as a starting point and safety net: the moment the
+    //  view exists, what was measured rules — and adding a new
+    //  indicator stops requiring remembering to add its slot here,
+    //  which is how the time got stepped on twice.
     //
-    //  Ahora también el flanco izquierdo: con la island creciendo hacia un solo
-    //  lado, lo que mida la carátula corre el borde izquierdo, y una cuenta a
-    //  ojo ahí se ve tanto como una a la derecha.
+    //  Now the left flank too: with the island growing toward one
+    //  side only, whatever the cover measures runs the left edge,
+    //  and an eyeball count there shows as much as one on the
+    //  right.
     property int ladoDerMedido: 0
     property int ladoIzqMedido: 0
 
@@ -66,22 +70,25 @@ K4Plugin {
     //  the centre ate half the bar to honor a flash.)
     property int centroAncho: 46
 
-    //  Los cuatro huecos de 11 que separan las tres zonas entre sí y de los
-    //  bordes. La vista reparte con estos mismos números, así que si cambian,
-    //  cambian a la vez en los dos sitios o la cuenta deja de cuadrar.
+    //  The four 11 px gaps separating the three zones from each
+    //  other and from the edges. The view lays out with these same
+    //  numbers, so if they change, they change in both places at
+    //  once or the count stops adding up.
     readonly property int holgura: 44
 
-    //  Cada flanco ocupa lo suyo y nada más, en vez de reservar los dos el del
-    //  más ancho. Eso hacía que cada píxel de indicador costase dos y que con
-    //  tres agentes la island ocupase media pantalla, con la mitad vacía.
+    //  Each flank takes its own and nothing more, instead of both
+    //  reserving the wider one's. That made every indicator pixel
+    //  cost two and with three agents the island took half the
+    //  screen, half of it empty.
     //
-    //  El precio es que la hora se corre un poco al aparecer o irse un
-    //  indicador: la island va centrada, así que crece la mitad por cada lado.
-    //  Se probó a clavarla con un ancla y sale peor de lo que arregla —la
-    //  island deja de abrirse por igual hacia los dos lados, que es lo que se
-    //  mira cada vez que pasas el ratón—. Antes esto se pagaba con el doble de
-    //  ancho SIEMPRE, para que no se notara en un caso que pasa de vez en
-    //  cuando.
+    //  The price is the time shifting a little when an indicator
+    //  appears or leaves: the island is centered, so it grows half
+    //  on each side. Pinning it with an anchor was tried and comes
+    //  out worse than what it fixes —the island stops opening
+    //  evenly toward both sides, which is what one looks at every
+    //  time the mouse passes—. This used to be paid with double the
+    //  width ALWAYS, so it would not show in a case that happens
+    //  now and then.
     islandWidth: izqAncho + holgura + centroAncho + derAncho
     islandHeight: Theme.baseHeight
 

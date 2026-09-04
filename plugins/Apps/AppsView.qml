@@ -1,4 +1,4 @@
-//  La rejilla del centro de aplicaciones.
+//  The application centre's grid.
 
 import QtQuick
 import QtQuick.Layouts
@@ -19,7 +19,7 @@ FadeIn {
         anchors.margins: 16
         spacing: 12
 
-        // ── el buscador ───────────────────────────────────────────
+        // ── the search box ─────────────────────────────────────────
         Rectangle {
             visible: !view.plugin.modoActualizaciones
             Layout.fillWidth: true
@@ -102,7 +102,7 @@ FadeIn {
             }
         }
 
-        // ── la rejilla ────────────────────────────────────────────
+        // ── the grid ───────────────────────────────────────────────
         K4.Rodillo {
             visible: !view.plugin.modoActualizaciones
             Layout.fillWidth: true
@@ -124,10 +124,11 @@ FadeIn {
                         width: view.celdaAncho
                         height: view.celdaAlto
 
-                        //  La elegida con el teclado lleva borde azul, no solo
-                        //  el fondo claro: el fondo claro ya lo pone el ratón
-                        //  al pasar y las dos cosas se confundían — no se sabía
-                        //  qué iba a abrir el Enter.
+                        //  The keyboard-chosen one carries a blue border,
+                        //  not just the light background: the light
+                        //  background is already put by the mouse on
+                        //  hover and the two got confused — one did not
+                        //  know what Enter was going to open.
                         Rectangle {
                             anchors.fill: parent
                             radius: parent.radius
@@ -136,16 +137,18 @@ FadeIn {
                             border.color: Theme.blue
                             visible: celda.index === view.plugin.seleccion
                         }
-                        //  Una apagada no se abre, pero sí se puede pulsar:
-                        //  el clic lleva a Ajustes, que es lo que hace falta.
+                        //  An off one does not open, but it can be
+                        //  clicked: the click leads to Settings, which
+                        //  is what is needed.
                         onPulsada: modelData.habilitado
                             ? view.plugin.lanzar(modelData.id)
                             : view.plugin.lanzar("settings")
 
-                        //  La chincheta: pone o quita esta aplicación de la
-                        //  franja del centro de control. Solo al pasar por
-                        //  encima —o si ya está puesta, siempre—, que si no
-                        //  la rejilla se llena de iconos que no son la app.
+                        //  The pin: it puts or removes this application
+                        //  from the control centre's strip. Only on
+                        //  hover —or if already pinned, always—,
+                        //  otherwise the grid fills up with icons that
+                        //  are not the app.
                         IconGlyph {
                             anchors.top: parent.top
                             anchors.right: parent.right
@@ -177,10 +180,11 @@ FadeIn {
                                 imagen: celda.modelData.imagen
                                 glifo: celda.modelData.glifo
                                 tamano: 30
-                                //  Apagada en gris, rota en rojo. Una imagen
-                                //  propia no se tiñe —es del autor— pero sí
-                                //  se apaga, que si no una apagada se nota
-                                //  menos que las demás y desconcierta.
+                                //  Off in gray, broken in red. An author's
+                                //  own image does not take the tint —it
+                                //  is theirs— but it does dim, otherwise
+                                //  an off one is noticed less than the
+                                //  rest and disorients.
                                 opacity: celda.modelData.habilitado ? 1 : 0.35
                                 color: celda.modelData.habilitado
                                     ? (celda.modelData.disponible ? Theme.ink
@@ -204,14 +208,14 @@ FadeIn {
             }
         }
 
-        // ── elegir qué actualizar ─────────────────────────────────
+        // ── choosing what to update ───────────────────────────────
         //
-        //  La rejilla se aparta y sale la lista de pendientes, cada una
-        //  con su interruptor. Elegir aquí es EXCLUIR: lo desmarcado se
-        //  queda quieto con --ignore y el resto sube en una actualización
-        //  completa — subir paquetes sueltos sobre un sistema viejo es la
-        //  forma clásica de romper un Arch, y esta es la que pacman
-        //  contempla de fábrica.
+        //  The grid steps aside and the pending list comes out, each
+        //  with its switch. Choosing here is EXCLUDING: what is
+        //  unchecked stays put with --ignore and the rest goes up in
+        //  a full upgrade — uploading single packages onto an old
+        //  system is the classic way to break an Arch, and this is
+        //  the one pacman contemplates from the factory.
         Rectangle {
             visible: view.plugin.modoActualizaciones
             Layout.fillWidth: true
@@ -266,9 +270,10 @@ FadeIn {
                     delegate: Rectangle {
                         id: fila
                         required property var modelData
-                        //  Marcada = sube. Se lee del servicio y no de un
-                        //  estado local para que la cuenta de la cabecera,
-                        //  el botón del pie y la fila cuenten lo mismo.
+                        //  Checked = it upgrades. Read from the service
+                        //  and not from local state so the header's
+                        //  count, the foot button and the row all tell
+                        //  the same thing.
                         readonly property bool dentro:
                             !view.plugin.paq.excluidos[modelData.nombre]
 
@@ -284,9 +289,9 @@ FadeIn {
                             anchors.rightMargin: 12
                             spacing: 10
 
-                            //  El interruptor de esta app, lo que pedía la
-                            //  pregunta: azul con su marca cuando va a subir,
-                            //  hueco cuando se queda.
+                            //  This app's switch, what the question
+                            //  asked for: blue with its mark when it is
+                            //  going up, hollow when it stays.
                             Rectangle {
                                 Layout.preferredWidth: 18
                                 Layout.preferredHeight: 18
@@ -342,20 +347,22 @@ FadeIn {
             }
         }
 
-        // ── las actualizaciones del sistema ───────────────────────
+        // ── the system updates ────────────────────────────────────
         //
-        //  El pie del centro: cuántas esperan y el botón que las aplica.
-        //  Aquí y no en otro módulo porque este ES el sitio de las
-        //  aplicaciones, y mantenerlas al día es parte de tenerlas.
+        //  The centre's foot: how many are waiting and the button
+        //  that applies them. Here and not in another module because
+        //  this IS the applications' place, and keeping them current
+        //  is part of having them.
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 40
             radius: 12
             color: Theme.surface
 
-            //  Pulsar la franja abre (o cierra) la lista para elegir. Va
-            //  DEBAJO de la fila de botones: los que llevan ratón propio
-            //  —volver a mirar, actualizar— se quedan el clic para ellos.
+            //  Clicking the strip opens (or closes) the choosing list.
+            //  It goes BELOW the button row: the ones carrying their
+            //  own mouse —look again, update— keep the click for
+            //  themselves.
             MouseArea {
                 anchors.fill: parent
                 enabled: view.plugin.paq.pendientes > 0
@@ -418,7 +425,7 @@ FadeIn {
                     font.pixelSize: 14
                 }
 
-                //  Volver a mirar, saltándose la caché de diez minutos.
+                //  Look again, skipping the ten-minute cache.
                 MediaButton {
                     glyph: String.fromCodePoint(0xF0450)   // md-refresh
                     glyphSize: 13
@@ -426,8 +433,8 @@ FadeIn {
                     onActivated: view.plugin.paq.refresh(true)
                 }
 
-                //  Sin nada marcado el botón se apaga: una tanda vacía no
-                //  es una orden, es un despiste.
+                //  With nothing checked the button dims: an empty
+                //  batch is not an order, it is a slip.
                 Rectangle {
                     visible: view.plugin.paq.pendientes > 0
                     Layout.preferredWidth: actualizarTexto.implicitWidth + 22
@@ -464,8 +471,9 @@ FadeIn {
         }
     }
 
-    //  El teclado en la lista: el buscador está oculto y alguien tiene que
-    //  responder — Escape vuelve a la rejilla, Enter aplica lo marcado.
+    //  The keyboard in the list: the search box is hidden and
+    //  somebody has to answer — Escape returns to the grid, Enter
+    //  applies what is checked.
     Item {
         id: tecladoLista
         visible: view.plugin.modoActualizaciones
@@ -483,8 +491,8 @@ FadeIn {
         }
     }
 
-    //  El foco al buscador en cuanto se abre —se abre para escribir—, o a
-    //  la lista si lo que está delante es la lista.
+    //  Focus to the search box as soon as it opens —it opens to be
+    //  typed in—, or to the list if it is the list in front.
     FocoInicial {
         id: foco
         objetivo: view.plugin.modoActualizaciones ? tecladoLista : entrada
