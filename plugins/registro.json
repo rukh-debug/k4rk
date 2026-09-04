@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "que": "k4's public plugin registry: what can be installed with tools/plugins.py --buscar / --instalar.",
-    "publicar": "Open a PR adding your entry: id, title, description, repo (git), commit (the full 40-char SHA you want published) and, if the plugin does not live at the repo root, carpeta.",
+    "what": "k4's public plugin registry: what can be installed with tools/plugins.py --search / --install.",
+    "publish": "Open a PR adding your entry: id, title, description, repo (git), commit (the full 40-char SHA you want published) and, if the plugin does not live at the repo root, folder. The keys `autor` and `carpeta` are read as aliases for author and folder, so entries written before the rename keep working.",
     "commit": "A COMMIT is published, not a branch. What was reviewed is exactly what gets installed, and a branch that moves later changes nothing for the people who installed it. To publish a new version, another PR with the new SHA."
   },
   "plugins": [
@@ -9,53 +9,53 @@
       "id": "hola",
       "title": "Hello",
       "description": "The guide's minimal plugin: a view, a counter and its settings",
-      "autor": "k4",
       "repo": "https://github.com/k4ditano/k4",
       "commit": "320a3a971633b6602421e052289847fd9970c65e",
-      "carpeta": "ejemplos/hola"
+      "author": "k4",
+      "folder": "ejemplos/hola"
     },
     {
       "id": "snake",
       "title": "Snake",
       "description": "The usual snake, playable in the island",
-      "autor": "k4",
       "repo": "https://github.com/k4ditano/k4",
       "commit": "320a3a971633b6602421e052289847fd9970c65e",
-      "carpeta": "ejemplos/snake"
+      "author": "k4",
+      "folder": "ejemplos/snake"
     },
     {
       "id": "piezas",
       "title": "Pieces",
       "description": "Showcase of the API's visual components",
-      "autor": "k4",
       "repo": "https://github.com/k4ditano/k4",
       "commit": "a1584de2b4261d336454a000830ef69b109160df",
-      "carpeta": "ejemplos/piezas"
+      "author": "k4",
+      "folder": "ejemplos/piezas"
     },
     {
       "id": "efectos",
       "title": "Effects",
       "description": "Showcase of tinting, gestures and painting outside the island",
-      "autor": "k4",
       "repo": "https://github.com/k4ditano/k4",
       "commit": "bb23bd242530746d84b329c62790b6ce5adb3bcb",
-      "carpeta": "ejemplos/efectos"
+      "author": "k4",
+      "folder": "ejemplos/efectos"
     },
     {
       "id": "grieta",
       "title": "The Rift",
       "description": "A typing roguelike: seal with the keyboard what comes out of the rift",
-      "autor": "k4",
       "repo": "https://github.com/k4ditano/grieta",
-      "commit": "ce4c39d58ff12364614fcc03b90b84fccfe0df9f"
+      "commit": "ce4c39d58ff12364614fcc03b90b84fccfe0df9f",
+      "author": "k4"
     },
     {
       "id": "senda",
       "title": "Senda",
       "description": "A creature autobattler roguelike: pick a path, build a team",
-      "autor": "k4",
       "repo": "https://github.com/k4ditano/senda",
-      "commit": "28b29e2139e1934ebae147226413f59eab470838"
+      "commit": "28b29e2139e1934ebae147226413f59eab470838",
+      "author": "k4"
     },
     {
       "id": "pinza",

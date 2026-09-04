@@ -39,9 +39,9 @@ QtObject {
 
     //  Y por qué no se sabe, cuando no se sabe. Vacío es «se sabe».
     //
-    //   "sin-git"     no es un clon de git: instalado a mano o descomprimido.
-    //   "sin-remoto"  la rama no sigue a ninguna, así que no hay con qué comparar.
-    //   "sin-red"     no se ha podido traer nada. Lo que se enseñe entonces sale
+    //   "no-git"      not a git clone: installed by hand or unzipped.
+    //   "no-remote"   the branch tracks nothing, so there is nothing to compare against.
+    //   "no-network"  nothing could be fetched. Whatever is shown then comes
     //                 de la última vez que hubo red, y hay que decirlo.
     property string pega: ""
 
@@ -82,18 +82,18 @@ QtObject {
         //  lanzar aplicaciones sin heredar el directorio de la barra.
         command: ["sh", "-c", [
             'cd "$1" 2>/dev/null || exit 0',
-            'c=$(git rev-parse --short HEAD 2>/dev/null) || { echo pega=sin-git; exit 0; }',
+            'c=$(git rev-parse --short HEAD 2>/dev/null) || { echo hitch=no-git; exit 0; }',
             'echo "commit=$c"',
-            '[ -n "$(git status --porcelain 2>/dev/null)" ] && echo sucio=1',
+            '[ -n "$(git status --porcelain 2>/dev/null)" ] && echo dirty=1',
             //  Sin rama de seguimiento no hay nada con lo que comparar, y
             //  `rev-list HEAD..@{u}` fallaría en silencio dejando un -1 sin
             //  explicación. Se pregunta antes para poder decir cuál es la pega.
-            'git rev-parse --abbrev-ref "@{u}" >/dev/null 2>&1 || { echo pega=sin-remoto; exit 0; }',
+            'git rev-parse --abbrev-ref "@{u}" >/dev/null 2>&1 || { echo hitch=no-remote; exit 0; }',
             //  Y si la red falla NO se sale: el `rev-list` de después sigue
             //  valiendo contra lo último que se trajo. Se contesta con la cuenta
             //  vieja y con la pega puesta, que es más útil que no contestar.
-            'git fetch --quiet 2>/dev/null || echo pega=sin-red',
-            'n=$(git rev-list --count "HEAD..@{u}" 2>/dev/null) && echo "detras=$n"'
+            'git fetch --quiet 2>/dev/null || echo hitch=no-network',
+            'n=$(git rev-list --count "HEAD..@{u}" 2>/dev/null) && echo "behind=$n"'
         ].join("\n"), "sh", K4.Paths.raiz]
 
         //  En inglés, que es como se parsea igual en cualquier máquina.
@@ -106,12 +106,12 @@ QtObject {
                 const l = lineas[i].trim()
                 if (l.indexOf("commit=") === 0)
                     c = l.substring(7)
-                else if (l.indexOf("detras=") === 0)
+                else if (l.indexOf("behind=") === 0)
                     d = parseInt(l.substring(7), 10)
-                else if (l === "sucio=1")
+                else if (l === "dirty=1")
                     su = true
-                else if (l.indexOf("pega=") === 0)
-                    pe = l.substring(5)
+                else if (l.indexOf("hitch=") === 0)
+                    pe = l.substring(6)
             }
             version.commit = c
             version.detras = isNaN(d) ? -1 : d

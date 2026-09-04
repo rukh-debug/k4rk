@@ -1,7 +1,8 @@
-#  Generado: los tipos de esta carpeta, para que se resuelvan
-#  también cargando el plugin por URL (esquema qs:), donde la
-#  resolución implícita de hermanos no existe.
-#  `python3 tools/plugins.py` comprueba que esté completo.
+#  Generated: the types in this folder, so they also resolve
+#  when the plugin is loaded by URL (the qs: scheme), where the
+#  implicit resolution of siblings does not exist.
+#  `python3 tools/plugins.py` checks that it stays complete.
+
 
 
 AccesosDirectos 1.0 AccesosDirectos.qml
