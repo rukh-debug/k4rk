@@ -5,5 +5,5 @@
   "title": "Effects",
   "description": "Showcase of tinting, gestures and painting outside the island",
   "host": ">=1.1.0",
-  "permisos": []
+  "permissions": []
 }

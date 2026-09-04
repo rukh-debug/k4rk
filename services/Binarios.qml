@@ -4,7 +4,7 @@ pragma Singleton
 //
 //  A plugin can depend on a tool the user may or may not have — codex,
 //  any CLI — and until now it could only find out by trying and failing
-//  in public. The catalog says it up front (`"requiere": "bin:codex"`),
+//  in public. The catalog says it up front (`"require": "bin:codex"`),
 //  and this service is the one honest answer to that question: one
 //  batched `command -v` sweep for every name anyone asked about.
 //

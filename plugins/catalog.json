@@ -7,74 +7,104 @@
    "entry": "Idle/IdlePlugin.qml",
    "version": "1.0.0",
    "title": "Pill",
+   "description": "The island that hosts every view: the pill itself",
    "enabledByDefault": true,
-   "configurable": false
+   "configurable": false,
+   "icon": "0xF0765"
   },
   {
    "id": "volume",
    "entry": "Volume/VolumePlugin.qml",
    "version": "1.0.0",
    "title": "Volume",
-   "enabledByDefault": true
+   "description": "The transient volume HUD that surfaces over the pill",
+   "enabledByDefault": true,
+   "icon": "0xF057E"
   },
   {
    "id": "sound",
    "entry": "Sonido/SonidoPlugin.qml",
    "version": "1.0.0",
    "title": "Sound",
-   "enabledByDefault": true
+   "description": "Output devices and per-stream volume control",
+   "enabledByDefault": true,
+   "icon": "0xF02CB"
   },
   {
    "id": "clock",
    "entry": "Clock/ClockPlugin.qml",
    "version": "1.0.0",
    "title": "Clock",
-   "enabledByDefault": true
+   "description": "The clock view: time, notifications on hover",
+   "enabledByDefault": true,
+   "icon": "0xF0954"
   },
   {
    "id": "player",
    "entry": "Player/PlayerPlugin.qml",
    "version": "1.0.0",
    "title": "Player",
-   "enabledByDefault": true
+   "description": "Media controls for whatever MPRIS is playing",
+   "enabledByDefault": true,
+   "icon": "0xF0387"
   },
   {
    "id": "toast",
    "entry": "Toast/ToastPlugin.qml",
    "version": "1.0.0",
    "title": "Notifications",
+   "description": "The notification band and its toasts",
    "enabledByDefault": true,
-   "icono": "0xF0369"
+   "icon": "0xF0369"
   },
   {
    "id": "panel",
    "entry": "Panel/PanelPlugin.qml",
    "version": "1.0.0",
-   "title": "Control center",
-   "enabledByDefault": true
+   "title": "Control centre",
+   "description": "The control centre: toggles, media and quick settings",
+   "enabledByDefault": true,
+   "icon": "0xF0492"
   },
   {
    "id": "launcher",
    "entry": "Launcher/LauncherPlugin.qml",
    "version": "1.0.0",
    "title": "Launcher",
-   "enabledByDefault": true
+   "description": "Search everything: apps, settings, plugins and results",
+   "enabledByDefault": true,
+   "permissions": [
+    "procesos"
+   ],
+   "icon": "0xF0349"
   },
   {
    "id": "ask",
    "entry": "Ask/AskPlugin.qml",
    "version": "1.0.0",
    "title": "Ask",
+   "description": "Ask an agent: prompts, screenshots and regions",
    "enabledByDefault": true,
-   "requiere": "bin:codex"
+   "permissions": [
+    "procesos",
+    "portapapeles"
+   ],
+   "require": "bin:codex",
+   "icon": "0xF0674"
   },
   {
    "id": "hyprtheme",
    "entry": "HyprTheme/HyprThemePlugin.qml",
    "version": "1.0.0",
    "title": "Hyprland theme",
+   "description": "Colors, wallpapers and window rules for the session",
    "enabledByDefault": true,
-   "icono": "0xF03D8"
+   "permissions": [
+    "procesos",
+    "ficheros",
+    "paginas"
+   ],
+   "icon": "0xF03D8"
   },
   {
    "id": "displays",
@@ -83,115 +113,145 @@
    "title": "Displays",
    "description": "Set up monitors and hand out Hyprland workspaces",
    "enabledByDefault": true,
-   "icono": "0xF037A",
-   "aplicacion": true,
-   "permisos": [
+   "permissions": [
     "procesos"
-   ]
+   ],
+   "icon": "0xF037A",
+   "application": true
   },
   {
    "id": "tray",
    "entry": "Tray/TrayPlugin.qml",
    "version": "1.0.0",
    "title": "Tray",
+   "description": "The system tray, tucked into the clock view",
    "enabledByDefault": true,
-   "icono": "0xF1296"
+   "icon": "0xF1296"
   },
   {
    "id": "settings",
    "entry": "Settings/SettingsPlugin.qml",
    "version": "1.0.0",
    "title": "Settings",
+   "description": "The bar's settings: pages, plugins and placement",
    "enabledByDefault": true,
    "configurable": false,
-   "icono": "0xF0493",
-   "aplicacion": true
+   "permissions": [
+    "procesos"
+   ],
+   "icon": "0xF0493",
+   "application": true
   },
   {
    "id": "clipboard",
    "entry": "Clipboard/ClipboardPlugin.qml",
    "version": "1.0.0",
    "title": "Clipboard",
+   "description": "Clipboard history with previews and pinned entries",
    "enabledByDefault": true,
-   "icono": "0xF014D",
-   "aplicacion": true
+   "icon": "0xF014D",
+   "application": true
   },
   {
    "id": "system",
    "entry": "System/SystemPlugin.qml",
    "version": "1.0.0",
    "title": "System",
+   "description": "CPU, memory and network at a glance",
    "enabledByDefault": true,
-   "icono": "0xF061A",
-   "aplicacion": true
+   "icon": "0xF061A",
+   "application": true
   },
   {
    "id": "keys",
    "entry": "Keys/KeysPlugin.qml",
    "version": "1.0.0",
    "title": "Shortcuts",
+   "description": "The Hyprland keybind reference, straight from the config",
    "enabledByDefault": true,
-   "icono": "0xF030C",
-   "aplicacion": true
+   "icon": "0xF030C",
+   "application": true
   },
   {
    "id": "session",
    "entry": "Session/SessionPlugin.qml",
    "version": "1.0.0",
    "title": "Session",
+   "description": "Lock, sleep, reboot and leave, with a real lock screen",
    "enabledByDefault": true,
-   "icono": "0xF0425",
-   "aplicacion": true
+   "icon": "0xF0425",
+   "application": true
   },
   {
    "id": "apps",
    "entry": "Apps/AppsPlugin.qml",
    "version": "1.0.0",
-   "title": "Apps",
+   "title": "Applications",
+   "description": "The application centre, with updates and pinning",
    "enabledByDefault": true,
-   "icono": "0xF02C1"
+   "icon": "0xF02C1"
   },
   {
    "id": "terminal",
    "entry": "Terminal/TerminalPlugin.qml",
    "version": "1.0.0",
    "title": "Terminal",
+   "description": "k4term in the island: sessions, tunnels and keys",
    "enabledByDefault": true,
-   "icono": "0xF018D",
-   "aplicacion": true,
-   "requiere": "k4term"
+   "permissions": [
+    "procesos",
+    "ficheros"
+   ],
+   "require": "k4term",
+   "icon": "0xF018D",
+   "application": true
   },
   {
    "id": "packages",
    "entry": "Packages/PackagesPlugin.qml",
    "version": "1.0.0",
    "title": "Packages",
+   "description": "Search, install and update pacman and AUR packages",
    "enabledByDefault": true,
-   "icono": "0xF03D7"
+   "permissions": [
+    "procesos"
+   ],
+   "icon": "0xF03D7"
   },
   {
    "id": "ssh",
    "entry": "Ssh/SshPlugin.qml",
    "version": "1.0.0",
    "title": "Servers",
-   "enabledByDefault": true
+   "description": "SSH servers, tunnels and keys, managed from the bar",
+   "enabledByDefault": true,
+   "permissions": [
+    "procesos",
+    "ficheros"
+   ],
+   "icon": "0xF0339"
   },
   {
    "id": "agents",
    "entry": "Agentes/AgentesPlugin.qml",
    "version": "1.0.0",
    "title": "Agents",
+   "description": "Usage windows and quotas for your coding agents",
    "enabledByDefault": true,
-   "icono": "0xF06A9",
-   "aplicacion": true
+   "permissions": [
+    "procesos"
+   ],
+   "icon": "0xF06A9",
+   "application": true
   },
   {
    "id": "submap",
    "entry": "Submap/SubmapPlugin.qml",
    "version": "1.0.0",
    "title": "Submap",
+   "description": "Shows which Hyprland submap is active, as a capsule",
    "enabledByDefault": true,
-   "icono": "0xF030E"
+   "icon": "0xF030E"
   }
  ],
  "version": "1.1.0"

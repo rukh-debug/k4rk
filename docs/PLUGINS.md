@@ -156,24 +156,29 @@ commands that come next. The rest of this page explains what it wrote.
   "title": "Hola",
   "description": "Qué hace, en una frase — sale en Ajustes",
   "host": ">=1.1.0",
-  "permisos": [],
-  "superficies": ["island"]
+  "permissions": [],
+  "surfaces": ["island"]
 }
 ```
 
-- `superficies`: what your plugin **occupies**, as opposed to what it touches.
+> The keys above are the vocabulary of record. The Spanish keys a
+> manifest could use until the rename (`permisos`, `superficies`,
+> `icono`, `aplicacion`, `requiere`) are still read as aliases, so a
+> plugin written yesterday keeps validating today — but write English.
+
+- `surfaces`: what your plugin **occupies**, as opposed to what it touches.
   `island` (it has a `view`), `pildora`, `ventana`, `ipc`, `centro` (a block
   in the control centre). It is
   optional — a manifest without it still validates — but if you declare it,
   the validator checks it against what your QML actually does, the same way it
-  already does with `permisos`. Declaring lets Settings describe your plugin
+  already does with `permissions`. Declaring lets Settings describe your plugin
   without loading it.
 - `id`: lowercase, no spaces, and it **must match the directory name**. If
   it collides with one of the bar's plugins, yours loses.
 - `entry`: the file that inherits from `K4.Plugin`, inside the directory
   itself.
 - `host`: the minimum bar version you need (`>=x.y.z`).
-- `icono`: your icon, of one of these two kinds:
+- `icon`: your icon, of one of these two kinds:
   - **a Nerd Font codepoint** as text, `"0xF011A"` — find it with
     `python3 tools/glifos.py <word>`. It inherits the theme's color, so it
     looks like the rest of the bar and dims and tints along with it.
@@ -187,13 +192,13 @@ commands that come next. The rest of this page explains what it wrote.
   small or comes in a strange format is an installation error, not an empty
   little square in the application center. It shows up in Settings, in the
   application center and in the control center's shortcuts.
-- `aplicacion`: `true` if yours is something that is **opened and used** —
+- `application`: `true` if yours is something that is **opened and used** —
   a game, a tool — and not an indicator or a service. With it you appear in
   the application center (SUPER+SHIFT+Space) and you can be pinned to the
   control center strip — where shortcuts are also reordered by dragging.
   You also appear when typing in the launcher (SUPER+Space), which remains
   a different drawer — the desktop applications' one — but finds both.
-- `permisos`: which capabilities you use — see below. Empty if you only
+- `permissions`: which capabilities you use — see below. Empty if you only
   paint.
 
 ## 2 · The plugin and the view
@@ -293,7 +298,7 @@ Rules the bar enforces:
   public API is the contract that does not break under your feet on update.
 - The root id should be `self`: a view with `required property var plugin`
   can shadow an id with the same name.
-If you declare yourself `aplicacion`, the bar will open you by calling
+If you declare yourself `application`, the bar will open you by calling
 `abrir()`. By default it uses your `toggle()`, which is what almost all of
 them already have; redefine it if you need something else — for example
 always opening instead of toggling.

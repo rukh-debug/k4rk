@@ -252,9 +252,9 @@ Rectangle {
                         if (!m)
                             return []
                         const chips = []
-                        if (m.permisos)
-                            for (let i = 0; i < m.permisos.length; ++i)
-                                chips.push({ t: m.permisos[i], aviso: true })
+                        if (m.permissions)
+                            for (let i = 0; i < m.permissions.length; ++i)
+                                chips.push({ t: m.permissions[i], aviso: true })
                         const c = m.comandos || ({})
                         if (c.atajos)
                             for (let j = 0; j < c.atajos.length; ++j)
