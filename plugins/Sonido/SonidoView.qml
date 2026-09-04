@@ -1,8 +1,9 @@
-//  El módulo de Sonido: la lista de aparatos con su cabecera y su pie.
+//  The Sound module: the device list with its header and its foot.
 //
-//  La lista en sí es `AparatosDeSonido` de `core`, compartida con el detalle
-//  del centro de control: lo mismo se llega desde el lanzador y desde donde se
-//  llega al Wi‑Fi y al Bluetooth, y llegue por donde llegue es la misma cosa.
+//  The list itself is `AparatosDeSonido` from `core`, shared with
+//  the control centre's detail: one arrives from the launcher the
+//  same way one arrives at Wi‑Fi and Bluetooth, and wherever one
+//  arrives from it is the same thing.
 
 import QtQuick
 import QtQuick.Layouts
@@ -19,7 +20,7 @@ Item {
         anchors.margins: 14
         spacing: 8
 
-        // ── cabecera ──────────────────────────────────────────────
+        // ── header ─────────────────────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             spacing: 8

@@ -1,8 +1,9 @@
-//  La lista de lo copiado.
+//  The list of what was copied.
 //
-//  Se teclea directamente para filtrar —sin pulsar en ningún sitio, como en el
-//  lanzador— y cada fila enseña de qué es: enlace, color, orden, ruta, código
-//  o imagen. Lo fijado sube arriba y no caduca.
+//  One types directly to filter —clicking nowhere first, as in the
+//  launcher— and each row shows what it is: link, color, command,
+//  path, code or image. What is pinned rises to the top and never
+//  expires.
 
 import QtQuick
 import QtQuick.Controls
@@ -15,8 +16,8 @@ FadeIn {
 
     required property var plugin
 
-    // Sin esto hay que hacer clic antes de poder escribir: la raíz de la
-    // island se queda el foco y la superficie tarda en recibirlo.
+    // Without this one must click before typing: the island's root
+    // keeps focus and the surface takes a moment to receive it.
     FocoInicial { id: foco; objetivo: entrada }
     Component.onCompleted: foco.reclamar()
 
@@ -28,7 +29,7 @@ FadeIn {
         anchors.bottomMargin: 12
         spacing: 8
 
-        // ── búsqueda ──────────────────────────────────────────────
+        // ── search ─────────────────────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 26
@@ -137,9 +138,10 @@ FadeIn {
             }
         }
 
-        // ── la lista ──────────────────────────────────────────────
+        // ── the list ───────────────────────────────────────────────
         ListView {
-            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            //  The house scrollbar: shows only if there is more than
+            //  fits.
             ScrollBar.vertical: IslandScrollBar {}
             id: filas
             Layout.fillWidth: true
@@ -151,8 +153,8 @@ FadeIn {
             highlightMoveDuration: 130
             boundsBehavior: Flickable.StopAtBounds
 
-            // que el seleccionado quede siempre a la vista al moverse con las
-            // flechas, sin saltar la lista entera
+            // so the selected one stays in view when moving with the
+            // arrows, without jumping the whole list
             onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
             delegate: Rectangle {
@@ -177,7 +179,7 @@ FadeIn {
                     anchors.rightMargin: 10
                     spacing: 9
 
-                    // la miniatura vale más que cualquier icono
+                    // the thumbnail is worth more than any icon
                     Image {
                         visible: fila.esImagen
                         source: fila.esImagen ? "file://" + fila.modelData.ruta : ""
@@ -241,7 +243,8 @@ FadeIn {
                         }
                     }
 
-                    // una muestra del color: leer "#ff453a" no es verlo
+                    // a sample of the color: reading "#ff453a" is not
+                    // seeing it
                     Rectangle {
                         visible: fila.modelData.etiqueta === "color"
                         Layout.preferredWidth: 16
@@ -299,7 +302,7 @@ FadeIn {
             }
         }
 
-        // ── ayuda y vacío ─────────────────────────────────────────
+        // ── help and empty ─────────────────────────────────────────
         IslandLabel {
             Layout.fillWidth: true
             visible: view.plugin.count === 0

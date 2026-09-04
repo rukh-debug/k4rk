@@ -1,8 +1,10 @@
-//  Lanzador estilo Spotlight, con un segundo modo para instalar paquetes.
+//  Spotlight-style launcher, with a second mode for installing
+//  packages.
 //
-//  Dos velocidades en la búsqueda: pacman lee la base local (~0.3 s) y sale al
-//  instante; yay consulta el RPC de AUR (~1.3 s) y se deja para cuando dejas
-//  de teclear, para no abusar del servicio.
+//  Two speeds in the search: pacman reads the local base (~0.3 s)
+//  and comes out at once; yay queries the AUR RPC (~1.3 s) and is
+//  left for when you stop typing, so the service is not
+//  abused.
 
 import QtQuick
 import K4 as K4
@@ -16,7 +18,8 @@ K4Plugin {
     title: "Launcher"
     priority: 80
     colocable: true
-    // sigue ocupando la island mientras se encoge, pero ya sin contenido
+    // it keeps the island while shrinking, but with no content
+    // left
     active: habilitado && (open || closing)
     viewLoaded: open
     grabKeyboard: open
@@ -38,9 +41,10 @@ K4Plugin {
     //  what it is told, and asks it nothing else.
     property var packages: null
 
-    // Al abrir el lanzador se actualiza el índice de aplicaciones del usuario.
-    // K4.Apps ya vigila cambios, pero este paso cubre instalaciones que
-    // crean el .desktop mientras k4 estaba cerrado o durante un escaneo.
+    // On opening the launcher the user's application index is
+    // refreshed. K4.Apps already watches for changes, but this step
+    // covers installations that create the .desktop while k4 was
+    // closed or during a scan.
     readonly property string applicationsDir: {
         const dataHome = K4.Sistema.entorno("XDG_DATA_HOME")
         const base = dataHome && dataHome.length > 0
@@ -52,9 +56,10 @@ K4Plugin {
     islandHeight: 440
 
     readonly property int count: matches.length
-    // `conservarSeleccion` lo usa el refresco periódico: sin él, cada segundo
-    // se reponía el índice a cero y la lista te devolvía arriba mientras
-    // bajabas con las flechas o la rueda.
+    // `conservarSeleccion` is used by the periodic refresh:
+    // without it, every second the index reset to zero and the list
+    // sent you back up while going down with the arrows or the
+    // wheel.
     function rebuild(conservarSeleccion) {
         const q = query.trim().toLowerCase()
         const applications = K4.Apps.lista
@@ -72,21 +77,24 @@ K4Plugin {
 
         found.sort(function (a, b) { return a.name.localeCompare(b.name) })
 
-        //  Este panel es el de las aplicaciones DEL SISTEMA y manda eso: lo
-        //  que aporten los plugins va detrás, nunca por delante. Quien abre el
-        //  lanzador y escribe «fire» quiere Firefox, y un aporte por bien
-        //  intencionado que sea no puede colarse encima de lo que la persona
-        //  venía a buscar. Para las cosas de la barra está su propio cajón
-        //  (SUPER+SHIFT+Space); aquí salen para que se puedan ENCONTRAR, no
-        //  para competir.
-        //  Tres maneras de tener icono, en este orden: el que trae el propio
-        //  resultado —`imagen` o `glifo`—, el nombre de icono del escritorio
-        //  si lo que aporta ES una aplicación instalada, y si no el de su
-        //  plugin. Antes solo existía la segunda, así que un aporte de un
-        //  plugin salía con el hueco vacío: la fila esperaba un nombre de
-        //  icono del escritorio y lo que un plugin tiene es otra cosa. Un
-        //  hueco entre filas que sí tienen icono se lee como «esto está a
-        //  medias», que era justo lo contrario de lo que pasaba.
+        //  This panel is the SYSTEM applications' one and that is
+        //  what rules: whatever plugins contribute goes behind,
+        //  never in front. Whoever opens the launcher and types
+        //  «fire» wants Firefox, and a contribution however
+        //  well-intentioned cannot cut in front of what the
+        //  person already knows. The bar's things have their own
+        //  drawer (SUPER+SHIFT+Space); they show up here so they can
+        //  be FOUND, not to compete.
+        //  Three ways to have an icon, in this order: the one the
+        //  result itself brings —`imagen` or `glifo`—, the desktop
+        //  icon name if
+        //  what it contributes IS an installed application, and
+        //  otherwise its plugin's. Only the second used to exist, so
+        //  a plugin's contribution came out with an empty slot: the
+        //  row expected a desktop icon name and what a plugin has is
+        //  another thing. An empty slot between rows that do have
+        //  icons reads as «this is half done», which was exactly the
+        //  opposite of what was going on.
         const extras = (Enganches.resultados || []).map(function (r) {
             let imagen = r.imagen || ""
             let glifo = r.glifo || 0
@@ -108,8 +116,8 @@ K4Plugin {
             index = 0
     }
 
-    //  Avisar a los plugins de lo que se está escribiendo, y repintar cuando
-    //  contesten — que puede ser más tarde, si lo suyo cuesta.
+    //  Tell the plugins what is being typed, and repaint when they
+    //  answer — which can be later, if theirs takes a while.
     onQueryChanged: Enganches.buscar(query)
 
     property Connections _aportes: Connections {
@@ -159,7 +167,8 @@ K4Plugin {
 
         const entry = matches[index]
 
-        //  Uno aportado por un plugin: se lo devolvemos y él sabrá.
+        //  One contributed by a plugin: we hand it back and it will
+        //  know.
         if (entry && entry._enganche) {
             close()
             Enganches.elegir(entry._enganche)
@@ -170,10 +179,11 @@ K4Plugin {
         abrir(entry)
     }
 
-    // No se usa entry.execute(): eso hereda el directorio de trabajo de la
-    // barra, que es la carpeta de configuración de quickshell —de ahí que las
-    // terminales abrieran en ~/.config/quickshell/k4—. Se lanza con el
-    // directorio que pida la propia entrada y, si no pide ninguno, en casa.
+    // entry.execute() is not used: that inherits the working
+    //  directory of the bar, which is quickshell's config folder
+    //  —hence terminals kept opening in ~/.config/quickshell/k4—.
+    //  It launches with the directory the entry itself asks for,
+    //  and if it asks for none, at home.
     function abrir(entry) {
         const dir = entry.workingDirectory && entry.workingDirectory.length > 0
             ? entry.workingDirectory : K4.Sistema.entorno("HOME")
@@ -194,7 +204,7 @@ K4Plugin {
         index = Math.max(0, Math.min(count - 1, index + delta))
     }
 
-    // Una notificación aparta el lanzador.
+    // A notification steps the launcher aside.
     Connections {
         target: Notifs
         function onNotified() { self.open = false }

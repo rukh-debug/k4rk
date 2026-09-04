@@ -223,8 +223,8 @@ FadeIn {
         K4.Autenticacion {
             id: auth
             onResuelto: function (correcto) {
-                // Se borra acierte o falle: una contraseña no tiene por qué
-                // seguir ahí después de haber servido para lo que servía.
+                // It clears hit or miss: a password has no business
+                // staying after serving what it served for.
                 ensayoCaja.limpiando = true
                 ensayo.text = ""
                 ensayoCaja.limpiando = false

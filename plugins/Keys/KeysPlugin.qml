@@ -1,4 +1,5 @@
-//  Chuleta de atajos: qué tienes atado a cada tecla, sin abrir el fichero.
+//  The shortcuts cheat-sheet: what is bound to each key, without
+//  opening the file.
 
 import QtQuick
 import K4 as K4
@@ -33,8 +34,9 @@ K4Plugin {
     }
 
     function abrir() {
-        // se relee al abrir: si acabas de tocar la configuración, quieres ver
-        // lo que hay ahora, no lo que había al arrancar la barra
+        // re-read on opening: if you just touched the config, you
+        // want to see what is there now, not what was there when
+        // the bar started
         Atajos.recargar()
         query = ""
         closing = false

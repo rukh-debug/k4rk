@@ -1,16 +1,18 @@
-//  El sonido de la casa: por dónde sale, por dónde entra y con cuánta
-//  ganancia.
+//  The house's sound: where it comes out, where it goes in and
+//  with how much gain.
 //
-//  La barra sabía subir y bajar el volumen general y nada más. Elegir el
-//  aparato o mirar la ganancia de un micro obligaba a abrir pavucontrol, que
-//  es salir de casa para algo que la casa tiene delante — y para enterarse
-//  demasiado tarde, además: un micro con la ganancia disparada no se nota
-//  hasta que escuchas lo que grabaste.
+//  The bar knew how to raise and lower the general volume and
+//  nothing else. Choosing the device or looking at a mic's gain
+//  forced opening pavucontrol, which is leaving home for something
+//  the home has in front of it — and finding out far too late,
+//  besides: a mic with runaway gain is not noticed until you listen
+//  to what you recorded.
 //
-//  Todo por Pipewire, sin sondear nada: los aparatos llegan por señal y
-//  cambiar el predeterminado es asignar una propiedad. Lo único que se
-//  pregunta por proceso es el volumen BASE de cada uno —el nivel natural del
-//  cacharro, que Pipewire no publica—, una vez al abrir.
+//  All through Pipewire, probing nothing: devices arrive by signal
+//  and changing the default is assigning a property. The only
+//  thing asked by process is each one's BASE volume —the gadget's
+//  natural level, which Pipewire does not publish—, once on
+//  opening.
 
 import QtQuick
 import K4 as K4
@@ -30,16 +32,18 @@ K4Plugin {
 
     property bool abierto: false
 
-    //  Lo aparta al abrirse; lo inyecta el host. Declararlo es lo que hace que
-    //  llegue: sin la propiedad, la referencia no se reparte y usarla revienta
-    //  el `toggle()` a media función —pasó, y lo que se quedó sin correr fue
-    //  justo la lectura de las bases—.
+    //  It steps aside when it opens; the host injects it. Declaring
+    //  it is what makes it arrive: without the property, the
+    //  reference is not handed out and using it blows up `toggle()`
+    //  mid-function —it happened, and what was left unrun was
+    //  precisely the baselines read—.
     property var panel: null
 
     islandWidth: 520
 
-    //  Crece con lo que haya enchufado, con tope: un portátil con dock puede
-    //  tener seis salidas y no por eso la island debe llegar al suelo.
+    //  It grows with whatever is plugged in, with a cap: a laptop
+    //  with a dock can have six outputs and the island must not
+    //  reach the floor for it.
     islandHeight: {
         const filas = Audio.salidas.length + Audio.entradas.length
         return Math.min(560, 150 + filas * 62)
@@ -55,8 +59,9 @@ K4Plugin {
         if (abierto) {
             if (panel)
                 panel.close()
-            //  Las bases se preguntan al abrir y no al arrancar la barra: es
-            //  un proceso, y solo hace falta cuando se está mirando esto.
+            //  Baselines are asked on opening, not at bar startup:
+            //  it is a process, and only needed while looking at
+            //  this.
             Audio.mirarBases()
         }
     }

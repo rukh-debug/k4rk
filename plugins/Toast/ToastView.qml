@@ -26,7 +26,8 @@ FadeIn {
             color: Theme.surface
             clip: true
 
-            // el icono que manda la aplicación; la campana es el último recurso
+            // the icon the application sends; the bell is the last
+            // resort
             Image {
                 anchors.fill: parent
                 anchors.margins: 6
@@ -58,8 +59,8 @@ FadeIn {
                 spacing: 6
 
                 IslandLabel {
-                    //  Sin saltos: el título es UNA línea, y uno con `\n`
-                    //  dentro empujaba la banda entera hacia abajo.
+                    //  No breaks: the title is ONE line, and one with
+                    //  `\n` inside pushed the whole band down.
                     text: view.notification
                         ? view.notification.summary.replace(/\s*\n\s*/g, " ")
                         : "Notification"
@@ -81,10 +82,11 @@ FadeIn {
 
             IslandLabel {
                 Layout.fillWidth: true
-                //  Los saltos de línea del cuerpo, a espacios: aquí SÍ hay
-                //  tope de líneas, pero un cuerpo de tres renglones cortos
-                //  gastaba las dos en el salto y dejaba media banda vacía
-                //  con lo importante fuera. Corrido, el elide remata.
+                //  The body's line breaks, to spaces: here there IS
+                //  a line cap, but a body of three short lines spent
+                //  the two on the break and left half the band empty
+                //  with the important part out. Run together, the
+                //  elide finishes it.
                 text: view.notification
                     ? view.notification.body.replace(/\s*\n\s*/g, " ") : ""
                 color: Theme.muted
@@ -94,8 +96,9 @@ FadeIn {
                 elide: Text.ElideRight
             }
 
-            // Botones que manda la aplicación. k4 declara actionsSupported, así
-            // que si no se pintan el usuario nunca puede pulsarlos.
+            // Buttons the application sends. k4 declares
+            // actionsSupported, so if they are not painted the user
+            // can never press them.
             RowLayout {
                 visible: view.actions.length > 0
                 Layout.fillWidth: true

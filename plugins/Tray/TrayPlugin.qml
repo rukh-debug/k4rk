@@ -1,9 +1,9 @@
-//  Bandeja del sistema.
+//  The system tray.
 //
-//  La lista y el registro del anfitrión están en el servicio Tray; esto es la
-//  vista y la selección. El menú de cada aplicación se dibuja dentro de la
-//  island con QsMenuOpener, en vez de abrir una ventana emergente nativa que
-//  desentonaría al lado de la píldora.
+//  The list and the host registration live in the Tray service;
+//  this is the view and the selection. Each application's menu is
+//  drawn inside the island with QsMenuOpener, instead of opening a
+//  native popup that would stand out next to the pill.
 
 import QtQuick
 import K4 as K4
@@ -18,10 +18,10 @@ K4Plugin {
     priority: 63
     colocable: true
     active: habilitado && open
-    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
-    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
-    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
-    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
+    //  The whole keyboard while open: «optional» is OnDemand and the
+    //  compositor only gives it if you CLICK the surface, so opened
+    //  from the application centre or by shortcut not even ESC
+    //  arrived. See `tecladoOpcional` in api/K4/Plugin.qml.
     grabKeyboard: open
 
     property bool open: false
@@ -34,7 +34,7 @@ K4Plugin {
     islandHeight: 360
 
     handlesBackgroundTap: true
-    onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón
+    onBackgroundTapped: {}   // swallows the click: closing is the button's
 
     closeOnHoverExit: true
     hoverExitDelay: 900
@@ -54,8 +54,8 @@ K4Plugin {
 
     function select(item) { selected = item }
 
-    // Si la aplicación seleccionada desaparece (se cierra), no dejar colgada
-    // una referencia muerta.
+    // If the selected application disappears (closes), do not leave
+    // a dead reference hanging.
     Connections {
         target: Tray.items
         function onValuesChanged() {

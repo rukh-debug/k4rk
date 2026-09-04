@@ -188,7 +188,7 @@ K4.SuperficieBloqueo {
                 }
             }
 
-            // ── qué ha pasado ─────────────────────────────────────
+            // ── what happened ─────────────────────────────────────
             IslandLabel {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 340

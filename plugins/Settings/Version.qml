@@ -129,9 +129,10 @@ QtObject {
             version.pega = pe
         }
 
-        //  El sello se pone al TERMINAR y no al leer: un proceso que muere sin
-        //  escribir nada no emite `salida`, y sin sello la gracia no corre y se
-        //  reintentaría en cada apertura de los Ajustes.
+        //  The stamp is set on ENDING and not on reading: a process
+        //  that dies without writing anything emits no `salida`, and
+        //  without a stamp the grace does not run and it would retry
+        //  on every Settings opening.
         onTerminado: function (codigo) {
             version.mirando = false
             version.ultima = Date.now()

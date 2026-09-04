@@ -1,8 +1,9 @@
-//  Chuleta de atajos de teclado.
+//  The keyboard shortcuts cheat-sheet.
 //
-//  Cada combinación se pinta con sus teclas en cápsulas sueltas, que se lee
-//  mucho mejor que «SUPER + CONTROL + SHIFT + Right» de corrido, y la lista va
-//  agrupada por las mismas secciones que tienes en tu configuración.
+//  Each combination paints its keys in loose capsules, which reads
+//  far better than «SUPER + CONTROL + SHIFT + Right» run together,
+//  and the list is grouped by the same sections you have in your
+//  config.
 
 import QtQuick
 import QtQuick.Controls
@@ -15,8 +16,8 @@ FadeIn {
 
     required property var plugin
 
-    // Sin esto hay que hacer clic antes de poder escribir: la raíz de la
-    // island se queda el foco y la superficie tarda en recibirlo.
+    // Without this one must click before typing: the island's root
+    // keeps focus and the surface takes a moment to receive it.
     FocoInicial { id: foco; objetivo: entrada }
     Component.onCompleted: foco.reclamar()
 
@@ -28,7 +29,7 @@ FadeIn {
         anchors.bottomMargin: 12
         spacing: 8
 
-        // ── cabecera ──────────────────────────────────────────────
+        // ── header ─────────────────────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 26
@@ -85,9 +86,10 @@ FadeIn {
             }
         }
 
-        // ── la lista ──────────────────────────────────────────────
+        // ── the list ───────────────────────────────────────────────
         ListView {
-            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            //  The house scrollbar: shows only if there is more than
+            //  fits.
             ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -101,7 +103,8 @@ FadeIn {
                 required property var modelData
                 required property int index
 
-                // el título de sección solo cuando cambia, no en cada fila
+                // the section title only when it changes, not on every
+                // row
                 readonly property bool abreSeccion: index === 0
                     || view.plugin.lista[index - 1].seccion !== modelData.seccion
 
@@ -141,12 +144,13 @@ FadeIn {
                         anchors.rightMargin: 10
                         spacing: 10
 
-                        // ── las teclas, una a una
+                        // ── the keys, one by one
                         RowLayout {
                             spacing: 3
-                            // Sin esto se lleva todo el ancho: un layout dentro
-                            // de otro da por hecho que quiere crecer, y la
-                            // acción acababa empujada al borde derecho.
+                            // Without this it takes all the width: a
+                            // layout inside another assumes it wants
+                            // to grow, and the action ended up pushed
+                            // to the right edge.
                             Layout.fillWidth: false
                             Layout.preferredWidth: 250
                             Layout.alignment: Qt.AlignVCenter

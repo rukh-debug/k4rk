@@ -29,21 +29,26 @@ def revisar(ruta: pathlib.Path) -> bool:
     diff = subprocess.run(
         ["git", "diff", "-U0", "--", str(ruta)],
         capture_output=True, text=True).stdout
-    bien = True
+    quitados, puestos = [], []
     for linea in diff.split("\n"):
         if not linea.startswith(("+", "-")) or linea.startswith(("+++", "---")):
             continue
         cuerpo = linea[1:]
         if not cuerpo.strip():
             continue
-        if cuerpo.lstrip().startswith("//"):
-            continue
-        if cuerpo.lstrip().startswith("/*") or cuerpo.lstrip().startswith("*"):
-            continue
-        #  A trailing comment on a code line: the code prefix must be
-        #  IDENTICAL in its - and + versions. The prefix alone on one
-        #  side (comment added/removed) is fine.
-        print(f"{ruta}: codigo tocado: {linea[:100]}")
+        (quitados if linea[0] == "-" else puestos).append(cuerpo)
+    bien = True
+    #  Pure comment lines may come and go freely. What may NOT change
+    #  is code: every changed code line must keep its prefix — the
+    #  part before its trailing `//` — identical on both sides.
+    def prefijo(linea):
+        corte = linea.find("//")
+        return (linea if corte < 0 else linea[:corte]).rstrip()
+    quitar_comentarios = lambda ls: [p for p in (prefijo(l) for l in ls) if p]
+    if sorted(quitar_comentarios(quitados)) != sorted(quitar_comentarios(puestos)):
+        for l in quitados + puestos:
+            if prefijo(l):
+                print(f"{ruta}: codigo tocado: {'-' if l in quitados else '+'}{l[:100]}")
         bien = False
     return bien
 

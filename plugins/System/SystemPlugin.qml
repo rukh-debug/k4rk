@@ -1,8 +1,8 @@
-//  Monitor del sistema.
+//  System monitor.
 //
-//  El muestreador solo corre mientras la vista está abierta: un monitor que
-//  sondea /proc y llama a nvidia-smi las veinticuatro horas para nadie es lo
-//  que hace que una barra se gane fama de pesada.
+//  The sampler only runs while the view is open: a monitor probing
+//  /proc and calling nvidia-smi twenty-four hours a day for nobody
+//  is what earns a bar its reputation for heaviness.
 
 import QtQuick
 import K4 as K4
@@ -18,10 +18,10 @@ K4Plugin {
     colocable: true
     active: habilitado && (open || closing)
     viewLoaded: open
-    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
-    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
-    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
-    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
+    //  The whole keyboard while open: «optional» is OnDemand and the
+    //  compositor only gives it if you CLICK the surface, so opened
+    //  from the application center or by shortcut not even ESC
+    //  arrived. See `tecladoOpcional` in api/K4/Plugin.qml.
     grabKeyboard: open
 
     property var panel: null
@@ -36,7 +36,7 @@ K4Plugin {
         SystemView { plugin: self }
     }
 
-    // Enciende y apaga el muestreo con la vista.
+    // Turns sampling on and off with the view.
     onOpenChanged: Sistema.mirando = open
 
     function abrir() {

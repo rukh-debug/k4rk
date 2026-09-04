@@ -19,8 +19,9 @@ FadeIn {
         Qt.callLater(function () { launcherInput.forceActiveFocus() })
     }
 
-    // La layer surface tarda en recibir el foco: se reintenta unas cuantas
-    // veces en vez de dar por hecho que llegó a la primera.
+    // The layer surface takes a moment to receive focus: it is
+    // retried a few times instead of assuming it arrived on the
+    // first try.
     Timer {
         id: focusTimer
         interval: 140
@@ -122,9 +123,10 @@ FadeIn {
             color: Theme.surfaceHi
         }
 
-        // ── aplicaciones
+        // ── applications
         ListView {
-            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            //  The house scrollbar: shows only if there is more than
+            //  fits.
             ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -140,8 +142,9 @@ FadeIn {
                 required property var modelData
                 required property int index
 
-                //  ¿Trae icono propio —imagen o códice— o hay que buscarle
-                //  uno en el tema del escritorio por su nombre?
+                //  Does it carry its own icon —image or codepoint— or
+                //  must one be looked up in the desktop theme by
+                //  name?
                 readonly property bool propio: !!modelData._imagen
                                             || !!modelData._glifo
 
@@ -158,11 +161,13 @@ FadeIn {
                     anchors.rightMargin: 12
                     spacing: 12
 
-                    //  Una aplicación del sistema trae un nombre de icono del
-                    //  escritorio; un aporte de un plugin trae el suyo, que es
-                    //  una imagen o un códice de la Nerd Font. Son dos cosas
-                    //  distintas y por eso son dos piezas: la misma no sabe
-                    //  pintar las dos. Manda quien tenga icono propio.
+                    //  A system application brings a desktop icon
+                    //  name; a plugin's contribution brings its own,
+                    //  which is an image or a Nerd Font codepoint.
+                    //  They are two different things and that is why
+                    //  they are two pieces: one and the same does not
+                    //  know how to paint both. Whoever has its own
+                    //  icon rules.
                     K4.Icono {
                         Layout.preferredWidth: 26
                         Layout.preferredHeight: 26
@@ -266,11 +271,12 @@ FadeIn {
         }
 
 
-        // ── las actualizaciones, de camino ────────────────────────
+        // ── the updates, on the way ─────────────────────────────────
         //
-        //  El lanzador es la puerta de cada día, así que el aviso vive
-        //  aquí — y SOLO cuando hay algo que hacer: un pie permanente en
-        //  un lanzador estilo Spotlight es un mueble que estorba.
+        //  The launcher is the everyday door, so the notice lives
+        //  here — and ONLY when there is something to do: a
+        //  permanent foot in a Spotlight-style launcher is furniture
+        //  that gets in the way.
         Rectangle {
             id: avisoPaquetes
 
@@ -313,9 +319,10 @@ FadeIn {
                     font.pixelSize: 11
                 }
 
-                //  Elegir cuáles: salta al centro de aplicaciones, que es
-                //  donde cabe una lista con un interruptor por paquete. El
-                //  lanzador avisa; la elección fina vive en la otra puerta.
+                //  Choosing which: it jumps to the application
+                //  centre, where a list with a switch per package
+                //  fits. The launcher warns; the fine choosing lives
+                //  at the other door.
                 Rectangle {
                     Layout.preferredWidth: elegirTexto.implicitWidth + 20
                     Layout.preferredHeight: 24

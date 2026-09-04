@@ -1,10 +1,12 @@
-//  El toast en modo banda: cuando la island la tiene otro plugin de verdad
-//  —el juego abierto, el editor a medias— la notificación ya no se la roba.
-//  Sale como una cápsula propia pegada al borde de la island (debajo si la
-//  barra vive arriba, encima si vive abajo) y convive con lo que haya.
+//  The toast in band mode: when another plugin truly holds the
+//  island —the game open, the half-done edit— the notification no
+//  longer steals it. It comes out as a capsule of its own glued to
+//  the island's edge (below if the bar lives on top, above if it
+//  lives below) and coexists with whatever is there.
 //
-//  Misma vida que el toast de siempre: caduca sola, el ratón encima la
-//  sostiene, clic va a la aplicación y la ✕ la descarta.
+//  Same life as the usual toast: it expires on its own, the mouse
+//  on it sustains it, click goes to the application and the ✕
+//  dismisses it.
 
 import QtQuick
 import K4 as K4
@@ -35,7 +37,7 @@ K4.Ventana {
         border.width: 1
         border.color: Theme.surfaceHi
 
-        //  Entra deslizándose desde la island, como si asomara de ella.
+        //  It slides in from the island, as if peeking out of it.
         opacity: 0
         Component.onCompleted: entrada.start()
 
@@ -54,7 +56,7 @@ K4.Ventana {
             }
         }
 
-        //  El ratón encima la sostiene, como al toast de siempre.
+        //  The mouse on it sustains it, as with the usual toast.
         HoverHandler {
             onHoveredChanged: hovered ? Notifs.holdToast() : Notifs.resumeToast()
         }
@@ -99,7 +101,8 @@ K4.Ventana {
             }
         }
 
-        //  Clic en el cuerpo: a la aplicación, como el toast grande.
+        //  Click on the body: to the application, like the big
+        //  toast.
         MouseArea {
             anchors.fill: parent
             anchors.rightMargin: 40
