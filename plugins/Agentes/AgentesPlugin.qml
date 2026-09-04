@@ -191,7 +191,7 @@ K4Plugin {
     function pintarAviso() {
         if (!aprieta) {
             if (_avisoPuesto) {
-                K4.Pildora.quitar("agentes.limite")
+                K4.Pildora.quitar("agents.limit")
                 _avisoPuesto = false
             }
             return
@@ -204,7 +204,7 @@ K4Plugin {
         const color = apurado.pct >= 95 ? Theme.red : Theme.yellow
         if (_avisoPuesto && _avisoPct === pct && String(_avisoColor) === String(color))
             return
-        K4.Pildora.registrar("agentes.limite", pct + "%",
+        K4.Pildora.registrar("agents.limit", pct + "%",
                              0xF06A9,
                              color,
                              75, true)
@@ -222,7 +222,7 @@ K4Plugin {
     Connections {
         target: K4.Pildora
         function onInvocado(id) {
-            if (id === "agentes.limite" && !self.abierto)
+            if (id === "agents.limit" && !self.abierto)
                 self.toggle()
         }
     }
@@ -230,44 +230,74 @@ K4Plugin {
     // ── lo que el usuario decide ──────────────────────────────────
 
     property var guardado: K4.Guardado {
-        plugin: "agentes"
+        plugin: "agents"
         onCargado: function (d) {
-            if (d.avisar !== undefined) self.avisar = d.avisar === true
-            if (d.umbral !== undefined) self.umbral = Number(d.umbral) || 85
-            if (d.enVivo !== undefined) self.enVivo = d.enVivo === true
+            //  Keys are English now; the Spanish pair is the pre-rename
+            //  file saying something — both are honored, new wins.
+            if (d.warn !== undefined) self.avisar = d.warn === true
+            else if (d.avisar !== undefined) self.avisar = d.avisar === true
+            if (d.threshold !== undefined) self.umbral = Number(d.threshold) || 85
+            else if (d.umbral !== undefined) self.umbral = Number(d.umbral) || 85
+            if (d.live !== undefined) self.enVivo = d.live === true
+            else if (d.enVivo !== undefined) self.enVivo = d.enVivo === true
         }
     }
 
     function apuntar() {
-        guardado.guardar({ avisar: avisar, umbral: umbral, enVivo: enVivo })
+        _ajustesTocados = true
+        guardado.guardar({ warn: avisar, threshold: umbral, live: enVivo })
     }
 
+    //  The one-shot move from the pre-rename home: the state lived under
+    //  `agentes` and the sweeps that clean up after a dead plugin match
+    //  the CATALOG id, not the one written here — a reload would orphan
+    //  the pill and the launcher row. Adopted once, saved in the new
+    //  home and the new keys; the old file stays as a fossil.
+    property var _estadoViejo: K4.Fichero {
+        path: K4.Paths.estadoDe("agentes") + "/estado.json"
+        onLoaded: {
+            if (self._ajustesTocados)
+                return
+            let viejo = {}
+            try {
+                viejo = JSON.parse(_estadoViejo.text() || "{}")
+            } catch (e) {
+                return
+            }
+            if (viejo.avisar !== undefined) self.avisar = viejo.avisar === true
+            if (viejo.umbral !== undefined) self.umbral = Number(viejo.umbral) || 85
+            if (viejo.enVivo !== undefined) self.enVivo = viejo.enVivo === true
+            self.apuntar()
+        }
+    }
+    property bool _ajustesTocados: false
+
     K4.Ajustes {
-        plugin: "agentes"
+        plugin: "agents"
         grupo: "Agents"
         opciones: [
-            { id: "enVivo", nombre: "Ask the server",
+            { id: "live", nombre: "Ask the server",
               desc: "Your real usage, right now. Off, it reads the tool's cache, which lags by hours",
               glifo: 0xF06F2 },
-            { id: "avisar", nombre: "Warn when it gets tight",
+            { id: "warn", nombre: "Warn when it gets tight",
               desc: "A percentage on the pill when the tightest limit crosses the threshold",
               glifo: 0xF0026 },
-            { id: "umbral", tipo: "eleccion", nombre: "Warning threshold",
+            { id: "threshold", tipo: "eleccion", nombre: "Warning threshold",
               desc: "How much spent is worth hearing about",
               glifo: 0xF029A,
               alternativas: [{ codigo: "70", nombre: "70%" },
                              { codigo: "85", nombre: "85%" },
                              { codigo: "95", nombre: "95%" }] }
         ]
-        valores: ({ enVivo: self.enVivo, avisar: self.avisar,
-                    umbral: String(self.umbral) })
+        valores: ({ live: self.enVivo, warn: self.avisar,
+                    threshold: String(self.umbral) })
         onCambiado: function (id, valor) {
-            if (id === "enVivo") {
+            if (id === "live") {
                 self.enVivo = valor === true
                 self.refrescar()
-            } else if (id === "avisar") {
+            } else if (id === "warn") {
                 self.avisar = valor === true
-            } else if (id === "umbral") {
+            } else if (id === "threshold") {
                 self.umbral = Number(valor) || 85
             }
             self.apuntar()
@@ -284,7 +314,7 @@ K4Plugin {
     //  Buscar «claude» o «límites» en el lanzador tiene que traer esto: es lo
     //  que uno escribe cuando la pregunta es «¿cuánto me queda?».
     K4.Lanzador {
-        plugin: "agentes"
+        plugin: "agents"
         onBuscando: function (texto) {
             const t = texto.toLowerCase()
             const pega = t.length >= 2

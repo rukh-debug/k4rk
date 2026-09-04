@@ -223,8 +223,8 @@ Scope {
         function askFollowUp(question: string): void {
             _p("ask")?.preguntar(question)
         }
-        function askScreen(): void { _p("ask")?.withScreenshot() }
-        function askRegion(): void { _p("ask")?.withRegion() }
+        function askScreen(): void { _p("ask")?.attachScreenshot() }
+        function askRegion(): void { _p("ask")?.attachRegion() }
         function togglePlay(): void { Media.togglePlaying() }
         function nextTrack(): void { Media.siguiente() }
         function prevTrack(): void { Media.anterior() }

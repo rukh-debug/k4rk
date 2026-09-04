@@ -423,7 +423,7 @@ FadeIn {
                     glyph: String.fromCodePoint(0xF0450)   // md-refresh
                     glyphSize: 13
                     glyphColor: Theme.dim
-                    onActivated: view.plugin.paq.comprobar(true)
+                    onActivated: view.plugin.paq.refresh(true)
                 }
 
                 //  Sin nada marcado el botón se apaga: una tanda vacía no
@@ -455,7 +455,7 @@ FadeIn {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            view.plugin.paq.actualizarMarcadas()
+                            view.plugin.paq.updateSelected()
                             view.plugin.cerrar()
                         }
                     }
@@ -476,7 +476,7 @@ FadeIn {
                 ev.accepted = true
             } else if ((ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter)
                        && view.plugin.paq.marcadas > 0) {
-                view.plugin.paq.actualizarMarcadas()
+                view.plugin.paq.updateSelected()
                 view.plugin.cerrar()
                 ev.accepted = true
             }

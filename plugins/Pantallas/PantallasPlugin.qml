@@ -5,7 +5,7 @@ K4.Plugin {
     id: self
 
     name: "displays"
-    title: "Screens"
+    title: "Displays"
     priority: 67
     colocable: true
     active: abierto
@@ -366,11 +366,39 @@ K4.Plugin {
     function close() { abierto = false }
 
     property var guardado: K4.Guardado {
-        plugin: "pantallas"
+        plugin: "displays"
         onCargado: function (data) {
             self.principalPreferido = data.primary || ""
             if (self.monitor(self.principalPreferido))
-                self.principal = self.principalPreferido
+                self.principal = data.primary
+        }
+    }
+
+    //  The one-shot move from the pre-rename home: the state lived under
+    //  `pantallas`, the death-sweeps match the catalog id (`displays`),
+    //  and a plugin that saves under a name nobody sweeps is a plugin
+    //  whose settings orphan on reload. Adopted once; the old file
+    //  stays as a fossil.
+    property var _estadoViejo: K4.Fichero {
+        path: K4.Paths.estadoDe("pantallas") + "/estado.json"
+        onLoaded: {
+            let viejo = {}
+            try {
+                viejo = JSON.parse(_estadoViejo.text() || "{}")
+            } catch (e) {
+                return
+            }
+            if (viejo.primary && !self.principalPreferido) {
+                self.principalPreferido = viejo.primary
+                //  The monitor list may still be on its way when this
+                //  fires: the preference is adopted and saved either
+                //  way, and the live assignment happens now if the
+                //  monitor is already known — or when the list lands,
+                //  which is what `principalPreferido` is for.
+                if (self.monitor(viejo.primary))
+                    self.principal = viejo.primary
+                self.guardado.guardar({ primary: viejo.primary })
+            }
         }
     }
 

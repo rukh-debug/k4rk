@@ -98,24 +98,28 @@ K4Plugin {
         plugin: "player"
         grupo: "Player"
         opciones: [
-            { id: "asomarAlCambiar",
+            { id: "peekOnChange",
               nombre: "Peek when the track changes",
               desc: "A few seconds with the new track, then it leaves on its own",
               glifo: 0xF075A }   // md-music
         ]
-        valores: ({ asomarAlCambiar: self.asomarAlCambiar })
+        valores: ({ peekOnChange: self.asomarAlCambiar })
         onCambiado: function (id, valor) {
-            if (id !== "asomarAlCambiar")
+            if (id !== "peekOnChange")
                 return
             self.asomarAlCambiar = valor === true
-            guardado.guardar({ asomarAlCambiar: self.asomarAlCambiar })
+            guardado.guardar({ peekOnChange: self.asomarAlCambiar })
         }
     }
 
     property var guardado: K4.Guardado {
         plugin: "player"
         onCargado: function (d) {
-            if (d && d.asomarAlCambiar !== undefined)
+            //  The key is English now; the Spanish one is the pre-rename
+            //  file saying something — both are honored, new wins.
+            if (d && d.peekOnChange !== undefined)
+                self.asomarAlCambiar = d.peekOnChange === true
+            else if (d && d.asomarAlCambiar !== undefined)
                 self.asomarAlCambiar = d.asomarAlCambiar === true
         }
     }
