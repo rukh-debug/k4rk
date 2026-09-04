@@ -1,13 +1,14 @@
-//  La pantalla de bloqueo.
+//  The lock screen.
 //
-//  El compositor crea una de estas por monitor y les da el teclado en
-//  exclusiva: nada de lo que haya detrás puede pintar encima ni escuchar lo
-//  que escribes. A cambio, mientras esto viva no hay escritorio, así que
-//  conviene que sea simple y que no dependa de nada que pueda tardar.
+//  The compositor creates one of these per monitor and gives them
+//  the keyboard exclusively: nothing behind can paint over it or
+//  hear what you type. In exchange, while this lives there is no
+//  desktop, so it pays for it to be simple and to depend on nothing
+//  that can be slow.
 //
-//  Negro entero y a propósito: es lo que menos consume en OLED, lo que menos
-//  molesta si te levantas de noche y lo que menos enseña de tu escritorio a
-//  quien pase por delante.
+//  Full black on purpose: it is what consumes least on OLED, what
+//  bothers least if you get up at night and what shows least of
+//  your desktop to whoever passes by.
 
 import QtQuick
 import K4 as K4
@@ -33,14 +34,15 @@ K4.SuperficieBloqueo {
         }
     }
 
-    // Al montarse hay que pedir el foco a mano: la superficie lo tiene, pero
-    // dentro nadie lo ha reclamado y el primer carácter se perdería.
+    // On mounting, focus must be asked for by hand: the surface has
+    // it, but inside nobody has claimed it and the first character
+    // would be lost.
     Component.onCompleted: clave.forceActiveFocus()
 
     Item {
         anchors.fill: parent
 
-        // ── la hora, arriba y grande ──────────────────────────────
+        // ── the time, up top and big ───────────────────────────────
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
@@ -63,7 +65,7 @@ K4.SuperficieBloqueo {
             }
         }
 
-        // ── quién eres y la contraseña ────────────────────────────
+        // ── who you are and the password ───────────────────────────
         Column {
             id: acceso
             anchors.horizontalCenter: parent.horizontalCenter
@@ -71,9 +73,9 @@ K4.SuperficieBloqueo {
             anchors.verticalCenterOffset: parent.height * 0.11
             spacing: 14
 
-            // El zarandeo del cuadro cuando la contraseña no vale. Se entiende
-            // sin leer nada, que es de lo que se trata cuando acabas de
-            // escribir a ciegas.
+            // The box's shake when the password is no good. Understood
+            // without reading anything, which is what it is about
+            // right after typing blind.
             SequentialAnimation {
                 id: tiritona
                 NumberAnimation { target: acceso; property: "x"; to: -9; duration: 45 }
@@ -108,7 +110,7 @@ K4.SuperficieBloqueo {
                 font.weight: Font.DemiBold
             }
 
-            // ── el cuadro de la contraseña ────────────────────────
+            // ── the password box ────────────────────────────────────
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 300
@@ -165,10 +167,11 @@ K4.SuperficieBloqueo {
                         }
                     }
 
-                    // Mientras PAM piensa. No es instantáneo: pam_unix mete a
-                    // propósito un retardo de un par de segundos tras un fallo
-                    // para que no se pueda probar a lo bruto, y sin señal
-                    // ninguna parece que se ha colgado.
+                    // While PAM thinks. It is not instantaneous:
+                    // pam_unix deliberately puts in a couple of
+                    // seconds' delay after a failure so it cannot be
+                    // brute-forced, and with no signal at all it looks
+                    // hung.
                     IconGlyph {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: auth.ocupado
@@ -202,11 +205,12 @@ K4.SuperficieBloqueo {
             }
         }
 
-        // ── la salida de emergencia ───────────────────────────────
+        // ── the emergency exit ─────────────────────────────────────
         //
-        //  Tras varios fallos seguidos deja de ser «me he equivocado» y empieza
-        //  a ser «esto no me deja entrar». Antes de que cunda el pánico, por
-        //  dónde se sale: un tty sigue estando ahí detrás.
+        //  After several failures in a row it stops being «I
+        //  mistyped» and starts being «this will not let me in».
+        //  Before panic spreads, the way out: a tty is still there
+        //  behind.
         IslandLabel {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom

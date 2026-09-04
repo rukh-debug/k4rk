@@ -1,16 +1,18 @@
-//  Píldora plegada, en tres zonas ENCADENADAS: la carátula, la hora colgada de
-//  la carátula y los indicadores colgados de la hora.
+//  The folded pill, in three CHAINED zones: the cover, the time
+//  hanging from the cover and the indicators hanging from the time.
 //
-//  Cada zona empieza donde acaba la anterior, y esa es toda la regla. Antes
-//  iban las tres ancladas a su borde —izquierda, centro, derecha—, y eso obliga
-//  a que lo reservado cuadre al píxel con lo que mide de verdad: en cuanto se
-//  descuadraba, la fila de la derecha caminaba por encima de la hora y el clip
-//  lo escondía en vez de arreglarlo. Encadenadas, el solape no es que no pase:
-//  es que no cabe.
+//  Each zone starts where the previous one ends, and that is the
+//  whole rule. The three used to be anchored to their edge —left,
+//  center, right—, and that forces what is reserved to match to the
+//  pixel what it truly measures: the moment they came apart, the
+//  right row walked over the time and the clip hid it instead of
+//  fixing it. Chained, overlap does not merely not happen: it does
+//  not fit.
 //
-//  Con espaciadores flexibles tampoco: un RowLayout centra el grupo del medio
-//  respecto al CONTENIDO de los flancos, así que la hora se corría medio ancho
-//  de lo que hubiera a la derecha y bailaba al aparecer un icono de bandeja.
+//  Not with flexible spacers either: a RowLayout centers the middle
+//  group against the flanks' CONTENT, so the time shifted half the
+//  width of whatever sat on the right and danced whenever a tray
+//  icon appeared.
 
 import QtQuick
 import QtQuick.Layouts
@@ -34,9 +36,10 @@ FadeIn {
     //  (see `centro` below) and takes it back for the clock.
     readonly property var escritoriosVisibles: Workspaces.shownList
 
-    //  El primer cambio de `activo` es el de arrancar —pasa de -1 al que
-    //  toque—, y no es un cambio de escritorio: sin esta guarda la píldora
-    //  enseñaría los puntos cada vez que se recarga la barra.
+    //  The first change of `activo` is the startup one —it goes from
+    //  -1 to whatever—, and it is not a desk switch: without this
+    //  guard the pill would show the dots every time the bar
+    //  reloads.
     property bool arrancado: false
 
     Component.onCompleted: {
@@ -84,16 +87,18 @@ FadeIn {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
-            //  Igual que la derecha: el ancho real, al plugin. Este flanco
-            //  abre la cadena, así que lo que mida corre a los otros dos y una
-            //  cuenta a ojo aquí se ve tanto como una al otro lado.
+            //  Same as the right: the real width, to the plugin. This
+            //  flank opens the chain, so what it measures runs to the
+            //  other two, and an eyeball count here shows as much as
+            //  one on the other side.
             onImplicitWidthChanged: if (view.plugin)
                 view.plugin.ladoIzqMedido = Math.ceil(implicitWidth)
             Component.onCompleted: if (view.plugin)
                 view.plugin.ladoIzqMedido = Math.ceil(implicitWidth)
 
-            //  Las extensiones de flanco, lo primero de este flanco: es lo
-            //  más pegado al borde de la pantalla, que es hacia donde crecen.
+            //  Flank extensions, first thing on this flank: it is what
+            //  hugs the screen's edge closest, which is where they
+            //  grow.
             ExtensionZone {
                 side: "left"
                 Layout.alignment: Qt.AlignVCenter
@@ -106,9 +111,10 @@ FadeIn {
                 visible: Media.isPlaying
             }
 
-            // Las barras, pegadas a la carátula. Estaban al otro lado de la
-            // píldora, y eso obligaba a mirar a dos sitios para saber si
-            // suena algo y qué es: son la misma información.
+            // The bars, glued to the cover. They used to be on the
+            // other side of the pill, and that forced looking at two
+            // places to know whether something plays and what it is:
+            // they are the same information.
             Visualizer {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.preferredHeight: 12
@@ -119,16 +125,17 @@ FadeIn {
 
         // ── centro
         //
-        //  La hora casi siempre, y los escritorios solo cuando cambias de uno:
-        //  aparecen en su sitio, se dejan ver un par de segundos y se van. Los
-        //  puntos fijos a la izquierda estaban ahí todo el día para decir algo
-        //  que solo importa en el instante en que cambia.
+        //  The time almost always, and the desks only when you switch:
+        //  they appear in their place, show themselves a couple of
+        //  seconds and leave. The fixed dots on the left were there
+        //  all day to say something that only matters in the instant
+        //  it changes.
         Item {
             id: centro
 
-            // Colgada de la carátula, no al centro de la caja: la caja ya
-            // no reserva lo mismo a los dos lados, así que su centro no es
-            // donde va la hora.
+            // Hanging from the cover, not centered in the box: the box
+            // no longer reserves the same on both sides, so its
+            // center is not where the time goes.
             anchors.left: izquierda.right
             anchors.leftMargin: 11
             anchors.verticalCenter: parent.verticalCenter
@@ -239,22 +246,23 @@ FadeIn {
         }
 
         // ── derecha
-        //  Indicadores nada más: aquí no se puede pinchar, porque al acercar el
-        //  ratón la island ya ha cambiado a la vista de reloj o de reproductor.
-        //  Es en esas donde la fila es pulsable.
+        //  Indicators only: nothing is clickable here, because on
+        //  the mouse's approach the island has already switched to
+        //  the clock or player view. It is in those that the row is
+        //  clickable.
         RowLayout {
             id: derecha
 
-            //  Colgada de la HORA, cerrando la cadena.
+            //  Hanging from the TIME, closing the chain.
             anchors.left: centro.right
             anchors.leftMargin: 11
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
-            //  El ancho real de la fila, publicado al plugin: la píldora se
-            //  ensancha con lo que HAY, no con lo que alguien recordó sumar.
-            //  implicitWidth no depende del ancho del padre, así que no hay
-            //  bucle de binding posible.
+            //  The row's real width, published to the plugin: the pill
+            //  widens with what IS, not with what somebody remembered
+            //  to add. implicitWidth does not depend on the parent's
+            //  width, so no binding loop is possible.
             onImplicitWidthChanged: if (view.plugin)
                 view.plugin.ladoDerMedido = Math.ceil(implicitWidth)
             Component.onCompleted: if (view.plugin)
@@ -271,10 +279,10 @@ FadeIn {
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            //  Y las extensiones de flanco cierran la cadena: lo último de
-            //  la fila, pegado al borde de la pantalla, que es hacia donde
-            //  crecen. Solo pintan las suyas — la otra instancia mira al
-            //  otro lado.
+            //  And the flank extensions close the chain: last in the
+            //  row, glued to the screen's edge, which is where they
+            //  grow. Each paints only its own — the other instance
+            //  looks at the other side.
             ExtensionZone {
                 side: "right"
                 Layout.alignment: Qt.AlignVCenter

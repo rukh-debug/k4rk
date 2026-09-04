@@ -1,8 +1,10 @@
-//  Consulta rápida a Codex CLI, autenticado con la cuenta de ChatGPT del
-//  usuario. Nada de automatizar chatgpt.com: esto es el binario oficial.
+//  A quick question to Codex CLI, authenticated with the user's
+//  ChatGPT account. No automating chatgpt.com: this is the official
+//  binary.
 //
-//  Cada apertura empieza conversación nueva, para no heredar el contexto de la
-//  consulta anterior ni el de otras sesiones de Codex que haya por ahí.
+//  Every opening starts a new conversation, so the previous
+//  question's context is not inherited, nor that of other Codex
+//  sessions lying around.
 
 import QtQuick
 import K4 as K4
@@ -19,7 +21,7 @@ K4Plugin {
     active: habilitado && open
     grabKeyboard: true
 
-    // los aparta al abrirse; los inyecta el host
+    // they step aside when it opens; the host injects them
     property var panel: null
     property var launcher: null
 
@@ -27,14 +29,14 @@ K4Plugin {
     property string query: ""
     property string status: ""        // "" | "thinking" | "error"
     property string image: ""
-    property string selection: ""           // adjunto de verdad (opt-in)
-    property string selectionCandidate: ""  // lo seleccionado, aún sin adjuntar
+    property string selection: ""           // truly attached (opt-in)
+    property string selectionCandidate: ""  // what was selected, not yet attached
     property bool attachSelectionOnOpen: false
     property var messages: []         // [{ role: "user"|"assistant"|"error", text }]
     property string lastError: ""
 
-    // id de sesión de Codex de ESTA conversación. Vacío = sesión nueva.
-    // Nunca se resume con --last, que engancharía con otras sesiones.
+    // THIS conversation's Codex session id. Empty = new session.
+    // Never resumed with --last, which would hook other sessions.
     property string threadId: ""
 
     readonly property string dir: "/tmp/k4-ask"
@@ -43,10 +45,11 @@ K4Plugin {
     islandWidth: 700
     islandHeight: messages.length > 0 ? 430 : 128
 
-    //  Abrir RETOMA lo que hubiera apartado — con Escape o con el −, daba
-    //  igual: volver a pulsar el atajo no puede costar la conversación que
-    //  dejaste a medias. Para empezar de cero está el botón «nueva» (y
-    //  `fresco: true`, que usa el IPC de pregunta directa).
+    //  Opening RESUMES whatever was set aside — with Escape or with
+    //  the −, all the same: pressing the shortcut again must not
+    //  cost the conversation left half-done. To start fresh there
+    //  is the «new» button (and `fresco: true`, used by the direct
+    //  question IPC).
     //  A question from outside, in one call: open if closed, ask, send.
     //  The host's ask verbs used to poke openAsk/query/send one by one —
     //  three properties that only made sense in this order — and now the
@@ -67,7 +70,8 @@ K4Plugin {
         if (launcher) launcher.close()
         Notifs.dismissToast()
         attachSelectionOnOpen = attach === true
-        // se lee para poder ofrecerla, pero no se adjunta sin permiso
+        // it is read so it can be offered, but not attached without
+        // permission
         selectionProcess.running = true
         open = true
     }
@@ -99,14 +103,15 @@ K4Plugin {
         }])
     }
 
-    // Imágenes en la respuesta, por dos caminos:
+    // Images in the answer, by two roads:
     //
-    //  - Una ruta absoluta suelta: Codex tocó un fichero y lo nombra.
-    //  - `attachment://exec-<id>.png`: su herramienta de GENERAR imágenes.
-    //    Ese esquema no es ninguna ruta, pero el fichero real está en
-    //    ~/.codex/generated_images/<sesión>/ y la sesión es nuestro threadId
-    //    — así que se reconstruye. Antes esto se perdía: generaba la imagen
-    //    y la conversación enseñaba un enlace roto.
+    //  - A loose absolute path: Codex touched a file and names it.
+    //  - `attachment://exec-<id>.png`: its image GENERATING tool.
+    //    That scheme is no path at all, but the real file lives in
+    //    ~/.codex/generated_images/<session>/ and the session is our
+    //    threadId — so it is reconstructed. This used to get lost:
+    //    the image was generated and the conversation showed a
+    //    broken link.
     function imagenEn(texto) {
         const t = String(texto)
         const adjunto = t.match(/attachment:\/\/([^\s"'`)]+\.(?:png|jpe?g|webp|gif))/i)
@@ -117,8 +122,8 @@ K4Plugin {
         return ruta ? ruta[1] : ""
     }
 
-    //  El markdown de una imagen que ya se enseña aparte es un enlace roto
-    //  en medio del texto: fuera.
+    //  The markdown of an image already shown separately is a broken
+    //  link in the middle of the text: out.
     function sinAdjuntos(texto) {
         return String(texto)
             .replace(/!?\[[^\]]*\]\(attachment:\/\/[^\)]*\)/g, "")
@@ -142,7 +147,8 @@ K4Plugin {
     }
 
     function attachScreenshot() {
-        // se captura antes de expandir la island, así no sale ella en la foto
+        // captured before the island expands, so it is not in the
+        // photo
         image = ""
         attachSelectionOnOpen = false
         shotProcess.command = ["grim", dir + "/shot.png"]
@@ -155,12 +161,12 @@ K4Plugin {
         shotProcess.running = true
     }
 
-    //  Cerrar aparta la conversación, no la tira.
+    //  Closing sets the conversation aside, it does not throw it away.
     //
-    //  Antes `close()` llamaba a newConversation() y con eso se perdía todo: la
-    //  pregunta, la respuesta y el hilo de Codex. Eso obligaba a dejar la
-    //  island ocupada hasta terminar de leer, porque cerrarla costaba la
-    //  conversación entera.
+    //  `close()` used to call newConversation() and with that
+    //  everything was lost: the question, the answer and the Codex
+    //  thread. That forced keeping the island occupied until done
+    //  reading, because closing it cost the whole conversation.
     function close() {
         if (messages.length > 0) {
             Modulos.minimizar("ask", "Ask",
@@ -169,7 +175,7 @@ K4Plugin {
         open = false
     }
 
-    // Descartar de verdad: esto sí olvida.
+    // Truly discarding: this one forgets.
     function cerrarYOlvidar() {
         Modulos.quitar("ask")
         newConversation()
@@ -177,8 +183,8 @@ K4Plugin {
         image = ""
     }
 
-    // Las primeras palabras de lo que preguntaste, para reconocerla en la
-    // píldora sin tener que abrirla.
+    // The first words of what you asked, to recognize it in the pill
+    // without having to open it.
     function resumenConversacion() {
         for (let i = 0; i < messages.length; ++i) {
             if (messages[i].role === "user") {
@@ -200,7 +206,8 @@ K4Plugin {
         appendMessage("assistant", "")
         query = ""
 
-        // el preámbulo solo en el primer turno: después ya vive en la sesión
+        // the preamble only on the first turn: afterwards it lives in
+        // the session
         let prompt = threadId.length === 0
             ? "You are a quick assistant built into the desktop bar. "
                 + "Reply in English, short and direct. You may use simple markdown: "
@@ -215,23 +222,26 @@ K4Plugin {
         if (image.length > 0)
             prompt += "\n\nA screenshot of the user's screen is attached."
 
-        // vía wrapper: necesita cerrar stdin, si no `codex exec` se cuelga
-        // esperando EOF (Quickshell le deja el pipe abierto)
+        // through a wrapper: it needs stdin closed, otherwise
+        // `codex exec` hangs waiting for EOF (Quickshell leaves the
+        // pipe open)
         askProcess.command = [script, prompt, image, threadId]
         askProcess.running = true
         timeoutTimer.restart()
 
-        // los adjuntos son de este turno, no de toda la conversación
+        // attachments belong to this turn, not the whole
+        // conversation
         image = ""
         selection = ""
     }
 
-    //  La herramienta de generar imágenes de Codex no deja rastro fiable en
-    //  el texto: a veces `attachment://…`, a veces un mensaje final VACÍO —
-    //  la imagen solo existe como fichero en generated_images/<sesión>/. Así
-    //  que al acabar el turno se mira ahí directamente, y si hay una nueva se
-    //  engancha al último mensaje (aunque fuera un «error» por respuesta
-    //  vacía: una imagen ES la respuesta).
+    //  Codex's image-generating tool leaves no reliable trace in the
+    //  text: sometimes `attachment://...`, sometimes an EMPTY final
+    //  message — the image only exists as a file in
+    //  generated_images/<session>/. So at the end of the turn that
+    //  place is looked at directly, and if there is a new one it is
+    //  hooked to the last message (even if it was an «error» for an
+    //  empty answer: an image IS the answer).
     property string imagenVista: ""
 
     function buscarImagenGenerada() {
@@ -294,8 +304,8 @@ K4Plugin {
         }
     }
 
-    // Lo que se adjunta tiene que verse: un texto seleccionado que el usuario
-    // ya no recuerda haber marcado envenena la respuesta sin dejar rastro.
+    // What gets attached must be seen: a text the user no longer
+    // remembers having marked poisons the answer without a trace.
     function preview(source) {
         const text = source.replace(/\s+/g, " ").trim()
         return text.length > 30 ? text.substring(0, 30) + "…" : text
@@ -335,7 +345,7 @@ K4Plugin {
 
         onSalida: function (texto) {
             self.selectionCandidate = texto.trim().substring(0, 4000)
-            // solo se adjunta si lo pediste explícitamente
+            // attached only if explicitly asked
             if (self.attachSelectionOnOpen)
                 self.selection = self.selectionCandidate
         }
@@ -375,15 +385,17 @@ K4Plugin {
                     : "Codex exited with code " + code + " and no answer.")
             } else if (self.status === "thinking") {
                 self.status = ""
-                //  Apartada mientras pensaba: avisar de que ya está, que para
-                //  eso se apartó — para no quedarse mirando.
+                // Set aside while it thought: announce it is done,
+                // which is what setting it aside was for — so one
+                // does not keep staring.
                 if (!self.open)
                     K4.Sistema.avisar("Answer ready",
                                       self.resumenConversacion(), false)
             }
 
-            //  Y en cualquier caso, mirar si este turno dejó una imagen: el
-            //  veredicto de «sin respuesta» se corrige solo si aparece.
+            //  And in any case, look whether this turn left an
+            //  image: the «no answer» verdict corrects itself only
+            //  if one appears.
             self.buscarImagenGenerada()
         }
     }
@@ -418,8 +430,8 @@ K4Plugin {
         function screen(): void { self.attachScreenshot() }
         function region(): void { self.attachRegion() }
         function now(question: string): void {
-            //  Pregunta directa: esta sí empieza de cero, que viene de un
-            //  guion y mezclar hilos sería peor.
+            //  Direct question: this one does start fresh, coming
+            //  from a script, and mixing threads would be worse.
             self.openAsk(false, true)
             self.query = question
             self.send()

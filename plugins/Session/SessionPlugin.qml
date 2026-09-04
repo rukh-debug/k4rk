@@ -1,16 +1,18 @@
-//  Sesión: el menú de apagado y la pantalla de bloqueo.
+//  Session: the shutdown menu and the lock screen.
 //
-//  Son dos cosas muy distintas viviendo juntas porque comparten servicio. El
-//  menú es un módulo normal de la island. El bloqueo NO: es una superficie de
-//  `ext-session-lock`, un protocolo aparte que el compositor dibuja por encima
-//  de todo y al que le da el teclado en exclusiva. Ni la island ni ninguna
-//  ventana pueden pintar encima, que es justo el punto.
+//  Two very different things living together because they share a
+//  service. The menu is an ordinary island module. The lock is NOT:
+//  it is an `ext-session-lock` surface, a separate protocol the
+//  compositor draws above everything and gives the keyboard
+//  exclusively. Neither the island nor any window can paint over
+//  it, which is exactly the point.
 //
-//  Cuidado con eso último: si quickshell se muere con el bloqueo puesto, el
-//  compositor deja la sesión bloqueada y sin nadie que la abra. La salida es un
-//  tty (Ctrl+Alt+F2) y matar Hyprland desde ahí. Por eso hay `k4.session
-//  probar`: comprueba la contraseña con el mismo PAM que usa el bloqueo, pero
-//  sin bloquear nada, y así se puede verificar antes de fiarse.
+//  Careful with that last one: if quickshell dies with the lock up,
+//  the compositor leaves the session locked with nobody to open
+//  it. The way out is a tty (Ctrl+Alt+F2) and killing Hyprland
+//  from there. Hence `k4.session test`: it checks the password with
+//  the same PAM the lock uses, but without locking anything, so it
+//  can be verified before trusting it.
 
 import QtQuick
 import K4 as K4
@@ -33,17 +35,17 @@ K4Plugin {
     property bool open: false
     property int index: 0
 
-    // "menu" · "comprobar" — el segundo es el ensayo de la contraseña.
+    // "menu" · "comprobar" — the second is the password rehearsal.
     property string modo: "menu"
 
-    // Qué se está a punto de hacer, si es de lo que no tiene vuelta atrás.
+    // What is about to be done, if it is the kind with no way back.
     property int confirmando: -1
 
-    // ── las acciones del menú ─────────────────────────────────────
+    // ── the menu's actions ────────────────────────────────────────
     //
-    //  `confirma` marca las que no se pueden deshacer: hacen falta dos
-    //  pulsaciones. Apagar el equipo por rozar una tecla es la clase de cosa
-    //  que solo pasa una vez y ya no se te olvida.
+    //  `confirma` marks the ones that cannot be undone: they take two
+    //  presses. Powering off the machine by grazing a key is the kind
+    //  of thing that happens once and is never forgotten.
     readonly property var acciones: {
         const l = [
             { clave: "bloquear", texto: "Lock",
@@ -88,15 +90,16 @@ K4Plugin {
         modo = "menu"
     }
 
-    // El ensayo: la misma comprobación que hará el bloqueo, sin bloquear. Si
+    // The rehearsal: the same check the lock will do, without locking. If
     // aquí entra, allí entrará.
     function comprobarClave() {
         modo = "comprobar"
         open = true
     }
 
-    // ESC vuelve al menú antes de cerrar del todo: estando en el comprobador,
-    // salirse entero de un tecleo es más brusco de lo que se espera.
+    // ESC returns to the menu before closing entirely: inside the
+    // checker, leaving the whole thing on one keypress is harsher
+    // than expected.
     function atras() {
         if (modo === "comprobar")
             modo = "menu"
@@ -134,23 +137,24 @@ K4Plugin {
 
     onCountChanged: if (index >= count) index = Math.max(0, count - 1)
 
-    // ── la pantalla de bloqueo ────────────────────────────────────
+    // ── the lock screen ───────────────────────────────────────────
     K4.BloqueoSesion {
         id: cerradura
         surface: BloqueoSurface {}
     }
 
-    //  Ojo con dos cosas aquí, que costaron una sesión.
+    //  Watch out for two things here, which cost a session.
     //
-    //  Una: la propiedad por defecto de WlSessionLock es `surface`, así que
-    //  esto NO puede ir dentro del bloque de arriba —acabaría asignado como
-    //  superficie, y sin una sola queja: el bloqueo simplemente no se pone.
+    //  One: WlSessionLock's default property is `surface`, so this
+    //  cannot go inside the block above —it would end up assigned as
+    //  the surface, without a single complaint: the lock simply does
+    //  not engage.
     //
-    //  Dos: se abre y se cierra escribiendo en `locked`. El `unlock()` que
-    //  aparece en la documentación existe en C++ pero no está expuesto a QML,
-    //  y al llamarlo el aviso se pierde entre los del arranque mientras la
-    //  sesión se queda bloqueada. Es la clase de fallo que solo se nota cuando
-    //  ya no puedes salir.
+    //  Two: it opens and closes by writing `locked`. The `unlock()`
+    //  shown in the documentation exists in C++ but is not exposed
+    //  to QML, and calling it the warning gets lost among startup's
+    //  while the session stays locked. It is the kind of failure one
+    //  only notices when one can no longer get out.
     Connections {
         target: Sesion
 
@@ -161,16 +165,18 @@ K4Plugin {
                 cerradura.locked = Sesion.bloqueado
         }
 
-        //  Al recargar la configuración —y quickshell recarga solo en cuanto
-        //  tocas un fichero— el objeto de bloqueo conserva el estado real y el
-        //  servicio arranca de cero. Aquí manda el compositor, siempre.
+        //  On config reload —and quickshell reloads the moment you
+        //  touch a file— the lock object keeps the real state and
+        //  the service starts from zero. The compositor rules here,
+        //  always.
         //
-        //  Al revés era tentador y es exactamente lo que rompe: el servicio
-        //  diría «no estás bloqueado» y soltaría el bloqueo a medias, dejando
-        //  a Hyprland con uno huérfano. A partir de ahí toda petición de
-        //  bloquear es un error de protocolo que se lleva por delante la
-        //  conexión Wayland entera, o sea la barra completa, y no hay forma de
-        //  arreglarlo sin cerrar la sesión.
+        //  The other way was tempting and is exactly what breaks:
+        //  the service would say «you are not locked» and release a
+        //  half lock, leaving Hyprland with an orphan. From there
+        //  every lock request is a protocol error that takes the
+        //  whole Wayland connection down —that is, the whole bar—
+        //  and there is no way to fix it without closing the
+        //  session.
         Component.onCompleted: {
             if (cerradura.locked !== Sesion.bloqueado)
                 Sesion.bloqueado = cerradura.locked
@@ -187,9 +193,9 @@ K4Plugin {
         function lock(): void { Sesion.bloquear() }
         function unlock(): void { Sesion.desbloquear() }
 
-        // Ensaya la contraseña con el mismo PAM que usa el bloqueo, sin
-        // bloquear nada: sirve para comprobar que vas a poder salir antes de
-        // confiarle la sesión.
+        // Rehearses the password with the same PAM the lock uses,
+        // without locking anything: it serves to check you will be
+        // able to get out before entrusting the session to it.
         function check(): void { self.comprobarClave() }
     }
 }
