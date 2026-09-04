@@ -34,7 +34,7 @@ def status() -> dict[str, Any]:
         if workspace in assignments and monitor:
             assignments[workspace] = monitor
 
-    # La sesión viva manda sobre una regla antigua.
+    # The live session rules over an old rule.
     for workspace in workspaces:
         name = str(workspace.get("name", ""))
         monitor = str(workspace.get("monitor", ""))
@@ -48,7 +48,7 @@ def status() -> dict[str, Any]:
 
 
 def lua_string(value: str) -> str:
-    # Las cadenas JSON dobles son también cadenas Lua válidas.
+    # Double-quoted JSON strings are also valid Lua strings.
     return json.dumps(value, ensure_ascii=False)
 
 
@@ -225,7 +225,7 @@ def apply(raw: dict[str, Any]) -> dict[str, Any]:
     if result.returncode != 0 or "error:" in result.stdout.lower():
         raise RuntimeError((result.stdout + result.stderr).strip() or "Hyprland rejected the configuration")
 
-    # Mover también los escritorios ya creados. Las reglas gobiernan los nuevos.
+    # Move the already-created workspaces too. Rules govern the new ones.
     for number, monitor in config["assignments"].items():
         code = (
             "hl.dispatch(hl.dsp.workspace.move({ workspace = "
