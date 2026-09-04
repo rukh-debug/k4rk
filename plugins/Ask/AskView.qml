@@ -222,8 +222,8 @@ FadeIn {
             // acciones sobre la conversación
             Repeater {
                 model: [
-                    { key: "new", glyph: Theme.ico.ask, label: "nueva" },
-                    { key: "copy", glyph: Theme.ico.copy, label: "copiar" }
+                    { key: "new", glyph: Theme.ico.ask, label: "new" },
+                    { key: "copy", glyph: Theme.ico.copy, label: "copy" }
                 ]
 
                 delegate: Rectangle {
@@ -415,9 +415,9 @@ FadeIn {
 
                                 Repeater {
                                     model: [
-                                        { g: Theme.ico.search, t: "ampliar" },
-                                        { g: 0xF0193,          t: "guardar" },
-                                        { g: Theme.ico.forward, t: "abrir" }
+                                        { g: Theme.ico.search, t: "zoom" },
+                                        { g: 0xF0193,          t: "save" },
+                                        { g: Theme.ico.forward, t: "open" }
                                     ]
 
                                     //  Item por fuera y la fila dentro: el

@@ -365,7 +365,7 @@ K4Plugin {
             return
 
         entryView.setText(current.replace(/\s*$/, "")
-            + '\n\n-- k4: tema gestionado desde la barra (debe ir el último)\n'
+            + '\n\n-- k4: theme managed from the bar (must stay last)\n'
             + 'require("config.k4-theme")\n')
     }
 

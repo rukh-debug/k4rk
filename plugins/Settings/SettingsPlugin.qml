@@ -120,10 +120,10 @@ K4Plugin {
         function version(): string {
             return JSON.stringify({
                 commit: self.version.commit,
-                detras: self.version.detras,
-                sucio: self.version.sucio,
-                pega: self.version.pega,
-                mirando: self.version.mirando
+                behind: self.version.detras,
+                dirty: self.version.sucio,
+                hitch: self.version.pega,
+                looking: self.version.mirando
             })
         }
 

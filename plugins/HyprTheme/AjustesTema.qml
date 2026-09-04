@@ -180,7 +180,7 @@ ColumnLayout {
                         }
 
                         IslandLabel {
-                            text: presetCard.current ? "aplicado" : presetCard.modelData.from
+                            text: presetCard.current ? "applied" : presetCard.modelData.from
                             color: presetCard.current ? Theme.green : Theme.dim
                             font.pixelSize: 10
                         }

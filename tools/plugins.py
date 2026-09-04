@@ -603,8 +603,11 @@ def validar_carpeta(d, ids_repo, version_host):
     if set(reales) - declarados_qml:
         try:
             qmldir.write_text(
-                "#  Generado por k4 (tools/plugins.py): los tipos de esta\n"
-                "#  carpeta, para que se resuelvan bajo el esquema qs:.\n\n"
+                "#  Generated: the types in this folder, so they also resolve\n"
+                "#  when the plugin is loaded by URL (the qs: scheme), where the\n"
+                "#  implicit resolution of siblings does not exist.\n"
+                "#  `python3 tools/plugins.py` checks that it stays complete.\n"
+                "\n"
                 + "".join(f"{n} 1.0 {n}.qml\n" for n in reales))
         except OSError:
             return mal("sin-qmldir", "no puedo escribir el qmldir")
@@ -679,6 +682,10 @@ def leer_origen(ident):
         try:
             o = json.loads(nuevo.read_text())
             if isinstance(o, dict) and o.get("repo"):
+                #  `folder` is the key of record now; papers written by
+                #  older installs say `carpeta`, and both are honored.
+                if "folder" not in o and "carpeta" in o:
+                    o["folder"] = o["carpeta"]
                 return o
         except Exception:
             pass
@@ -694,7 +701,7 @@ def leer_origen(ident):
 def escribir_origen(destino, repo, subcarpeta, commit, item):
     (destino / ORIGEN).write_text(json.dumps({
         "repo": repo,
-        "carpeta": subcarpeta or "",
+        "folder": subcarpeta or "",
         "commit": commit or "",
         "version": item.get("version", "0"),
         "cuando": int(time.time()),
@@ -968,7 +975,7 @@ def actualizar(ident, sin_preguntar=False, commit=None):
         print(f"{ident} no se instaló desde una URL, no sé de dónde "
               "actualizarlo.", file=sys.stderr)
         return 1
-    return instalar(o["repo"], sin_preguntar, o.get("carpeta") or None, commit)
+    return instalar(o["repo"], sin_preguntar, o.get("folder") or None, commit)
 
 
 def quitar(ident, sin_preguntar=False, con_estado=False):
@@ -1010,8 +1017,8 @@ def instalados():
                                          or item.get("motivo") or "?"))
         o = leer_origen(item["id"])
         de = o["repo"] if o else "local"
-        if o and o.get("carpeta"):
-            de += "  ·  " + o["carpeta"]
+        if o and o.get("folder"):
+            de += "  ·  " + o["folder"]
         sha = (o or {}).get("commit") or ""
         print(f"{item['id']:<16} v{item.get('version', '0'):<8} {estado}")
         print(f"{'':<16} {de}")
@@ -1102,6 +1109,14 @@ REGISTRO = ("https://raw.githubusercontent.com/k4ditano/k4/main/"
             "plugins/registro.json")
 
 
+def _campo(e, ingles, viejo):
+    """English key first, Spanish alias honored — registries in the wild
+    still speak the old shape, and a PR is not broken for a rename."""
+    if ingles in e:
+        return e[ingles]
+    return e.get(viejo)
+
+
 def leer_registro(url=None):
     """El registro publicado. Lanza si no se puede leer."""
     import urllib.request
@@ -1130,15 +1145,16 @@ def buscar(termino=None, url=None):
         return 1
 
     for e in aciertos:
+        autor = _campo(e, "author", "autor")
         print(f"  {e.get('title', e.get('id'))}  ·  {e.get('id')}"
-              + (f"  ·  de {e['autor']}" if e.get("autor") else ""))
+              + (f"  ·  by {autor}" if autor else ""))
         if e.get("description"):
             print(f"    {e['description']}")
         sha = str(e.get("commit") or "")
         if sha:
             print(f"    commit {sha[:12]}")
         orden = f"    install: tools/plugins.py --install {e.get('repo')}"
-        if e.get("carpeta"):
+        if _campo(e, "folder", "carpeta"):
             orden += f" --folder {e['carpeta']}"
         #  La orden que se copia y se pega lleva el commit dentro. Si no, la
         #  gente instala la punta de la rama y el ancla no sirve de nada.
@@ -1189,7 +1205,7 @@ def validar_registro(datos, fallos):
                                 or not RE_SHA.fullmatch(sha)):
             fallos.append(f"{donde}: commit tiene que ser un SHA de 40 en "
                           "minúscula")
-        carpeta = e.get("carpeta")
+        carpeta = _campo(e, "folder", "carpeta")
         if carpeta is not None:
             c = str(carpeta)
             if c.startswith("/") or ".." in c.split("/"):
@@ -1287,7 +1303,7 @@ def json_instalados():
             "dice": item.get("dice", ""),
             "permissions": item.get("permissions") or [],
             "repo": o.get("repo", ""),
-            "carpeta": o.get("carpeta", ""),
+            "folder": o.get("folder", ""),
             "commit": o.get("commit", ""),
             "cuando": o.get("cuando", 0),
         })
