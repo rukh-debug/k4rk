@@ -129,7 +129,7 @@ names stay for the TODO.md identifier phase.
 
 ---
 
-## Verification protocol (every commit)
+## Verification protocol (every commit — followed throughout)
 
 1. `python3 tools/api.py && python3 tools/guia.py && python3
    tools/plugins.py` — all green.

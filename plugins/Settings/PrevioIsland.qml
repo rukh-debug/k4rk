@@ -211,7 +211,7 @@ ColumnLayout {
         }
     }
 
-    // ── lo que el dibujo no puede decir ───────────────────────────
+    // ── what the drawing cannot say ───────────────────────────────
     IslandLabel {
         Layout.fillWidth: true
         text: {
