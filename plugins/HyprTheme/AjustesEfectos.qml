@@ -1,13 +1,14 @@
-//  Desenfoque, opacidad y animaciones, de los ajustes de Hyprland.
+//  Blur, opacity and animations, from Hyprland's settings.
 //
-//  Vivía dentro de `HyprThemeView`, la pantalla propia del plugin del tema.
-//  Sale aquí porque esa pantalla ha desaparecido: todo lo que se configura
-//  vive ahora en la ventana de Ajustes, y tener dos sitios donde tocar lo
-//  mismo era exactamente lo que se venía a arreglar.
+//  It lived inside `HyprThemeView`, the theme plugin's own screen. It
+//  comes out here because that screen is gone: everything it
+//  configured now lives in the Settings window, and having two
+//  places to touch the same thing was exactly what needed fixing.
 //
-//  El `motor` es quien sabe aplicarlo —el plugin del tema, que escribe el Lua
-//  de Hyprland—. Llega como objeto y no como import: un plugin no depende de
-//  otro, y sin motor esto no se enseña.
+//  The `motor` is the one knowing how to apply it —the theme plugin,
+//  which writes Hyprland's Lua—. It arrives as an object and not as
+//  an import: a plugin does not depend on another, and without a
+//  motor this is not shown.
 
 import QtQuick
 import QtQuick.Layouts
@@ -19,10 +20,10 @@ import "../../services"
 RowLayout {
     id: raiz
 
-    //  Quien sabe escribir esto en la config de Hyprland.
+    //  Whoever knows how to write this into Hyprland's config.
     property var motor: null
 
-    //  Cualquier retoque a mano deja de ser «el preset tal cual».
+    //  Any hand tweak stops being «the preset as is».
     function tocado() {
         if (!raiz.motor)
             return
@@ -30,8 +31,9 @@ RowLayout {
         raiz.motor.apply()
     }
 
-    //  `anchors.fill` era de cuando esto vivía dentro de un panel propio. Aquí
-    //  lo coloca la columna de la sección, así que se pide ancho y ya.
+    //  `anchors.fill` was from when this lived inside its own panel.
+    //  Here the section's column places it, so width is asked and
+    //  that is it.
     Layout.fillWidth: true
     spacing: 20
 

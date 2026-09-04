@@ -1,37 +1,44 @@
-//  El lienzo: el fondo de escritorio, dibujado por la propia barra.
+//  The canvas: the desktop wallpaper, drawn by the bar itself.
 //
-//  Hasta ahora el fondo lo ponía swaybg y la barra solo le pasaba una ruta. Eso
-//  deja fuera tres cosas a la vez: no hay transiciones —el propio módulo lo
-//  admitía en su pie, «instala awww para tenerlas»—, no hay vídeo, y la barra
-//  no sabe qué está enseñando, así que no puede sacarle los colores. Pintándolo
-//  aquí, en una K4.Ventana en la capa de abajo —que la API aprendió para esto—,
-//  el fondo pasa a estar DENTRO del mismo motor que dibuja la island.
+//  Until now swaybg put up the wallpaper and the bar only handed it a
+//  path. That leaves three things out at once: no transitions —the
+//  module itself admitted it in its foot, «install awww to have
+//  them»—, no video, and the bar does not know what it is showing,
+//  so it cannot draw colors from it. Painting it here, in a
+//  K4.Ventana on the bottom layer —which the API learned for this—,
+//  the wallpaper comes INSIDE the same engine that draws the island.
 //
-//  Y sin una sola dependencia nueva: `AnimatedImage` viene en QtQuick y
-//  `MediaPlayer` en QtMultimedia, que ya es dependencia declarada desde que el
-//  editor de vídeo necesita su descodificador.
+//  And without a single new dependency: `AnimatedImage` comes in
+//  QtQuick and `MediaPlayer` in QtMultimedia, already a declared
+//  dependency since the video editor needs its decoder.
 //
-//  ── swaybg NO se retira: se queda de SUELO ───────────────────────
+//  ── swaybg is NOT retired: it stays as the FLOOR ─────────────────
 //
-//  Lo que dibuja la barra vive mientras vive la barra, y entre que entras a la
-//  sesión y arranca quickshell hay un rato en el que no hay nadie. Si en ese
-//  rato el fondo es un rectángulo negro, hemos empeorado algo que funcionaba. Y
-//  si un día la barra se cae, lo mismo. Así que a swaybg se le sigue dando el
-//  fotograma quieto —para un vídeo, su póster— y el lienzo pinta encima: al
-//  entrar ves la foto, y cuando la barra llega se pone en marcha.
+//  What the bar draws lives as long as the bar lives, and between
+//  entering the session and quickshell starting there is a while
+//  with nobody there. If in that while the wallpaper is a black
+//  rectangle, we worsened something that worked. And if one day the
+//  bar falls, the same. So swaybg keeps being given the still frame
+//  —for a video, its poster— and the canvas paints on top: on
+//  entering you see the photo, and when the bar arrives it gets
+//  going.
 //
-//  ── lo que cuesta, medido antes de escribirlo ────────────────────
+//  ── what it costs, measured before writing it ────────────────────
 //
-//  En un banco aparte, monitor a 60 Hz, sobre el proceso y no a ojo:
+//  On a separate bench, monitor at 60 Hz, on the process and not by
+//  eye:
 //
-//      quieto            0,5 % de un núcleo  (y de esos, casi todo es el
-//                                             contador de fps del banco)
-//      GIF 960 · 20 fps  11,9 %
-//      vídeo 1080p60     14–18 %   ·  o sea el 1,5 % de una máquina de 12
+//      still             0.5 % of one core  (and of that, almost all
+//                                              is the bench's fps
+//                                              counter)
+//      GIF 960 · 20 fps  11.9 %
+//      video 1080p60     14–18 %   ·  that is 1.5 % of a 12-core
+//                                  machine
 //
-//  Un GIF cuesta casi lo mismo que un vídeo por la cuarta parte de calidad: se
-//  descomprime en CPU y no hay descodificador que valga. Quien traiga un GIF
-//  grande hace mejor en convertirlo, y eso es cosa de la pantalla que vendrá.
+//  A GIF costs nearly the same as a video for a quarter of the
+//  quality: it decompresses on CPU and no decoder helps. Whoever
+//  brings a big GIF does better converting it, and that is the
+//  coming screen's business.
 
 import QtQuick
 import QtMultimedia
@@ -43,80 +50,91 @@ import "../../services"
 K4.PorPantalla {
     id: lienzo
 
-    //  Quien sabe qué fondo va en cada pantalla. Se le pregunta en vez de
-    //  guardarlo aquí porque el estado es del plugin —lo guarda, lo carga y lo
-    //  publica por IPC— y esto solo pinta.
+    //  Whoever knows which wallpaper goes on each screen. It is asked
+    //  instead of keeping it here because the state is the plugin's —
+    //  it saves it, loads it and publishes it over IPC— and this only
+    //  paints.
     required property var plugin
 
-    //  Qué transición y cuánto dura. Salen del plugin, que es quien las guarda.
+    //  Which transition and how long. They come from the plugin,
+    //  which is the one keeping them.
     readonly property string transicion: lienzo.plugin
         ? lienzo.plugin.transicion : "fundido"
     readonly property int duracion: 900
 
-    //  Poner una ruta en una capa es poner DOS cosas —la ruta y su tipo— y
-    //  hacerlo por separado deja un fotograma con el tipo de la anterior.
+    //  Putting a path on a layer is putting TWO things —the path and
+    //  its type— and doing them separately leaves one frame with the
+    //  previous one's type.
     function poner(c, r) {
         c.ruta = String(r || "")
         c.tipo = lienzo.tipoDe(c.ruta)
     }
 
-    //  Por la extensión y no preguntando al usuario: nadie quiere elegir en un
-    //  desplegable si su fichero es un vídeo. `webp` va por el camino animado a
-    //  propósito — uno quieto se pinta igual de bien ahí, y adivinar cuál es
-    //  cuál pide abrir el fichero.
-    //  ── cuánto se ve, y por tanto si merece la pena moverse ──────
+    //  By extension and not by asking the user: nobody wants to pick
+    //  from a dropdown whether their file is a video. `webp` goes the
+    //  animated way on purpose — a still one paints just as well
+    //  there, and guessing which is which asks to open the file.
+    //  ── how much is visible, and therefore whether moving is worth it ──
     //
-    //  Un fondo animado NO se para solo cuando lo tapan. Medido antes de
-    //  escribir nada: 16 % de un núcleo descodificando un vídeo con un terminal
-    //  de 1900×1026 encima. Eso es todo el día gastando por nadie, y es la
-    //  única de las tres cosas de esta fase que ningún demonio de fondo te da
-    //  hecha — de ahí que valga la pena dibujarlo aquí.
+    //  An animated wallpaper does NOT stop just because it is
+    //  covered. Measured before writing anything: 16 % of a core
+    //  decoding a video with a 1900×1026 terminal on top. That is
+    //  all day spending for nobody, and it is the only one of this
+    //  phase's three things no background daemon hands you done —
+    //  hence the worth of drawing it here.
     //
-    //  Se mide MUESTREANDO y no calculando la unión de rectángulos: la unión
-    //  exacta de N ventanas superpuestas es un algoritmo con casos raros, y lo
-    //  que hace falta aquí no es un área exacta sino una respuesta a «¿queda
-    //  algo de fondo a la vista?». Una rejilla de 16×9 son 144 puntos, se
-    //  resuelve con cuatro comparaciones cada uno, y se equivoca como mucho en
-    //  un dieciseisavo de pantalla.
+    //  It is measured by SAMPLING and not by computing the union of
+    //  rectangles: the exact union of N overlapping windows is an
+    //  algorithm with rare cases, and what is needed here is not an
+    //  exact area but an answer to «is any wallpaper left in
+    //  sight?». A 16×9 grid is 144 points, each resolves with four
+    //  comparisons, and it is wrong by at most one sixteenth of the
+    //  screen.
     readonly property int rejillaX: 24
     readonly property int rejillaY: 14
 
-    //  Por debajo de esto se para. No es 0 %: con las ventanas en mosaico
-    //  siempre asoman las rendijas de los huecos, y dejar un vídeo corriendo por
-    //  ocho píxeles de rendija es justo lo que se quería evitar.
+    //  Below this it stops. Not 0 %: with tiled windows the gaps'
+    //  slivers always peek out, and leaving a video running for
+    //  eight pixels of sliver is exactly what was to be avoided.
     //
-    //  Y es 3 % y no 8 porque la cuenta se hace sobre el área UTILIZABLE (ver
-    //  `libresEn`): sin descontar lo reservado, la franja del dock —62 px— valía
-    //  un 6 % ella sola y con el dock puesto no se paraba nunca.
+    //  And it is 3 % and not 8 because the count is made over the
+    //  USABLE area (see `libresEn`): without discounting the
+    //  reserved space, the dock's strip —62 px— was worth 6 % on its
+    //  own and with the dock up it never stopped.
     readonly property real umbralVisible: 0.03
 
-    //  Las ventanas que hay delante, en coordenadas de escritorio.
-    //  ── las ventanas que hay delante ────────────────────────────
+    //  The windows in front, in desktop coordinates.
+    //  ── the windows in front ─────────────────────────────────────
     //
-    //  Se le preguntan a `hyprctl` directamente y no al servicio de ventanas, y
-    //  no por gusto: `Ventanas.refrescar()` llama a `Hyprland.refreshToplevels()`
-    //  **si existe**, y en esta versión de Quickshell no existe — el `typeof` de
-    //  guardia lo convierte en un no-op silencioso. Consecuencia medida: una
-    //  ventana recién abierta salía en la lista con su `lastIpcObject` VACÍO
-    //  (`ws=None at=None`), se caía del filtro, el lienzo daba `libres 144/144`
-    //  y el vídeo seguía corriendo debajo de una ventana que lo tapaba entero.
+    //  Asked of `hyprctl` directly and not of the windows service,
+    //  and not for taste: `Ventanas.refrescar()` calls
+    //  `Hyprland.refreshToplevels()` **if it exists**, and in this
+    //  Quickshell version it does not — the guarding `typeof` turns
+    //  it into a silent no-op. Measured consequence: a freshly
+    //  opened window came out in the list with its `lastIpcObject`
+    //  EMPTY (`ws=None at=None`), fell off the filter, the canvas
+    //  gave `free 144/144` and the video kept running under a window
+    //  that covered it whole.
     //
-    //  Qué escritorios están delante sí sale de `Workspaces`, que trae el
-    //  `active` de cada uno al día — eso se comprobó y venía bien.
+    //  Which workspaces are in front does come out of `Workspaces`,
+    //  which keeps each one's `active` up to date — that was checked
+    //  and came out right.
     property var cajas: []
 
-    //  Lo que cada monitor le tiene reservado a las barras, por nombre.
+    //  What each monitor has reserved for bars, by name.
     property var reservas: ({})
 
-    //  En una property con nombre y no como hijo suelto: la propiedad por
-    //  defecto de `Variants` es `delegate`, así que un hijo pelado se le asigna
-    //  ahí y el id nunca llega a existir. Síntoma: `ReferenceError:
-    //  mirarVentanas is not defined` y cero ventanas contadas, con el delegate
-    //  funcionando igual porque su asignación explícita gana.
+    //  In a named property and not as a loose child: `Variants`'s
+    //  default property is `delegate`, so a bare child gets assigned
+    //  there and the id never comes to exist. Symptom:
+    //  `ReferenceError: mirarVentanas is not defined` and zero
+    //  windows counted, with the delegate working the same because
+    //  its explicit assignment wins.
     property var procVentanas: K4.Process {
-        //  Los dos de una vez y en un solo proceso: hacen falta las ventanas Y
-        //  lo reservado, y dos procesos serían dos respuestas desacompasadas y
-        //  una cuenta hecha con mitad de cada foto.
+        //  Both at once and in a single process: the windows AND the
+        //  reserved space are needed, and two processes would be two
+        //  out-of-step answers and a count made of half of each
+        //  photo.
         command: ["sh", "-c",
             "hyprctl monitors -j; echo '@@@'; hyprctl clients -j"]
 
@@ -153,8 +171,9 @@ K4.PorPantalla {
                 nuevas.push([c.at[0], c.at[1],
                              c.at[0] + c.size[0], c.at[1] + c.size[1]])
             }
-            //  Contenedor NUEVO: mutar el que hay no repinta nada en QML, y
-            //  entonces `aLaVista` no se entera de que el mundo ha cambiado.
+            //  A NEW container: mutating the existing one repaints
+            //  nothing in QML, and then `aLaVista` never learns the
+            //  world changed.
             lienzo.cajas = nuevas
         }
     }
@@ -166,8 +185,9 @@ K4.PorPantalla {
 
     function cajasVistas() { return lienzo.cajas }
 
-    //  ¿Hay algo que se mueva ahora mismo? De la lista guardada y no de las
-    //  telas, porque esto tiene que ser REACTIVO y `instances` no lo es.
+    //  Is anything moving right now? From the kept list and not
+    //  from the canvases, because this has to be REACTIVE and
+    //  `instances` is not.
     readonly property bool hayMovimiento: {
         if (!lienzo.plugin)
             return false
@@ -182,10 +202,11 @@ K4.PorPantalla {
         return mueve(lienzo.plugin.wallpaper)
     }
 
-    //  Dos disparadores. El bueno es abrir o cerrar una ventana, que sí llega
-    //  por señal y hace que la pausa responda al instante; el reloj es la red
-    //  para lo que no avisa —mover o redimensionar— y solo corre mientras haya
-    //  algo que se mueva. Con todo quieto no se lanza un solo proceso.
+    //  Two triggers. The good one is a window opening or closing,
+    //  which does arrive by signal and makes the pause answer at
+    //  once; the clock is the net for what gives no notice —moving
+    //  or resizing— and only runs while something moves. With
+    //  everything still not a single process is launched.
     property Connections escucha: Connections {
         target: Ventanas
         function onListaChanged() { lienzo.pedirVentanas() }
@@ -199,14 +220,15 @@ K4.PorPantalla {
         onTriggered: lienzo.pedirVentanas()
     }
 
-    //  Los puntos de la rejilla que no tapa ninguna ventana, contados sobre el
-    //  área UTILIZABLE del monitor y no sobre el monitor entero.
+    //  The grid points no window covers, counted over the monitor's
+    //  USABLE area and not over the whole monitor.
     //
-    //  Lo reservado —la franja de la barra arriba, la del dock abajo— lo tapa la
-    //  propia barra o el propio dock, que no son ventanas y por tanto no salen
-    //  en `hyprctl clients`. Contándolo, una pantalla con una ventana maximizada
-    //  y el dock puesto daba 16 de 144 puntos «libres» —un 11 %— y el vídeo no
-    //  se paraba nunca. Que es exactamente lo que se veía.
+    //  The reserved space —the bar's strip on top, the dock's below—
+    //  is covered by the bar or the dock themselves, which are not
+    //  windows and therefore do not show up in `hyprctl clients`.
+    //  Counting it, a screen with a maximized window and the dock up
+    //  gave 16 of 144 points «free» —11 %— and the video never
+    //  stopped. Which is exactly what was seen.
     function libresEn(nombre, x0, y0, ancho, alto) {
         const r = lienzo.reservas[nombre] || [0, 0, 0, 0]
         x0 += r[0]
@@ -232,8 +254,8 @@ K4.PorPantalla {
         return libres
     }
 
-    //  Y la respuesta: ¿queda bastante fondo a la vista como para que valga la
-    //  pena moverse?
+    //  And the answer: is enough wallpaper left in sight for moving
+    //  to be worth it?
     function seVeAlgoEn(nombre, x0, y0, ancho, alto) {
         if (!nombre || ancho <= 0 || alto <= 0)
             return true
@@ -262,20 +284,22 @@ K4.PorPantalla {
 
         nombre: "k4-fondo"
 
-        //  Debajo de las ventanas. Y sin recoger un solo clic: sin `zonaActiva`
-        //  el mask se queda en `null` y esta superficie se lleva TODOS los clics
-        //  del escritorio — que en la capa de abajo significa un escritorio que
-        //  deja de responder y nadie sabe por qué (ver api/K4/Ventana.qml).
+        //  Under the windows. And collecting not a single click:
+        //  without `zonaActiva` the mask stays `null` and this
+        //  surface takes ALL the desktop's clicks — which on the
+        //  bottom layer means a desktop that stops responding with
+        //  nobody knowing why (see api/K4/Ventana.qml).
         capa: "fondo"
 
-        //  Y a pantalla COMPLETA, saltándose las reservas ajenas.
+        //  And FULLSCREEN, skipping other people's reservations.
         //
-        //  Con `reserva: 0` —lo de fábrica— la ventana no reserva sitio pero sí
-        //  respeta el de los demás, así que la franja de 34 px de la barra la
-        //  empujaba: medido, salía `1920x1046 en (…,34)`. Un fondo de escritorio
-        //  que empieza donde acaba la barra deja una banda muerta arriba y
-        //  descuadra el encaje de la imagen. `-1` es no reservar nada Y además
-        //  saltarse lo ajeno, que es justo lo que hace falta debajo de todo.
+        //  With `reserva: 0` —the factory value— the window reserves
+        //  no space but does respect everyone else's, so the bar's
+        //  34 px strip pushed it: measured, it came out `1920x1046
+        //  at (…,34)`. A desktop wallpaper starting where the bar
+        //  ends leaves a dead band on top and skews the image's fit.
+        //  `-1` is reserving nothing AND skipping others', which is
+        //  exactly what is needed under everything.
         reserva: -1
 
         zonaActiva: nada
@@ -286,29 +310,32 @@ K4.PorPantalla {
         readonly property string ruta: lienzo.plugin
             ? lienzo.plugin.fondoDe(cual) : ""
 
-        //  Solo existe si hay algo que pintar. Sin fondo asignado no se crea la
-        //  superficie: entonces se ve el suelo de swaybg, que es exactamente lo
-        //  que había antes de todo esto.
+        //  It only exists if there is something to paint. With no
+        //  wallpaper assigned the surface is not created: then
+        //  swaybg's floor shows, which is exactly what was there
+        //  before all this.
         //
-        //  ── y una FOTO la pinta swaybg, no esto ──────────────────
+        //  ── and a PHOTO is painted by swaybg, not this ───────────
         //
-        //  Con un fondo quieto esta capa dibuja exactamente lo que el suelo ya
-        //  está dibujando debajo. Medido sobre el proceso: **80 MiB de VRAM** y
-        //  unos 18 MB de RSS por no aportar nada —la barra era el mayor
-        //  consumidor de vídeo de la máquina, por delante del navegador—. Así
-        //  que con una foto la barra se aparta y se ve el suelo; se queda solo
-        //  con lo que swaybg no sabe hacer, que es el vídeo, el GIF y las
-        //  transiciones.
+        //  With a still wallpaper this layer draws exactly what the
+        //  floor is already drawing underneath. Measured on the
+        //  process: **80 MiB of VRAM** and some 18 MB of RSS for
+        //  contributing nothing —the bar was the machine's biggest
+        //  video consumer, ahead of the browser—. So with a photo
+        //  the bar steps aside and the floor shows; it keeps only
+        //  what swaybg cannot do, which is video, GIF and
+        //  transitions.
         //
-        //  La GRACIA de después no es un adorno. Al acabar el fundido hay que
-        //  esperar a que swaybg tenga la imagen NUEVA, y ponerlo no es
-        //  instantáneo: `ponerSuelo` amortigua 300 ms, mata al viejo, espera
-        //  200 más y levanta el nuevo. Soltando la capa al terminar la
-        //  transición se ve un parpadeo del fondo viejo, o del vacío.
+        //  The after-GRACE is not decoration. At the end of the fade
+        //  swaybg must be given time to have the NEW image, and
+        //  setting it is not instantaneous: `ponerSuelo` debounces
+        //  300 ms, kills the old one, waits 200 more and raises the
+        //  new. Dropping the layer at the end of the transition
+        //  shows a flicker of the old wallpaper, or of the void.
         //
-        //  Y se arma también al arrancar, por lo mismo: entre que entras a la
-        //  sesión y swaybg está puesto hay un hueco, y taparlo es justo para lo
-        //  que el suelo existe.
+        //  And it arms at startup too, for the same reason: between
+        //  entering the session and swaybg being set there is a gap,
+        //  and covering it is exactly what the floor is for.
         readonly property bool loPintaElSuelo: lienzo.tipoDe(ruta) === "quieto"
             && !tela.cambiando && !gracia.running
 
@@ -321,11 +348,12 @@ K4.PorPantalla {
 
         onCambiandoChanged: if (!tela.cambiando) gracia.restart()
 
-        // ── las dos capas y el relevo ───────────────────────────
+        // ── the two layers and the handover ────────────────────
         //
-        //  Una transición necesita las DOS a la vez: la que se va sigue puesta
-        //  hasta el final, y la que llega se revela encima. `viva` dice cuál
-        //  tiene el fondo puesto; la otra es la que entra, y va siempre arriba.
+        //  A transition needs BOTH at once: the leaving one stays up
+        //  until the end, and the arriving one is revealed on top.
+        //  `viva` says which has the wallpaper set; the other is the
+        //  one coming in, and always rides on top.
         property int viva: 0
         property real avance: 1
         readonly property bool cambiando: tela.avance < 1
@@ -333,10 +361,11 @@ K4.PorPantalla {
         readonly property var capaViva: tela.viva === 0 ? capaA : capaB
         readonly property var capaEntra: tela.viva === 0 ? capaB : capaA
 
-        //  ¿Se ve algo de este fondo? Se recalcula solo: depende de
-        //  `Ventanas.lista`, que es reactiva, así que abrir o cerrar una ventana
-        //  y cambiar de escritorio ya disparan la cuenta. Un fondo quieto no
-        //  pregunta: no gasta nada aunque no se vea.
+        //  Is any of this wallpaper visible? It recomputes itself:
+        //  it depends on `Ventanas.lista`, which is reactive, so
+        //  opening or closing a window and switching desktops fire
+        //  the count already. A still wallpaper does not ask: it
+        //  spends nothing even unseen.
         readonly property bool aLaVista: lienzo.tipoDe(ruta) === "quieto"
             || lienzo.tipoDe(ruta) === "nada"
             || !tela.screen
@@ -372,9 +401,10 @@ K4.PorPantalla {
 
         function relevar() {
             const nueva = tela.ruta
-            //  Sin nada puesto todavía —al arrancar— o sin efecto, no hay
-            //  transición: se pone y ya. Fundir desde un fondo que no existe es
-            //  fundir desde negro, que es peor que no fundir.
+            //  With nothing set yet —at startup— or no effect, there
+            //  is no transition: it just goes up. Fading from a
+            //  wallpaper that does not exist is fading from black,
+            //  which is worse than not fading.
             if (tela.capaViva.ruta === nueva)
                 return
             if (tela.capaViva.ruta.length === 0
@@ -396,48 +426,52 @@ K4.PorPantalla {
             property: "avance"
             to: 1
             duration: lienzo.duracion
-            //  Arranca suave y para suave: lo que se enseña es una superficie
-            //  cambiando, no un objeto que se lanza.
+            //  Starts soft and stops soft: what is shown is a
+            //  surface changing, not an object being thrown.
             easing.type: Easing.InOutCubic
             onFinished: {
-                //  El relevo: la que entraba pasa a ser la puesta, y la otra se
-                //  vacía. Vaciarla ANTES de cambiar `viva` borraría la que se
-                //  está viendo.
+                //  The handover: the one coming in becomes the set
+                //  one, and the other is emptied. Emptying it BEFORE
+                //  changing `viva` would erase the one being
+                //  watched.
                 tela.viva = tela.viva === 0 ? 1 : 0
                 lienzo.poner(tela.capaEntra, "")
             }
         }
 
-        // ── cómo se revela la que entra ─────────────────────────
+        // ── how the incoming one is revealed ───────────────────
         //
-        //  Una sola vía para los tres efectos: la capa que entra se pinta SIEMPRE
-        //  a través del efecto, y lo que cambia es si lleva máscara o solo
-        //  opacidad. Tenerlos por caminos distintos era tener dos sitios donde
-        //  el relevo puede salir mal.
+        //  One road for all three effects: the incoming layer is
+        //  ALWAYS painted through the effect, and what changes is
+        //  whether it carries a mask or only opacity. Having them on
+        //  separate roads was having two places for the handover to
+        //  go wrong.
         ShaderEffectSource {
             id: texturaEntra
             anchors.fill: parent
             sourceItem: tela.capaEntra
-            //  La esconde: la pinta el efecto, y dibujada dos veces se vería la
-            //  de abajo asomando por donde la máscara la recorta.
+            //  It hides it: the effect paints it, and drawn twice
+            //  the one below would peek through where the mask cuts
+            //  it.
             hideSource: true
             live: true
             visible: false
         }
 
-        //  El molde de la máscara. No se dibuja —lo esconde su propia textura— y
-        //  solo existe para que el efecto tenga de dónde sacar la forma. Blanco
-        //  es «aquí se ve la nueva».
+        //  The mask's mold. It does not draw —its own texture hides
+        //  it— and it exists only so the effect has somewhere to take
+        //  the shape from. White means «the new one shows here».
         Item {
             id: molde
             anchors.fill: parent
 
-            //  ── iris: un círculo que crece DESDE LA ISLAND ──
+            //  ── iris: a circle growing FROM THE ISLAND ──────
             //
-            //  Desde la island y no desde el centro de la pantalla porque es la
-            //  island quien acaba de cambiar el fondo: el cambio sale de donde
-            //  lo has pedido. En la pantalla que no la tenga desplegada, su
-            //  píldora sigue estando, así que el punto vale igual.
+            //  From the island and not from the screen's center
+            //  because the island is what just changed the
+            //  wallpaper: the change comes from where you asked for
+            //  it. On a screen without it deployed, its pill is still
+            //  there, so the point works the same.
             Rectangle {
                 visible: lienzo.transicion === "iris"
                 color: "white"
@@ -448,26 +482,31 @@ K4.PorPantalla {
                 y: tela.focoY - height / 2
             }
 
-            //  ── marea: sube desde el canto de abajo ──
+            //  ── tide: rises from the bottom edge ────────
             //
-            //  Con el frente ondulado y no recto, que es lo que la separa de una
-            //  cortina: dos senos de distinta longitud desfasados, para que no
-            //  se lea el patrón. La onda se apaga al final —`Math.sin(pi·avance)`
-            //  vale 0 en los dos extremos— porque un frente ondulado justo al
-            //  llegar al borde deja el último dedo de fondo viejo asomando.
+            //  With a wavy front and not straight, which is what
+            //  tells it apart from a curtain: two sines of different
+            //  length dephased, so the pattern cannot be read. The
+            //  wave dies out at the end —`Math.sin(pi·avance)` is 0
+            //  at both extremes— because a wavy front just reaching
+            //  the edge leaves the last finger of old wallpaper
+            //  peeking.
             Shape {
                 anchors.fill: parent
                 visible: lienzo.transicion === "marea"
                 antialiasing: true
 
                 ShapePath {
-                    //  Con id, y NO por `parent`, que es de lo que se quejaba
-                    //  el log en cada transición: un `PathQuad` no es un Item
-                    //  —es un elemento de trazado— así que no tiene `parent`, y
-                    //  `parent.frente` valía `undefined`. Los puntos de control
-                    //  salían indefinidos y la onda del frente no se dibujaba:
-                    //  la marea subía RECTA, que es justo la cortina de la que
-                    //  el comentario de arriba dice que quiere distinguirse.
+                    //  With an id, and NOT by `parent`, which is
+                    //  what the log complained about on every
+                    //  transition: a `PathQuad` is not an Item —it
+                    //  is a pathing element— so it has no `parent`,
+                    //  and `parent.frente` read `undefined`. The
+                    //  control points came out undefined and the
+                    //  front's wave did not draw: the tide rose
+                    //  STRAIGHT, which is exactly the curtain the
+                    //  comment above says it wants to tell itself
+                    //  apart from.
                     id: marea
 
                     fillColor: "white"
@@ -511,16 +550,18 @@ K4.PorPantalla {
             z: 2
             visible: tela.cambiando
             source: texturaEntra
-            //  El fundido es opacidad y los otros dos son máscara. Un fundido
-            //  hecho con máscara pediría un molde de gris uniforme y el umbral
-            //  barriéndose, que es dar un rodeo para llegar al mismo sitio.
+            //  The fade is opacity and the other two are mask. A
+            //  fade done with a mask would ask for a uniform-gray
+            //  mold and a sweeping threshold, which is taking the
+            //  long way to the same place.
             opacity: lienzo.transicion === "fundido" ? tela.avance : 1
             maskEnabled: lienzo.transicion !== "fundido"
             maskSource: texturaMolde
         }
 
-        //  De dónde sale el iris y hasta dónde tiene que crecer para tapar la
-        //  pantalla: la esquina más lejana, que es la que manda.
+        //  Where the iris starts and how far it must grow to cover
+        //  the screen: the farthest corner, which is the one that
+        //  rules.
         readonly property var rectIsla: K4.Isla.rectEn(tela.cual)
         readonly property real focoX: rectIsla && rectIsla.ancho > 0
             ? rectIsla.x + rectIsla.ancho / 2 : tela.width / 2
