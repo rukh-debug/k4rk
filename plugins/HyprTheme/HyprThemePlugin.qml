@@ -397,10 +397,10 @@ K4Plugin {
             activeOpacity: activeOpacity, inactiveOpacity: inactiveOpacity, shadow: shadow,
             animEnabled: animEnabled, animSpeed: animSpeed,
             wallpaper: wallpaper,
-            fondos: fondos,
+            wallpapers: fondos,
             extras: extras,
-            transicion: transicion,
-            paletaAuto: paletaAuto,
+            transition: transicion,
+            autoPalette: paletaAuto,
             dirty: dirty
         }, null, 2))
     }
@@ -435,15 +435,20 @@ K4Plugin {
         animEnabled = s.animEnabled !== undefined ? s.animEnabled : animEnabled
         animSpeed = s.animSpeed !== undefined ? s.animSpeed : animSpeed
         wallpaper = s.wallpaper !== undefined ? s.wallpaper : wallpaper
-        fondos = (s.fondos && typeof s.fondos === "object") ? s.fondos : ({})
+        //  Keys are English now; the Spanish trio is the pre-rename file
+        //  saying something — both are honored, new wins.
+        const fondosLeidos = (s.wallpapers !== undefined ? s.wallpapers : s.fondos)
+        fondos = (fondosLeidos && typeof fondosLeidos === "object") ? fondosLeidos : ({})
         //  Comprobado contra la lista: un fichero a mano con cualquier otra cosa
         //  dejaría un efecto que no pinta nadie, o sea un cambio de fondo que se
         //  queda a medias sin decir por qué.
         extras = (s.extras && s.extras.length !== undefined) ? s.extras : []
-        if (s.transicion && transiciones.indexOf(s.transicion) >= 0)
-            transicion = s.transicion
-        if (s.paletaAuto !== undefined)
-            paletaAuto = !!s.paletaAuto
+        const transicionLeida = (s.transition !== undefined ? s.transition : s.transicion)
+        if (transicionLeida && transiciones.indexOf(transicionLeida) >= 0)
+            transicion = transicionLeida
+        const paletaLeida = (s.autoPalette !== undefined ? s.autoPalette : s.paletaAuto)
+        if (paletaLeida !== undefined)
+            paletaAuto = !!paletaLeida
         //  Y al cargar se rehace, que el tinte vive en memoria y no sobrevive a
         //  un reinicio de la barra.
         if (paletaAuto)

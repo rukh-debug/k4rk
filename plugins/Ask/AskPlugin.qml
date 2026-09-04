@@ -141,7 +141,7 @@ K4Plugin {
         appendMessage(role, text)
     }
 
-    function withScreenshot() {
+    function attachScreenshot() {
         // se captura antes de expandir la island, así no sale ella en la foto
         image = ""
         attachSelectionOnOpen = false
@@ -149,7 +149,7 @@ K4Plugin {
         shotProcess.running = true
     }
 
-    function withRegion() {
+    function attachRegion() {
         image = ""
         shotProcess.command = ["sh", "-c", "grim -g \"$(slurp -d)\" " + dir + "/shot.png"]
         shotProcess.running = true
@@ -415,8 +415,8 @@ K4Plugin {
             else self.openAsk(false)
         }
         function selection(): void { self.openAsk(true) }
-        function screen(): void { self.withScreenshot() }
-        function region(): void { self.withRegion() }
+        function screen(): void { self.attachScreenshot() }
+        function region(): void { self.attachRegion() }
         function now(question: string): void {
             //  Pregunta directa: esta sí empieza de cero, que viene de un
             //  guion y mezclar hilos sería peor.

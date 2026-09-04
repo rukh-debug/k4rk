@@ -64,7 +64,7 @@ K4Plugin {
             //  with: the badge in the launcher and the page in Apps read
             //  it, and neither should have to ask twice.
             if (self.hayBackend)
-                self.comprobar(false)
+                self.refresh(false)
         }
     }
 
@@ -350,7 +350,7 @@ K4Plugin {
     //  `checkupdates` builds a temporary base and takes a few seconds,
     //  so it is looked at when a surface that shows it opens, with a
     //  ten-minute cache — freshness has its own button.
-    function comprobar(forzar) {
+    function refresh(forzar) {
         if (!hayBackend || comprobando)
             return
         if (!forzar && comprobadoEn > 0
@@ -407,13 +407,13 @@ K4Plugin {
     //  the only sane way to choose; partial upgrades over an old system
     //  are the classic recipe for breaking it, and leaving a few behind
     //  with --ignore is what pacman ships with.
-    function actualizarMarcadas() {
+    function updateSelected() {
         const fuera = []
         for (let i = 0; i < detalles.length; ++i)
             if (excluidos[detalles[i].nombre])
                 fuera.push(detalles[i].nombre)
         if (fuera.length === 0) {
-            actualizarTodo()
+            updateAll()
             return
         }
         const script = "yay -Syu --ignore=" + fuera.join(",")
@@ -427,7 +427,7 @@ K4Plugin {
         comprobadoEn = 0
     }
 
-    function actualizarTodo() {
+    function updateAll() {
         const script = "yay -Syu"
             + " && notify-send -a 'Update' '"
             + "System up to date" + "'"

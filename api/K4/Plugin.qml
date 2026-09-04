@@ -196,6 +196,15 @@ QtObject {
     //      · abrirPagina(page) — land on that page of your surface.
     //      · buscar(query) — arrive with a search already written.
     //      · preguntar(texto) — a question asked from outside.
+    //      · openAsk(selection) — arrive asking: open with your picker
+    //        ready (Ask opens fresh, or on the region/screenshot picker
+    //        when `selection` is true).
+    //      · attachScreenshot() / attachRegion() — arrive with a fresh
+    //        screenshot, or with the region picker running.
+    //      · refresh() — look again at whatever you show (Packages
+    //        re-checks for updates; anything with a cache re-reads it).
+    //      · updateAll() / updateSelected() — do the work on everything,
+    //        or on the user's current selection.
     //
     //  `toggle` has a working default for plugins with no view logic of
     //  their own; the rest are no-ops until you write them.
@@ -204,6 +213,12 @@ QtObject {
     function abrirPagina(page) { }
     function buscar(query) { }
     function preguntar(texto) { }
+    function openAsk(selection) { }
+    function attachScreenshot() { }
+    function attachRegion() { }
+    function refresh() { }
+    function updateAll() { }
+    function updateSelected() { }
 
     property bool handlesBackgroundTap: false
     signal backgroundTapped()

@@ -24,6 +24,9 @@ K4Plugin {
     title: "Sound"
     priority: 61
     active: habilitado && abierto
+    //  A summoned view — it gets a Placement card like its peers (tray,
+    //  system, keys), instead of silently following the bar.
+    colocable: true
 
     property bool abierto: false
 

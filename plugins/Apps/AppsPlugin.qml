@@ -50,17 +50,17 @@ K4.Plugin {
         detalles: packages ? packages.detalles : [],
         excluidos: packages ? packages.excluidos : ({}),
         nombresPendientes: packages ? packages.nombresPendientes : [],
-        comprobar: function (forzar) {
-            if (packages) packages.comprobar(forzar)
+        refresh: function (forzar) {
+            if (packages) packages.refresh(forzar)
         },
         alternarExcluida: function (nombre) {
             if (packages) packages.alternarExcluida(nombre)
         },
-        actualizarMarcadas: function () {
-            if (packages) packages.actualizarMarcadas()
+        updateSelected: function () {
+            if (packages) packages.updateSelected()
         },
-        actualizarTodo: function () {
-            if (packages) packages.actualizarTodo()
+        updateAll: function () {
+            if (packages) packages.updateAll()
         }
     })
 
@@ -87,13 +87,21 @@ K4.Plugin {
         modoActualizaciones = false
         abierto = true
         if (packages)
-            packages.comprobar(false)
+            packages.refresh(false)
     }
 
     //  Entrar directo a elegir qué actualizar: lo usa el lanzador.
     function abrirActualizaciones() {
         abrirse()
         modoActualizaciones = true
+    }
+
+    //  The contract verb for it: the launcher says `openTab("updates")`
+    //  like it does to the panel's tabs, instead of reaching for a
+    //  method only this plugin knows.
+    function openTab(tab) {
+        if (tab === "updates")
+            abrirActualizaciones()
     }
 
     function toggle() {

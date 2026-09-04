@@ -43,9 +43,15 @@ equivalent exists.
 The host also knows a few optional verbs. They exist as no-op stubs on
 the contract, so a plugin overrides the ones it serves and the host can
 call unconditionally: `toggle(tab)`, `openTab(tab)`,
-`abrirPagina(page)`, `buscar(query)`, `preguntar(texto)`. If your view
+`abrirPagina(page)`, `buscar(query)`, `preguntar(texto)`,
+`openAsk(selection)`, `attachScreenshot()`, `attachRegion()`,
+`refresh()`, `updateAll()`, `updateSelected()`. If your view
 is addressable — a tab, a landing page, a search to start with — serve
-the verb instead of letting the caller poke properties.
+the verb instead of letting the caller poke properties. The same names
+are how one plugin talks to another: Apps reaches Packages through
+`refresh()` and `updateAll()`, the launcher lands on Apps' updates mode
+through `openTab("updates")`, and nobody remembers a method name only
+one side knows.
 
 `active` and `habilitado` are different states:
 

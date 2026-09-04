@@ -343,7 +343,7 @@ FadeIn {
                             view.plugin.close()
                             const apps = view.plugin.apps
                             if (apps)
-                                apps.abrirActualizaciones()
+                                apps.openTab("updates")
                         }
                     }
                 }
@@ -370,7 +370,7 @@ FadeIn {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (view.plugin.packages)
-                                view.plugin.packages.actualizarTodo()
+                                view.plugin.packages.updateAll()
                             view.plugin.close()
                         }
                     }
