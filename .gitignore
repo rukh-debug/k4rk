@@ -15,3 +15,6 @@ recargas
 #  El banco de pruebas de un plugin: lo genera y lo borra
 #  tools/plugins.py --probar, pero si algo peta puede quedarse.
 .banco.qml
+
+# Agent instructions are per-machine, not part of the project
+AGENTS.md
