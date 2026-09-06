@@ -1,13 +1,17 @@
-//  Where each view opens from: which side of the screen, and where along
-//  that side. One card per view — the side chips carry the big choice
+//  Where each view opens from: which sides of the screen, and where
+//  along them. One card per view — the side chips carry the big choice
 //  («Follow bar» is the default and the first chip, so the page starts
-//  showing what everything does).
+//  showing what everything does), and the chips TOGGLE: one side is an
+//  edge, two adjacent sides are the corner between them — Top then
+//  Right, or Right then Top, is the top-right corner.
 //
 //  The point along the side is not chips but the little monitor itself:
-//  the dot is where the view opens, and you DRAG it — to the centre, to a
-//  quarter, flush into a corner. Dragging near an edge picks that edge,
-//  dragging along it picks the point, and corners are just the ends. A
-//  placement is a point; chips could only ever offer the named few.
+//  the dot is where the view opens, and you DRAG it — to the centre, to
+//  a quarter, along an edge. The monitor's corners are zones of their
+//  own: a fifth of it at each corner answers to the click directly and
+//  pairs the two sides, because a corner is a place, not «100% of an
+//  edge». A placement is a point; chips could only ever offer the
+//  named few.
 
 import QtQuick
 import QtQuick.Layouts
@@ -48,15 +52,27 @@ ColumnLayout {
         { codigo: "right",  nombre: "Right" }
     ]
 
-    //  The placement words along the edge change with the edge: left and
-    //  right run top to bottom, the horizontal ones end to end. For the
-    //  little status line under the title.
-    function palabraLado(lado) {
+    //  The placement in words, ends included: an align flush at either
+    //  end is a CORNER — two walls, not "top edge · 100%" — and the
+    //  words should say what the drawer will do: attach to both.
+    function palabraPunto(lado, align) {
+        const esqIni = align <= 0.5
+        const esqFin = align >= 99.5
+        if (lado === "top")
+            return esqFin ? "top-right corner"
+                 : esqIni ? "top-left corner"
+                 : "top edge · " + Math.round(align) + "%"
+        if (lado === "bottom")
+            return esqFin ? "bottom-right corner"
+                 : esqIni ? "bottom-left corner"
+                 : "bottom edge · " + Math.round(align) + "%"
         if (lado === "left")
-            return "left edge"
-        if (lado === "right")
-            return "right edge"
-        return lado === "top" ? "top edge" : "bottom edge"
+            return esqFin ? "bottom-left corner"
+                 : esqIni ? "top-left corner"
+                 : "left edge · " + Math.round(align) + "%"
+        return esqFin ? "bottom-right corner"
+             : esqIni ? "top-right corner"
+             : "right edge · " + Math.round(align) + "%"
     }
 
     //  The view's own entry, if it has one. A hand-edited file cannot
@@ -80,6 +96,59 @@ ColumnLayout {
             readonly property var propia: pagina.suya(tarjeta.idVista)
             readonly property var efectiva:
                 Settings.placementDe(tarjeta.idVista)
+
+            //  The placement as the chips read it: which horizontal
+            //  side, which vertical side — a corner is simply BOTH.
+            //  Normalized, because a corner has two honest spellings
+            //  («top, 100%» and «right, 0%») and the chips should
+            //  light the same pair for either.
+            readonly property var parLados: {
+                const p = tarjeta.propia
+                if (!p)
+                    return { h: "", v: "" }
+                const ini = p.align <= 0.5
+                const fin = p.align >= 99.5
+                if (p.side === "top" || p.side === "bottom") {
+                    if (ini)
+                        return { h: p.side, v: "left" }
+                    if (fin)
+                        return { h: p.side, v: "right" }
+                    return { h: p.side, v: "" }
+                }
+                if (ini)
+                    return { h: "top", v: p.side }
+                if (fin)
+                    return { h: "bottom", v: p.side }
+                return { h: "", v: p.side }
+            }
+
+            //  A side chip press. The chips TOGGLE: one side is an
+            //  edge, two adjacent sides are the corner between them.
+            //  Opposite sides never pair — one replaces the other.
+            //  Pressing the lit side of a pair leaves the other side
+            //  alone as a plain edge; pressing a lone lit side hands
+            //  the view back to the bar.
+            function pulsarLado(cod) {
+                const actual = tarjeta.parLados
+                const esH = cod === "top" || cod === "bottom"
+                const mismo = esH ? actual.h === cod : actual.v === cod
+                if (mismo) {
+                    if (actual.h !== "" && actual.v !== "") {
+                        const otro = esH ? actual.v : actual.h
+                        Settings.ponerPlacement(tarjeta.idVista, otro, 50)
+                    } else {
+                        Settings.ponerPlacement(tarjeta.idVista, "", 50)
+                    }
+                    return
+                }
+                const h = esH ? cod : actual.h
+                const v = esH ? actual.v : cod
+                if (h !== "" && v !== "")
+                    Settings.ponerPlacement(tarjeta.idVista, h,
+                                             v === "right" ? 100 : 0)
+                else
+                    Settings.ponerPlacement(tarjeta.idVista, cod, 50)
+            }
 
             Layout.fillWidth: true
             implicitHeight: columna.implicitHeight + 24
@@ -105,14 +174,17 @@ ColumnLayout {
                     }
 
                     //  The state in words, because a dot alone does not say
-                    //  «this one follows the bar».
+                    //  «this one follows the bar». The bar's own words go
+                    //  through the same corner-aware wording: a bar in a
+                    //  corner follows as a corner, not as «100%».
                     IslandLabel {
                         text: tarjeta.propia === null
-                            ? "Follows the bar — " + pagina.palabraLado(
+                            ? "Follows the bar — " + pagina.palabraPunto(
                                   Settings.barPosition === "bottom"
-                                  ? "bottom" : "top")
-                            : pagina.palabraLado(tarjeta.propia.side)
-                              + " · " + Math.round(tarjeta.propia.align) + "%"
+                                      ? "bottom" : "top",
+                                  Settings.barAlignment)
+                            : pagina.palabraPunto(tarjeta.propia.side,
+                                                  tarjeta.propia.align)
                         color: tarjeta.propia === null ? Theme.dim : Theme.muted
                         font.pixelSize: 9
                     }
@@ -131,11 +203,17 @@ ColumnLayout {
                                 id: chipLado
                                 required property var modelData
 
+                                //  Follow lights when there is no
+                                //  placement of its own; a side lights
+                                //  for its edge AND for the corner it
+                                //  pairs into.
                                 readonly property bool puesta:
-                                    tarjeta.propia === null
-                                        ? chipLado.modelData.codigo === ""
-                                        : tarjeta.propia.side
+                                    chipLado.modelData.codigo === ""
+                                        ? tarjeta.propia === null
+                                        : tarjeta.parLados.h
                                           === chipLado.modelData.codigo
+                                          || tarjeta.parLados.v
+                                             === chipLado.modelData.codigo
 
                                 implicitWidth: textoLado.implicitWidth + 20
                                 implicitHeight: 24
@@ -164,11 +242,14 @@ ColumnLayout {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.ponerPlacement(
-                                        tarjeta.idVista,
-                                        chipLado.modelData.codigo,
-                                        tarjeta.propia
-                                            ? tarjeta.propia.align : 50)
+                                    onClicked: {
+                                        if (chipLado.modelData.codigo === "")
+                                            Settings.ponerPlacement(
+                                                tarjeta.idVista, "", 50)
+                                        else
+                                            tarjeta.pulsarLado(
+                                                chipLado.modelData.codigo)
+                                    }
                                 }
                             }
                         }
@@ -208,12 +289,28 @@ ColumnLayout {
                         return Qt.point(m + (w - 2 * m) * align / 100, m)
                     }
 
-                    //  A point on the monitor → the placement it names. The
-                    //  nearest edge wins; the coordinate ALONG it is the
-                    //  percentage. Clamped, so the drag cannot leave the
-                    //  monitor and invent a 120%.
+                    //  A point on the monitor → the placement it names.
+                    //  The corners answer FIRST: a fifth of the monitor
+                    //  at each corner belongs to the corner itself, so
+                    //  a plain click — not only a drag to the very end
+                    //  — pairs the two sides. Then the nearest edge
+                    //  wins, the coordinate along it is the percentage,
+                    //  and the ends still snap flush for a drag that
+                    //  approaches them. Clamped, so nothing invents a
+                    //  120%.
                     function colocacionEn(x, y) {
                         const w = width, h = height
+                        const fx = Math.max(0, Math.min(1, x / w))
+                        const fy = Math.max(0, Math.min(1, y / h))
+                        const c = 0.2
+                        if (fx <= c && fy <= c)
+                            return { side: "top", align: 0 }
+                        if (fx >= 1 - c && fy <= c)
+                            return { side: "top", align: 100 }
+                        if (fx <= c && fy >= 1 - c)
+                            return { side: "bottom", align: 0 }
+                        if (fx >= 1 - c && fy >= 1 - c)
+                            return { side: "bottom", align: 100 }
                         const dArriba = y, dAbajo = h - y
                         const dIzq = x, dDer = w - x
                         const dMin = Math.min(dArriba, dAbajo, dIzq, dDer)
@@ -227,6 +324,10 @@ ColumnLayout {
                         } else {
                             lado = "right"; fraccion = y / h
                         }
+                        if (fraccion <= 0.08)
+                            fraccion = 0
+                        else if (fraccion >= 0.92)
+                            fraccion = 1
                         return { side: lado,
                                  align: Math.round(
                                      Math.max(0, Math.min(1, fraccion)) * 100) }

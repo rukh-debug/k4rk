@@ -206,6 +206,32 @@ commands that come next. The rest of this page explains what it wrote.
 The plugin is the state: it lives always, island or no island. The view
 only paints, and only exists while the plugin holds the island.
 
+Where that room is depends on the user's **How views open** setting
+(Settings → Island → Summoned views). In **island** mode — the default,
+and the classic behavior — one summoned view at a time deploys from the
+bar and `priority` decides which. In **window** mode every open
+`colocable` view comes out of the screen's frame as a drawer of its
+own, on the edge and at the point its placement says — the same
+placement the island would deploy it at — and several may be open at
+once. The ends of an edge are corners: a placement flush at either end
+attaches the view to two walls — flush along its edge and the side
+wall — and the drawer grows out of the corner, sliding in along the
+diagonal. It does not sit beside the frame: at each wall the frame
+swells into the card — a long, shallow pour of the same material — so
+card, pour and rim read as one body. The bar can live in a corner
+itself (Settings → Island → alignment), where the rim carries its
+material into the turn. The island keeps the pill, the hover views and
+the transitions
+between them, and stays alive above the dim the host paints behind any
+summoned view that is out — in either mode; hover views dim nothing.
+Your contract is the same in both — `view`,
+`islandWidth`/`islandHeight` and the keyboard flags mean what they
+always meant — and there is nothing to detect or serve: the host
+mounts the same Component in the drawer. What a window does not get is
+the island's hover-exit timeout. Its dismissal is otherwise richer, not
+poorer: the dim's click dismisses every drawer at once, Escape closes
+the focused one, and the view's own cross and verbs work as always.
+
 ```qml
 // HolaPlugin.qml
 import QtQuick

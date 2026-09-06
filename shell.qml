@@ -12,6 +12,7 @@ import Quickshell.Wayland
 import K4 as K4
 import "core"
 import "services"
+import "widgets"
 
 Scope {
     id: root
@@ -42,8 +43,16 @@ Scope {
 
         let best = null
         const lista = PluginManager.instancias
+        //  In window mode the summoned surfaces do not queue for the
+        //  island: every OPEN one gets a window of its own (see the
+        //  Repeater below), and the island keeps what belongs to it —
+        //  the pill, the hover views and the transients.
+        const aVentana = Settings.popupMode === "window"
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
+            if (aVentana && p.colocable && !p.transitorio
+                    && p.name !== PluginManager.pillId)
+                continue
             if (p.habilitado && p.active
                     && (best === null || p.priority > best.priority))
                 best = p
@@ -254,6 +263,14 @@ Scope {
             id: panelWindow
             required property var modelData
             screen: modelData
+
+            //  The island lives in Overlay — above the dim behind the
+            //  summoned views (a Top surface, below) so the pill and
+            //  its hover views stay bright and clickable whether the
+            //  view deployed from here or came out of the frame in a
+            //  drawer. Layers order strictly: Overlay > Top, whatever
+            //  was created first.
+            WlrLayershell.layer: WlrLayer.Overlay
 
             //  La barra vive en el borde que diga Ajustes. El resto del
             //  fichero pregunta `abajo` en vez de repetir la comparación.
@@ -1323,6 +1340,200 @@ Scope {
 
 
 
+        }
+    }
+
+    // ── windows for the open views ───────────────────────────────
+    //
+    //  Only while the mode says windows (see Settings.popupMode): the
+    //  summoned views the ladder skips above come out here instead,
+    //  one VentanaPopup each — and, unlike the island, several at
+    //  once. The pill stays interactive the whole time: hovering it
+    //  still opens the clock and the player.
+    readonly property var ventanasAbiertas: {
+        const salida = []
+        const lista = PluginManager.instancias
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
+            if (p.habilitado && p.active && p.colocable && !p.transitorio
+                    && p.name !== PluginManager.pillId)
+                salida.push(p)
+        }
+        return salida
+    }
+
+    //  Which window opened last, newest first. The keyboard is one
+    //  per session: the newest window may hold it exclusively, the
+    //  rest type again once clicked. Rebuilt on every open and close.
+    property var _ordenVentanas: []
+
+    //  The windows themselves are created by hand, not by a Repeater:
+    //  a Repeater's delegate must be an Item and these are windows, and
+    //  a model reset would also remount every OTHER window each time
+    //  one opens or closes. Hand-rolling means a window keeps its view
+    //  —its scroll, its typing— across churn that is not its own.
+    property var _ventanasInstancias: ({})    // name -> VentanaPopup
+
+    property Component componenteVentana: Component { VentanaPopup { } }
+
+    function sincronizarVentanas() {
+        //  Island mode: nothing to host, everything must go.
+        if (Settings.popupMode !== "window") {
+            cerrarVentanas()
+            return
+        }
+
+        const vivas = {}
+        for (let i = 0; i < ventanasAbiertas.length; ++i) {
+            const p = ventanasAbiertas[i]
+            vivas[p.name] = true
+
+            let v = _ventanasInstancias[p.name]
+            if (!v) {
+                v = componenteVentana.createObject(root, { plugin: p })
+                _ventanasInstancias[p.name] = v
+            } else if (v.plugin !== p) {
+                //  A reload replaced the instance: the window stays,
+                //  the plugin it hosts does not.
+                v.plugin = p
+            }
+            v.indice = i
+            v.esUltima = _ordenVentanas.length > 0
+                        && _ordenVentanas[0] === p.name
+        }
+
+        for (const nombre in _ventanasInstancias) {
+            if (!vivas[nombre]) {
+                _ventanasInstancias[nombre].destroy()
+                delete _ventanasInstancias[nombre]
+            }
+        }
+    }
+
+    function cerrarVentanas() {
+        for (const nombre in _ventanasInstancias) {
+            _ventanasInstancias[nombre].destroy()
+            delete _ventanasInstancias[nombre]
+        }
+    }
+
+    onVentanasAbiertasChanged: {
+        const nombres = ventanasAbiertas.map(function (p) { return p.name })
+        const orden = _ordenVentanas.filter(function (n) {
+            return nombres.indexOf(n) >= 0
+        })
+        for (let i = nombres.length - 1; i >= 0; --i) {
+            if (orden.indexOf(nombres[i]) < 0)
+                orden.unshift(nombres[i])
+        }
+        _ordenVentanas = orden
+
+        //  A summon also picks its screen: the one it was asked on, or
+        //  the focused one — the same choice the island would make.
+        if (orden.length > 0) {
+            Island.pantallaActiva = Island.tomarPantallaPedida()
+            Island.pantallaPedida = ""
+        }
+
+        sincronizarVentanas()
+    }
+
+    //  The mode can flip while windows are open: the setting row is
+    //  live, and the views must move back to the island at once.
+    Connections {
+        target: Settings
+        function onPopupModeChanged() { sincronizarVentanas() }
+    }
+
+    //  Any summoned view out, in either mode: deployed from the island
+    //  or out of the frame in a drawer. Hover views and transients do
+    //  not count — they are glances, not openings.
+    readonly property bool hayVistaInvocada: {
+        if (Settings.popupMode === "window")
+            return ventanasAbiertas.length > 0
+        const p = activePlugin
+        return !!p && p.name !== PluginManager.pillId
+               && p.colocable && !p.transitorio
+    }
+
+    //  One click on the dim dismisses the whole window session — the
+    //  drawers go in one gesture, newest first, through the same
+    //  `close()` door Escape uses.
+    function cerrarPopups() {
+        const lista = ventanasAbiertas.slice()
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
+            if (typeof p.close === "function")
+                p.close()
+        }
+    }
+
+    // ── the dim behind the summoned views ────────────────
+    //
+    //  One surface, always mapped: mapping a layer surface on demand
+    //  shows the compositor's configure race — a dim that seems to
+    //  grow out of an edge — and dimming is the one effect that must
+    //  land all at once or not at all. The surface stays up and fully
+    //  transparent; the dim is an opacity flip with no animation, so
+    //  there is never a frame of half-dimmed screen.
+    //
+    //  It dims in BOTH modes: any summoned view out — from the island
+    //  or in a drawer — quiets the rest of the screen behind it. The
+    //  island lives in Overlay, above this, so the pill and its hover
+    //  views stay bright and alive either way.
+    //
+    //  The dim's CLICK only exists in window mode, and only while the
+    //  gesture is on: from the island, the click outside a view
+    //  already belongs to the bar's own catcher, above, and this
+    //  surface passes it through untouched.
+    PanelWindow {
+        id: fondoDim
+
+        readonly property bool oscura: root.hayVistaInvocada
+
+        //  Input only when the dim is the catcher: window mode, the
+        //  gesture on, and something out to catch for. Any other
+        //  state and the whole surface is click-through — a
+        //  transparent layer that eats clicks is a desktop that
+        //  stopped answering.
+        readonly property bool atrapa: root.hayVistaInvocada
+                                       && Settings.popupMode === "window"
+                                       && Settings.cerrarConClicFuera
+
+        screen: {
+            const nombre = Island.pantallaActiva
+            const lista = Quickshell.screens
+            for (let i = 0; i < lista.length; ++i)
+                if (lista[i].name === nombre)
+                    return lista[i]
+            return lista.length > 0 ? lista[0] : null
+        }
+
+        anchors.top: true
+        anchors.left: true
+        anchors.right: true
+        anchors.bottom: true
+        color: "transparent"
+
+        WlrLayershell.namespace: "k4-popup-dim"
+        WlrLayershell.layer: WlrLayer.Top
+
+        Item { id: agujero }          // 0×0: the nothing an empty mask is
+        property Region regionNada: Region { item: agujero }
+
+        mask: atrapa ? null : regionNada
+
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(0, 0, 0, 0.5)
+            opacity: fondoDim.oscura ? 1 : 0
+            //  No Behavior on purpose: see the header — all at once.
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: fondoDim.atrapa
+            onClicked: root.cerrarPopups()
         }
     }
 

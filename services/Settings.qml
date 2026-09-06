@@ -34,7 +34,7 @@ Singleton {
     //  En qué punto del borde se centra la island, en tanto por ciento del
     //  ancho libre: 50 es el centro de siempre. Un plugin puede desplazarla
     //  TEMPORALMENTE con K4.Isla.colocar; esto es la base a la que vuelve.
-    property int barAlignment: 50            // 15 · 50 · 85
+    property int barAlignment: 50            // 0 · 15 · 50 · 85 · 100
     //  Qué hace la barra con el sitio del escritorio.
     //
     //  «reserva» es lo de siempre: la franja plegada se le quita al escritorio
@@ -44,11 +44,19 @@ Singleton {
     //  sino una regla: reserva como siempre, y se esconde SOLO mientras una
     //  ventana llena la pantalla. shell.qml es quien las obedece.
     property string islandSpace: "reserve"    // reserve · auto · onTop · hidden
-    //  Click outside the bar closes whatever view is deployed, like Escape.
-    //  shell.qml grows its surface to the whole screen while a view is open
-    //  and spends the outside tap on closing it. Off is the old behavior:
-    //  the click passes through to the desktop and the view stays.
+    // Click outside the bar closes whatever view is deployed, like Escape.
+    // shell.qml grows its surface to the whole screen while a view is open
+    // and spends the outside tap on closing it. Off is the old behavior:
+    // the click passes through to the desktop and the view stays.
     property bool cerrarConClicFuera: true
+    //  Where the summoned views — control centre, settings, launcher… —
+    //  open. "island": the classic one-at-a-time deployment from the
+    //  bar. "window": each one in a drawer of its own, out of the
+    //  screen's frame at its placement, several at once — and the
+    //  island keeps the pill and its hover previews, over the dim the
+    //  host paints while windows are open. shell.qml reads it both for
+    //  the island ladder and the windows.
+    property string popupMode: "island"     // island · window
     // widgets/TrayRow.qml: iconos de bandeja en la píldora
     // Apagada de fábrica: en la píldora los iconos de bandeja son ruido casi
     // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
@@ -212,10 +220,13 @@ Singleton {
     //  other three edges summon it back — the path TO it when it is not
     //  there. Off means reaching for the bar's own edge only, as before.
     property bool edgeZoneEnabled: true
-    //  How many pixels of border answer, per edge. One is the default on
-    //  purpose: it is the thinnest promise the screen edge can make, and
-    //  every pixel above it is a pixel of desktop clicks the strip keeps.
-    property int edgeZoneSize: 1                // 1–8, steps of 1
+    //  How many pixels of border, per edge. One is the thinnest
+    //  promise the screen edge can make; every pixel above it is a
+    //  pixel of desktop clicks the strip keeps. But the rim is also
+    //  the FRAME the corner popups pour into — a fat rim (10–14) is
+    //  what makes their fillets read as fused instead of bumpy, so
+    //  the ceiling leaves room for a frame with real mass.
+    property int edgeZoneSize: 1                // 1–16, steps of 1
     //  How rounded the rim's INSIDE corners are — where one border turns
     //  into the next. Six is quiet company for a 1 px rim; twenty-four is
     //  a bold arc. Zero is square, and the rim stays a frame.
@@ -296,11 +307,11 @@ Singleton {
                 { id: "edgeZoneEnabled", nombre: "Island rim around the screen",
                   desc: "The island's own colour as a strip along every border — and while the bar is away, touching a border brings it back",
                   glifo: 0xF0741 },   // md-gesture_tap
-                { id: "edgeZoneSize", tipo: "numero", min: 1, max: 8,
+                { id: "edgeZoneSize", tipo: "numero", min: 1, max: 16,
                   paso: 1, unidad: "px",
                   requiere: "edgeZoneEnabled",
                   nombre: "Rim thickness",
-                  desc: "Pixels of island colour along the borders — each one also keeps its clicks",
+                  desc: "Pixels of island colour along the borders — the frame the corner popups fuse into; each one also keeps its clicks",
                   glifo: 0xF00D0 },   // md-border_style
                 { id: "rimRadius", tipo: "numero", min: 0, max: 24,
                   paso: 1, unidad: "px",
@@ -316,6 +327,11 @@ Singleton {
                   desc: "Recent ones, under the clock and player", glifo: 0xF009A },
                 { id: "notificationsOnFocus", nombre: "Dismiss when you switch to the app",
                   desc: "Switching to its window already counts as having attended to them", glifo: 0xF039F },
+                { tipo: "titulo", nombre: "Summoned views" },
+                { id: "popupMode", tipo: "eleccion", de: "modosVista",
+                  nombre: "How views open",
+                  desc: "Each in its own window — several at once — or from the island, one at a time",
+                  glifo: 0xF00C7 },   // md-window_maximize
                 { tipo: "titulo", nombre: "Clicks" },
                 { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
                   desc: "Same as Escape: a deployed view closes when you click outside the bar",
@@ -493,12 +509,22 @@ Singleton {
                     { codigo: "onTop",   nombre: "On top" },
                     { codigo: "hidden",  nombre: "Hidden" }]
         if (de === "alineaciones")
-            return [{ codigo: 15, nombre: "Left" },
-                    { codigo: 50, nombre: "Centre" },
-                    { codigo: 85, nombre: "Right" }]
+            //  The ends are corners, not "very left": 0 and 100 sit
+            //  FLUSH against the side wall, so the bar attaches to
+            //  two sides of the screen — its edge and the wall — and
+            //  the rim carries the material into the turn. A gap you
+            //  can see is 15 and 85; a corner is a corner.
+            return [{ codigo: 0,   nombre: "Left corner" },
+                    { codigo: 15,  nombre: "Left" },
+                    { codigo: 50,  nombre: "Centre" },
+                    { codigo: 85,  nombre: "Right" },
+                    { codigo: 100, nombre: "Right corner" }]
         if (de === "workspaceStyles")
             return [{ codigo: "dots",    nombre: "Dots" },
                     { codigo: "numbers", nombre: "Numbers" }]
+        if (de === "modosVista")
+            return [{ codigo: "window", nombre: "Own window" },
+                    { codigo: "island", nombre: "From the island" }]
         return []
     }
 
@@ -542,6 +568,7 @@ Singleton {
     //  un singleton tiene decenas de propiedades internas que no son ajustes.
     readonly property var claves: [
         "barPosition", "barAlignment", "islandSpace", "cerrarConClicFuera",
+        "popupMode",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont",

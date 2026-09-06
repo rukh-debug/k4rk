@@ -1,19 +1,31 @@
 #!/usr/bin/env python3
-"""Muestreador del estado del equipo.
+"""Top-consumer walker for services/Sistema.qml.
 
-Publica una línea JSON cada pocos segundos con lo que está pasando: CPU, RAM,
-GPU, red, disco y los procesos que más comen. El módulo de la island solo pinta
-lo que llega; leer /proc desde QML sería posible pero acabaría en veinte
-FileView releyendo ficheros y calculando deltas a mano.
+The QML side reads /proc directly for everything instantaneous; what
+it cannot do is list directories, and two things need that: finding
+the hwmon temperature files and walking /proc/<pid> for the top
+consumers. This helper does both, and only while the System view is
+open.
 
-Casi todo se mide por diferencia entre dos muestras —el uso de CPU y el tráfico
-de red no son valores, son ritmos—, así que la primera vuelta no publica nada:
-no hay con qué comparar.
+Its first line names the temperature files and whether nvidia-smi
+exists (starting a binary that is not there logs a warning every
+time, so the QML side refuses to even try):
+
+    {"chips": {"cpu": "/sys/class/hwmon/...", "nvme": "/sys/class/hwmon/...", "gpu": true}}
+
+then one JSON line every few seconds with the per-process deltas:
+
+    {"procesos": [{"pid": 1, "nombre": "...", "cpu": 12.3, "ram": 45}]}
+
+A process's CPU percentage is a rhythm — `ps` reports a lifetime
+average, which says nothing about a browser open since yesterday — so
+each pass is compared against the previous sample. The first pass
+arms the delta and publishes nothing.
 """
 
 import json
 import os
-import subprocess
+import shutil
 import sys
 import time
 
@@ -22,37 +34,20 @@ HILOS = os.cpu_count() or 1
 RELOJ = os.sysconf("SC_CLK_TCK")
 
 
-# ── CPU ──────────────────────────────────────────────────────────────
-
-def lee_cpu():
-    with open("/proc/stat") as f:
-        campos = f.readline().split()[1:]
-    nums = [int(x) for x in campos]
-    ocioso = nums[3] + nums[4]          # idle + iowait
-    return sum(nums), ocioso
-
-
-def uso_cpu(antes, ahora):
-    dt = ahora[0] - antes[0]
-    di = ahora[1] - antes[1]
-    if dt <= 0:
-        return 0.0
-    return max(0.0, min(100.0, (1 - di / dt) * 100))
-
-
-# ── temperaturas ─────────────────────────────────────────────────────
+# ── temperature files ───────────────────────────────────────────────
 #
-#  Se busca por nombre de chip: k10temp es el Ryzen, coretemp el Intel. La
-#  placa (gigabyte_wmi, nct6…) publica media docena de sondas sin etiquetar
-#  que no dicen nada, así que se ignoran.
+#  Sought by chip name: k10temp is the Ryzen, coretemp the Intel. The
+#  board (gigabyte_wmi, nct6…) publishes half a dozen unlabeled probes
+#  that say nothing, so they are ignored. Empty string means "not
+#  found", and the view keeps its dash.
 
 CHIPS_CPU = ("k10temp", "coretemp", "zenpower", "cpu_thermal")
 ETIQUETAS_CPU = ("Tctl", "Tdie", "Package id 0")
 
 
-def temperaturas():
-    cpu = None
-    nvme = None
+def rutas_temperatura():
+    cpu = ""
+    nvme = ""
 
     for base in sorted(os.listdir("/sys/class/hwmon")):
         ruta = os.path.join("/sys/class/hwmon", base)
@@ -65,11 +60,6 @@ def temperaturas():
         for fichero in sorted(os.listdir(ruta)):
             if not fichero.endswith("_input") or not fichero.startswith("temp"):
                 continue
-            try:
-                with open(os.path.join(ruta, fichero)) as f:
-                    valor = int(f.read().strip()) / 1000.0
-            except (OSError, ValueError):
-                continue
 
             etiqueta = ""
             try:
@@ -78,131 +68,15 @@ def temperaturas():
             except OSError:
                 pass
 
-            if chip in CHIPS_CPU and (cpu is None or etiqueta in ETIQUETAS_CPU):
-                cpu = valor
-            elif chip == "nvme" and nvme is None:
-                nvme = valor
+            if chip in CHIPS_CPU and (cpu == "" or etiqueta in ETIQUETAS_CPU):
+                cpu = os.path.join(ruta, fichero)
+            elif chip == "nvme" and nvme == "":
+                nvme = os.path.join(ruta, fichero)
 
-    return cpu, nvme
-
-
-# ── memoria ──────────────────────────────────────────────────────────
-
-def memoria():
-    datos = {}
-    with open("/proc/meminfo") as f:
-        for linea in f:
-            partes = linea.split()
-            if len(partes) >= 2:
-                datos[partes[0].rstrip(":")] = int(partes[1])
-
-    total = datos.get("MemTotal", 0) / 1048576.0          # GiB
-    disponible = datos.get("MemAvailable", 0) / 1048576.0
-    usada = max(0.0, total - disponible)
-
-    swapTotal = datos.get("SwapTotal", 0) / 1048576.0
-    swapUsada = max(0.0, swapTotal - datos.get("SwapFree", 0) / 1048576.0)
-
-    return {
-        "usada": round(usada, 2),
-        "total": round(total, 2),
-        "pct": round(usada / total * 100, 1) if total else 0,
-        "swapUsada": round(swapUsada, 2),
-        "swapTotal": round(swapTotal, 2),
-    }
+    return {"cpu": cpu, "nvme": nvme}
 
 
-# ── red ──────────────────────────────────────────────────────────────
-
-def lee_red():
-    total = {}
-    with open("/proc/net/dev") as f:
-        f.readline(); f.readline()
-        for linea in f:
-            nombre, resto = linea.split(":", 1)
-            nombre = nombre.strip()
-            if nombre == "lo":
-                continue
-            campos = resto.split()
-            total[nombre] = (int(campos[0]), int(campos[8]))
-    return total
-
-
-def trafico(antes, ahora, dt):
-    """La interfaz que más se mueve, que es la que de verdad estás usando."""
-    mejor = None
-    for nombre, (rx, tx) in ahora.items():
-        if nombre not in antes:
-            continue
-        drx = max(0, rx - antes[nombre][0]) / dt
-        dtx = max(0, tx - antes[nombre][1]) / dt
-        if mejor is None or drx + dtx > mejor["rx"] + mejor["tx"]:
-            mejor = {"iface": nombre, "rx": drx, "tx": dtx}
-
-    if mejor is None:
-        return {"iface": "", "rx": 0, "tx": 0}
-    mejor["rx"] = round(mejor["rx"])
-    mejor["tx"] = round(mejor["tx"])
-    return mejor
-
-
-# ── disco ────────────────────────────────────────────────────────────
-
-def disco():
-    try:
-        st = os.statvfs(os.path.expanduser("~"))
-    except OSError:
-        return None
-    total = st.f_blocks * st.f_frsize / 1073741824.0
-    libre = st.f_bavail * st.f_frsize / 1073741824.0
-    usado = total - libre
-    return {
-        "usado": round(usado, 1),
-        "total": round(total, 1),
-        "pct": round(usado / total * 100, 1) if total else 0,
-    }
-
-
-# ── GPU ──────────────────────────────────────────────────────────────
-#
-#  nvidia-smi tarda lo suyo en arrancar, así que se pregunta una vuelta sí y
-#  otra no: a dos segundos por muestra sigue siendo información fresca y se
-#  ahorra la mitad de los procesos.
-
-CONSULTA_GPU = ["nvidia-smi",
-                "--query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total",
-                "--format=csv,noheader,nounits"]
-
-
-def gpu():
-    try:
-        r = subprocess.run(CONSULTA_GPU, capture_output=True, text=True, timeout=4)
-    except Exception:
-        return None
-    linea = r.stdout.strip().split("\n")[0] if r.stdout.strip() else ""
-    if not linea:
-        return None
-
-    partes = [p.strip() for p in linea.split(",")]
-    if len(partes) < 5:
-        return None
-    try:
-        return {
-            "nombre": partes[0].replace("NVIDIA ", ""),
-            "uso": float(partes[1]),
-            "temp": float(partes[2]),
-            "memUsada": float(partes[3]),
-            "memTotal": float(partes[4]),
-        }
-    except ValueError:
-        return None
-
-
-# ── procesos ─────────────────────────────────────────────────────────
-#
-#  El porcentaje de CPU de un proceso también es un ritmo: `ps` da la media
-#  desde que arrancó, que para un navegador abierto desde ayer no dice nada.
-#  Aquí se guarda el tiempo de cada uno y se compara con la muestra anterior.
+# ── processes ───────────────────────────────────────────────────────
 
 def lee_procesos():
     salida = {}
@@ -212,12 +86,12 @@ def lee_procesos():
         try:
             with open(f"/proc/{pid}/stat") as f:
                 bruto = f.read()
-            # el nombre va entre paréntesis y puede llevar espacios dentro
+            # the name sits between parentheses and may hold spaces
             cierre = bruto.rfind(")")
             nombre = bruto[bruto.find("(") + 1:cierre]
             campos = bruto[cierre + 2:].split()
             tiempo = int(campos[11]) + int(campos[12])      # utime + stime
-            rss = int(campos[21]) * 4096 / 1048576.0        # páginas -> MiB
+            rss = int(campos[21]) * 4096 / 1048576.0        # pages -> MiB
         except (OSError, ValueError, IndexError):
             continue
         salida[pid] = (nombre, tiempo, rss)
@@ -239,48 +113,31 @@ def top(antes, ahora, dt, cuantos=6):
     return lista[:cuantos]
 
 
-# ── bucle ────────────────────────────────────────────────────────────
+# ── loop ────────────────────────────────────────────────────────────
 
 def main():
-    antesCpu = lee_cpu()
-    antesRed = lee_red()
-    antesProc = lee_procesos()
-    ultimoGpu = None
-    vuelta = 0
+    chips = rutas_temperatura()
+    chips["gpu"] = shutil.which("nvidia-smi") is not None
+    print(json.dumps({"chips": chips}), flush=True)
+
+    antes = lee_procesos()
+    t_previo = time.monotonic()
 
     while True:
         time.sleep(INTERVALO)
-        vuelta += 1
+        ahora = lee_procesos()
+        t = time.monotonic()
+        dt = max(0.001, t - t_previo)
 
-        ahoraCpu = lee_cpu()
-        ahoraRed = lee_red()
-        ahoraProc = lee_procesos()
+        print(json.dumps({"procesos": top(antes, ahora, dt)}), flush=True)
 
-        tempCpu, tempNvme = temperaturas()
-
-        if vuelta % 2 == 1 or ultimoGpu is None:
-            ultimoGpu = gpu()
-
-        muestra = {
-            "cpu": {"uso": round(uso_cpu(antesCpu, ahoraCpu), 1),
-                    "temp": tempCpu, "hilos": HILOS},
-            "ram": memoria(),
-            "red": trafico(antesRed, ahoraRed, INTERVALO),
-            "disco": disco(),
-            "tempNvme": tempNvme,
-            "procesos": top(antesProc, ahoraProc, INTERVALO),
-        }
-        if ultimoGpu:
-            muestra["gpu"] = ultimoGpu
-
-        print(json.dumps(muestra), flush=True)
-
-        antesCpu, antesRed, antesProc = ahoraCpu, ahoraRed, ahoraProc
+        antes = ahora
+        t_previo = t
 
 
 if __name__ == "__main__":
     try:
         main()
     except (KeyboardInterrupt, BrokenPipeError):
-        # que se cierre quien lee no es un fallo: es el final
+        # whoever reads closing is not a failure: it is the end
         sys.exit(0)

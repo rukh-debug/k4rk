@@ -38,7 +38,7 @@ equivalent exists.
 | `tecladoOpcional` | On-demand keyboard focus |
 | `tecladoAlPasar` | Exclusive keyboard focus only while the pointer is over the island (for games) |
 | `closeOnHoverExit` | Enable hover-exit timeout |
-| `colocable` | Your surface is a summoned view: it gets a card in Settings → Placement. Only what OPENS gets placed — the pill's wings, transients and indicators do not |
+| `colocable` | Your surface is a summoned view: it gets a card in Settings → Placement, and in window mode (Settings → Island) a drawer of its own out of the screen's frame, at its placement, while open — several may coexist over a dimmed screen. Only what OPENS gets placed — the pill's wings, transients and indicators do not |
 
 The host also knows a few optional verbs. They exist as no-op stubs on
 the contract, so a plugin overrides the ones it serves and the host can
