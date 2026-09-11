@@ -1,24 +1,17 @@
-//  La forma de la island: el cuerpo redondeado y las dos esquinas invertidas
-//  que lo funden con el borde de la pantalla.
+//  The island shape: a rounded body and two inverted corners that merge
+//  it into the screen edge.
 //
-//  Vivía suelta dentro de `shell.qml`. Sale a su propio fichero porque ahora la
-//  dibujan DOS sitios: la barra de verdad y la previsualización de Ajustes, que
-//  no sería una previsualización si dibujara otra cosa — un rectángulo azul
-//  redondeado no es esta forma, y lo que se quiere enseñar es precisamente cómo
-//  queda.
+//  It used to live inside `shell.qml`. It is a component because both the
+//  real bar and the Settings preview draw it; a rounded blue rectangle is
+//  not a preview of this silhouette.
 //
-//  Ojo con los tamaños pequeños: hace falta `2·(ala + radio)` de ancho para que
-//  el trazado se cierre. Con menos, la curva derecha empieza antes de que acabe
-//  la izquierda, el recorrido se cruza y sale un rectángulo; y si `ala + radio`
-//  llega justo a la mitad, las dos curvas de abajo se juntan en punta y sale un
-//  champiñón. Por eso los radios se acotan por el ANCHO y no solo por el alto.
+//  Small sizes need care: the path needs `2 * (wing + radius)` of length.
+//  Below that the two curves cross, so both values are clamped by length as
+//  well as thickness.
 //
-//  El trazado se define en coordenadas DE BORDE —(u, v): u a lo largo del
-//  borde, v la distancia a él— y `punto()` las traduce al item. Así los cuatro
-//  lados son el mismo dibujo con otro mapa, y no cuatro formas que irse
-//  desincronizando. Las esquinas invertidas quedan SIEMPRE en el lado que toca
-//  el borde de la pantalla, que es el punto de fundirse con él; las redondeadas,
-//  enfrente.
+//  The path uses edge coordinates: u runs along the edge and v away from
+//  it. `punto()` maps that one drawing to all four sides, keeping the
+//  inverted corners against the wall and the rounded corners inside.
 
 import QtQuick
 import QtQuick.Shapes
@@ -26,33 +19,27 @@ import QtQuick.Shapes
 Shape {
     id: silueta
 
-    //  Cuánto muerde cada esquina invertida hacia dentro.
+    // How far each inverted corner reaches into the body.
     property real ala: Theme.wing
 
-    //  El redondeo de las dos esquinas contrarias al borde.
+    // Rounding on the two corners facing the desktop.
     property real cuerpoRadio: 20
 
     property color relleno: Theme.islandBg
 
-    //  De qué borde cuelga la island: "top" · "bottom" · "left" · "right".
-    //  «bottom» fue un `reflejada` que daba la vuelta al dibujo; con vistas
-    //  que pueden abrirse en cualquier borde, la generalización es el mapa.
+    // The edge carrying the island: top, bottom, left, or right.
     property string lado: "top"
 
-    // CurveRenderer suaviza mejor, pero descarta las esquinas invertidas (las
-    // alas), así que se antialiasa con MSAA.
+    // CurveRenderer drops the inverted wings, so use MSAA instead.
     antialiasing: true
     layer.enabled: true
     layer.samples: 8
     layer.smooth: true
 
-    //  «bottom» y «left» reflejan el dibujo, y una reflexión invierte el
-    //  sentido de cada arco: sin esto el relleno saldría del revés — la forma
-    //  bien, el agujero dentro.
+    // Bottom and left reflect the path, which also reverses arc direction.
     readonly property bool voltear: lado === "bottom" || lado === "left"
 
-    //  A lo largo del borde, y de grosor: según el lado, uno es el ancho del
-    //  item y el otro su alto.
+    // Length along the edge and thickness away from it.
     readonly property real largo:
         (lado === "left" || lado === "right") ? height : width
     readonly property real grueso:
@@ -77,7 +64,7 @@ Shape {
 
         readonly property real largo: silueta.largo
         readonly property real grueso: silueta.grueso
-        //  Acotados por el ancho además de por el alto: ver la nota de arriba.
+        // Clamp by length as well as thickness; see the note above.
         readonly property real g: Math.max(0, Math.min(silueta.ala,
                                                        grueso / 2,
                                                        largo / 6))
@@ -85,7 +72,7 @@ Shape {
                                                        grueso / 2,
                                                        largo / 3 - trazo.g))
 
-        //  Cada nodo del trazado, ya mapeado al item.
+        // Every path node, mapped into item coordinates.
         readonly property var p0: silueta.punto(0, 0)
         readonly property var p1: silueta.punto(trazo.g, trazo.g)
         readonly property var p2: silueta.punto(trazo.g, grueso - trazo.r)
@@ -98,7 +85,7 @@ Shape {
         startX: trazo.p0.x
         startY: trazo.p0.y
 
-        // esquina invertida del principio del borde
+        // Inverted corner at the beginning of the edge.
         PathArc {
             x: trazo.p1.x; y: trazo.p1.y
             radiusX: trazo.g; radiusY: trazo.g
@@ -108,7 +95,7 @@ Shape {
 
         PathLine { x: trazo.p2.x; y: trazo.p2.y }
 
-        // redonda del lado interior, principio
+        // First rounded interior corner.
         PathArc {
             x: trazo.p3.x; y: trazo.p3.y
             radiusX: trazo.r; radiusY: trazo.r
@@ -118,7 +105,7 @@ Shape {
 
         PathLine { x: trazo.p4.x; y: trazo.p4.y }
 
-        // redonda del lado interior, final
+        // Last rounded interior corner.
         PathArc {
             x: trazo.p5.x; y: trazo.p5.y
             radiusX: trazo.r; radiusY: trazo.r
@@ -128,7 +115,7 @@ Shape {
 
         PathLine { x: trazo.p6.x; y: trazo.p6.y }
 
-        // esquina invertida del final del borde
+        // Inverted corner at the end of the edge.
         PathArc {
             x: trazo.p7.x; y: trazo.p7.y
             radiusX: trazo.g; radiusY: trazo.g

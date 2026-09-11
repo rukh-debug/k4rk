@@ -356,9 +356,9 @@ Singleton {
                      "donde", "abrir", "abre", "sale"],
             glifo: 0xF09BB,        // md-arrow_decision
             desc: "Which side each view opens from, and where along that side — drag the dot to any point, corners included. The pill keeps its own home — see Island.",
-            //  One card per openable view: side chips («Follow bar» is the
-            //  default and the first chip) and alignment chips, with a
-            //  little monitor that shows the point the words are choosing.
+            //  One card per openable view: wrapping side controls with
+            //  Follow bar first, plus a draggable monitor that previews the
+            //  actual edge or corner attachment.
             vista: "placement",
             opciones: []
         },
