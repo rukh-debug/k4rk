@@ -73,28 +73,13 @@ PanelWindow {
     readonly property int grosorRim: Settings.edgeZoneEnabled
                                      ? Settings.edgeZoneSize : 0
 
-    //  ── the pour into the frame ───────────────────────────
-    //
-    //  A tangent quarter-disc — the obvious fillet — is a BUMP: it
-    //  rises a full radius off the wall and protrudes as far past the
-    //  card's edge, so the card reads as sitting proud of the frame.
-    //  What reads as POURED is the opposite proportion: long and
-    //  shallow. An elliptical tongue hugging the wall — one
-    //  rim-thickness of rise, three and a half of reach — so the
-    //  frame visibly swells into the card and settles, never bumps.
-    //
-    //  Drawn as strips, pure rectangles: the ellipse's quarter
-    //  profile stepped at fourteen slices, each tooth under 1.2 px,
-    //  invisible against the island's own colour.
-    readonly property real vertidoAlto: grosorRim * 1.25
-    readonly property real vertidoLargo: grosorRim * 6.5
-    readonly property int vertidoPasos: 20
-
-    //  The quarter-ellipse profile, 0 at the wall's surface to 1 at
-    //  the card's edge — the same curve for both pours, only rotated.
-    function perfilVertido(u) {
-        return 1 - Math.sqrt(2 * u - u * u)
-    }
+    // Long, shallow vector fillets make the card and rim read as one
+    // material. Their dimensions remain useful with a one-pixel rim and
+    // stay restrained when the user chooses a thicker frame.
+    readonly property real blendReach: Math.max(24,
+        Math.min(48, grosorRim * 3))
+    readonly property real blendDepth: Math.max(8,
+        Math.min(20, grosorRim + 8))
 
     //  The room the view asks for, clamped to what the screen can
     //  give a drawer: the ceiling the island enforces for its own,
@@ -122,6 +107,23 @@ PanelWindow {
     readonly property bool esquinaInicio: lugar.align <= 0.5
     readonly property bool esquinaFin: lugar.align >= 99.5
     readonly property bool enEsquina: esquinaInicio || esquinaFin
+
+    readonly property bool unidaArriba: enEsquina
+        ? haciaY < 0 : lugar.side === "top"
+    readonly property bool unidaAbajo: enEsquina
+        ? haciaY > 0 : lugar.side === "bottom"
+    readonly property bool unidaIzquierda: enEsquina
+        ? haciaX < 0 : lugar.side === "left"
+    readonly property bool unidaDerecha: enEsquina
+        ? haciaX > 0 : lugar.side === "right"
+
+    // The newest card in each stack owns the frame connection. When the
+    // order changes, the connection and stack offset travel rather than
+    // snapping underneath an entering or retiring drawer.
+    property real conexionMarco: indice === 0 ? 1 : 0
+    Behavior on conexionMarco {
+        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+    }
 
     //  Which screen corner a corner placement names, as a two-letter
     //  compass point. Kept as its own property because the whole
@@ -157,7 +159,30 @@ PanelWindow {
     //  Only the drawer takes input; everything around it stays usable —
     //  which is also what lets SEVERAL windows coexist: clicks fall
     //  through one drawer's surround to the next drawer or the dim.
-    mask: Region { item: tarjeta }
+    mask: Region {
+        item: tarjeta
+
+        Region {
+            item: ventana.conexionMarco > 0.05 && ventana.grosorRim > 0
+                  && ventana.unidaArriba ? zonaArriba : null
+            intersection: Intersection.Combine
+        }
+        Region {
+            item: ventana.conexionMarco > 0.05 && ventana.grosorRim > 0
+                  && ventana.unidaAbajo ? zonaAbajo : null
+            intersection: Intersection.Combine
+        }
+        Region {
+            item: ventana.conexionMarco > 0.05 && ventana.grosorRim > 0
+                  && ventana.unidaIzquierda ? zonaIzquierda : null
+            intersection: Intersection.Combine
+        }
+        Region {
+            item: ventana.conexionMarco > 0.05 && ventana.grosorRim > 0
+                  && ventana.unidaDerecha ? zonaDerecha : null
+            intersection: Intersection.Combine
+        }
+    }
 
     exclusionMode: ExclusionMode.Ignore
     exclusiveZone: -1
@@ -193,9 +218,13 @@ PanelWindow {
 
     //  The stacked drawers' step, clamped so the last one still
     //  leaves its title bar's worth on screen.
-    readonly property real escalon: Math.min(indice * 64,
+    property real escalon: Math.min(indice * 64,
         (ejeVertical ? ventana.width - tarjeta.width
                      : ventana.height - tarjeta.height) - 20)
+
+    Behavior on escalon {
+        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+    }
 
     readonly property real perp: -tucke + avance * (tucke + Math.max(0, escalon))
 
@@ -225,9 +254,9 @@ PanelWindow {
         ? ventana.height - tarjeta.height : 0
 
     readonly property real extraX: enEsquina
-        ? (1 - avance) * tarjeta.width + Math.max(0, escalon) : 0
+        ? (1 - avance) * tarjeta.width - avance * Math.max(0, escalon) : 0
     readonly property real extraY: enEsquina
-        ? (1 - avance) * tarjeta.height + Math.max(0, escalon) : 0
+        ? (1 - avance) * tarjeta.height - avance * Math.max(0, escalon) : 0
 
     // ── the drawer ─────────────────────────────────────────
     Item {
@@ -251,139 +280,24 @@ PanelWindow {
                ? ventana.height - tarjeta.height - ventana.perp
                : ventana.alLado
 
-        //  ── the card ────────────────────────────────────────
-        //
-        //  The classic rounded card. An EDGE drawer squares the two
-        //  corners it opens from; a CORNER drawer squares only the
-        //  one dug into the screen's own corner — its two wall
-        //  corners are squared by the fillets that cover them (see
-        //  below), and the free corner keeps the plain round.
-        //  Patches fill the square corners the radius would leave
-        //  open; they sit under the content, and what it carries
-        //  renders on top.
-        Rectangle {
-            id: base
+        // One vector-backed surface replaces the old rounded rectangle,
+        // corner patches, cover bands and quantized pour. Only the first
+        // card in a stack touches the frame; later cards are a rounded deck
+        // stepping inward from it.
+        EdgeAttachedShape {
             anchors.fill: parent
-            radius: ventana.radio
-            color: Theme.islandBg
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.08)
-
-            Rectangle {
-                visible: ventana.enEsquina
-                         ? ventana.esquinaPantalla === "tl"
-                         : (ventana.lugar.side === "top"
-                            || ventana.lugar.side === "left")
-                width: ventana.radio
-                height: ventana.radio
-                color: Theme.islandBg
-            }
-            Rectangle {
-                visible: ventana.enEsquina
-                         ? ventana.esquinaPantalla === "tr"
-                         : (ventana.lugar.side === "top"
-                            || ventana.lugar.side === "right")
-                anchors.right: parent.right
-                width: ventana.radio
-                height: ventana.radio
-                color: Theme.islandBg
-            }
-            Rectangle {
-                visible: ventana.enEsquina
-                         ? ventana.esquinaPantalla === "bl"
-                         : (ventana.lugar.side === "bottom"
-                            || ventana.lugar.side === "left")
-                anchors.bottom: parent.bottom
-                width: ventana.radio
-                height: ventana.radio
-                color: Theme.islandBg
-            }
-            Rectangle {
-                visible: ventana.enEsquina
-                         ? ventana.esquinaPantalla === "br"
-                         : (ventana.lugar.side === "bottom"
-                            || ventana.lugar.side === "right")
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                width: ventana.radio
-                height: ventana.radio
-                color: Theme.islandBg
-            }
-        }
-
-        //  ── the pour into the frame ──────────────────────
-        //
-        //  Where the card's sides arrive at each wall, the frame
-        //  swells to meet them: a long shallow tongue of the card's
-        //  own colour, hugging the wall, one rim-thickness tall and
-        //  reaching well past the card's side — the wall's material
-        //  rising into the card and settling, the way a poured thing
-        //  meets its mould. Strips of the ellipse profile, all one
-        //  colour with the card and the rim, so card, pour and frame
-        //  read as one body.
-        Item {
-            visible: ventana.enEsquina && ventana.grosorRim > 0
-
-            //  On the horizontal wall: the card's far vertical side,
-            //  the pour reaching along the rim past it.
-            Repeater {
-                model: ventana.vertidoPasos
-
-                Rectangle {
-                    required property int index
-
-                    readonly property real dx: ventana.vertidoLargo
-                        * ventana.perfilVertido(
-                            index / ventana.vertidoPasos)
-                    readonly property real paso:
-                        ventana.vertidoAlto / ventana.vertidoPasos
-
-                    x: ventana.haciaX > 0
-                         ? -dx
-                         : tarjeta.width - ventana.radio
-                    y: ventana.haciaY > 0
-                         ? tarjeta.height - ventana.grosorRim
-                           - (index + 1) * paso
-                         : ventana.grosorRim + index * paso
-                    width: dx + ventana.radio
-                    //  The strip nearest the wall runs on THROUGH the
-                    //  rim band: it buries the card's border where
-                    //  the wall takes over, which would otherwise
-                    //  read as a seam between card and frame.
-                    height: paso + 0.5
-                            + (index === 0 ? ventana.grosorRim : 0)
-                    color: Theme.islandBg
-                }
-            }
-
-            //  On the vertical wall: the card's far horizontal side.
-            Repeater {
-                model: ventana.vertidoPasos
-
-                Rectangle {
-                    required property int index
-
-                    readonly property real dy: ventana.vertidoLargo
-                        * ventana.perfilVertido(
-                            index / ventana.vertidoPasos)
-                    readonly property real paso:
-                        ventana.vertidoAlto / ventana.vertidoPasos
-
-                    x: ventana.haciaX > 0
-                         ? tarjeta.width - ventana.grosorRim
-                           - (index + 1) * paso
-                         : ventana.grosorRim + index * paso
-                    y: ventana.haciaY > 0
-                         ? -dy
-                         : tarjeta.height - ventana.radio
-                    //  Through the rim band at the wall, same as its
-                    //  horizontal twin: no border seam at the frame.
-                    width: paso + 0.5
-                           + (index === 0 ? ventana.grosorRim : 0)
-                    height: dy + ventana.radio
-                    color: Theme.islandBg
-                }
-            }
+            attachTop: ventana.unidaArriba
+            attachBottom: ventana.unidaAbajo
+            attachLeft: ventana.unidaIzquierda
+            attachRight: ventana.unidaDerecha
+            blending: ventana.grosorRim > 0
+            connection: ventana.conexionMarco
+            cornerRadius: ventana.radio
+            rimThickness: ventana.grosorRim
+            blendReach: ventana.blendReach
+            blendDepth: ventana.blendDepth
+            fillColor: Theme.islandBg
+            borderColor: Qt.rgba(1, 1, 1, 0.08)
         }
 
         //  Escape closes, like on the island — the key every view
@@ -400,7 +314,13 @@ PanelWindow {
         Loader {
             anchors.fill: parent
             anchors.margins: ventana.margen
-            active: ventana.plugin && ventana.plugin.viewLoaded
+            //  Mounted for the window's whole life: the plugin's own
+            //  `viewLoaded` dance is the ISLAND's exit protocol —
+            //  content first, size after — and this host does not
+            //  follow it. Here the drawer leaves as one body, frame
+            //  and content together, so the content never unmounts,
+            //  blanks, or resets mid-travel.
+            active: ventana.plugin
             sourceComponent: ventana.plugin ? ventana.plugin.view : null
 
             onStatusChanged: {
@@ -418,12 +338,76 @@ PanelWindow {
         Component.onCompleted: tarjeta.forceActiveFocus()
     }
 
+    // Input follows the visible vector wings. These narrow strips add only
+    // the material beside a connected edge; the transparent corners of the
+    // bounding boxes remain outside the window mask.
+    Item {
+        id: zonaArriba
+        x: tarjeta.x - ventana.blendReach
+        y: tarjeta.y
+        width: tarjeta.width + ventana.blendReach * 2
+        height: ventana.grosorRim + ventana.blendDepth
+    }
+    Item {
+        id: zonaAbajo
+        x: tarjeta.x - ventana.blendReach
+        y: tarjeta.y + tarjeta.height - height
+        width: tarjeta.width + ventana.blendReach * 2
+        height: ventana.grosorRim + ventana.blendDepth
+    }
+    Item {
+        id: zonaIzquierda
+        x: tarjeta.x
+        y: tarjeta.y - ventana.blendReach
+        width: ventana.grosorRim + ventana.blendDepth
+        height: tarjeta.height + ventana.blendReach * 2
+    }
+    Item {
+        id: zonaDerecha
+        x: tarjeta.x + tarjeta.width - width
+        y: tarjeta.y - ventana.blendReach
+        width: ventana.grosorRim + ventana.blendDepth
+        height: tarjeta.height + ventana.blendReach * 2
+    }
+
     onEsUltimaChanged: {
         if (esUltima && plugin && plugin.grabKeyboard)
             tarjeta.forceActiveFocus()
     }
 
     Component.onCompleted: despliegue.restart()
+
+    //  ── the way back in ────────────────────────────────
+    //
+    //  A drawer leaves the way it arrived: drawn back into its
+    //  corner, the same diagonal in reverse. The host calls
+    //  `retraer()` instead of destroying the window, the view stays
+    //  mounted while the drawer travels, and the window destroys
+    //  itself when the edge has swallowed it.
+    property bool retrayendo: false
+
+    function retraer() {
+        if (retrayendo)
+            return
+        retrayendo = true
+        repliegue.from = avance
+        repliegue.restart()
+    }
+
+    //  The plugin's closing BEGINS with `viewLoaded` going false
+    //  while `active` still holds — the API's documented handoff of
+    //  the exit to whoever hosts the view (see K4.Plugin). The
+    //  island answers it by unmounting the content early; this
+    //  drawer answers it with the whole-body retract, at once, so
+    //  content and frame leave together instead of in sequence.
+    Connections {
+        target: ventana.plugin
+
+        function onViewLoadedChanged() {
+            if (ventana.plugin && !ventana.plugin.viewLoaded)
+                ventana.retraer()
+        }
+    }
 
     NumberAnimation {
         id: despliegue
@@ -433,5 +417,19 @@ PanelWindow {
         to: 1
         duration: 200
         easing.type: Easing.OutCubic
+    }
+
+    NumberAnimation {
+        id: repliegue
+        target: ventana
+        property: "avance"
+        to: 0
+        duration: 200
+        //  Fast off the mark on purpose: the plugin mutates its own
+        //  content as it closes (the launcher clears its query, the
+        //  lists reset) and the drawer wants to be mostly gone before
+        //  any of that renders.
+        easing.type: Easing.OutCubic
+        onFinished: ventana.destroy()
     }
 }

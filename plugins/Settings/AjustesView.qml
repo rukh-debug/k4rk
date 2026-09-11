@@ -990,8 +990,8 @@ FadeIn {
                             }
 
                             //  The placement editor: one card per
-                            //  openable view, side chips and alignment
-                            //  chips with a little monitor each.
+                            //  openable view, wrapping side controls and a
+                            //  draggable monitor preview for precise placement.
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true

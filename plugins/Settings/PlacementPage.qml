@@ -75,6 +75,25 @@ ColumnLayout {
              : "right edge · " + Math.round(align) + "%"
     }
 
+    function parDe(p) {
+        if (!p)
+            return { h: "", v: "" }
+        const ini = p.align <= 0.5
+        const fin = p.align >= 99.5
+        if (p.side === "top" || p.side === "bottom") {
+            if (ini)
+                return { h: p.side, v: "left" }
+            if (fin)
+                return { h: p.side, v: "right" }
+            return { h: p.side, v: "" }
+        }
+        if (ini)
+            return { h: "top", v: p.side }
+        if (fin)
+            return { h: "bottom", v: p.side }
+        return { h: "", v: p.side }
+    }
+
     //  The view's own entry, if it has one. A hand-edited file cannot
     //  smuggle a stranger in: a side nobody knows is a view that follows.
     function suya(id) {
@@ -103,24 +122,9 @@ ColumnLayout {
             //  («top, 100%» and «right, 0%») and the chips should
             //  light the same pair for either.
             readonly property var parLados: {
-                const p = tarjeta.propia
-                if (!p)
-                    return { h: "", v: "" }
-                const ini = p.align <= 0.5
-                const fin = p.align >= 99.5
-                if (p.side === "top" || p.side === "bottom") {
-                    if (ini)
-                        return { h: p.side, v: "left" }
-                    if (fin)
-                        return { h: p.side, v: "right" }
-                    return { h: p.side, v: "" }
-                }
-                if (ini)
-                    return { h: "top", v: p.side }
-                if (fin)
-                    return { h: "bottom", v: p.side }
-                return { h: "", v: p.side }
+                return pagina.parDe(tarjeta.propia ? tarjeta.efectiva : null)
             }
+            readonly property var parEfectiva: pagina.parDe(tarjeta.efectiva)
 
             //  A side chip press. The chips TOGGLE: one side is an
             //  edge, two adjacent sides are the corner between them.
@@ -157,20 +161,24 @@ ColumnLayout {
             border.width: 1
             border.color: propia ? Theme.track : "transparent"
 
-            RowLayout {
+            GridLayout {
                 id: columna
                 anchors.fill: parent
                 anchors.margins: 12
-                spacing: 12
+                columns: width < 500 ? 1 : 2
+                columnSpacing: 12
+                rowSpacing: 10
 
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 6
 
                     IslandLabel {
+                        Layout.fillWidth: true
                         text: tarjeta.modelData.nombre
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
+                        elide: Text.ElideRight
                     }
 
                     //  The state in words, because a dot alone does not say
@@ -183,17 +191,22 @@ ColumnLayout {
                                   Settings.barPosition === "bottom"
                                       ? "bottom" : "top",
                                   Settings.barAlignment)
-                            : pagina.palabraPunto(tarjeta.propia.side,
-                                                  tarjeta.propia.align)
+                            : pagina.palabraPunto(tarjeta.efectiva.side,
+                                                  tarjeta.efectiva.align)
                         color: tarjeta.propia === null ? Theme.dim : Theme.muted
                         font.pixelSize: 9
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     //  ── the side chips ────────────────────
                     //
-                    //  Coarse choice; the fine one is the dot. Picking a
-                    //  side here keeps the point the view already had.
-                    RowLayout {
+                    // Coarse choice; the larger monitor is the precise one.
+                    // Flow keeps the right-side controls reachable when the
+                    // Settings window is at its minimum width.
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: childrenRect.height
                         spacing: 5
 
                         Repeater {
@@ -267,9 +280,11 @@ ColumnLayout {
                 Item {
                     id: monitor
 
-                    Layout.preferredWidth: 118
-                    Layout.preferredHeight: 68
-                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: columna.columns === 1 ? 210 : 148
+                    Layout.maximumWidth: 230
+                    Layout.preferredHeight: columna.columns === 1 ? 108 : 84
+                    Layout.alignment: columna.columns === 1
+                        ? Qt.AlignHCenter : Qt.AlignVCenter
 
                     readonly property real margenPunto: 5
                     //  The bar's own edge, for the strip.
@@ -335,7 +350,7 @@ ColumnLayout {
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: 7
+                        radius: 9
                         color: ratonMonitor.containsMouse
                             ? Qt.rgba(1, 1, 1, 0.03) : "transparent"
 
@@ -343,6 +358,40 @@ ColumnLayout {
 
                         border.width: 1
                         border.color: Theme.track
+                    }
+
+                    // The four rails are both affordance and state. In
+                    // particular, the right rail remains a large visible
+                    // target instead of a final chip that can be clipped.
+                    Repeater {
+                        model: [
+                            { side: "top", x: 8, y: 0,
+                              w: monitor.width - 16, h: 4 },
+                            { side: "bottom", x: 8, y: monitor.height - 4,
+                              w: monitor.width - 16, h: 4 },
+                            { side: "left", x: 0, y: 8,
+                              w: 4, h: monitor.height - 16 },
+                            { side: "right", x: monitor.width - 4, y: 8,
+                              w: 4, h: monitor.height - 16 }
+                        ]
+
+                        Rectangle {
+                            required property var modelData
+                            readonly property bool activa:
+                                tarjeta.parEfectiva.h === modelData.side
+                                || tarjeta.parEfectiva.v === modelData.side
+                            x: modelData.x
+                            y: modelData.y
+                            width: modelData.w
+                            height: modelData.h
+                            radius: 2
+                            color: activa ? Theme.blue : Theme.track
+                            opacity: activa ? 0.8 : 0.45
+
+                            Behavior on color {
+                                ColorAnimation { duration: 120 }
+                            }
+                        }
                     }
 
                     //  The pill: a strip along the bar's edge.
@@ -357,17 +406,61 @@ ColumnLayout {
                         color: Theme.track
                     }
 
-                    //  The dot: where this view opens.
+                    // A miniature of the real attached surface makes corner
+                    // placement visible before opening the plugin.
+                    Item {
+                        id: miniatura
+
+                        readonly property var p: monitor.puntoEn(
+                            tarjeta.efectiva.side, tarjeta.efectiva.align)
+                        readonly property bool vertical:
+                            tarjeta.efectiva.side === "left"
+                            || tarjeta.efectiva.side === "right"
+
+                        width: vertical ? 15 : 34
+                        height: vertical ? 30 : 16
+                        readonly property real xCruda:
+                            tarjeta.efectiva.side === "right"
+                            ? p.x - width
+                            : tarjeta.efectiva.side === "left"
+                              ? p.x : p.x - width / 2
+                        readonly property real yCruda:
+                            tarjeta.efectiva.side === "bottom"
+                            ? p.y - height
+                            : tarjeta.efectiva.side === "top"
+                              ? p.y : p.y - height / 2
+                        x: Math.max(monitor.margenPunto, Math.min(
+                            monitor.width - monitor.margenPunto - width,
+                            xCruda))
+                        y: Math.max(monitor.margenPunto, Math.min(
+                            monitor.height - monitor.margenPunto - height,
+                            yCruda))
+
+                        EdgeAttachedShape {
+                            anchors.fill: parent
+                            attachTop: tarjeta.parEfectiva.h === "top"
+                            attachBottom: tarjeta.parEfectiva.h === "bottom"
+                            attachLeft: tarjeta.parEfectiva.v === "left"
+                            attachRight: tarjeta.parEfectiva.v === "right"
+                            cornerRadius: 5
+                            rimThickness: 1
+                            blendReach: 7
+                            blendDepth: 4
+                            fillColor: Theme.blue
+                        }
+                    }
+
+                    // The handle marks the exact draggable anchor point.
                     Rectangle {
                         readonly property var p: monitor.puntoEn(
                             tarjeta.efectiva.side, tarjeta.efectiva.align)
-                        x: p.x - 4
-                        y: p.y - 4
-                        width: 8
-                        height: 8
-                        radius: 4
-                        color: Theme.blue
-                        border.width: 1
+                        x: p.x - 5
+                        y: p.y - 5
+                        width: 10
+                        height: 10
+                        radius: 5
+                        color: Theme.ink
+                        border.width: 2
                         border.color: Theme.islandBg
                     }
 
@@ -382,7 +475,7 @@ ColumnLayout {
                         //  not per pixel.
                         onPressed: function (mouse) {
                             const c = monitor.colocacionEn(mouse.x, mouse.y)
-                            Settings.ponerPlacement(tarjeta.idVista,
+                            Settings.ponerPlacementMemoria(tarjeta.idVista,
                                 c.side, c.align)
                         }
                         onPositionChanged: function (mouse) {

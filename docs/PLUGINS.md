@@ -231,6 +231,8 @@ mounts the same Component in the drawer. What a window does not get is
 the island's hover-exit timeout. Its dismissal is otherwise richer, not
 poorer: the dim's click dismisses every drawer at once, Escape closes
 the focused one, and the view's own cross and verbs work as always.
+And a drawer leaves the way it arrived — drawn back into its corner,
+the same travel in reverse.
 
 ```qml
 // HolaPlugin.qml

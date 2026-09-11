@@ -1223,6 +1223,66 @@ Scope {
                     onTapped: root.abrirPanelEn(panelWindow.screen.name)
                 }
 
+                // ── the corner the island has reached ────────────────
+                //
+                // A placement endpoint becomes a true two-wall shape once
+                // the animated body makes contact with both walls — never
+                // earlier, or the island would wear a corner while it still
+                // crosses open screen. And it LATCHES on first contact: the
+                // position curve is OutBack, it overshoots the wall and
+                // settles back, and a shape re-judged from raw contact would
+                // flicker corner → edge → corner during that bounce. The
+                // latch releases when the placement stops being a corner,
+                // or when a different corner is aimed at mid-flight.
+                property string esquinaTocada: ""
+
+                function esquinaDestino() {
+                    const p = panelWindow.lugar
+                    if (p.align > 0.5 && p.align < 99.5)
+                        return ""
+                    const fin = p.align >= 99.5
+                    if (p.side === "top")
+                        return fin ? "tr" : "tl"
+                    if (p.side === "bottom")
+                        return fin ? "br" : "bl"
+                    if (p.side === "left")
+                        return fin ? "bl" : "tl"
+                    return fin ? "br" : "tr"
+                }
+
+                function reevaluarEsquina() {
+                    const destino = esquinaDestino()
+                    if (destino === "") {
+                        esquinaTocada = ""
+                        return
+                    }
+                    const tocaIzq = island.x <= 0.5
+                    const tocaDer = island.x + island.width
+                        >= island.parent.width - 0.5
+                    const tocaArriba = island.y <= 0.5
+                    const tocaAbajo = island.y + island.height
+                        >= island.parent.height - 0.5
+                    const ahora = tocaArriba && tocaIzq ? "tl"
+                        : tocaArriba && tocaDer ? "tr"
+                        : tocaAbajo && tocaIzq ? "bl"
+                        : tocaAbajo && tocaDer ? "br" : ""
+                    if (ahora.length > 0)
+                        esquinaTocada = ahora
+                    else if (esquinaTocada !== destino)
+                        esquinaTocada = ""
+                }
+
+                Connections {
+                    target: panelWindow
+                    function onLugarChanged() { island.reevaluarEsquina() }
+                }
+
+                Connections {
+                    target: island
+                    function onXChanged() { island.reevaluarEsquina() }
+                    function onYChanged() { island.reevaluarEsquina() }
+                }
+
                 // ── la silueta: cuerpo + esquinas invertidas que funden con el borde
                 //  La forma vive en `core/SiluetaIsla.qml`: la dibujan la barra y
                 //  la previsualización de Ajustes, y una previsualización que
@@ -1258,6 +1318,43 @@ Scope {
                         return island.y + island.height / 2
                             < island.parent.height / 2
                             ? "top" : "bottom"
+                    }
+                }
+
+                // ── the corner's second wall ────────────────────────
+                //
+                // A sibling of the silhouette, not a child of it: the
+                // silhouette renders through an MSAA layer sized to the
+                // item, and material that must reach OUTSIDE it — the wings
+                // along the adjacent wall — cannot come out of that
+                // texture. Here, unlayered, the same rectangles and vector
+                // wings draw past the island's bounds, over the rim, and
+                // the corner reads as grown out of the frame: wall band,
+                // squared corner, and a long shallow tongue along the
+                // neighbouring wall, one material with no seam. Only the
+                // added material fades (140 ms), so the shape never snaps.
+                EdgeAttachedShape {
+                    anchors.fill: parent
+                    attachTop: island.esquinaTocada === "tl"
+                               || island.esquinaTocada === "tr"
+                    attachBottom: island.esquinaTocada === "bl"
+                                  || island.esquinaTocada === "br"
+                    attachLeft: island.esquinaTocada === "tl"
+                                || island.esquinaTocada === "bl"
+                    attachRight: island.esquinaTocada === "tr"
+                                 || island.esquinaTocada === "br"
+                    blending: true
+                    cornerRadius: island.bodyRadius
+                    rimThickness: Settings.edgeZoneEnabled
+                        ? Settings.edgeZoneSize : 0
+                    blendReach: Theme.wing * 2
+                    blendDepth: Theme.wing
+                    fillColor: Theme.islandBg
+                    opacity: island.esquinaTocada.length > 0 ? 1 : 0
+                    visible: opacity > 0
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 140 }
                     }
                 }
 
@@ -1376,6 +1473,43 @@ Scope {
 
     property Component componenteVentana: Component { VentanaPopup { } }
 
+    // Equivalent corner spellings share one stack: top/100 and right/0
+    // both mean the top-right corner. Plain edges remain independent.
+    function clavePila(plugin) {
+        const p = Settings.placementDe(plugin.name)
+        if (p.align <= 0.5) {
+            if (p.side === "top" || p.side === "left")
+                return "corner:tl"
+            if (p.side === "bottom")
+                return "corner:bl"
+            return "corner:tr"
+        }
+        if (p.align >= 99.5) {
+            if (p.side === "top")
+                return "corner:tr"
+            if (p.side === "bottom" || p.side === "right")
+                return "corner:br"
+            return "corner:bl"
+        }
+        return "edge:" + p.side
+    }
+
+    // Newest on a given edge or corner touches the frame. Other groups do
+    // not consume its index, so a left drawer cannot displace a right one.
+    function indiceEnPila(plugin) {
+        const clave = clavePila(plugin)
+        let indice = 0
+        for (let i = 0; i < _ordenVentanas.length; ++i) {
+            const nombre = _ordenVentanas[i]
+            if (nombre === plugin.name)
+                return indice
+            const otra = PluginManager.instancia(nombre)
+            if (otra && otra.active && clavePila(otra) === clave)
+                ++indice
+        }
+        return indice
+    }
+
     function sincronizarVentanas() {
         //  Island mode: nothing to host, everything must go.
         if (Settings.popupMode !== "window") {
@@ -1389,6 +1523,13 @@ Scope {
             vivas[p.name] = true
 
             let v = _ventanasInstancias[p.name]
+            if (v && v.retrayendo) {
+                //  A window mid-retract is a dead one walking: if its
+                //  plugin is open again, it gets a fresh window, not a
+                //  corpse that is already dissolving into its corner.
+                v.destroy()
+                v = null
+            }
             if (!v) {
                 v = componenteVentana.createObject(root, { plugin: p })
                 _ventanasInstancias[p.name] = v
@@ -1397,14 +1538,26 @@ Scope {
                 //  the plugin it hosts does not.
                 v.plugin = p
             }
-            v.indice = i
+            v.indice = indiceEnPila(p)
             v.esUltima = _ordenVentanas.length > 0
                         && _ordenVentanas[0] === p.name
         }
 
         for (const nombre in _ventanasInstancias) {
             if (!vivas[nombre]) {
-                _ventanasInstancias[nombre].destroy()
+                //  A window that can, leaves the way it came in —
+                //  drawn back into its corner, and destroys itself
+                //  when the edge has it. A window that already did
+                //  (its plugin's closing grace outlives the travel)
+                //  is a NULL reference here: touching it would throw
+                //  and abort this loop mid-way, leaving the map
+                //  poisoned for every sync after. Null is dead;
+                //  forget it and move on.
+                const v = _ventanasInstancias[nombre]
+                if (v && typeof v.retraer === "function")
+                    v.retraer()
+                else if (v)
+                    v.destroy()
                 delete _ventanasInstancias[nombre]
             }
         }
@@ -1412,7 +1565,11 @@ Scope {
 
     function cerrarVentanas() {
         for (const nombre in _ventanasInstancias) {
-            _ventanasInstancias[nombre].destroy()
+            const v = _ventanasInstancias[nombre]
+            if (v && typeof v.retraer === "function")
+                v.retraer()
+            else if (v)
+                v.destroy()
             delete _ventanasInstancias[nombre]
         }
     }
@@ -1443,6 +1600,9 @@ Scope {
     Connections {
         target: Settings
         function onPopupModeChanged() { sincronizarVentanas() }
+        function onIslandPlacementsChanged() { sincronizarVentanas() }
+        function onBarPositionChanged() { sincronizarVentanas() }
+        function onBarAlignmentChanged() { sincronizarVentanas() }
     }
 
     //  Any summoned view out, in either mode: deployed from the island
@@ -1527,7 +1687,14 @@ Scope {
             anchors.fill: parent
             color: Qt.rgba(0, 0, 0, 0.5)
             opacity: fondoDim.oscura ? 1 : 0
-            //  No Behavior on purpose: see the header — all at once.
+            //  The SURFACE is what must land at once — it stays
+            //  mapped and only the opacity moves, so there is never
+            //  a configure race (see the header). The opacity itself
+            //  breathes quickly: a dim that snaps off while the last
+            //  drawer is still travelling flashes the desktop behind
+            //  it, and the end of an exit deserves the same ease as
+            //  its travel.
+            Behavior on opacity { NumberAnimation { duration: 180 } }
         }
 
         MouseArea {
