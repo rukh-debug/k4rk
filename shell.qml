@@ -42,6 +42,18 @@ Scope {
         }
 
         let best = null
+        //  The same race, restricted to views that still HAVE their
+        //  content: a closing grace (`active: open || closing`)
+        //  unloads its view the moment close() starts and then holds
+        //  the island as an empty shell for the length of its timer.
+        //  Letting that shell keep the arbitration steals the stage
+        //  back from the view that just superseded it — and close()'s
+        //  own two writes (`open = false`, then `closing = true`)
+        //  flicker `active` false→true, so the theft began with a
+        //  one-frame flash of the winner anyway. A loaded view beats
+        //  an unloading one, whatever the ladder says; when nobody
+        //  is loaded the grace keeps its hold — that is its job.
+        let bestCargado = null
         const lista = PluginManager.instancias
         //  In window mode the summoned surfaces do not queue for the
         //  island: every OPEN one gets a window of its own (see the
@@ -53,11 +65,15 @@ Scope {
             if (aVentana && p.colocable && !p.transitorio
                     && p.name !== PluginManager.pillId)
                 continue
-            if (p.habilitado && p.active
-                    && (best === null || p.priority > best.priority))
+            if (!p.habilitado || !p.active)
+                continue
+            if (best === null || p.priority > best.priority)
                 best = p
+            if (p.viewLoaded && (bestCargado === null
+                                 || p.priority > bestCargado.priority))
+                bestCargado = p
         }
-        return best
+        return bestCargado !== null ? bestCargado : best
     }
 
     //  ── lo que se va solo se aparta ───────────────────────────────
@@ -90,6 +106,118 @@ Scope {
                     && typeof p.close === "function")
                 p.close()
         }
+    }
+
+    //  ── one summoned view at a time, and the newest rules ────────
+    //
+    //  Opening a second popup used to leave the first one OPEN under
+    //  the winner: hidden, but alive — and it came back the moment
+    //  the winner closed, a popup nobody had asked for. Worse, with
+    //  the newcomer BELOW the holder in the priority ladder the
+    //  stage never changed hands at all: the keybind looked dead.
+    //
+    //  So the rule the user already assumes, made real by the host:
+    //  the summoned view that was just asked for supersedes whoever
+    //  holds the island — the previous one is CLOSED, through its
+    //  own `close()` so whatever it must do on the way out (keep a
+    //  terminal session, run its grace timer) still happens. The
+    //  ladder keeps arbitrating the rest: hover views, transients,
+    //  the pill.
+    //
+    //  A binding that reads every instance's `active` re-evaluates
+    //  on any flip, so the diff below sees the newcomer arrive even
+    //  when `activePlugin` itself does not change (the low-priority
+    //  case). The array is rebuilt on every evaluation, so the
+    //  changed handler fires far more often than the cast changes —
+    //  the signature diff makes the noise free.
+    //  The signature counts a view only while its view is LOADED.
+    //  A closing grace (`active: open || closing`) flickers: the
+    //  `open = false` write makes `active` false for the instant
+    //  before `closing = true` lands, and the eager re-evaluations
+    //  in between would read the second edge — the plugin coming
+    //  BACK — as a fresh arrival, superseding the very view that
+    //  was asked for. A plugin without its view mounted is on its
+    //  way out, not on its way in; `viewLoaded` says which is
+    //  which, and every opener mounts its view before (or in the
+    //  same breath as) its `active`.
+    readonly property var summonedActive: {
+        const salida = []
+        const lista = PluginManager.instancias
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
+            if (p.habilitado && p.active && p.viewLoaded && p.colocable
+                    && !p.transitorio && p.name !== PluginManager.pillId)
+                salida.push(p.name)
+        }
+        return salida
+    }
+
+    property string _summonedPrevios: ""
+
+    //  Told before the loser is closed, so the stage can freeze its
+    //  live view for the departure fade — after `close()` unloads
+    //  it there is nothing left to fade.
+    signal viewSuperseded(string viewId)
+
+    onSummonedActiveChanged: {
+        //  Window mode is the many-at-once mode: drawers stack on
+        //  their edges and the dim's click closes the lot. Only the
+        //  island — one stage, one view — supersedes.
+        if (Settings.popupMode === "window")
+            return
+
+        const firma = summonedActive.join(",")
+        const previa = _summonedPrevios
+        _summonedPrevios = firma
+        if (firma === previa)
+            return
+
+        //  Who just arrived: in the new signature and not in the
+        //  old one. The close targets below are the actives that
+        //  were already standing — comparing against the whole new
+        //  list would skip them all, and the rule would never fire.
+        const nuevos = firma.length > 0 ? firma.split(",") : []
+        const viejos = previa.length > 0 ? previa.split(",") : []
+        const llegaron = nuevos.filter(function (n) {
+            return viejos.indexOf(n) < 0
+        })
+        if (llegaron.length === 0)
+            return          // only departures; nothing was superseded
+
+        const lista = PluginManager.instancias
+        const victimas = []
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
+            if (!p.habilitado || !p.active || !p.viewLoaded || !p.colocable
+                    || p.transitorio || p.name === PluginManager.pillId)
+                continue
+            if (llegaron.indexOf(p.name) >= 0)
+                continue
+            victimas.push(p)
+        }
+        if (victimas.length === 0)
+            return
+
+        //  Deferred, and for a reason: closing a victim re-dirties
+        //  this very binding and QML re-evaluates it synchronously —
+        //  acting inside the dispatch re-enters the evaluation
+        //  («Binding loop detected») and the pass is dropped on the
+        //  floor. Let the binding settle first; the stage freeze
+        //  (the signal) rides in the same deferral, still ahead of
+        //  its own close().
+        Qt.callLater(function () {
+            for (let i = 0; i < victimas.length; ++i) {
+                const p = victimas[i]
+                //  Re-checked at departure time: a victim may have
+                //  begun leaving on its own while the deferral was
+                //  queued — view gone, nothing left to supersede.
+                if (!p || !p.habilitado || !p.active || !p.viewLoaded)
+                    continue
+                viewSuperseded(p.name)
+                if (typeof p.close === "function")
+                    p.close()
+            }
+        })
     }
 
     //  Lo que decide el reparto, publicado para que lo lean los plugins por
@@ -328,6 +456,112 @@ Scope {
             readonly property var pluginVisible: root.activePlugin
                 && (root.activePlugin.name === PluginManager.pillId || esPantallaActiva)
                 ? root.activePlugin : idlePlugin
+
+            //  ── the stage hand-off ────────────────────────────────
+            //
+            //  `pluginVisible` names the winner; the two loaders
+            //  below keep one view LIVE and let the previous one
+            //  LEAVE — a superseded summoned view fades out over the
+            //  hand-off instead of being torn down in a single
+            //  frame. Only summoned-view-over-summoned-view fades:
+            //  arrivals from rest, hover peeks, the pill and every
+            //  close keep the cut they always had, which is the
+            //  transition the island already owns.
+            property var prevPluginVisible: null
+            property Loader stageCurrent: null
+
+            function isSummoned(p) {
+                return !!p && p.name !== PluginManager.pillId
+                        && p.colocable && !p.transitorio
+            }
+
+            //  Freeze the live item of the named view and start its
+            //  fade. Called by the supersede rule while the view is
+            //  still mounted — a moment later close() pulls
+            //  viewLoaded out from under the loader and there is
+            //  nothing left to fade.
+            function retireStage(viewId) {
+                const carga = stageCurrent
+                if (!carga || carga.departing)
+                    return
+                if (!carga.stageOwner
+                        || carga.stageOwner.name !== viewId)
+                    return
+                carga.exitW = carga.width
+                carga.exitH = carga.height
+                carga.departing = true
+                carga.live = false
+                if (carga === stageOne)
+                    fadeOne.restart()
+                else
+                    fadeTwo.restart()
+            }
+
+            onPluginVisibleChanged: {
+                const llega = pluginVisible
+                const estaba = prevPluginVisible
+                prevPluginVisible = llega
+
+                const salida = stageCurrent
+                const entrada = salida === stageOne ? stageTwo : stageOne
+
+                if (salida) {
+                    const fundido = isSummoned(estaba) && isSummoned(llega)
+                        && salida.stageOwner === estaba
+                        && salida.item !== null
+
+                    if (fundido && !salida.departing) {
+                        //  The loser's item stays for the fade; the
+                        //  island is already gliding to the newcomer
+                        //  around it.
+                        salida.exitW = salida.width
+                        salida.exitH = salida.height
+                        salida.departing = true
+                        salida.live = false
+                        if (salida === stageOne)
+                            fadeOne.restart()
+                        else
+                            fadeTwo.restart()
+                    } else if (!fundido) {
+                        //  Cut: a close, a hover peek, a move between
+                        //  screens, the pill taking the stage back —
+                        //  the old view goes now, fade or no fade.
+                        if (salida === stageOne)
+                            fadeOne.stop()
+                        else
+                            fadeTwo.stop()
+                        salida.stageOwner = null
+                        salida.departing = false
+                        salida.live = false
+                    }
+                    //  fundido && departing: the supersede rule
+                    //  already froze this view and its fade is
+                    //  running — hands off.
+                }
+
+                //  The newcomer always takes the idle loader. A fade
+                //  still running there is spent: stop clears it, and
+                //  the view arrives as today's arrivals do — mounted
+                //  at once, at full opacity, unveiled by the
+                //  island's own growth.
+                if (entrada === stageOne)
+                    fadeOne.stop()
+                else
+                    fadeTwo.stop()
+                entrada.stageOwner = llega
+                entrada.departing = false
+                entrada.live = true
+                stageCurrent = entrada
+            }
+
+            //  The supersede rule speaks for the whole shell; every
+            //  screen's stage listens for its own view's name.
+            Connections {
+                target: root
+                function onViewSuperseded(viewId) {
+                    panelWindow.retireStage(viewId)
+                }
+            }
 
             //  ── click outside closes, like Escape ─────────────────────
             //
@@ -633,6 +867,12 @@ Scope {
             onRetiradaChanged: Island.publicarVista(screen.name, !retirada)
 
             Component.onCompleted: {
+                //  The stage starts on the first loader, mounting
+                //  whoever owns it today (the pill, as a rule).
+                stageCurrent = stageOne
+                stageOne.stageOwner = pluginVisible
+                stageOne.live = true
+                prevPluginVisible = pluginVisible
                 repensarRetirada()
                 Island.publicarVista(screen.name, !retirada)
             }
@@ -1623,28 +1863,56 @@ Scope {
                         width: panelWindow.anchoIsla
                         height: panelWindow.altoIsla
 
-                        //  ── the one view on stage ────────────────────
+                        //  ── the stage: one view live, one leaving ────
                         //
-                        //  ONE loader, keyed on the visible plugin's view
-                        //  — not a Repeater over the instances. The
-                        //  instance list churns constantly: toggling a
-                        //  plugin, reloading one, a catalog rescan, and a
-                        //  Repeater whose model was reassigned destroys
-                        //  EVERY delegate and recreates them, which took
-                        //  the mounted view with it — Settings jumped back
-                        //  to its first page each time you flipped an
-                        //  unrelated plugin's switch. Keying on the view
-                        //  Component means the loader only swaps when what
-                        //  is on stage actually changes; churn around it
-                        //  is none of its business.
+                        //  TWO loaders trading the stage, not one
+                        //  re-keyed: a single one must destroy the
+                        //  outgoing view to mount the next, and a
+                        //  superseded popup deserves better — its
+                        //  LIVE item stays mounted while the next
+                        //  view arrives beneath it, fades out over
+                        //  the hand-off, and only then is released.
+                        //  The rest of the single loader's design
+                        //  stays: the stage is keyed on the plugin
+                        //  that owns it, never on the instance list,
+                        //  so churn around it (toggles, reloads,
+                        //  rescans) is nobody's business but the
+                        //  owner's.
                         Loader {
-                            anchors.fill: parent
-                            active: panelWindow.pluginVisible
-                                && panelWindow.pluginVisible.viewLoaded
-                            sourceComponent: panelWindow.pluginVisible
-                                ? panelWindow.pluginVisible.view : null
+                            id: stageOne
+
+                            property var stageOwner: null
+                            property bool live: false
+                            property bool departing: false
+                            property real exitW: 0
+                            property real exitH: 0
+
+                            //  Anchored to the top and centred, sized
+                            //  by the box — the incoming view lays
+                            //  out at its final size and the growing
+                            //  island unveils it (see the box above).
+                            //  The departing one freezes the size it
+                            //  had: the box is about to snap to the
+                            //  newcomer's, and re-flowing a view that
+                            //  is on its way out would tear it.
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: departing ? exitW : parent.width
+                            height: departing ? exitH : parent.height
+
+                            //  The leaving view is paint, not input:
+                            //  for the fade's length it sits ABOVE the
+                            //  newcomer and must not eat its clicks.
+                            z: live ? 0 : 1
+                            enabled: live
+
+                            active: stageOwner !== null
+                                && (departing || stageOwner.viewLoaded)
+                            sourceComponent: stageOwner !== null
+                                && (departing || stageOwner.viewLoaded)
+                                ? stageOwner.view : null
                             onStatusChanged: {
-                                const p = panelWindow.pluginVisible
+                                const p = stageOwner
                                 if (!p)
                                     return
                                 if (status === Loader.Error)
@@ -1652,6 +1920,69 @@ Scope {
                                         p.name, "The view could not be loaded")
                                 else if (status === Loader.Ready)
                                     PluginManager.limpiarError(p.name)
+                            }
+
+                            //  The end of the fade is the end of the
+                            //  view: released, reset, the loader idle
+                            //  for its next turn on stage.
+                            NumberAnimation {
+                                id: fadeOne
+                                target: stageOne
+                                property: "opacity"
+                                to: 0
+                                duration: 180
+                                easing.type: Easing.OutCubic
+                                onStopped: {
+                                    stageOne.stageOwner = null
+                                    stageOne.departing = false
+                                    stageOne.opacity = 1
+                                }
+                            }
+                        }
+
+                        Loader {
+                            id: stageTwo
+
+                            property var stageOwner: null
+                            property bool live: false
+                            property bool departing: false
+                            property real exitW: 0
+                            property real exitH: 0
+
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: departing ? exitW : parent.width
+                            height: departing ? exitH : parent.height
+                            z: live ? 0 : 1
+                            enabled: live
+                            active: stageOwner !== null
+                                && (departing || stageOwner.viewLoaded)
+                            sourceComponent: stageOwner !== null
+                                && (departing || stageOwner.viewLoaded)
+                                ? stageOwner.view : null
+                            onStatusChanged: {
+                                const p = stageOwner
+                                if (!p)
+                                    return
+                                if (status === Loader.Error)
+                                    PluginManager.registrarError(
+                                        p.name, "The view could not be loaded")
+                                else if (status === Loader.Ready)
+                                    PluginManager.limpiarError(p.name)
+                            }
+
+                            NumberAnimation {
+                                id: fadeTwo
+                                target: stageTwo
+                                property: "opacity"
+                                to: 0
+                                duration: 180
+                                easing.type: Easing.OutCubic
+                                onStopped: {
+                                    stageTwo.stageOwner = null
+                                    stageTwo.departing = false
+                                    stageTwo.opacity = 1
+                                }
                             }
                         }
                     }

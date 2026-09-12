@@ -24,8 +24,6 @@ K4Plugin {
     viewLoaded: open
     grabKeyboard: open
 
-    property var panel: null
-
     property bool open: false
     property bool closing: false
     property string query: ""
@@ -46,9 +44,9 @@ K4Plugin {
         query = ""
         index = 0
         closing = false
+        //  Whoever holds the island is the host's to retire now —
+        //  see the supersede rule in shell.qml.
         open = true
-        if (panel)
-            panel.close()
     }
 
     function close() {

@@ -24,10 +24,9 @@ K4Plugin {
     viewLoaded: open
     grabKeyboard: open
 
-    //  Host-injected references, declared by catalog id: the panel (opened
-    //  alongside this one) and the app centre (its updates view, offered
-    //  here when the system has some).
-    property var panel: null
+    //  Host-injected reference, declared by catalog id: the app
+    //  centre (its updates view, offered here when the system has
+    //  some).
     property var apps: null
 
     property bool open: false
@@ -148,7 +147,8 @@ K4Plugin {
 
         query = ""
         closing = false
-        if (panel) panel.close()
+        //  Whoever holds the island is the host's to retire now —
+        //  see the supersede rule in shell.qml.
         Notifs.dismissToast()
         open = true
         refreshApplications()
