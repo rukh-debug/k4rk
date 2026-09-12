@@ -16,6 +16,43 @@ Singleton {
     // ¿el ratón está encima de la island?
     property bool hovered: false
 
+    //  ── the wall under the pointer ───────────────────────────
+    //
+    //  Open-on-hover's keep-alive channel: which screen border the
+    //  cursor is touching right now ("top"/"bottom"/"left"/"right",
+    //  "" for none). The bar's rim strips publish it (shell.qml);
+    //  the host and the drawers read it, because a hover-summoned
+    //  view must not count "left the card for the wall it grew
+    //  from" as hover ended. Side-level and not stretch-level on
+    //  purpose: the strips speak on enter and exit, and that is
+    //  enough — sliding along the wall keeps what is open open, and
+    //  a NEW summon waits for a fresh touch.
+    property string wallHover: ""
+    property string wallHoverScreen: ""
+
+    function publishWallHover(screen, side) {
+        wallHoverScreen = screen
+        wallHover = side
+    }
+
+    function retractWallHover(screen, side) {
+        //  Only the strip that published clears it: on a multi-screen
+        //  hop the enter of one wall can land before the exit of the
+        //  other, and a blind clear would drop the new truth.
+        if (wallHoverScreen === screen && wallHover === side) {
+            wallHover = ""
+            wallHoverScreen = ""
+        }
+    }
+
+    //  The view whose armed stretch the placement editor is showing
+    //  on the real wall right now ("" for none). The Placement page
+    //  sets it while one of its cards is hovered; every bar window
+    //  paints it on its own edges, so the stretch is seen where the
+    //  gesture will actually happen — not only on the little
+    //  monitor.
+    property string wallPreview: ""
+
     //  Quién tiene la island ahora mismo y si está desplegada. Lo pone
     //  shell.qml —que es quien lo decide, comparando prioridades— y lo leen
     //  los plugins a través de K4.Isla, para no gastar en animaciones y
