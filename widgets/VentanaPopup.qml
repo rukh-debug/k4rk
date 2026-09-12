@@ -60,6 +60,12 @@ PanelWindow {
     //  extra one steps away so no drawer hides the one before it.
     property int indice: 0
 
+    //  Set by the host when the WALL summoned this drawer (open on
+    //  hover): what the wall opened, the wall gets to close — see
+    //  the keep-alive below. A keybind-opened drawer never
+    //  auto-closes, same contract as the island's hover-exit views.
+    property bool abiertoPorZona: false
+
     //  The frame around the view. Views carry their own padding,
     //  tuned for the island's body; this only keeps their rounded
     //  corners off the drawer's edge.
@@ -336,17 +342,23 @@ PanelWindow {
         }
 
         Component.onCompleted: tarjeta.forceActiveFocus()
+
+        //  The card's own hover — one half of the keep-alive below.
+        HoverHandler { id: sobreTarjeta }
     }
 
     // Input follows the visible vector wings. These narrow strips add only
     // the material beside a connected edge; the transparent corners of the
-    // bounding boxes remain outside the window mask.
+    // bounding boxes remain outside the window mask. They also CARRY
+    // HOVER: the pixel of wall a wing covers belongs to this drawer's
+    // input region, and a pointer parked on it has not left the drawer.
     Item {
         id: zonaArriba
         x: tarjeta.x - ventana.blendReach
         y: tarjeta.y
         width: tarjeta.width + ventana.blendReach * 2
         height: ventana.grosorRim + ventana.blendDepth
+        HoverHandler { id: sobreAlaArriba }
     }
     Item {
         id: zonaAbajo
@@ -354,6 +366,7 @@ PanelWindow {
         y: tarjeta.y + tarjeta.height - height
         width: tarjeta.width + ventana.blendReach * 2
         height: ventana.grosorRim + ventana.blendDepth
+        HoverHandler { id: sobreAlaAbajo }
     }
     Item {
         id: zonaIzquierda
@@ -361,6 +374,7 @@ PanelWindow {
         y: tarjeta.y - ventana.blendReach
         width: ventana.grosorRim + ventana.blendDepth
         height: tarjeta.height + ventana.blendReach * 2
+        HoverHandler { id: sobreAlaIzquierda }
     }
     Item {
         id: zonaDerecha
@@ -368,6 +382,39 @@ PanelWindow {
         y: tarjeta.y - ventana.blendReach
         width: ventana.grosorRim + ventana.blendDepth
         height: tarjeta.height + ventana.blendReach * 2
+        HoverHandler { id: sobreAlaDerecha }
+    }
+
+    //  ── the way the wall holds it open ─────────────────────
+    //
+    //  A hover-summoned drawer stays while the pointer is on the
+    //  card, on its wings, or on the wall it grew from — the bar's
+    //  strips publish that (Island.wallHover). Leaving ALL of them
+    //  arms the exit; the plugin's own hover-exit delay is the
+    //  grace. This is also the loop-killer: after the drawer
+    //  closes, a pointer still parked on its wall cannot re-open
+    //  it — the summon asks for a fresh touch of the strip, and the
+    //  strips only speak on enter.
+    readonly property bool wallHolds: abiertoPorZona
+        && Island.wallHoverScreen === ventana.screen.name
+        && Settings.hoverWalls(ventana.lugar)
+               .indexOf(Island.wallHover) >= 0
+
+    readonly property bool hoverWithin: sobreTarjeta.hovered
+        || sobreAlaArriba.hovered || sobreAlaAbajo.hovered
+        || sobreAlaIzquierda.hovered || sobreAlaDerecha.hovered
+        || wallHolds
+
+    Timer {
+        id: salidaHover
+        interval: ventana.plugin ? ventana.plugin.hoverExitDelay : 700
+        running: ventana.abiertoPorZona && !ventana.hoverWithin
+        onTriggered: {
+            if (ventana.abiertoPorZona && !ventana.hoverWithin
+                    && ventana.plugin
+                    && typeof ventana.plugin.close === "function")
+                ventana.plugin.close()
+        }
     }
 
     onEsUltimaChanged: {
@@ -390,6 +437,8 @@ PanelWindow {
         if (retrayendo)
             return
         retrayendo = true
+        //  Mid-travel the drawer stops being the wall's business.
+        abiertoPorZona = false
         despliegue.stop()
         repliegue.from = avance
         repliegue.restart()
