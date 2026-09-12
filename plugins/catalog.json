@@ -235,13 +235,14 @@
    "application": true
   },
   {
-   "id": "submap",
-   "entry": "Submap/SubmapPlugin.qml",
-   "version": "1.0.0",
-   "title": "Submap",
-   "description": "Shows which Hyprland submap is active, as a capsule",
+   "id": "hyprland-submap",
+   "entry": "HyprlandSubmap/HyprlandSubmapPlugin.qml",
+   "version": "2.0.0",
+   "title": "Hyprland Submap",
+   "description": "Submap island. The submap name carries everything: 'Title: (r)egion (command)' — a paren group of single glyphs lists the keys, the label follows, a longer paren group is the command a chip press runs. Names that do not parse show as plain text",
    "enabledByDefault": true,
-   "icon": "0xF030E"
+   "icon": "0xF030E",
+   "permissions": ["procesos"]
   }
  ],
  "version": "1.1.0"

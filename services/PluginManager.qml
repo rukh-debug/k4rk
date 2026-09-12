@@ -69,7 +69,7 @@ Singleton {
         { id: "packages", title: "Packages", version: "1.0.0", enabled: true },
         { id: "ssh", title: "Servers", version: "1.0.0", enabled: true },
         { id: "agents", title: "Agents", version: "1.0.0", enabled: true },
-        { id: "submap", title: "Submap", version: "1.0.0", enabled: true }
+        { id: "hyprland-submap", title: "Hyprland Submap", version: "1.0.0", enabled: true }
     ]
 
     signal cambiado(string id, bool habilitado)
@@ -675,7 +675,8 @@ Singleton {
     readonly property var idsViejos: ({ sonido: "sound",
                                         pantallas: "displays",
                                         agentes: "agents",
-                                        ask: "openwebui" })
+                                        ask: "openwebui",
+                                        submap: "hyprland-submap" })
 
     function _leerEstado(bruto) {
         if (!bruto || bruto.length === 0)
