@@ -130,4 +130,3 @@ opencode.ai/docs/go, opencode-go-usage tooling, AIUsageTracker PR #525.
 ### 4. change all filenames that is in spanish to english and every different occurance of that file, import export docs everything. - do proper research first, so we dont break stuff.
 
 #### 5. In placement page inside settings, on each page/popup title, beside the title or in appropriate place, keep a copy button which copys ipc command to open that particular window. also after copied, instruct user how to use that ipc command.
-#### 6. in settings > wallpaper > color thing > allow other type of pallet, monochrome etc whatever are available by the used tools.

@@ -30,6 +30,7 @@
   swaybg,
   ffmpeg,
   imagemagick,
+  matugen,
   zenity,
   wl-clipboard,
   fd,
@@ -86,6 +87,7 @@ let
     swaybg
     ffmpeg
     imagemagick
+    matugen # Material You palette schemes for the wallpaper accent
     zenity
     wl-clipboard
     fd
