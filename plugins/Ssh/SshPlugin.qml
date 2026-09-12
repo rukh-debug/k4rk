@@ -177,6 +177,13 @@ K4Plugin {
         salida.restart()
     }
 
+    //  The outside knock — quick access, the app centre, the wall's
+    //  hover summon. Overridden on purpose: the contract's default
+    //  would flip `active` imperatively, breaking the binding and
+    //  leaving a view that no longer closes when `abierto` does.
+    //  Opening means the same setup the picker's own door does.
+    function abrir() { open() }
+
     //  The door the host knocks on for Escape and the click-outside: by
     //  name, `close`, so the catcher can find it. `cerrar` alone was a
     //  door painted on the wall — the catcher swallowed the click and
