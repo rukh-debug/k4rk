@@ -68,7 +68,9 @@ with a wavy front.
 The colour comes from the wallpaper too. k4 pulls a palette out of the image
 and hands it to the three places colour shows up — the bar's own tint,
 Hyprland's window borders, and the terminal. Pick a preset by hand and it
-steps aside.
+steps aside. The palette has styles beyond the sampled pick: the Material You
+schemes matugen knows — tonal, vibrant, monochrome and the rest — chosen by
+a chip in the wallpaper tab.
 
 ---
 

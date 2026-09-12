@@ -598,7 +598,8 @@ Singleton {
             //  in the sidebar, one level deep.
             padre: "Display",
             claves: ["fondo", "fondos", "wallpaper", "escritorio",
-                     "imagen", "video", "pantalla"],
+                     "imagen", "video", "pantalla", "palette", "monochrome",
+                     "scheme", "accent"],
             glifo: 0xF0E09,      // md-wallpaper
             desc: "The desktop wallpaper.",
             //  The grid sizes itself to its rows (`fitContent`) so the page

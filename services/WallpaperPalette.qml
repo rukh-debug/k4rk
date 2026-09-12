@@ -20,6 +20,43 @@ Singleton {
     property string pantallaElegida: ""
     readonly property var transiciones: ["fade", "grow", "wave", "none"]
     property string transicion: "fade"
+
+    //  ── palette styles ────────────────────────────────────────────
+    //
+    //  "sampled" is the classic: the magick histogram and a saturated
+    //  pick. The rest are matugen's Material You schemes — the ids it
+    //  takes after "scheme-" — and they run through matugen when the
+    //  binary is there. An empty `scheme` means «never chosen»: the
+    //  effective style then follows the tool — tonal when matugen is
+    //  here, the sampled classic when it is not.
+    readonly property var schemes: [
+        { id: "sampled",     nombre: "Sampled" },
+        { id: "tonal-spot",  nombre: "Tonal" },
+        { id: "vibrant",     nombre: "Vibrant" },
+        { id: "monochrome",  nombre: "Monochrome" },
+        { id: "neutral",     nombre: "Neutral" },
+        { id: "content",     nombre: "Content" },
+        { id: "expressive",  nombre: "Expressive" },
+        { id: "fidelity",    nombre: "Fidelity" },
+        { id: "rainbow",     nombre: "Rainbow" },
+        { id: "fruit-salad", nombre: "Fruit salad" }
+    ]
+    property string scheme: ""
+    property bool matugenOk: false
+    readonly property string activeScheme: scheme.length > 0
+        ? scheme : (matugenOk ? "tonal-spot" : "sampled")
+    //  Which pipeline an extraction run belongs to. A superseded
+    //  process still fires its collector with half its output; the
+    //  flag is how a stale finish learns to keep quiet.
+    property string pipeline: ""
+
+    function schemeIdValido(id) {
+        for (let i = 0; i < schemes.length; ++i)
+            if (schemes[i].id === String(id))
+                return true
+        return false
+    }
+
     property color accentFrom: "#82dccc"
     property color accentTo: "#007d6f"
     property color inactive: "#798bb2"
@@ -85,7 +122,8 @@ Singleton {
     function save() {
         if (ready)
             state.setText(JSON.stringify({ source: source,
-                                           transition: transicion }, null, 1))
+                                           transition: transicion,
+                                           scheme: scheme }, null, 1))
     }
 
     function load() {
@@ -94,6 +132,8 @@ Singleton {
             source = String(saved.source || "")
             if (transiciones.indexOf(saved.transition) >= 0)
                 transicion = saved.transition
+            if (schemeIdValido(saved.scheme))
+                scheme = String(saved.scheme)
         } catch (error) {
         }
         //  First run after the theme plugin's removal: its state file
@@ -153,6 +193,24 @@ Singleton {
             Theme.tintar("wallpaper", base, 0.22, 0)
     }
 
+    //  The bar's ambient tint under a matugen scheme: the wallpaper's
+    //  seed color — the same intent as the sampled pick — and, under
+    //  monochrome, the gray of it, so the scheme means what it says.
+    function tintFromSeed(seed) {
+        const r = parseInt(seed.substring(1, 3), 16) / 255
+        const g = parseInt(seed.substring(3, 5), 16) / 255
+        const b = parseInt(seed.substring(5, 7), 16) / 255
+        let base
+        if (activeScheme === "monochrome") {
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b
+            base = Qt.rgba(gray, gray, gray, 1)
+        } else {
+            base = Qt.rgba(r, g, b, 1)
+        }
+        if (Settings.wallpaperPalette)
+            Theme.tintar("wallpaper", base, 0.22, 0)
+    }
+
     function extract() {
         if (!Settings.wallpaperPalette || source.length === 0)
             return
@@ -162,7 +220,35 @@ Singleton {
         //  ffmpeg delegate to decode the video. A bar restart in the
         //  middle left that pair blocked on a dead pipe — forever.
         const needsPoster = isVideo(source) || isAnimated(source)
-        sampler.running = false
+        //  A matugen scheme goes to matugen; everything else — the
+        //  sampled classic, or a scheme with no matugen to run it —
+        //  goes to the histogram. Whichever runs, the other is
+        //  stopped: one pipeline owns the palette at a time.
+        if (activeScheme !== "sampled" && matugenOk) {
+            pipeline = "matugen"
+            sampler.running = false
+            //  Same frame contract as the histogram pipeline: a video
+            //  or an animation is sampled from its cached poster, and
+            //  the poster is built here if it does not exist yet.
+            //  `esq` is read before `set --` replaces the positionals.
+            esquemador.command = ["timeout", "-k", "3", "30", "sh", "-c",
+                "[ -f \"$1\" ] || exit 0;"
+                + " esq=\"$4\";"
+                + " if [ \"$3\" = \"1\" ]; then"
+                + " mkdir -p \"$(dirname \"$2\")\";"
+                + " [ -f \"$2\" ] || ffmpeg -nostdin -v error -y -ss 1 -i \"$1\""
+                + " -frames:v 1 \"$2\" >/dev/null 2>&1;"
+                + " set -- \"$2\"; fi;"
+                + " [ -f \"$1\" ] || exit 0;"
+                + " matugen image \"$1\" -t \"scheme-$esq\" -m dark"
+                + " --dry-run -j hex --prefer saturation",
+                "sh", source, Fondos.posterDe(source), needsPoster ? "1" : "0",
+                activeScheme]
+            esquemador.running = true
+            return
+        }
+        pipeline = "magick"
+        esquemador.running = false
         //  `timeout` on both levels so no sampler run can outlive its
         //  welcome: the outer one bounds the whole pipeline, the inner
         //  one SIGKILLs magick, whose dying fds unblock any delegate.
@@ -183,6 +269,9 @@ Singleton {
 
     onSourceChanged: if (ready) extract()
     onTransicionChanged: save()
+    //  A new style is both a save and a re-derivation: the swatches
+    //  and the tint follow the chip as it is pressed.
+    onSchemeChanged: if (ready) { save(); extract() }
 
     Connections {
         target: Settings
@@ -251,6 +340,11 @@ Singleton {
         environment: ({ "LC_ALL": "C" })
         stdout: StdioCollector {
             onStreamFinished: {
+                //  A run stopped mid-flight by the other pipeline still
+                //  finishes here with half a histogram; stale colors
+                //  would overwrite the palette the winner is building.
+                if (root.pipeline !== "magick")
+                    return
                 const rows = String(this.text).split("\n")
                 const colors = []
                 for (let i = 0; i < rows.length; ++i) {
@@ -263,6 +357,61 @@ Singleton {
                     root.extracted = colors
                     root.distribute(colors)
                 }
+            }
+        }
+    }
+
+    //  The matugen pipeline: same contract as `sampler` — stdout in,
+    //  palette out — but the payload is one JSON object. `--prefer
+    //  saturation` picks the seed without a terminal to ask; the
+    //  scheme itself is the tool's own doing.
+    Process {
+        id: esquemador
+        environment: ({ "LC_ALL": "C" })
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (root.pipeline !== "matugen")
+                    return
+                try {
+                    const c = JSON.parse(String(this.text)).colors || {}
+                    const hex = function (role) {
+                        const entry = c[role]
+                        if (!entry)
+                            return ""
+                        const v = entry.dark || entry.default
+                        return v && v.color ? String(v.color) : ""
+                    }
+                    const from = hex("primary"), to = hex("primary_container")
+                    if (from.length === 0 || to.length === 0)
+                        return
+                    root.accentFrom = from
+                    root.accentTo = to
+                    const sec = hex("secondary")
+                    if (sec.length > 0)
+                        root.inactive = sec
+                    const seed = hex("source_color")
+                    if (seed.length === 7)
+                        root.tintFromSeed(seed)
+                } catch (error) {
+                }
+            }
+        }
+    }
+
+    //  Whether the scheme styles can run at all. A nix install ships
+    //  matugen with the bar and this lands true; elsewhere the card
+    //  hides its chips and the sampled classic keeps the palette.
+    Process {
+        command: ["sh", "-c", "command -v matugen || true"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.matugenOk = String(this.text).trim().length > 0
+                //  The empty-scheme default follows the tool: when the
+                //  state was loaded before the scan answered, the tonal
+                //  default has not had its extraction yet.
+                if (root.matugenOk && root.scheme.length === 0 && root.ready)
+                    root.extract()
             }
         }
     }

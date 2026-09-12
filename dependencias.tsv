@@ -43,6 +43,7 @@ swaybg	swaybg	base	Fallback wallpaper backend for the native Wallpaper page
 ffmpeg	ffmpeg	base	Fondos de vídeo y efectos de tema
 ffprobe	ffmpeg	base	Sondear los vídeos del selector de fondos
 magick	imagemagick	base	Miniaturas y conversiones de imagen
+matugen	matugen	base	Material You palette schemes (tonal, monochrome…) for the wallpaper accent
 zenity	zenity	base	El diálogo «Examinar…» para abrir un vídeo
 
 #  ── Escritorio ──────────────────────────────────────────────────────────────
