@@ -228,11 +228,24 @@ Your contract is the same in both — `view`,
 `islandWidth`/`islandHeight` and the keyboard flags mean what they
 always meant — and there is nothing to detect or serve: the host
 mounts the same Component in the drawer. What a window does not get is
-the island's hover-exit timeout. Its dismissal is otherwise richer, not
+the island's hover-exit timeout (`closeOnHoverExit` is island
+business). Its dismissal is otherwise richer, not
 poorer: the dim's click dismisses every drawer at once, Escape closes
 the focused one, and the view's own cross and verbs work as always.
 And a drawer leaves the way it arrived — drawn back into its corner,
 the same travel in reverse.
+
+One more door, the user's and not yours: any placement can be
+**hover-armed** from its card in Settings → Placement (plus a master
+switch there). Touching the armed stretch of wall — an interval around
+the placement, the ends of both walls for a corner — summons the view
+in whichever mode is live, and the stretch follows the pointer as it
+rides the wall: each stretch crossed gets its summons, and the
+previous one hands over. A hover-summoned view leaves when the pointer
+stops hovering it (its card, its wings or its own wall), after the
+hover-exit grace. A view opened any other way is not touched by
+this: it stays until closed, as always. The host carries the whole
+thing; a plugin neither knows nor does anything about it.
 
 ```qml
 // HolaPlugin.qml
