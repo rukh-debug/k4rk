@@ -515,7 +515,7 @@ migrar_duplicados() {
         # todo comentario y todo lo que no sea una línea completa de k4.
         awk -v patron="$PAT_K4" -v raiz="$RAIZ" -v destino="$DESTINO" '
             /^[[:space:]]*(--|#)/ { print; next }
-            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/) { quitadas++; next }
+            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/ || index($0, raiz "/launch") || index($0, destino "/launch") || index($0, "k4/launch")) { quitadas++; next }
             $0 ~ patron { quitadas++; next }
             { print }
             END { if (quitadas) printf "%d\n", quitadas > "/dev/stderr" }
@@ -560,7 +560,7 @@ revisar_duplicados() {
     _viejos=$(ficheros_hypr | while IFS= read -r _f; do
         awk -v f="$_f" -v patron="$PAT_K4" -v raiz="$RAIZ" -v destino="$DESTINO" '
             /^[[:space:]]*(--|#)/ { next }
-            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/ || $0 ~ patron) {
+            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/ || index($0, raiz "/launch") || index($0, destino "/launch") || index($0, "k4/launch") || $0 ~ patron) {
                 printf "%s:%d:%s\n", f, NR, $0
             }
         ' "$_f" 2>/dev/null || true
@@ -568,7 +568,7 @@ revisar_duplicados() {
     [ -n "$_viejos" ] || return 0
 
     _atajos=$(printf '%s\n' "$_viejos" | grep -E "$PAT_K4" || true)
-    _arranques=$(printf '%s\n' "$_viejos" | grep '/arrancar' || true)
+    _arranques=$(printf '%s\n' "$_viejos" | grep -E '/arrancar|/launch' || true)
 
     if [ -n "$_atajos" ]; then
         printf '\n'
@@ -759,7 +759,7 @@ paso_reiniciar() {
 
     if pgrep -x quickshell >/dev/null 2>&1; then
         preguntar "¿Reinicio la barra para que coja los cambios?" || {
-            nota "Vale. Arranca cuando quieras: $RAIZ/arrancar"
+            nota "Vale. Arranca cuando quieras: $RAIZ/launch"
             return 0
         }
         # `pkill -x`, nunca `pkill -f`: con -f el patrón encaja también con la
@@ -772,7 +772,7 @@ paso_reiniciar() {
         done
     fi
 
-    "$RAIZ/arrancar" --no-duplicate -d >/dev/null 2>&1 &
+    "$RAIZ/launch" --no-duplicate -d >/dev/null 2>&1 &
     _i=0
     while [ "$_i" -lt 25 ]; do
         pgrep -x quickshell >/dev/null 2>&1 && break
@@ -782,7 +782,7 @@ paso_reiniciar() {
     _n=$(pgrep -c -x quickshell 2>/dev/null || printf '0')
     case "$_n" in
         1) bien "La barra está corriendo." ;;
-        0) mal "La barra no ha levantado. Mira qué dice: $RAIZ/arrancar" ;;
+        0) mal "La barra no ha levantado. Mira qué dice: $RAIZ/launch" ;;
         *) mal "Hay $_n quickshell corriendo: eso es la island doble."
            nota "Párala entera con «pkill -x quickshell» y arranca una sola." ;;
     esac

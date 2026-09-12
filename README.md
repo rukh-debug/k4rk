@@ -254,7 +254,7 @@ you. With uncommitted changes it says that instead of offering the button: the
 installer would refuse anyway, and a button that does nothing is worse than no
 button. `quickshell ipc -p shell.qml call k4.settings version` prints the same
 thing as JSON. Start it by hand with
-`~/.config/quickshell/k4/arrancar` — use the wrapper, so the `K4` QML module
+`~/.config/quickshell/k4/launch` — use the wrapper, so the `K4` QML module
 resolves.
 
 **[k4term](https://github.com/k4ditano/k4term)** is this project's own

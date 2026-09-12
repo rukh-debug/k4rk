@@ -74,7 +74,7 @@ let
     includes = [ "/etc/fonts/fonts.conf" ];
   };
   binpath = lib.makeBinPath [
-    coreutils # the launcher and `arrancar` themselves: cp, mkdir, mv, tee…
+    coreutils # the launcher itself: cp, mkdir, mv…
     quickshell
     hyprland
     python3

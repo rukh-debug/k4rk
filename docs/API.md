@@ -12,7 +12,8 @@ import QtQuick
 import K4 as K4
 ```
 
-Start the host with `arrancar`. It adds `api/` to `QML_IMPORT_PATH`; launching
+Start the host with `launch` (or the Nix `k4` wrapper). It adds `api/` to
+`QML_IMPORT_PATH`; launching
 `quickshell -p shell.qml` directly will not resolve `import K4`.
 
 Qt (`QtQuick`, `QtMultimedia`, `Timer`, animations, and so on) is the portable

@@ -1,0 +1,51 @@
+#!/bin/sh
+#  Start k4 from a git checkout (the Nix package has its own launcher).
+#
+#  This exists for one concrete reason: the plugin API lives in a QML
+#  module called K4, and for a plugin to write a bare `import K4` its
+#  parent folder has to be on the engine's import path. Quickshell
+#  offers neither a command-line option nor an API to add one —
+#  checked — so the environment variable is the only door.
+#
+#  It lives here and not in the compositor's config on purpose:
+#  whoever clones k4 should not have to know this exists. It ships
+#  with the project.
+#
+#      exec-once = ~/.config/quickshell/k4/launch
+#
+#  Any argument passes through to quickshell untouched.
+
+root=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+
+#  The module is called K4 and lives in api/K4, so api/ is what gets
+#  prepended — first, so it wins over anything already there.
+QML_IMPORT_PATH="$root/api${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+export QML_IMPORT_PATH
+
+#  The log, without which everything said at runtime goes nowhere:
+#  started through `setsid -f ./launch` — which is how autostart runs
+#  it — stdout has no terminal to land in (`readlink /proc/<pid>/fd/1`
+#  says /dev/null). The console.log lines, the QML errors, what
+#  `k4 pluginStatus` prints: exactly what writing a plugin needs, and
+#  diagnostics have been lost to this more than once.
+#
+#  The previous log is kept aside before starting: a crash that forces
+#  a restart takes with it the log that explains it, and that is
+#  precisely the moment it is wanted.
+#
+#  K4_LOG=0 turns it off, for whoever prefers the old behavior.
+#
+#  A plain redirect, not `… | tee`: `exec` inside a pipeline does not
+#  replace the shell, and the surviving `sh` parent is one more
+#  process to mistake for an instance when hunting duplicates.
+#  Manual runs read ~/.local/state/k4/k4.log — or export K4_LOG=0
+#  and keep the terminal.
+if [ "${K4_LOG:-1}" != "0" ]; then
+    state="${XDG_STATE_HOME:-$HOME/.local/state}/k4"
+    mkdir -p "$state" 2>/dev/null
+    log="$state/k4.log"
+    [ -f "$log" ] && mv -f "$log" "$log.1"
+    exec quickshell -p "$root/shell.qml" "$@" >>"$log" 2>&1
+fi
+
+exec quickshell -p "$root/shell.qml" "$@"
