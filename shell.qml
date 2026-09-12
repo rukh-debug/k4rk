@@ -114,6 +114,11 @@ Scope {
         //  pedir más alto que la píldora.
         Island.abierta = activePlugin !== null
             && activePlugin.islandHeight > Theme.baseHeight
+
+        //  A closed view's wall-origin dies with it, so a later
+        //  keybind open of the same view cannot inherit the
+        //  wall's right to close it.
+        _reapHoverSummoned()
     }
 
     // Clic en el fondo: lo atiende el plugin activo si lo pide; si no, abre el
@@ -473,6 +478,112 @@ Scope {
             readonly property bool zonasVivas: Settings.edgeZoneEnabled
                 && seEsconde && retirada && !sinBarra && !Island.apartada
 
+            //  ── open on hover: the strips as doorbells ──────────────
+            //
+            //  The same four rim strips that bring a hidden bar back
+            //  can also SUMMON: a view hover-armed at its placement
+            //  opens when the pointer reaches its stretch of wall,
+            //  in either popup mode and with the bar visible or not.
+            //  They take input for this whenever any arm exists (and
+            //  the island is not stood aside), independently of the
+            //  hidden-bar rules — a doorbell only works if it is
+            //  wired. The thickness is the rim's own knob.
+            readonly property bool anyHoverArm: {
+                if (!Settings.openOnHoverEnabled)
+                    return false
+                const lista = PluginManager.instancias
+                for (let i = 0; i < lista.length; ++i) {
+                    const p = lista[i]
+                    if (p.colocable && !p.transitorio
+                            && Settings.placementDe(p.name).hover)
+                        return true
+                }
+                return false
+            }
+
+            //  The reveal gesture keeps its right of way: while the
+            //  bar is hidden and retired, a touch brings the BAR
+            //  back — the arms answer again once it is here, with a
+            //  fresh touch. Two answers to one touch would read as
+            //  one glitch.
+            //
+            //  The judge behind every touch and every slide. It
+            //  remembers WHO it last summoned on this screen so a
+            //  pointer riding one stretch does not re-ring it, and
+            //  a slide that reaches a NEW stretch hands over: the
+            //  previous wall-opened view of this wall closes — a
+            //  sweep reads as «show me this one», not «collect them
+            //  all». Keybind-opened views are nobody's to close.
+            property string lastWallSummoned: ""
+
+            function summonFromWall(side, pct) {
+                if (!anyHoverArm || retirada || Island.apartada)
+                    return
+                const id = Settings.hoverViewAt(side, pct)
+                if (!id || id === lastWallSummoned)
+                    return
+                const p = _p(id)
+                if (!p || p.active)
+                    return
+
+                const lista = PluginManager.instancias
+                for (let i = 0; i < lista.length; ++i) {
+                    const otro = lista[i]
+                    if (otro.name === id || !otro.active
+                            || !root._hoverSummoned[otro.name])
+                        continue
+                    if (Settings.hoverWalls(
+                            Settings.placementDe(otro.name))
+                            .indexOf(side) < 0)
+                        continue
+                    if (typeof otro.close === "function")
+                        otro.close()
+                }
+
+                lastWallSummoned = id
+                root._hoverSummoned[id] = true
+                //  The summon lands on the screen whose wall was
+                //  touched — the same choice a click makes.
+                Island.pedirPantalla(screen.name)
+                //  `abrir`, never `toggle`: the pointer never touched
+                //  the island, so nothing else will arm the exit, and
+                //  a plugin whose `active` is a binding must not meet
+                //  the contract's default toggle — the imperative
+                //  write breaks the binding and the view can never
+                //  close again. `abrir` is the contract's «arrive
+                //  open» door; plugins with own state override it.
+                p.abrir()
+                root.armHoverExit()
+            }
+
+            //  One strip touch, both duties: the hidden-bar reveal
+            //  (its own gates inside) and the hover summon. The
+            //  fraction is along the wall, 0–1. Leaving the strip
+            //  re-arms the doorbell for the next touch — and arms
+            //  the exit of whatever the wall opened: a summon the
+            //  pointer never carried onto the island has no other
+            //  moment at which «the hover ended».
+            function franjaTocada(lado, dentro, fraccion) {
+                if (dentro) {
+                    tocarZona()
+                    Island.publishWallHover(screen.name, lado)
+                    summonFromWall(lado,
+                        Math.max(0, Math.min(1, fraccion)) * 100)
+                } else {
+                    Island.retractWallHover(screen.name, lado)
+                    lastWallSummoned = ""
+                    root.armHoverExit()
+                }
+            }
+
+            //  The pointer RIDES the strip: its position along the
+            //  wall is the news now, and each stretch it crosses
+            //  deserves its own summons.
+            function wallSlid(lado, fraccion) {
+                summonFromWall(lado,
+                    Math.max(0, Math.min(1, fraccion)) * 100)
+            }
+
             function repensarRetirada() {
                 //  Sin modo escondite no hay nada que retirar, y con la barra
                 //  apartada tampoco: ahí manda quien se la llevó.
@@ -683,27 +794,41 @@ Scope {
                 //  not live on: its own border's path back is the filo,
                 //  which already exists. Seeing the rim and having it take
                 //  input are different things, on purpose.
+                //
+                //  EXCEPT for the hover arms, which answer on every
+                //  border whenever one is armed — including the bar's
+                //  own, because a view may well be placed there.
                 Region {
-                    item: (panelWindow.zonasVivas
-                           && Settings.barPosition !== "bottom")
+                    item: (!Island.apartada
+                           && (panelWindow.anyHoverArm
+                               || (panelWindow.zonasVivas
+                                   && Settings.barPosition !== "bottom")))
                         ? zonaArriba : null
                     intersection: Intersection.Combine
                 }
 
                 Region {
-                    item: (panelWindow.zonasVivas
-                           && Settings.barPosition !== "top")
+                    item: (!Island.apartada
+                           && (panelWindow.anyHoverArm
+                               || (panelWindow.zonasVivas
+                                   && Settings.barPosition !== "top")))
                         ? zonaAbajo : null
                     intersection: Intersection.Combine
                 }
 
                 Region {
-                    item: panelWindow.zonasVivas ? zonaIzquierda : null
+                    item: (!Island.apartada
+                           && (panelWindow.anyHoverArm
+                               || panelWindow.zonasVivas))
+                        ? zonaIzquierda : null
                     intersection: Intersection.Combine
                 }
 
                 Region {
-                    item: panelWindow.zonasVivas ? zonaDerecha : null
+                    item: (!Island.apartada
+                           && (panelWindow.anyHoverArm
+                               || panelWindow.zonasVivas))
+                        ? zonaDerecha : null
                     intersection: Intersection.Combine
                 }
             }
@@ -842,9 +967,70 @@ Scope {
                 }
             }
 
+            //  ── the armed stretch, shown where it lives ─────────────
+            //
+            //  While the Placement page has a card under the pointer,
+            //  that view's stretch of wall lights up on the REAL wall
+            //  — every monitor, both walls of a corner — so the
+            //  gesture is rehearsed where it will happen, armed or
+            //  not: the stretch is the placement's, and seeing it is
+            //  how you decide. It rides the rim's own thickness (a
+            //  touch fatter, so it reads), takes no input — the
+            //  window's mask decides that — and arrives with a fade.
+            Repeater {
+                model: {
+                    const p = Island.wallPreview
+                    if (p.length === 0)
+                        return []
+                    const propio = (Settings.islandPlacements || {})[p]
+                    return propio
+                        ? Settings.hoverZones({ side: propio.side,
+                                                align: propio.align,
+                                                hover: true })
+                        : []
+                }
+
+                Rectangle {
+                    required property var modelData
+                    readonly property bool horizontal:
+                        modelData.side === "top" || modelData.side === "bottom"
+                    readonly property real grueso:
+                        Math.max(Settings.edgeZoneSize, 6)
+                    readonly property real largo: horizontal
+                        ? panelWindow.width
+                          * (modelData.to - modelData.from) / 100
+                        : panelWindow.height
+                          * (modelData.to - modelData.from) / 100
+                    x: horizontal
+                        ? panelWindow.width * modelData.from / 100
+                        : (modelData.side === "left"
+                           ? 0 : panelWindow.width - grueso)
+                    y: horizontal
+                        ? (modelData.side === "top"
+                           ? 0 : panelWindow.height - grueso)
+                        : panelWindow.height * modelData.from / 100
+                    width: horizontal ? largo : grueso
+                    height: horizontal ? grueso : largo
+                    radius: 3
+                    color: Theme.blue
+                    opacity: 0
+                    Component.onCompleted: opacity = 0.5
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
+            }
+
             //  The rim's invisible fingers, one per border: only while the
             //  bar is away, and only on the borders it does not live on,
             //  does the mask let them take input. Their ids feed the mask.
+            //
+            //  With a hover arm armed they take input always (see the
+            //  mask), and the same touch carries both duties: the
+            //  reveal while hidden, and the wall's summons — the
+            //  position along the strip says whose stretch of wall
+            //  was reached. And the position stays news WHILE the
+            //  pointer rides the strip: `puntoFranja` tracks it live
+            //  (the handler's point notifies), so a sweep down the
+            //  wall summons each stretch it crosses.
             Item {
                 id: zonaArriba
                 width: parent.width
@@ -853,8 +1039,16 @@ Scope {
                 opacity: 0
 
                 HoverHandler {
-                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                    id: tocaArriba
+                    onHoveredChanged: panelWindow.franjaTocada(
+                        "top", hovered,
+                        tocaArriba.point.position.x / zonaArriba.width)
                 }
+
+                readonly property real puntoFranja:
+                    tocaArriba.point.position.x / zonaArriba.width
+                onPuntoFranjaChanged: if (tocaArriba.hovered)
+                    panelWindow.wallSlid("top", puntoFranja)
             }
 
             Item {
@@ -865,8 +1059,16 @@ Scope {
                 opacity: 0
 
                 HoverHandler {
-                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                    id: tocaAbajo
+                    onHoveredChanged: panelWindow.franjaTocada(
+                        "bottom", hovered,
+                        tocaAbajo.point.position.x / zonaAbajo.width)
                 }
+
+                readonly property real puntoFranja:
+                    tocaAbajo.point.position.x / zonaAbajo.width
+                onPuntoFranjaChanged: if (tocaAbajo.hovered)
+                    panelWindow.wallSlid("bottom", puntoFranja)
             }
 
             Item {
@@ -877,8 +1079,16 @@ Scope {
                 opacity: 0
 
                 HoverHandler {
-                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                    id: tocaIzquierda
+                    onHoveredChanged: panelWindow.franjaTocada(
+                        "left", hovered,
+                        tocaIzquierda.point.position.y / zonaIzquierda.height)
                 }
+
+                readonly property real puntoFranja:
+                    tocaIzquierda.point.position.y / zonaIzquierda.height
+                onPuntoFranjaChanged: if (tocaIzquierda.hovered)
+                    panelWindow.wallSlid("left", puntoFranja)
             }
 
             Item {
@@ -889,8 +1099,16 @@ Scope {
                 opacity: 0
 
                 HoverHandler {
-                    onHoveredChanged: if (hovered) panelWindow.tocarZona()
+                    id: tocaDerecha
+                    onHoveredChanged: panelWindow.franjaTocada(
+                        "right", hovered,
+                        tocaDerecha.point.position.y / zonaDerecha.height)
                 }
+
+                readonly property real puntoFranja:
+                    tocaDerecha.point.position.y / zonaDerecha.height
+                onPuntoFranjaChanged: if (tocaDerecha.hovered)
+                    panelWindow.wallSlid("right", puntoFranja)
             }
 
             Item {
@@ -1540,7 +1758,13 @@ Scope {
                 v = null
             }
             if (!v) {
-                v = componenteVentana.createObject(root, { plugin: p })
+                //  A fresh window learns whether the WALL summoned
+                //  it — the host's one mark of origin, set before
+                //  the toggle that opened the plugin.
+                v = componenteVentana.createObject(root, {
+                    plugin: p,
+                    abiertoPorZona: root._hoverSummoned[p.name] === true
+                })
                 _ventanasInstancias[p.name] = v
             } else if (v.plugin !== p) {
                 //  A reload replaced the instance: the window stays,
@@ -1600,6 +1824,9 @@ Scope {
             Island.pantallaActiva = Island.tomarPantallaPedida()
             Island.pantallaPedida = ""
         }
+
+        //  Drawers that closed take their wall-origin with them.
+        _reapHoverSummoned()
 
         sincronizarVentanas()
     }
@@ -1724,7 +1951,8 @@ Scope {
     // decide qué hacer: aquí solo se cuenta el tiempo y se avisa al activo.
     function armHoverExit() {
         const p = activePlugin
-        if (!p || !p.closeOnHoverExit)
+        if (!p || (!p.closeOnHoverExit
+                   && !_hoverSummoned[p.name]))
             return
 
         pluginHoverExitTimer.interval = p.hoverExitDelay
@@ -1738,8 +1966,71 @@ Scope {
         interval: 700
         onTriggered: {
             const p = root.activePlugin
-            if (p && p.closeOnHoverExit)
+            if (!p)
+                return
+            if (p.closeOnHoverExit) {
                 p.hoverTimedOut()
+                return
+            }
+            //  What the wall opened, the wall closes — but only once
+            //  the pointer has left the view's ground as well: the
+            //  timer can be armed by a transit the keep-alive check
+            //  below settles.
+            if (root._hoverSummoned[p.name]
+                    && !root.keptByWall(p.name, Island.pantallaActiva))
+                p.close()
+        }
+    }
+
+    //  ── open on hover: who the wall summoned ────────────────────
+    //
+    //  A wall-touch summon is marked here because what the wall
+    //  opened the wall gets to close: leaving the view (or its wall)
+    //  retires it after the hover delay, while a keybind-opened view
+    //  keeps today's contract of staying until touched. Entries are
+    //  reaped the moment their view closes, so a later keybind open
+    //  of the same view starts clean.
+    property var _hoverSummoned: ({})
+
+    function _reapHoverSummoned() {
+        if (Settings.popupMode === "window") {
+            const vivos = {}
+            const lista = ventanasAbiertas
+            for (let i = 0; i < lista.length; ++i)
+                vivos[lista[i].name] = true
+            for (const id in _hoverSummoned)
+                if (!vivos[id])
+                    delete _hoverSummoned[id]
+        } else {
+            const p = activePlugin
+            for (const id in _hoverSummoned)
+                if (!p || id !== p.name)
+                    delete _hoverSummoned[id]
+        }
+    }
+
+    //  Whether the wall the pointer is on still holds the view open:
+    //  one of its own walls, on its own screen. The island serves
+    //  the screen it is deployed on; a drawer knows its screen
+    //  itself (VentanaPopup) and asks the same geometry.
+    function keptByWall(nombre, pantalla) {
+        if (Island.wallHover.length === 0
+                || Island.wallHoverScreen !== pantalla)
+            return false
+        return Settings.hoverWalls(Settings.placementDe(nombre))
+                   .indexOf(Island.wallHover) >= 0
+    }
+
+    //  Landing on the wall that holds the active view counts as
+    //  still hovering it: the pointer never left the view's ground,
+    //  it only left its body.
+    Connections {
+        target: Island
+
+        function onWallHoverChanged() {
+            const p = root.activePlugin
+            if (p && root.keptByWall(p.name, Island.pantallaActiva))
+                root.holdHoverExit()
         }
     }
 
