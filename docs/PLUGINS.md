@@ -260,6 +260,13 @@ wall touch would summon. Those declare `hoverArmable: false`, and their
 card shows no arm at all instead of a switch that promises an empty
 room.
 
+The card also carries a copy button — the IPC command that opens the
+surface, ready to paste in a terminal or hang on a key. It reads
+`summonCommand`, because target and verb are the plugin's to say: the
+convention is `k4.<id>` + `toggle`, and the exceptions (the terminal's
+`k4.term island`) are exactly why it is declared and not guessed. A
+colocable surface with no `summonCommand` shows no button.
+
 ```qml
 // HolaPlugin.qml
 import QtQuick

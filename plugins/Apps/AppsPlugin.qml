@@ -27,6 +27,7 @@ K4.Plugin {
     title: "Applications"
     priority: 72
     colocable: true
+    summonCommand: "k4.apps toggle"
     active: abierto
     grabKeyboard: abierto
     islandWidth: 700

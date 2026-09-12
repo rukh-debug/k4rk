@@ -17,6 +17,7 @@ K4Plugin {
     title: "Tray"
     priority: 63
     colocable: true
+    summonCommand: "k4.tray toggle"
     active: habilitado && open
     //  The whole keyboard while open: «optional» is OnDemand and the
     //  compositor only gives it if you CLICK the surface, so opened

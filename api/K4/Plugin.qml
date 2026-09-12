@@ -130,6 +130,17 @@ QtObject {
     //  a surface that opens on purpose is the norm.
     property bool hoverArmable: true
 
+    //  The IPC call that opens this surface, as the Placement card's
+    //  copy button hands it out: everything AFTER `call` —
+    //  "k4.launcher toggle". Only the plugin can say this for sure:
+    //  target and verb are conventions, and conventions break — the
+    //  terminal lives at `k4.term` and its toggle is called `island`.
+    //  The prefix (`quickshell ipc -p … call`) is the host's business,
+    //  added at copy time, because only the running instance knows the
+    //  path. Empty (the default) hides the button: a surface nothing
+    //  can open from outside should not offer a command.
+    property string summonCommand: ""
+
     // Exclusive keyboard focus: while active, no window receives a
     // key. Only for what is truly typed into — the launcher, the AI
     // chat, the Wi-Fi password — because it blocks the rest of the

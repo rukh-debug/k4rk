@@ -26,6 +26,7 @@ K4Plugin {
     title: "Session"
     priority: 86
     colocable: true
+    summonCommand: "k4.session toggle"
     active: habilitado && open
     viewLoaded: open
     grabKeyboard: open

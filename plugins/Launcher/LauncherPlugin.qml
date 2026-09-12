@@ -18,6 +18,7 @@ K4Plugin {
     title: "Launcher"
     priority: 80
     colocable: true
+    summonCommand: "k4.launcher toggle"
     // it keeps the island while shrinking, but with no content
     // left
     active: habilitado && (open || closing)

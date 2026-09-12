@@ -20,6 +20,7 @@ K4Plugin {
     title: "OpenWebUI"
     priority: 90
     colocable: true
+    summonCommand: "k4.openwebui toggle"
     active: habilitado && open
     grabKeyboard: true
 

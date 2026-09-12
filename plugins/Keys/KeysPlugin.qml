@@ -13,6 +13,7 @@ K4Plugin {
     title: "Shortcuts"
     priority: 65
     colocable: true
+    summonCommand: "k4.keys toggle"
     active: habilitado && (open || closing)
     viewLoaded: open
     grabKeyboard: open

@@ -19,6 +19,7 @@ K4Plugin {
     title: "Settings"
     priority: 66
     colocable: true
+    summonCommand: "k4.settings toggle"
 
     //  A deployed view: it occupies the island while open.
     active: habilitado && open

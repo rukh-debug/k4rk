@@ -28,6 +28,7 @@ K4Plugin {
     title: "Agents"
     priority: 63
     colocable: true
+    summonCommand: "k4.agents toggle"
     active: habilitado && abierto
 
     property bool abierto: false

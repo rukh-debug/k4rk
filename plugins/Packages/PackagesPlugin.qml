@@ -26,6 +26,7 @@ K4Plugin {
     title: "Packages"
     priority: 76
     colocable: true
+    summonCommand: "k4.packages open"
 
     //  A confirm page: it opens when a package row is chosen, asks what
     //  to do, and leaves.
@@ -535,6 +536,10 @@ K4Plugin {
 
     K4.Ipc {
         target: "k4.packages"
+        //  `buscar` never opens: it lands a query (the launcher's
+        //  results ride on it), and `abierto` is set elsewhere. This
+        //  is the one verb that summons the surface by itself.
+        function open(): void { self.abrir() }
         function buscar(q: string): void { self.buscar(q) }
     }
 

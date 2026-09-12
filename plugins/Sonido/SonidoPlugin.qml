@@ -29,6 +29,7 @@ K4Plugin {
     //  A summoned view — it gets a Placement card like its peers (tray,
     //  system, keys), instead of silently following the bar.
     colocable: true
+    summonCommand: "k4.sound toggle"
 
     property bool abierto: false
 
