@@ -209,7 +209,12 @@ only paints, and only exists while the plugin holds the island.
 Where that room is depends on the user's **How views open** setting
 (Settings → Island → Summoned views). In **island** mode — the default,
 and the classic behavior — one summoned view at a time deploys from the
-bar and `priority` decides which. In **window** mode every open
+bar, and the one just opened is the one on it: the host retires the
+previous summoned view through its `close()` — whatever that verb must
+do on the way out still happens — while its view fades out under the
+arriving one and the island glides to the newcomer. `priority` still
+arbitrates everything else: the pill, the hover views, the
+transients. In **window** mode every open
 `colocable` view comes out of the screen's frame as a drawer of its
 own, on the edge and at the point its placement says — the same
 placement the island would deploy it at — and several may be open at
@@ -244,7 +249,8 @@ rides the wall: each stretch crossed gets its summons, and the
 previous one hands over. A hover-summoned view leaves when the pointer
 stops hovering it (its card, its wings or its own wall), after the
 hover-exit grace. A view opened any other way is not touched by
-this: it stays until closed, as always. The host carries the whole
+this: it stays until closed — or superseded, as any summoned view is
+when the next one opens. The host carries the whole
 thing; a plugin neither knows nor does anything about it.
 
 ```qml
@@ -314,6 +320,12 @@ Above the resting views so you survive being touched; below the things the
 user opens on purpose if yours can open **itself**. A module that appears
 over what someone was already doing is rude, and a plugin that announces
 something is announcing it, not demanding the screen.
+
+Between summoned views the ladder no longer chooses: opening one
+supersedes whoever holds the island — the host closes the previous
+one — so your priority only places you against the resting views and
+the transients. Be findable in the map anyway; the number still says
+what you are.
 
 ### The size is yours
 
