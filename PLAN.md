@@ -13,8 +13,10 @@ summarize).
   `icon`/`application`/`permissions`/`require` alongside the Spanish
   keys; repo catalog, docs and examples write English. Wild Spanish
   manifests keep working; the TODO sweep finishes the rename later.
-- **IPC names**: `k4.term`/`k4.theme` stay (muscle memory); the
-  deviation is documented, `k4.<id>` remains the rule for new plugins.
+- **IPC names**: `k4.term` stays (muscle memory); the deviation is
+  documented, `k4.<id>` remains the rule for new plugins. `k4.theme`
+  was retired with the hyprtheme plugin (2026-09-11): wallpaper and
+  palette are host-owned now, and its key goes to the wallpaper page.
 - **Contract verbs**: the Ask trio (`openAsk`/`withScreenshot`/
   `withRegion`) and Packages' `actualizarTodo`/friends become
   documented `K4.Plugin` verbs — stubs + docs in the same change
@@ -47,7 +49,8 @@ the next.
    icon on all 23.
 4. **`PluginManager.qml:592`** — `· pide:` → English (`· needs:`).
 5. **IPC deviation note** — one line in `docs/API.md` marking
-   `k4.term`/`k4.theme` as legacy names.
+   `k4.term` as a legacy name (`k4.theme` later retired with its
+   plugin).
 
 ## Phase 1 — Bug fixes
 

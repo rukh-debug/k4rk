@@ -814,7 +814,6 @@ FadeIn {
                                 sourceComponent: Component {
                                     PortadaFamilia {
                                         familia: bloque.modelData
-                                        motor: vista.plugin.hyprtheme
                                         onPedida: function (grupo) {
                                             vista.elegirHijo(grupo)
                                         }
@@ -827,19 +826,18 @@ FadeIn {
                                 }
                             }
 
-                            //  ── the engine's absence, said up front ───
-                            //
-                            //  Above the grid on purpose: the grid can run
-                            //  for a whole screen, and a notice at its feet
-                            //  is a notice nobody ever met.
-                            IslandLabel {
+                            //  The accent belongs with the image it is sampled
+                            //  from, rather than the manual colour presets.
+                            Loader {
+                                visible: active
                                 Layout.fillWidth: true
-                                visible: bloque.modelData.vista === "wallpaper"
-                                         && !vista.plugin.hyprtheme
-                                text: "The theme plugin is off: you can view the wallpapers, but not apply them."
-                                color: Theme.dim
-                                font.pixelSize: 10
-                                wrapMode: Text.WordWrap
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "wallpaper"
+                                        && bloque.modelData.atajo === undefined
+                                sourceComponent: Component {
+                                    PaletteFromWallpaper {}
+                                }
                             }
 
                             //  ── the wallpaper grid ────────────────────
@@ -867,21 +865,10 @@ FadeIn {
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     RejillaFondos {
-                                        motor: vista.plugin.hyprtheme
+                                        motor: WallpaperPalette
                                         fitContent: true
                                     }
                                 }
-                            }
-
-
-                            IslandLabel {
-                                Layout.fillWidth: true
-                                visible: bloque.modelData.vista === "wallpaper"
-                                         && !vista.plugin.hyprtheme
-                                text: "The theme plugin is off: you can view the wallpapers, but not apply them."
-                                color: Theme.dim
-                                font.pixelSize: 10
-                                wrapMode: Text.WordWrap
                             }
 
                             //  The shell's typeface, from the families the

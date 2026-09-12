@@ -57,7 +57,6 @@ Singleton {
         { id: "panel", title: "Control centre", version: "1.0.0", enabled: true },
         { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
         { id: "ask", title: "Ask", version: "1.0.0", enabled: true },
-        { id: "hyprtheme", title: "Hyprland theme", version: "1.0.0", enabled: true },
         { id: "displays", title: "Displays", version: "1.0.0", enabled: true },
         { id: "tray", title: "Tray", version: "1.0.0", enabled: true },
         { id: "settings", title: "Settings", version: "1.0.0", enabled: true, configurable: false },
@@ -329,7 +328,7 @@ Singleton {
                     _avisados[nombre] = true
                     console.warn("k4: some plugin declares '"
                                  + nombre + "'; references go by catalog id "
-                                 + "(hyprtheme, settings, system)")
+                                 + "(settings, system)")
                 }
             }
             for (let i = 0; i < catalogo.length; ++i) {

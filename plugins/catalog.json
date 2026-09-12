@@ -92,22 +92,8 @@
    "require": "bin:codex",
    "icon": "0xF0674"
   },
-  {
-   "id": "hyprtheme",
-   "entry": "HyprTheme/HyprThemePlugin.qml",
-   "version": "1.1.0",
-   "title": "Hyprland theme",
-   "description": "Colors, wallpapers and window rules for the session",
-   "enabledByDefault": true,
-   "permissions": [
-    "procesos",
-    "ficheros",
-    "paginas"
-   ],
-   "icon": "0xF03D8"
-  },
-  {
-   "id": "displays",
+   {
+    "id": "displays",
    "entry": "Pantallas/PantallasPlugin.qml",
    "version": "1.1.0",
    "title": "Displays",

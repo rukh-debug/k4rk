@@ -14,6 +14,7 @@
   curl,
   grim,
   slurp,
+  awww,
   swaybg,
   ffmpeg,
   imagemagick,
@@ -38,45 +39,47 @@
 }:
 
 mkShell {
-  packages =
-    [
-      quickshell
-      hyprland
-      #  tools/ beyond the standard library: spritesheet wants PIL and numpy,
-      #  glifos wants fontTools (and skips itself without it)
-      (python3.withPackages (ps: with ps; [
+  packages = [
+    quickshell
+    hyprland
+    #  tools/ beyond the standard library: spritesheet wants PIL and numpy,
+    #  glifos wants fontTools (and skips itself without it)
+    (python3.withPackages (
+      ps: with ps; [
         numpy
         pillow
         fonttools
-      ]))
-      git
-      curl
-      grim
-      slurp
-      swaybg
-      ffmpeg
-      imagemagick
-      zenity
-      wl-clipboard
-      fd
-      pulseaudio
-      wireplumber
-      networkmanager
-      bluez
-      libnotify
-      xdg-utils
-      xdg-user-dirs
-      desktop-file-utils
-      openssh
-      procps
-      util-linux
-      getent
-    ]
-    ++ [
-      #  fonts for qmllint-adjacent runs and the glyph tools
-      adwaita-fonts
-      nerd-fonts.meslo-lg
-    ];
+      ]
+    ))
+    git
+    curl
+    grim
+    slurp
+    awww
+    swaybg
+    ffmpeg
+    imagemagick
+    zenity
+    wl-clipboard
+    fd
+    pulseaudio
+    wireplumber
+    networkmanager
+    bluez
+    libnotify
+    xdg-utils
+    xdg-user-dirs
+    desktop-file-utils
+    openssh
+    procps
+    util-linux
+    getent
+  ]
+  ++ [
+    #  fonts for qmllint-adjacent runs and the glyph tools
+    adwaita-fonts
+    nerd-fonts.meslo-lg
+  ];
 
   #  Same Qt environment the packaged launcher sets: the K4 QML module is
   #  the checkout's own api/, and QtMultimedia comes from nixpkgs.

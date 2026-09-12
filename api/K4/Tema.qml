@@ -50,6 +50,7 @@ QtObject {
     //
     //  Última llamada gana. `fuerza` 0..0.45; `duracionMs` 0 = sin plazo.
     readonly property string tinteDueno: _t ? _t.tinteDueno : ""
+    readonly property color tinteColor: _t ? _t.tinteColor : "transparent"
 
     function tintar(dueno, color, fuerza, duracionMs) {
         if (_t)

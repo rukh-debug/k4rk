@@ -390,6 +390,7 @@ PanelWindow {
         if (retrayendo)
             return
         retrayendo = true
+        despliegue.stop()
         repliegue.from = avance
         repliegue.restart()
     }
@@ -425,11 +426,9 @@ PanelWindow {
         property: "avance"
         to: 0
         duration: 200
-        //  Fast off the mark on purpose: the plugin mutates its own
-        //  content as it closes (the launcher clears its query, the
-        //  lists reset) and the drawer wants to be mostly gone before
-        //  any of that renders.
-        easing.type: Easing.OutCubic
+        // Match the entrance in reverse. Accelerating into the frame avoids
+        // lingering on fractional diagonal steps as the corner swallows it.
+        easing.type: Easing.InCubic
         onFinished: ventana.destroy()
     }
 }

@@ -5,15 +5,15 @@
 //  vive mientras vive la barra y no depende de que la vista esté montada.
 //
 //      K4Plugin {
-//          name: "hyprtheme"
+//          name: "launcher"
 //          priority: 60
 //          habilitado: true
 //          active: open
 //          islandWidth: 720
 //          islandHeight: 480
-//          view: Component { HyprThemeView {} }
+//          view: Component { LauncherView {} }
 //
-//          IpcHandler { target: "hyprtheme"; function open() { ... } }
+//          IpcHandler { target: "k4.launcher"; function toggle() { ... } }
 //          Process { id: apply }
 //      }
 

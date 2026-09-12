@@ -61,14 +61,15 @@ ColumnLayout {
     //  A sketch with an invented gray shows the shape but not how it
     //  LOOKS. With the real wallpaper it stops being a diagram.
     //
-    //  `Fondos`, the service, knows it: which one is set, where its
-    //  frame lives if it is a video, and how many gaps Hyprland has.
-    //  This used to be a shell command with `md5sum` because that
-    //  information lived inside the theme plugin and there was no way
-    //  to ask it. Now it is a property: zero processes, and it learns
-    //  on its own when you change wallpaper.
+    //  `WallpaperPalette`, the host service, knows it: which one is
+    //  set. `Fondos` knows where its frame lives if it is a video,
+    //  and how many gaps Hyprland has. This used to be a shell
+    //  command because that information lived inside the theme
+    //  plugin and there was no way to ask it. Now it is a property:
+    //  zero processes, and it learns on its own when you change
+    //  wallpaper.
     readonly property string poster: {
-        const r = Fondos.actualDe("")
+        const r = WallpaperPalette.source
         if (r.length === 0)
             return ""
         return "file://" + (Fondos.esQuieto(r) ? r : Fondos.posterDe(r))

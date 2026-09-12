@@ -1,20 +1,20 @@
-//  La rejilla de fondos de escritorio.
+//  The desktop wallpaper grid.
 //
-//  Vivía dentro de `HyprThemeView`, que es donde nació. Sale aquí porque ahora
-//  la enseñan DOS sitios —la pantalla del tema y la sección Apariencia de
-//  Ajustes— y dos copias de trescientas líneas divergen a la primera
-//  corrección: se arregla una y la otra sigue mintiendo.
+//  It was born inside the theme plugin's own screen. It moved here when
+//  TWO places came to show it — the theme screen and Settings' Appearance
+//  section — and two copies of three hundred lines diverge at the first
+//  fix: one gets repaired, the other keeps lying.
 //
-//  ── de dónde saca las cosas ──────────────────────────────────────
+//  ── where things come from ───────────────────────────────────────
 //
-//  Lo de MIRAR, del servicio `Fondos`: qué hay, cómo se ve cada uno, cuál está
-//  puesto. Eso no es de nadie en particular.
+//  What it LOOKS at comes from the `Fondos` service: what exists, how
+//  each one looks, which one is set. That is nobody's in particular.
 //
-//  Lo de HACER, del `motor` que le pasen: aplicar, quitar, traer uno de fuera,
-//  las transiciones. Hoy ese motor es el plugin del tema, que es quien habla
-//  con awww/swww/swaybg. Se recibe como objeto y no se importa su carpeta: un
-//  plugin no depende de otro, y si está apagado esto se queda en modo mirar sin
-//  romperse.
+//  What it DOES goes through the `motor` it is handed: apply, remove,
+//  bring one in from outside, the transitions. That motor is the host's
+//  WallpaperPalette service, which talks to awww/swww/swaybg. It is an
+//  object and not an import so the widget stays a dumb surface: the
+//  service could be swapped without this file noticing.
 
 import QtQuick
 import QtQuick.Layouts
@@ -26,8 +26,9 @@ import "../services"
 ColumnLayout {
     id: rejilla
 
-    //  Quien sabe aplicar un fondo. Sin él la rejilla se ve pero no toca nada.
-    property var motor: null
+    //  Who knows how to apply a wallpaper: the host's WallpaperPalette
+    //  service, handed in so the widget never imports the engine.
+    property var motor: WallpaperPalette
 
     //  `true`: the grid drops its own scrolling and sizes itself to its rows,
     // so the page hosting it scrolls EVERYTHING as one — the Settings view,
@@ -35,47 +36,65 @@ ColumnLayout {
     // would wall it off. `false` (default): the grid scrolls inside, which is
     // what a screen of its own wants — the whole viewport for thumbnails.
     property bool fitContent: false
+    property int thumbnailsReady: 4
 
-    //  Los monitores, para el filtro de arriba. Los sabe el motor.
+    Timer {
+        id: thumbnailQueue
+        interval: 150
+        repeat: true
+        onTriggered: {
+            //  The scan is asynchronous: an empty list is "not here yet",
+            //  not "nothing to show" — keep ticking until it lands.
+            if (Fondos.lista.length === 0)
+                return
+            rejilla.thumbnailsReady += 4
+            if (rejilla.thumbnailsReady >= Fondos.lista.length)
+                stop()
+        }
+    }
+
+    //  The monitors, for the filter above. The motor knows them.
     readonly property var pantallas: rejilla.motor
         && typeof rejilla.motor.pantallasConocidas === "function"
         ? rejilla.motor.pantallasConocidas() : []
 
-    //  Cuál está puesto AHORA en lo que se está mirando: el del monitor
-    //  elegido si hay uno elegido, y si no el común. Es lo que marca en azul la
-    //  miniatura, así que tiene que seguir al filtro de arriba.
-    //  El rastreo se pide al enseñarse y solo si no hay nada: un `find` por
-    //  siete carpetas en cada arranque de la barra sería pagar por una lista
-    //  que casi nunca se mira. Y al enseñarse otra vez no se repite, que la
-    //  lista ya está y el botón de refrescar existe para eso.
+    //  Which one is set NOW on what is being looked at: the chosen
+    //  monitor's if there is one chosen, and otherwise the common one.
+    //  It is what marks the thumbnail in blue, so it has to follow the
+    //  filter above.
+    //  The scan is asked for when shown and only if there is nothing: a
+    //  `find` over seven folders on every bar start would be paying for a
+    //  list that is almost never looked at. And showing it again does not
+    //  repeat it — the list is already there and the refresh button
+    //  exists for that.
     function pedirLista() {
         if (Fondos.lista.length === 0 && !Fondos.rastreando)
             Fondos.rastrear()
     }
 
-    Component.onCompleted: if (visible) pedirLista()
-    onVisibleChanged: if (visible) pedirLista()
+    Component.onCompleted: if (visible) { pedirLista(); thumbnailQueue.start() }
+    onVisibleChanged: if (visible) { pedirLista(); thumbnailQueue.start() }
+    onThumbnailsReadyChanged: if (thumbnailsReady >= Fondos.lista.length)
+        thumbnailQueue.stop()
 
-    readonly property string destinoActual: {
-        if (!rejilla.motor)
-            return Fondos.actualDe("")
-        return rejilla.motor.pantallaElegida.length > 0
-            ? rejilla.motor.fondoDe(rejilla.motor.pantallaElegida)
-            : rejilla.motor.wallpaper
-    }
+    readonly property string destinoActual: rejilla.motor
+        ? (rejilla.motor.pantallaElegida.length > 0
+           ? rejilla.motor.fondoDe(rejilla.motor.pantallaElegida)
+           : rejilla.motor.wallpaper)
+        : ""
 
-    //  Sin `anchors.fill`: eso era de cuando esto vivía dentro de una pantalla
-    //  propia. Aquí lo coloca la columna de la sección, y mezclar anchors con
-    //  Layout deja el widget del tamaño equivocado.
+    //  No `anchors.fill`: that was for when this lived inside a screen of
+    //  its own. Here the section's column places it, and mixing anchors
+    //  with Layout leaves the widget the wrong size.
     Layout.fillWidth: true
     spacing: 10
 
-    //  ── en qué pantalla estamos trabajando ──────────
+    //  ── which screen we are working on ─────────────
     //
-    //  Con dos monitores, «poner este fondo» es ambiguo, y la
-    //  rejilla de antes decidía por ti: uno para los dos. Aquí se
-    //  elige primero el destino y luego la imagen, que es el orden
-    //  en que se piensa.
+    //  With two monitors, "set this wallpaper" is ambiguous, and the
+    //  old grid decided for you: one for both. Here one picks the
+    //  destination first and then the image, which is the order one
+    //  thinks in.
     RowLayout {
         Layout.fillWidth: true
         spacing: 6
@@ -132,11 +151,11 @@ ColumnLayout {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        //  ── traer uno de fuera ──────────────────────
+        //  ── bringing one in from outside ───────────
         //
-        //  El rastreo mira unas cuantas carpetas y ninguna tiene por
-        //  qué ser la tuya: el fondo que te acabas de bajar a un
-        //  sitio raro no aparece, y la única salida era moverlo.
+        //  The scan looks at a few folders and none of them has to be
+        //  yours: the wallpaper you just downloaded to an odd place does
+        //  not show up, and the only way out used to be moving it.
         Rectangle {
             Layout.preferredWidth: textoAnadir.implicitWidth + 22
             Layout.preferredHeight: 24
@@ -174,7 +193,7 @@ ColumnLayout {
         }
     }
 
-    //  ── cómo se pasa de uno a otro ─────────────────
+    //  ── how one passes to another ──────────────────
     RowLayout {
         Layout.fillWidth: true
         spacing: 6
@@ -219,10 +238,8 @@ ColumnLayout {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: if (rejilla.motor) {
+                    onClicked: if (rejilla.motor)
                         rejilla.motor.transicion = chipTrans.modelData
-                        rejilla.motor.saveState()
-                    }
                 }
             }
         }
@@ -230,37 +247,42 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
     }
 
-    GridView {
+    Item {
         Layout.fillWidth: true
-        Layout.fillHeight: !rejilla.fitContent
-        //  Sizing to content: `contentHeight` is exactly rows × cellHeight,
-        // so the grid shows every row and never needs its own wheel. The
-        // floor keeps the empty state ("no backgrounds") a visible place
-        // instead of a zero-height sliver.
-        Layout.preferredHeight: rejilla.fitContent
-            ? Math.max(contentHeight, cellHeight * 2) : 0
-        //  Off its own flick: in fitContent mode the wheel belongs to the
-        //  page, and a non-interactive GridView lets it pass through to the
-        //  Rodillo instead of eating it.
-        interactive: !rejilla.fitContent
+        Layout.preferredHeight: Math.max(wallpaperGrid.implicitHeight,
+                                         Math.round(width / 4 * 0.6) * 2)
         clip: true
-        cellWidth: Math.floor(width / 4)
-        cellHeight: Math.round(cellWidth * 0.6)
-        model: Fondos.lista
-        boundsBehavior: Flickable.StopAtBounds
+        //  A GridView sized to all its content creates delegates from the end
+        //  of the model. A plain Grid constructs the first row first, so the
+        //  wallpapers visible at the top get the first decode slots.
+        Grid {
+            id: wallpaperGrid
+            width: parent.width
+            columns: 4
+            columnSpacing: 0
+            rowSpacing: 0
 
-        delegate: Item {
+            Repeater {
+                model: Fondos.lista
+
+                delegate: Item {
             id: wallCell
             required property var modelData
-            width: GridView.view.cellWidth
-            height: GridView.view.cellHeight
+            required property int index
+            width: Math.floor(wallpaperGrid.width / wallpaperGrid.columns)
+            height: Math.round(width * 0.6)
 
-            //  Lo puesto EN EL DESTINO elegido, no el fondo común:
-            //  con «HDMI-A-1» seleccionado, lo que hay que marcar es
-            //  lo de esa pantalla.
+            //  The outer page owns scrolling in fit-content mode, so this
+            //  GridView initially creates every delegate. Render the first
+            //  rows immediately; the rest can decode off the UI path.
+            readonly property bool firstRows: index < 4
+
+            //  What is set ON the chosen destination, not the common
+            //  wallpaper: with "HDMI-A-1" selected, what must be marked
+            //  is that screen's.
             readonly property bool current: rejilla.destinoActual === modelData
             readonly property bool mueve: !Fondos.esQuieto(modelData)
-            //  ¿Lo has traído tú? Solo esos se pueden quitar.
+            //  Did you bring it yourself? Only those can be removed.
             readonly property bool propio:
                 Fondos.extras.indexOf(modelData) >= 0
 
@@ -277,19 +299,22 @@ ColumnLayout {
                 Image {
                     anchors.fill: parent
                     anchors.margins: wallCell.current ? 2 : 0
-                    //  De un vídeo o un GIF se enseña su póster, que
-                    //  el plugin cocina de una tacada al escanear.
-                    source: "file://"
-                        + Fondos.miniaturaDe(wallCell.modelData)
+                    //  Videos and GIFs use the poster prepared during the
+                    //  scan, rather than opening the moving source here.
+                    source: wallCell.index < rejilla.thumbnailsReady
+                        ? "file://" + Fondos.miniaturaDe(wallCell.modelData) : ""
                     fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
+                    asynchronous: !wallCell.firstRows
                     cache: true
                     sourceSize.width: 320
+                    sourceSize.height: 192
+                    autoTransform: true
+                    mipmap: true
                 }
 
-                //  Que se mueve, y qué es. Sin esto, un vídeo y una
-                //  foto se ven idénticos en la rejilla —el póster ES
-                //  una foto— y no sabes lo que estás eligiendo.
+                //  It moves, and what it is. Without this, a video and a
+                //  photo look identical in the grid — the poster IS a
+                //  photo — and you do not know what you are choosing.
                 Rectangle {
                     visible: wallCell.mueve
                     anchors.top: parent.top
@@ -312,7 +337,7 @@ ColumnLayout {
                     }
                 }
 
-                // el nombre, legible sobre cualquier imagen
+                //  The name, readable over any image
                 Rectangle {
                     anchors.left: parent.left
                     anchors.right: parent.right
@@ -333,9 +358,9 @@ ColumnLayout {
                     }
                 }
 
-                //  La cruz de quitar, solo en los que has traído
-                //  tú: los que salen del rastreo no se pueden
-                //  quitar de una lista en la que no están.
+                //  The removal cross, only on the ones you brought in
+                //  yourself: the ones the scan found cannot be removed
+                //  from a list they are not in.
                 Rectangle {
                     visible: wallCell.propio
                         && (wallMouse.containsMouse || quitarRaton.containsMouse)
@@ -350,9 +375,10 @@ ColumnLayout {
 
                     IslandLabel {
                         anchors.centerIn: parent
-                        //  Por codepoint y no como literal: el extractor
-                        //  de textos ve cualquier cadena en un `text:` y la
-                        //  mete en la plantilla, y una aspa no se traduce.
+                        //  By codepoint and not as a literal: the text
+                        //  extractor sees any string in a `text:` and
+                        //  puts it in the template, and a cross does
+                        //  not translate.
                         text: String.fromCodePoint(0x00d7)
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
@@ -374,11 +400,18 @@ ColumnLayout {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    //  Debajo de la cruz a propósito: declarado
-                    //  después iría encima y se comería su clic.
+                    //  Below the cross on purpose: declared after it
+                    //  it would sit on top and eat its click.
                     z: -1
-                    onClicked: if (rejilla.motor)
-                        rejilla.motor.ponerEnElegida(wallCell.modelData)
+                    onClicked: {
+                        if (rejilla.motor
+                                && typeof rejilla.motor.ponerEnElegida === "function")
+                            rejilla.motor.ponerEnElegida(wallCell.modelData)
+                        else
+                            WallpaperPalette.select(wallCell.modelData)
+                    }
+                }
+            }
                 }
             }
         }
@@ -393,9 +426,9 @@ ColumnLayout {
 
     }
 
-    //  El estado, que viajó con la pantalla borrada y hace falta: sin
-    //  herramienta instalada la rejilla se ve igual y no aplica nada, y sin
-    //  esto eso parecía un fallo.
+    //  The status line, which travelled with the deleted screen and is
+    //  still needed: without a tool installed the grid looks fine and
+    //  applies nothing, and without this that read as a failure.
     RowLayout {
         Layout.fillWidth: true
         Layout.topMargin: 4

@@ -40,8 +40,8 @@ the flake: [k4 on Nix](docs/NIX.md).
 |:--:|:--:|
 | <img src="screenshots/launcher.png" alt="Application launcher"> | <img src="screenshots/control-center.png" alt="Control center with Wi-Fi, Bluetooth, sound and media"> |
 | **Launcher** — apps, package search, install and update. | **Control center** — Wi-Fi, Bluetooth, per-device sound, player. |
-| <img src="screenshots/theme.png" alt="Hyprland theme panel"> | <img src="screenshots/shortcuts.png" alt="Searchable shortcut viewer"> |
-| **Hyprland's theme**, live — colors, gaps, borders, blur, animations, and the wallpaper. | **Every shortcut**, searchable — yours and the ones k4 adds. |
+| <img src="screenshots/settings.png" alt="Settings wallpaper page"> | <img src="screenshots/shortcuts.png" alt="Searchable shortcut viewer"> |
+| **Wallpapers** — native picker, video and GIF, with a palette extracted from them. | **Every shortcut**, searchable — yours and the ones k4 adds. |
 
 Plus notifications with actions and history, a system tray, clipboard history,
 and a bar that lives wherever you put it — top or bottom,
@@ -177,7 +177,7 @@ That file is owned by k4; put your overrides after it.
 | `SUPER + I` / `SUPER + X` | Control center |
 | `SUPER + N` / `SUPER + A` | Notifications |
 | `SUPER + Z` | k4 settings |
-| `SUPER + Shift + W` | Hyprland theme |
+| `SUPER + Shift + W` | Wallpaper page |
 | `SUPER + V` | Clipboard history |
 | `SUPER + K` | Shortcut viewer |
 | `SUPER + L` | Lock screen |
@@ -202,7 +202,6 @@ publish them.
 |---|---|
 | `k4` | `toggleLauncher`, `togglePanel`, `windows`, `settings`, `lock`, `sound` |
 | `k4.panel` | `toggle`, `notifications`, `wifi`, `bluetooth`, `sound`, `close` |
-| `k4.theme` | `toggle`, `preset`, `apply`, `save`, `wallpaperOn`, `palette`, `transition`, `add`, `remove` |
 | `k4.term` | `open`, `island`, `newSession`, `next`, `prev`, `goTo`, `run`, `move` |
 
 Plugin management: `pluginEnable <id>`, `pluginDisable <id>`,
@@ -223,7 +222,7 @@ The installer is the source of truth and reads
 | `python` | Helper tools |
 | `qt6-multimedia`, `qt6-multimedia-ffmpeg` | Video/audio preview |
 | `grim`, `slurp` | Attach the screen to an Ask question |
-| `swaybg` | Wallpaper backend |
+| `awww`, `swaybg` | Wallpaper backends — awww for transitions, swaybg as fallback |
 | `ffmpeg`, `imagemagick` | Video wallpapers, probing, thumbnails |
 | `zenity`, `wl-clipboard`, `fd` | Dialogs, clipboard, search |
 | `pactl`, `wpctl`, `nmcli`, `bluez` | Audio, network, Bluetooth |

@@ -35,14 +35,9 @@ ColumnLayout {
     //  call; the card just says it was asked.
     signal pedidaApp()
 
-    //  The theme engine, for the wallpaper the hero shows. Passed in by the
-    //  hosting view, which holds the injected reference.
-    required property var motor
-
-    //  The wallpaper currently applied, exactly the way the grid decides it:
-    //  the chosen monitor's if one is chosen, the common one otherwise.
-    readonly property string fondo: motor ? (motor.pantallaElegida.length > 0
-        ? motor.fondoDe(motor.pantallaElegida) : motor.wallpaper) : ""
+    //  Wallpaper selection is host-owned: the WallpaperPalette service, not
+    //  any plugin's business.
+    readonly property string fondo: WallpaperPalette.source
 
     //  Its file name without folders, for the label. Empty when nothing is
     //  set, which is its own honest state: the hero says so instead of
@@ -108,14 +103,8 @@ ColumnLayout {
                 IslandLabel {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
-                    //  With the engine off, «No wallpaper set» would be a
-                    //  lie: there may well be one — we just cannot ask the
-                    //  only one who knows. The honest line names the cause.
-                    text: !portada.motor
-                        ? "The theme plugin is off"
-                        : (portada.nombreFondo.length > 0
-                           ? portada.nombreFondo
-                           : "No wallpaper set")
+                    text: portada.nombreFondo.length > 0
+                        ? portada.nombreFondo : "No wallpaper set"
                     textFormat: Text.PlainText
                     color: Theme.ink
                     font.pixelSize: 11

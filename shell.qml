@@ -1452,8 +1452,10 @@ Scope {
         const lista = PluginManager.instancias
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
-            if (p.habilitado && p.active && p.colocable && !p.transitorio
-                    && p.name !== PluginManager.pillId)
+            // Closing grace keeps island geometry alive after a view unloads;
+            // it must not resurrect an own-window drawer during that grace.
+            if (p.habilitado && p.active && p.viewLoaded && p.colocable
+                    && !p.transitorio && p.name !== PluginManager.pillId)
                 salida.push(p)
         }
         return salida

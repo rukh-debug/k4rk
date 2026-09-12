@@ -1,19 +1,22 @@
 pragma Singleton
 
-//  Los fondos de escritorio: cuáles hay, cómo se ven y dónde vive su miniatura.
+//  Desktop wallpapers: which exist, how they look, where their thumbnail
+//  lives.
 //
-//  Vivían dentro del plugin `HyprTheme`, y ahí estaban bien mientras solo los
-//  usara su pantalla. Dejaron de estarlo cuando Ajustes quiso enseñar la misma
-//  rejilla: un plugin no importa la carpeta de otro —en este repo nadie lo hace,
-//  y con razón— así que lo compartido baja aquí y lo usan los dos sin conocerse.
+//  They were born inside the `HyprTheme` plugin, and that was fine while
+//  only its own screen used them. It stopped being fine when Settings
+//  wanted the same grid: a plugin does not import another plugin's folder
+//  — nobody in this repo does, and for good reason — so the shared part
+//  moved down here and both use it without knowing each other.
 //
-//  Aquí está el CATÁLOGO y cómo se ve. Aplicar un fondo sigue siendo del
-//  plugin, que es quien habla con `awww`/`swww`/`swaybg` y quien sabe de
-//  transiciones: eso es hacer, no mirar, y se moverá cuando toque.
+//  Here is the CATALOG and how it looks. Applying a wallpaper is the
+//  WallpaperPalette service's business — it is the one that talks to
+//  `awww`/`swww`/`swaybg` and knows transitions: that is doing, not
+//  looking.
 //
-//  Un servicio no puede usar `K4.Process` ni `K4.Sistema` —esa es la API de
-//  plugins— así que aquí se habla con Quickshell directamente, que es lo que
-//  hacen los demás servicios.
+//  A service cannot use `K4.Process` or `K4.Sistema` — that is the
+//  plugins' API — so this talks to Quickshell directly, the way the other
+//  services do.
 
 import QtQuick
 import Quickshell
@@ -22,31 +25,29 @@ import Quickshell.Io
 Singleton {
     id: fondos
 
-    // ── dónde se busca ────────────────────────────────────────────
+    // ── where it searches ─────────────────────────────────────────
     readonly property string casa: Quickshell.env("HOME") || ""
 
     readonly property var carpetas: [
         casa + "/Pictures",
         casa + "/Imágenes",
-        casa + "/Pictures",
         casa + "/Videos",
         casa + "/Vídeos",
-        casa + "/Videos",
         casa + "/Descargas",
         "/usr/share/wallpapers",
         "/usr/share/backgrounds"
     ]
 
-    //  Y lo que NO cuenta como fondo aunque esté ahí dentro.
+    //  And what does NOT count as a wallpaper even when it is in there.
     //
-    //  «Capturas» y «Screenshots» son donde van a parar los pantallazos, y
-    //  un selector de fondos que se llena de pantallazos de terminales es un
-    //  selector que no has mirado nunca: en esta máquina, de 120 imágenes
-    //  encontradas la inmensa mayoría eran eso.
+    //  "Capturas" and "Screenshots" are where screenshots end up, and a
+    //  wallpaper picker that fills with terminal screenshots is a picker
+    //  you have never looked at: on this machine, of 120 images found
+    //  the overwhelming majority were exactly that.
     readonly property var carpetasFuera: ["Capturas", "Screenshots", ".thumbnails"]
 
-    //  Qué se admite. Los de siempre más lo que se mueve, que es de lo que iba
-    //  todo esto.
+    //  What is admitted. The usual ones plus the moving ones, which is
+    //  what all of this was about.
     readonly property var extensiones: [
         "jpg", "jpeg", "png", "webp", "avif",
         "gif", "apng",
@@ -61,18 +62,19 @@ Singleton {
         return false
     }
 
-    // ── qué hay ───────────────────────────────────────────────────
+    // ── what exists ───────────────────────────────────────────────
     //
-    //  Se guardan por RUTA y no copiando el fichero. Copiar sería más robusto
-    //  —un fondo en un USB deja de existir al sacarlo— pero también sería
-    //  duplicar en silencio un vídeo de trescientos megas porque lo arrastraste
-    //  a una rejilla. Si la ruta deja de existir, se cae sola del rastreo
-    //  siguiente y ya está.
+    //  They are kept by PATH and not by copying the file. Copying would
+    //  be more robust —a wallpaper on a USB stick stops existing when
+    //  you pull it out— but it would also silently duplicate a
+    //  three-hundred-megabyte video because you dragged it into a grid.
+    //  If a path stops existing, it drops out of the next scan by
+    //  itself and that is that.
     property var encontrados: []
     property var extras: []
 
-    //  Los tuyos primero: si te has molestado en traerlo, no lo busques luego
-    //  entre cuarenta y cinco.
+    //  Yours first: if you went to the trouble of bringing one in, you
+    //  should not have to hunt for it among forty-five later.
     readonly property var lista: {
         const fuera = []
         for (let i = 0; i < fondos.extras.length; ++i)
@@ -95,22 +97,94 @@ Singleton {
                 hubo = true
             }
         }
-        if (hubo)
+        if (hubo) {
             fondos.extras = d
+            persistir()
+        }
     }
 
     function quitar(ruta) {
         const d = fondos.extras.filter(function (x) { return x !== String(ruta) })
-        if (d.length !== fondos.extras.length)
+        if (d.length !== fondos.extras.length) {
             fondos.extras = d
+            persistir()
+        }
     }
 
-    // ── cómo se ven ───────────────────────────────────────────────
+    // ── what you brought in survives the bar ──────────────────────
+    //
+    //  The scan results are rediscovered every time; the paths the user
+    //  added by hand are not — without this file they were memory-only
+    //  and every restart silently forgot them.
+    readonly property string rutaEstado:
+        casa + "/.local/state/k4/fondos.json"
+
+    function persistir() {
+        estado.setText(JSON.stringify({ extras: extras }, null, 1))
+    }
+
+    FileView {
+        id: estado
+        path: fondos.rutaEstado
+        blockLoading: true
+        onLoaded: fondos.cargarEstado()
+    }
+
+    function cargarEstado() {
+        try {
+            const d = JSON.parse(estado.text())
+            if (d.extras && d.extras.length !== undefined)
+                extras = d.extras
+        } catch (e) {
+            //  A half-written state is not an emergency: the extras stay
+            //  empty and the next change writes the file whole.
+            migrar()
+        }
+        if (extras.length === 0)
+            migrar()
+    }
+
+    //  One shot, from the state the deleted theme plugin used to own:
+    //  the paths its picker had added. Old key, read once, kept ours.
+    FileView {
+        id: antiguo
+        path: fondos.casa + "/.local/state/k4/hyprtheme.json"
+        blockLoading: true
+        onLoaded: fondos.migrar()
+    }
+
+    function migrar() {
+        if (migrado || extras.length > 0)
+            return
+        migrado = true
+        try {
+            const s = JSON.parse(antiguo.text())
+            const leidos = (s.extras && s.extras.length !== undefined)
+                ? s.extras : []
+            const d = extras.slice()
+            for (let i = 0; i < leidos.length; ++i)
+                if (admitido(leidos[i]) && d.indexOf(leidos[i]) < 0)
+                    d.push(leidos[i])
+            if (d.length !== extras.length) {
+                extras = d
+                persistir()
+            }
+            if (s.gapsOut !== undefined)
+                huecos = parseInt(s.gapsOut, 10) || 8
+        } catch (e) {
+            //  Nothing to migrate from: first run, or never used the old
+            //  picker. Either way the answer is the same — start empty.
+        }
+    }
+
+    property bool migrado: false
+
+    // ── how they look ─────────────────────────────────────────────
     readonly property string cache: casa + "/.cache/k4/fondos"
 
-    //  Lo de `gif|webp|apng` cuenta como QUIETO aunque se mueva: eso lo pinta un
-    //  AnimatedImage y no el reproductor, así que para las miniaturas vale la
-    //  propia imagen.
+    //  `gif|webp|apng` counts as STILL even when it moves: an
+    //  AnimatedImage paints it and not the player, so for thumbnails the
+    //  image itself is good enough.
     function esQuieto(ruta) {
         return !/\.(mp4|webm|mkv|mov|m4v|avi|gif|webp|apng)$/i.test(String(ruta))
     }
@@ -119,85 +193,53 @@ Singleton {
         return /\.(mp4|webm|mkv|mov|m4v|avi)$/i.test(String(ruta))
     }
 
-    //  Dónde vive el fotograma cacheado de un fondo que se mueve.
+    //  Where the cached frame of a moving wallpaper lives.
     //
-    //  `Qt.md5` y no un `md5sum` por proceso: la ruta se calcula en el sitio,
-    //  sin lanzar nada. Es el mismo nombre que escribe el plugin al preparar los
-    //  pósters, así que las dos partes miran el mismo fichero.
+    //  `Qt.md5` and not a per-process `md5sum`: the path is computed on
+    //  the spot, launching nothing. It is the same name the poster
+    //  preparation writes, so both halves look at the same file.
     function posterDe(ruta) {
         return cache + "/" + Qt.md5(String(ruta)) + ".png"
     }
 
-    //  La miniatura: la propia imagen si está quieta, y el póster si se mueve.
+    //  The thumbnail: the image itself when still, the poster when it
+    //  moves.
     //
-    //  `sello` está en la cuenta a propósito: una ruta de fichero no cambia
-    //  cuando el fichero aparece, así que sin algo que mueva el enlace la
-    //  miniatura de un vídeo se quedaría rota hasta cerrar y volver a abrir.
+    //  `sello` is in the account on purpose: a file path does not change
+    //  when the file appears, so without something moving the link a
+    //  video's thumbnail would stay broken until closing and reopening.
     property int sello: 0
 
     function miniaturaDe(ruta) {
+        //  Qt can decode an animated image's first frame immediately. Waiting
+        //  for ffmpeg to finish the whole poster batch made GIFs appear last.
+        if (/\.(gif|apng)$/i.test(String(ruta)))
+            return ruta
         if (esQuieto(ruta))
             return ruta
         return fondos.sello >= 0 ? posterDe(ruta) : ""
     }
 
-    // ── cuál está puesto ──────────────────────────────────────────
+    // ── Hyprland's gaps, for whoever draws a desktop preview ──────
     //
-    //  Se LEE del estado que escribe el plugin del tema, no se duplica: quien
-    //  aplica un fondo sigue siendo él, y aquí solo se mira. Con `watchChanges`
-    //  para que cambiar el fondo se note en quien esté enseñándolo sin que nadie
-    //  tenga que avisar a nadie.
-    //
-    //  `fondos` es el mapa por monitor —`{"DP-3": "/ruta/a.mp4"}`— y `wallpaper`
-    //  el común, para quien no tenga uno propio.
-    property var porPantalla: ({})
-    property string comun: ""
-
-    //  Los huecos de Hyprland viven en el mismo fichero, y los pide quien dibuje
-    //  una previsualización del escritorio: una ventana pegada a los bordes
-    //  enseñaría algo que no pasa.
+    //  A window glued to the edges would show something that does not
+    //  happen; the island preview reads this to frame itself honestly.
+    //  It came from the old theme plugin's state and is migrated from
+    //  there once; nothing rewrites it anymore, and the default is the
+    //  value the preview was drawn against all along.
     property int huecos: 8
 
-    function actualDe(pantalla) {
-        const p = String(pantalla || "")
-        if (p.length > 0 && fondos.porPantalla[p])
-            return String(fondos.porPantalla[p])
-        if (fondos.comun.length > 0)
-            return fondos.comun
-        //  Sin común ni propio: el primero que haya en el mapa, que es mejor
-        //  que nada cuando solo se quiere enseñar «cómo queda».
-        const ks = Object.keys(fondos.porPantalla)
-        return ks.length > 0 ? String(fondos.porPantalla[ks[0]]) : ""
-    }
-
-    FileView {
-        path: (Quickshell.env("HOME") || "") + "/.local/state/k4/hyprtheme.json"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                const d = JSON.parse(text())
-                fondos.porPantalla = d.fondos || ({})
-                fondos.comun = String(d.wallpaper || "")
-                if (d.gapsOut !== undefined)
-                    fondos.huecos = parseInt(d.gapsOut, 10) || 8
-            } catch (e) {
-                //  Un estado a medio escribir no es una urgencia: se queda lo
-                //  que hubiera y ya llegará el siguiente cambio.
-            }
-        }
-    }
-
-    // ── el rastreo ────────────────────────────────────────────────
+    // ── the scan ──────────────────────────────────────────────────
     function rastrear() {
         const args = ["find"]
         for (let i = 0; i < fondos.carpetas.length; ++i)
             args.push(fondos.carpetas[i])
         args.push("-maxdepth")
         args.push("3")
-        //  Las carpetas excluidas se podan ANTES de mirar ficheros: con un
-        //  `-not -path` cada fichero de dentro se examina igualmente, y en una
-        //  carpeta de pantallazos con cientos eso es recorrer para descartar.
+        //  Excluded folders are pruned BEFORE looking at files: with a
+        //  `-not -path` every file inside gets examined all the same, and
+        //  in a screenshots folder with hundreds that is walking the tree
+        //  to then discard it.
         for (let i = 0; i < fondos.carpetasFuera.length; ++i) {
             args.push("(")
             args.push("-type"); args.push("d")
@@ -237,11 +279,11 @@ Singleton {
         onExited: fondos.rastreando = false
     }
 
-    //  Los pósters, todos de una tacada y en UN proceso.
+    //  The posters, all in one go and in ONE process.
     //
-    //  Uno por fichero serían treinta ffmpeg compitiendo por la CPU justo
-    //  cuando acabas de abrir la pantalla y quieres verla. En fila, y el que ya
-    //  existe ni se toca.
+    //  One per file would be thirty ffmpregs fighting for the CPU right
+    //  when you just opened the screen and want to see it. In a queue,
+    //  and the one that already exists is not touched.
     Process {
         id: cocina
         onExited: fondos.sello += 1
@@ -254,7 +296,7 @@ Singleton {
             if (esQuieto(r))
                 continue
             const d = posterDe(r)
-            ordenes.push("[ -f " + JSON.stringify(d) + " ] || ffmpeg -v error -y"
+            ordenes.push("[ -f " + JSON.stringify(d) + " ] || ffmpeg -nostdin -v error -y"
                          + " -ss 1 -i " + JSON.stringify(r)
                          + " -frames:v 1 -vf scale=480:-1 " + JSON.stringify(d)
                          + " >/dev/null 2>&1")
@@ -262,7 +304,9 @@ Singleton {
         if (ordenes.length === 0)
             return
         cocina.running = false
-        cocina.command = ["sh", "-c",
+        //  `timeout` bounds the whole batch: a bar restart cannot leave
+        //  an orphaned pipeline behind (see WallpaperPalette.extract).
+        cocina.command = ["timeout", "-k", "5", "120", "sh", "-c",
             "mkdir -p " + JSON.stringify(fondos.cache) + "; " + ordenes.join("; ")]
         cocina.running = true
     }
