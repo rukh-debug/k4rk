@@ -26,6 +26,10 @@ K4Plugin {
     //  typing in it, no song takes it away from you.
     priority: 75
     colocable: true
+    //  The toggle lives at k4.term island: "term" is not the target's
+    //  name and "toggle" is not the verb — the exceptions that made
+    //  summonCommand a declared fact instead of a guess.
+    summonCommand: "k4.term island"
     active: abierto
 
     //  ── the island terminal ───────────────────────────────────────

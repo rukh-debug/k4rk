@@ -31,6 +31,7 @@ K4Plugin {
     //  whatever is already up.
     priority: 82
     colocable: true
+    summonCommand: "k4.ssh toggle"
     active: abierto || cerrando
     viewLoaded: abierto
     grabKeyboard: abierto

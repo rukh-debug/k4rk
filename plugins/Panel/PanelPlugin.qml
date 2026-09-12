@@ -13,6 +13,7 @@ K4Plugin {
     title: "Control centre"
     priority: 60
     colocable: true
+    summonCommand: "k4.panel toggle"
     active: habilitado && open
 
     // "controls" | "notifications" | "wifi" | "bluetooth" | "sound"

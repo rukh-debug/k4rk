@@ -20,6 +20,7 @@ K4Plugin {
     // purpose.
     priority: 82
     colocable: true
+    summonCommand: "k4.clipboard toggle"
     active: habilitado && (open || closing)
     viewLoaded: open
     grabKeyboard: open

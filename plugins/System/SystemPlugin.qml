@@ -16,6 +16,7 @@ K4Plugin {
     title: "System"
     priority: 62
     colocable: true
+    summonCommand: "k4.system toggle"
     active: habilitado && (open || closing)
     viewLoaded: open
     //  The whole keyboard while open: «optional» is OnDemand and the

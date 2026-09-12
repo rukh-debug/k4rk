@@ -8,6 +8,7 @@ K4.Plugin {
     title: "Displays"
     priority: 67
     colocable: true
+    summonCommand: "k4.displays toggle"
     active: abierto
     islandWidth: 920
     // The layout tab is compact; Workspaces needs a bit more

@@ -15,6 +15,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -32,14 +33,17 @@ ColumnLayout {
     //  that is off has no surface to place, so it shows no card until it
     //  comes back. The pill is not in the list on purpose: it lives
     //  wherever the Island page says and drags its hover views with it;
-    //  what is here is what you summon.
+    //  what is here is what you summon. Each card also carries the
+    //  plugin's `summonCommand` — what the copy button hands out, empty
+    //  when the surface cannot be opened from outside.
     readonly property var vistas: {
         const salida = []
         const lista = PluginManager.instancias
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (p.colocable)
-                salida.push({ id: p.name, nombre: p.title || p.name })
+                salida.push({ id: p.name, nombre: p.title || p.name,
+                              ipc: p.summonCommand || "" })
         }
         return salida
     }
@@ -205,6 +209,35 @@ ColumnLayout {
                 onTriggered: tarjeta.avisoHover = ""
             }
 
+            //  ── the copy button: the command out of the card ───────
+            //
+            //  What gets copied is a whole command line, ready to
+            //  paste. The prefix is built here and not declared on
+            //  the plugin because only the running instance knows the
+            //  path `-p` needs — the mirror under Nix, the checkout
+            //  anywhere else. The feedback stays with the card: the
+            //  glyph flips to a check and the card says how to use
+            //  what is now in the clipboard, then goes quiet.
+            property bool copied: false
+
+            Timer {
+                id: copyTimer
+                interval: 8000
+                onTriggered: tarjeta.copied = false
+            }
+
+            function ipcCommand() {
+                return "quickshell ipc -p \""
+                       + K4.Paths.enRaiz("shell.qml") + "\" call "
+                       + tarjeta.modelData.ipc
+            }
+
+            function copyIpc() {
+                K4.Sistema.copiar(tarjeta.ipcCommand())
+                tarjeta.copied = true
+                copyTimer.restart()
+            }
+
             //  A side chip press. The chips TOGGLE: one side is an
             //  edge, two adjacent sides are the corner between them.
             //  Opposite sides never pair — one replaces the other.
@@ -253,12 +286,81 @@ ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 6
 
-                    IslandLabel {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: tarjeta.modelData.nombre
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
+                        spacing: 6
+
+                        IslandLabel {
+                            Layout.fillWidth: true
+                            text: tarjeta.modelData.nombre
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
+
+                        //  The command out: copies the whole line that
+                        //  opens this view from outside — a terminal, a
+                        //  bind, a script. No chip when the plugin
+                        //  declares no summon command (the Hyprland
+                        //  island opens when a mode does): a button
+                        //  that copied nothing would lie.
+                        Rectangle {
+                            visible: tarjeta.modelData.ipc.length > 0
+                            implicitWidth: 26
+                            implicitHeight: 22
+                            radius: 6
+                            color: copyMouse.containsMouse
+                                    ? Theme.surfaceHi : "transparent"
+
+                            Behavior on color {
+                                ColorAnimation { duration: 120 }
+                            }
+
+                            IconGlyph {
+                                anchors.centerIn: parent
+                                text: String.fromCodePoint(
+                                    tarjeta.copied
+                                        ? 0x000F012C   // md-check
+                                        : 0x000F018F)  // md-content_copy
+                                color: tarjeta.copied
+                                        ? Theme.blue : Theme.muted
+                                font.pixelSize: 13
+                            }
+
+                            MouseArea {
+                                id: copyMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: tarjeta.copyIpc()
+                            }
+                        }
+                    }
+
+                    //  The copied line, and what to do with it. The
+                    //  clipboard already holds the whole command, so
+                    //  the echo may elide — what it owes is
+                    //  recognition, not completeness.
+                    ColumnLayout {
+                        visible: tarjeta.copied
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        IslandLabel {
+                            Layout.fillWidth: true
+                            text: tarjeta.ipcCommand()
+                            color: Theme.muted
+                            font.pixelSize: 9
+                            elide: Text.ElideMiddle
+                        }
+
+                        IslandLabel {
+                            Layout.fillWidth: true
+                            text: "Paste it in a terminal and press Enter — or hang it on a key: bind = SUPER, T, exec, <the copied command>"
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            elide: Text.ElideRight
+                        }
                     }
 
                     //  The state in words, because a dot alone does not say

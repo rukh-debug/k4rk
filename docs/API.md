@@ -41,6 +41,7 @@ equivalent exists.
 | `closeOnHoverExit` | Enable hover-exit timeout |
 | `colocable` | Your surface is a summoned view: it gets a card in Settings → Placement, and in window mode (Settings → Island) a drawer of its own out of the screen's frame, at its placement, while open — several may coexist over a dimmed screen. Only what OPENS gets placed — the pill's wings, transients and indicators do not |
 | `hoverArmable` | Whether the wall can summon it: the Placement card's hover arm hides for surfaces that only exist while something else is on (the Hyprland submap island, alive only during a mode). True by default |
+| `summonCommand` | The IPC call that opens the surface — everything after `call` (`"k4.launcher toggle"`), which the copy button on the Placement card hands out as a full command line. Only the plugin can say it for sure: the `k4.<id>` target and the `toggle` verb are conventions, and conventions break (the terminal lives at `k4.term`, and its toggle is `island`). Empty (default) hides the button |
 
 The host also knows a few optional verbs. They exist as no-op stubs on
 the contract, so a plugin overrides the ones it serves and the host can
@@ -281,6 +282,11 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hello toggle
 The target is `k4.<id>`. One house plugin carries an older name — `k4.term`
 (terminal) — kept for the muscle memory that already types it; anything new
 follows the convention.
+
+Declare the call your surface answers in `summonCommand` (everything after
+`call`): the Placement card's copy button hands out the whole command line,
+prefix included, and only the plugin knows both halves for sure — the target
+and the verb are yours, the path belongs to the running instance.
 
 - `K4.Ventana`: a full-screen `wlr-layer-shell` surface that does not reserve
   layout space. `capa` picks the level: `"encima"` above everything (the
