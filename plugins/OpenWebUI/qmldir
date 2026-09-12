@@ -4,5 +4,6 @@
 #  `python3 tools/plugins.py` checks that it stays complete.
 
 
-AskPlugin 1.0 AskPlugin.qml
-AskView 1.0 AskView.qml
+OpenWebUIPlugin 1.0 OpenWebUIPlugin.qml
+OpenWebUIView 1.0 OpenWebUIView.qml
+OpenWebUIPagina 1.0 OpenWebUIPagina.qml

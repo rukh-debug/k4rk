@@ -128,3 +128,5 @@ References studied: OpenUsage provider docs (opencode, zai pages),
 opencode.ai/docs/go, opencode-go-usage tooling, AIUsageTracker PR #525.
 
 ### 4. change all filenames that is in spanish to english and every different occurance of that file, import export docs everything. - do proper research first, so we dont break stuff.
+
+#### 5. In placement page inside settings, keep a button, open on hover, which means when the user touch the cornor or the side where the window/popup is located, it will open by itself when user corsor reach that cornor, and when the hover ends, it exits by itself. And here => if an area is occupied by a window + have open on hover enabled, dont allow another popup to enable open on hover on that part of the wall.

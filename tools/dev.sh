@@ -4,10 +4,17 @@
 #      tools/dev.sh             build and restart
 #      tools/dev.sh --no-build  restart the build the mirror last ran
 #
-#  Two traps this script exists to never step in again:
-#    - Kill by exact process name (`pgrep -x`). A `pkill -f quickshell`
-#      also matches the shell running that very line, because its own
-#      argv contains the word — and takes the terminal down with it.
+#  Three traps this script exists to never step in again:
+#    - Kill by exact process name (`pgrep -x`). The engine runs as
+#      the wrapped store binary, whose comm is truncated to
+#      `.quickshell-wra` — the exact-name kill never matched it and
+#      the survivor drew a second bar on the screen. Every instance
+#      is swept by BOTH names it goes by: its argv (`quickshell -p …`)
+#      and its comm (anything containing «quickshell»).
+#    - A plain `pkill -f quickshell` also matches the shell running
+#      that very line, because its own argv contains the word — and
+#      takes the terminal down with it. The bracket in `[-]p` keeps
+#      the pattern from matching the line that spells it.
 #    - SIGKILL cycles leave stale instance locks in
 #      $XDG_RUNTIME_DIR/quickshell/by-id; IPC then answers "not ready"
 #      forever, so the directory is cleared after every kill.
@@ -48,11 +55,41 @@ fi
 echo "==> running $STORE"
 
 # ── out with the old ────────────────────────────────────────────────
-PIDS="$(pgrep -x quickshell || true)"
-if [ -n "$PIDS" ]; then
+#  Walk /proc directly instead of trusting pgrep's flags: an engine
+#  is a process whose argv says «quickshell -p …» OR whose comm
+#  contains «quickshell» (the wrapped store binary is truncated to
+#  `.quickshell-wra`, which an exact-name kill never matched — and
+#  the survivor drew a second bar). The matcher is spelled out here,
+#  so it cannot match the very shell spelling it: this script's own
+#  argv is «bash tools/dev.sh», and the tiny tr/cat helpers say so
+#  too. Every match dies, no matter how many instances there are.
+bar_pids() {
+    local d pid cmd comm
+    for d in /proc/[0-9]*; do
+        pid="${d#/proc/}"
+        [ "$pid" = "$$" ] && continue
+        #  stderr is silenced BEFORE the input redirect: redirections
+        #  apply left to right, and a /proc entry vanishing between
+        #  the listing and the read would otherwise shout about it.
+        cmd="$(tr '\0' ' ' 2>/dev/null < "$d/cmdline")" || true
+        case "$cmd" in
+            *"quickshell -p"*) echo "$pid"; continue ;;
+        esac
+        comm="$(cat "$d/comm" 2>/dev/null)" || true
+        case "$comm" in
+            *quickshell*) echo "$pid"; continue ;;
+        esac
+    done
+    return 0
+}
+
+PIDS="$(bar_pids | sort -u | tr '\n' ' ')"
+if [ -n "${PIDS// /}" ]; then
+    echo "==> killing: $PIDS"
+    #  Deliberately unquoted: one pid per word.
     kill -9 $PIDS 2>/dev/null || true
     for _ in $(seq 1 30); do
-        pgrep -x quickshell >/dev/null || break
+        bar_pids | grep -q . || break
         sleep 0.1
     done
 fi

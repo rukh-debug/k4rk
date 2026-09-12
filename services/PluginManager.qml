@@ -56,7 +56,7 @@ Singleton {
         { id: "toast", title: "Notifications", version: "1.0.0", enabled: true },
         { id: "panel", title: "Control centre", version: "1.0.0", enabled: true },
         { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
-        { id: "ask", title: "Ask", version: "1.0.0", enabled: true },
+        { id: "openwebui", title: "OpenWebUI", version: "1.0.0", enabled: true },
         { id: "displays", title: "Displays", version: "1.0.0", enabled: true },
         { id: "tray", title: "Tray", version: "1.0.0", enabled: true },
         { id: "settings", title: "Settings", version: "1.0.0", enabled: true, configurable: false },
@@ -668,11 +668,14 @@ Singleton {
     //  que no es lo mismo que un mapa vacío: vacío es «no tienes nada puesto»
     //  y null es «no me he enterado», y confundirlos es justo lo que apagaba
     //  los plugins de todo el mundo.
-    //  Plugin ids that were renamed when the bar went English-only; old
-    //  saved state is remapped on load instead of being thrown away.
+    //  Plugin ids that were renamed when the bar went English-only;
+    //  old saved state is remapped on load instead of being thrown
+    //  away. `ask` is the newest: the Codex assistant became the
+    //  OpenWebUI chat, and whoever had it on keeps the chat on.
     readonly property var idsViejos: ({ sonido: "sound",
                                         pantallas: "displays",
-                                        agentes: "agents" })
+                                        agentes: "agents",
+                                        ask: "openwebui" })
 
     function _leerEstado(bruto) {
         if (!bruto || bruto.length === 0)
