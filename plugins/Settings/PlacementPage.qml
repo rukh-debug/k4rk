@@ -23,6 +23,9 @@ ColumnLayout {
 
     spacing: 10
 
+    //  A page that dies mid-hover must not leave the wall lit.
+    Component.onDestruction: Island.wallPreview = ""
+
     //  Everything that OPENS and takes the island: the live plugins that
     //  say so with `colocable`. Derived, not listed — a plugin that ships
     //  a summoned surface gets its card the day it is written, and one
@@ -104,6 +107,32 @@ ColumnLayout {
         return null
     }
 
+    //  A view's display name for the notices: its title, or its id
+    //  when it has nothing better to show.
+    function nombreDe(id) {
+        const p = PluginManager.instancia(id)
+        return p ? (p.title || p.name) : id
+    }
+
+    //  Every armed stretch of wall, one entry per interval (a corner
+    //  arms two): the monitors paint each card's own bright and the
+    //  others' dim, so a refused arm reads as geography and not as
+    //  an error.
+    readonly property var zonasArmadas: {
+        const salida = []
+        const lista = PluginManager.instancias
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
+            if (!p.colocable)
+                continue
+            const zonas = Settings.hoverZones(Settings.placementDe(p.name))
+            for (let j = 0; j < zonas.length; ++j)
+                salida.push({ id: p.name, lado: zonas[j].side,
+                              desde: zonas[j].from, hasta: zonas[j].to })
+        }
+        return salida
+    }
+
     Repeater {
         model: pagina.vistas
 
@@ -125,6 +154,47 @@ ColumnLayout {
                 return pagina.parDe(tarjeta.propia ? tarjeta.efectiva : null)
             }
             readonly property var parEfectiva: pagina.parDe(tarjeta.efectiva)
+
+            //  ── open on hover: the arm on the record ─────────────
+            //
+            //  Armed, touching the view's stretch of wall summons it
+            //  — and it leaves with the pointer (shell.qml and
+            //  VentanaPopup carry that half). An arm needs a wall of
+            //  its own: «Follow bar» follows the BAR. And it needs a
+            //  FREE stretch — one doorbell per piece of wall — so
+            //  arming where somebody already armed is refused, and a
+            //  MOVE that lands on an occupied stretch drops the arm
+            //  and says so.
+            readonly property bool hoverArmed:
+                tarjeta.efectiva.hover === true
+            readonly property string hoverBlocker:
+                tarjeta.propia !== null
+                    ? Settings.hoverConflict(tarjeta.idVista,
+                                             tarjeta.efectiva.side,
+                                             tarjeta.efectiva.align)
+                    : ""
+            readonly property bool hoverBusy:
+                !hoverArmed && hoverBlocker.length > 0
+            property string avisoHover: ""
+
+            function revisarHover() {
+                if (!hoverArmed)
+                    return
+                const quien = Settings.hoverConflict(
+                    tarjeta.idVista, tarjeta.efectiva.side,
+                    tarjeta.efectiva.align)
+                if (quien.length > 0) {
+                    Settings.setPlacementHover(tarjeta.idVista, false)
+                    tarjeta.avisoHover = quien
+                    avisoTimer.restart()
+                }
+            }
+
+            Timer {
+                id: avisoTimer
+                interval: 5000
+                onTriggered: tarjeta.avisoHover = ""
+            }
 
             //  A side chip press. The chips TOGGLE: one side is an
             //  edge, two adjacent sides are the corner between them.
@@ -159,7 +229,8 @@ ColumnLayout {
             radius: 12
             color: Theme.surface
             border.width: 1
-            border.color: propia ? Theme.track : "transparent"
+            border.color: hoverArmed ? Theme.blue
+                         : propia ? Theme.track : "transparent"
 
             GridLayout {
                 id: columna
@@ -262,9 +333,54 @@ ColumnLayout {
                                         else
                                             tarjeta.pulsarLado(
                                                 chipLado.modelData.codigo)
+                                        tarjeta.revisarHover()
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    //  ── the arm itself ─────────────────────────
+                    //
+                    //  A switch, because it is a state and not an
+                    //  action: on = the wall summons. The label
+                    //  carries the why of every refusal — a switch
+                    //  that goes quiet teaches nothing.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        IslandSwitch {
+                            id: interruptorHover
+                            Layout.alignment: Qt.AlignVCenter
+                            checked: tarjeta.hoverArmed
+                            enabled: tarjeta.hoverArmed
+                                       || (tarjeta.propia !== null
+                                           && !tarjeta.hoverBusy)
+                            onToggled: Settings.setPlacementHover(
+                                tarjeta.idVista, !tarjeta.hoverArmed)
+                        }
+
+                        IslandLabel {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                            text: tarjeta.propia === null
+                                  ? "Open on hover — needs its own wall"
+                                  : tarjeta.hoverBusy
+                                    ? "Wall busy: "
+                                      + pagina.nombreDe(tarjeta.hoverBlocker)
+                                    : tarjeta.avisoHover.length > 0
+                                      ? "Open on hover off — wall busy: "
+                                        + pagina.nombreDe(tarjeta.avisoHover)
+                                      : tarjeta.hoverArmed
+                                        ? "Opens when the pointer reaches it"
+                                        : "Touch its wall to open it"
+                            color: tarjeta.hoverBusy
+                                       || tarjeta.avisoHover.length > 0
+                                       || tarjeta.propia === null
+                                   ? Theme.dim : Theme.muted
+                            font.pixelSize: 9
+                            elide: Text.ElideRight
                         }
                     }
                 }
@@ -394,6 +510,45 @@ ColumnLayout {
                         }
                     }
 
+                    //  The armed stretches riding the rails: this
+                    //  card's own at full strength, every other
+                    //  armed view's dim — the wall's tenants at a
+                    //  glance, and the reason a refusal is where it
+                    //  is. Six pixels straddling the four-pixel
+                    //  rail, so it reads as a zone and not as a
+                    //  longer rail.
+                    Repeater {
+                        model: pagina.zonasArmadas
+
+                        Rectangle {
+                            required property var modelData
+                            readonly property bool horizontal:
+                                modelData.lado === "top"
+                                || modelData.lado === "bottom"
+                            readonly property real largo: horizontal
+                                ? Math.max(6, (monitor.width - 16)
+                                    * (modelData.hasta - modelData.desde) / 100)
+                                : Math.max(6, (monitor.height - 16)
+                                    * (modelData.hasta - modelData.desde) / 100)
+                            x: modelData.lado === "left" ? -1
+                              : modelData.lado === "right"
+                                ? monitor.width - 5
+                              : 8 + (monitor.width - 16)
+                                    * modelData.desde / 100
+                            y: modelData.lado === "top" ? -1
+                              : modelData.lado === "bottom"
+                                ? monitor.height - 5
+                              : 8 + (monitor.height - 16)
+                                    * modelData.desde / 100
+                            width: horizontal ? largo : 6
+                            height: horizontal ? 6 : largo
+                            radius: 3
+                            color: Theme.blue
+                            opacity: modelData.id === tarjeta.idVista
+                                     ? 0.8 : 0.25
+                        }
+                    }
+
                     //  The pill: a strip along the bar's edge.
                     Rectangle {
                         readonly property var p: monitor.puntoEn(
@@ -489,9 +644,23 @@ ColumnLayout {
                             const c = monitor.colocacionEn(mouse.x, mouse.y)
                             Settings.ponerPlacement(tarjeta.idVista,
                                 c.side, c.align)
+                            tarjeta.revisarHover()
                         }
                     }
                 }
+            }
+
+            //  Hovering the card rehearses the gesture where it
+            //  happens: the host lights the view's stretch on the
+            //  real wall (Island.wallPreview). No buttons accepted —
+            //  a look, not a click; the chips and the monitor keep
+            //  their own mice, and hover is not exclusive anyway.
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                hoverEnabled: true
+                onContainsMouseChanged: Island.wallPreview =
+                    containsMouse ? tarjeta.idVista : ""
             }
         }
     }
