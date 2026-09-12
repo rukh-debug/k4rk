@@ -101,7 +101,7 @@ not be declared inside the view.
 | `K4.Notificaciones` | Incoming notifications |
 | `K4.Red` | Wi-Fi and Bluetooth, read only |
 | `K4.Escritorios` | Hyprland workspaces |
-| `K4.Submaps` | The submap Hyprland is in right now (`""` for none) |
+| `K4.Submaps` | The submap Hyprland is in right now (`""` for none). Names follow the parseable standard — `Title: (k)Label (command)` — which the house hyprland-submap plugin turns into its key-chip island; anything else shows as plain text |
 | `K4.Portapapeles` | Clipboard history (reading needs `portapapeles`) |
 | `K4.Reloj` | The bar's single clock |
 | `K4.Ajustes` | Your own settings inside the bar's Settings — switches, choices, free text (`secreto` for keys) |

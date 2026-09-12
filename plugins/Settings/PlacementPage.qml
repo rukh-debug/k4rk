@@ -114,6 +114,15 @@ ColumnLayout {
         return p ? (p.title || p.name) : id
     }
 
+    //  Whether the wall can summon this view. Most can; a surface that
+    //  only exists while something else is on (the Hyprland island)
+    //  says no, and its card shows no arm — an inert switch is a
+    //  control that lies.
+    function armable(id) {
+        const p = PluginManager.instancia(id)
+        return p ? p.hoverArmable !== false : true
+    }
+
     //  Every armed stretch of wall, one entry per interval (a corner
     //  arms two): the monitors paint each card's own bright and the
     //  others' dim, so a refused arm reads as geography and not as
@@ -345,8 +354,11 @@ ColumnLayout {
                     //  A switch, because it is a state and not an
                     //  action: on = the wall summons. The label
                     //  carries the why of every refusal — a switch
-                    //  that goes quiet teaches nothing.
+                    //  that goes quiet teaches nothing. Views that
+                    //  cannot be summoned by the wall at all show no
+                    //  arm; there is nothing to refuse.
                     RowLayout {
+                        visible: pagina.armable(tarjeta.idVista)
                         Layout.fillWidth: true
                         spacing: 8
 

@@ -253,6 +253,13 @@ this: it stays until closed — or superseded, as any summoned view is
 when the next one opens. The host carries the whole
 thing; a plugin neither knows nor does anything about it.
 
+Not every placement can be armed, though: a surface that only exists
+while something outside the user's hands is on — the Hyprland submap
+island, alive only while a compositor mode is — has nothing to show a
+wall touch would summon. Those declare `hoverArmable: false`, and their
+card shows no arm at all instead of a switch that promises an empty
+room.
+
 ```qml
 // HolaPlugin.qml
 import QtQuick
@@ -451,7 +458,7 @@ bar's directory, not yours.
 | `K4.Fichero` | reading and writing files — requires `ficheros` |
 | `K4.Pildora` | an indicator on the folded pill |
 | `K4.Capsule` | the capsule growing toward a screen edge with your text |
-| `K4.Submaps` | the submap Hyprland is in right now ("" for none) |
+| `K4.Submaps` | the submap Hyprland is in right now ("" for none). Names follow the parseable standard — `Title: (k)Label (command)` — which the house hyprland-submap plugin turns into its key-chip island; anything else shows as plain text |
 | `K4.Paths` | paths: `estadoDe(id)` is your state directory |
 | `K4.IconoPlugin` | a plugin's icon: its image if it brings one, its glyph if not |
 

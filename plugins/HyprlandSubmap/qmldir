@@ -3,5 +3,5 @@
 #  implicit resolution of siblings does not exist.
 #  `python3 tools/plugins.py` checks that it stays complete.
 
-
-SubmapPlugin 1.0 SubmapPlugin.qml
+HyprlandSubmapPlugin 1.0 HyprlandSubmapPlugin.qml
+HyprlandSubmapView 1.0 HyprlandSubmapView.qml

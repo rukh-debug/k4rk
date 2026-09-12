@@ -118,6 +118,18 @@ QtObject {
     //  list is derived from the live ones.
     property bool colocable: false
 
+    //  Can touching the screen wall meaningfully summon this surface?
+    //
+    //  The hover arm a Placement card offers is for surfaces that are
+    //  yours to open any time: the control centre, the clipboard. Some
+    //  colocable surfaces only exist when something outside the user's
+    //  hands is already on — the Hyprland submap island has nothing to
+    //  show unless the compositor is in a mode — and arming a wall for
+    //  them would be a doorbell to an empty room. Mark those false
+    //  and their card shows no arm at all. True by default, because
+    //  a surface that opens on purpose is the norm.
+    property bool hoverArmable: true
+
     // Exclusive keyboard focus: while active, no window receives a
     // key. Only for what is truly typed into — the launcher, the AI
     // chat, the Wi-Fi password — because it blocks the rest of the
