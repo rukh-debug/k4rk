@@ -404,13 +404,26 @@ Scope {
             required property var modelData
             screen: modelData
 
-            //  The island lives in Overlay — above the dim behind the
+            //  The island's home is Overlay — above the dim behind the
             //  summoned views (a Top surface, below) so the pill and
             //  its hover views stay bright and clickable whether the
             //  view deployed from here or came out of the frame in a
             //  drawer. Layers order strictly: Overlay > Top, whatever
             //  was created first.
-            WlrLayershell.layer: WlrLayer.Overlay
+            //
+            //  With one exception: a true-fullscreen window. Hyprland
+            //  draws BOTH top and overlay above fullscreen windows, so
+            //  the only seat behind one is Bottom — correct only while
+            //  the fullscreen lasts. While this monitor shows one
+            //  (services/Fullscreen.qml keeps the state) the pill drops
+            //  below it and the fullscreened window owns the screen,
+            //  pointer and all. A view on the stage lifts the island
+            //  back: one summoned over the video — by keybind, since
+            //  the pointer can no longer reach the pill — has to render
+            //  above it or it would open invisible.
+            WlrLayershell.layer: Fullscreen.covers(panelWindow.screen.name)
+                && pluginVisible === idlePlugin
+                ? WlrLayer.Bottom : WlrLayer.Overlay
 
             //  La barra vive en el borde que diga Ajustes. El resto del
             //  fichero pregunta `abajo` en vez de repetir la comparación.
@@ -907,7 +920,8 @@ Scope {
             anchors.left: true
             anchors.right: true
             color: "transparent"
-            aboveWindows: true
+            //  No `aboveWindows` here: it WRITES the layer (true → Top)
+            //  and would fight the layer binding above on this surface.
             focusable: true
 
             //  Exclusivo solo para lo que se escribe; el resto, bajo demanda.
