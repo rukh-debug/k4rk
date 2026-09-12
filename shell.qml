@@ -243,12 +243,13 @@ Scope {
         function togglePlay(): void { Media.togglePlaying() }
         function nextTrack(): void { Media.siguiente() }
         function prevTrack(): void { Media.anterior() }
-        //  El tema ya no tiene pantalla propia: todo lo que se configura vive
-        //  en Ajustes. Se conserva el verbo porque está atado en Hyprland y en
-        //  el centro de control, y romper un atajo de alguien por mudar una
-        //  pantalla de sitio es de mala educación. Ahora aterriza en la
-        //  página del fondo, que es donde vive lo del tema.
-        function theme(): void { _p("settings")?.abrirPagina("wallpaper") }
+        //  The wallpaper picker is a page of Settings, and this toggles it:
+        //  closed opens at it, another page on screen switches to it, and
+        //  standing on it closes — the same rule the panel's tabs follow.
+        //  `theme` is the verb's old name, kept for the binds and habits
+        //  that still call it.
+        function wallpaper(): void { _p("settings")?.toggle("wallpaper") }
+        function theme(): void { _p("settings")?.toggle("wallpaper") }
         function tray(): void { _p("tray")?.toggle() }
         function settings(): void { _p("settings")?.toggle() }
         //  Ajustes abierto en una página concreta, para atarlo a un atajo:

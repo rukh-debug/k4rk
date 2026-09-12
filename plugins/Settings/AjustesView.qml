@@ -45,11 +45,12 @@ FadeIn {
         campo.forceActiveFocus()
         foco.start()
         aterrizar()
+        reportPage()
     }
 
-    //  The landing note can also arrive while the view is open: Super+W with
-    //  Settings already on screen should still take you to the Wallpaper
-    //  page, not be swallowed because the view was created earlier.
+    //  The landing note can also arrive while the view is open: Super+W on
+    //  another page switches to Wallpaper through it, rather than being
+    //  swallowed because the view was created earlier.
     Connections {
         target: vista.plugin
         function onPaginaPedidaChanged() { vista.aterrizar() }
@@ -244,6 +245,17 @@ FadeIn {
         vista.irASeccion(p)
     }
 
+    //  Tell the plugin which page is on screen — the same id `irASeccion`
+    //  accepts, lowercase — so its toggle(page) can tell "standing on it"
+    //  from "somewhere else". Called on arrival and from `elegir`, the one
+    //  door every section change walks through.
+    function reportPage() {
+        const g = vista.lateral[vista.seccion]
+        if (g)
+            vista.plugin.currentPage =
+                String(g.vista || g.grupo).toLowerCase()
+    }
+
     function elegir(i) {
         //  Out of range is a closed door, not a page: an index nobody has
         //  would leave the content empty and every row comparing itself
@@ -253,6 +265,7 @@ FadeIn {
         vista.seccion = i
         vista.busqueda = ""
         campo.text = ""
+        reportPage()
     }
 
     RowLayout {

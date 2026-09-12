@@ -55,6 +55,13 @@ K4Plugin {
             toggle()
     }
 
+    //  The page on screen right now, as the view reports it: the page id
+    //  in lowercase ("wallpaper", "fonts"…), empty with no view. Read by
+    //  toggle(page) to tell "switch to it" from "close it", and cleared
+    //  on close so a fresh open at the top cannot be mistaken for
+    //  still standing on a page.
+    property string currentPage: ""
+
     //  ── is there a newer k4? ────────────────────────────────────
     //
     //  It lives here and not in a service for a practical reason: a new
@@ -65,18 +72,31 @@ K4Plugin {
     property Version version: Version {}
 
     //  `abrir()` from the API lands here, so the app center and the keybind
-    //  walk in without knowing there used to be a window behind it.
-    function toggle() {
-        if (open) {
-            close()
-        } else {
+    //  walk in without knowing there used to be a window behind it. With a
+    //  page it toggles THAT page, the way the panel's tabs do: closed opens
+    //  at it, another page on screen switches to it, standing on it closes.
+    function toggle(page) {
+        if (!open) {
+            //  The note before the open, so the view is born on the page
+            //  instead of painting the top for a frame.
+            if (page !== undefined && String(page).length > 0)
+                paginaPedida = String(page)
             open = true
             Consola.revisar()
             self.version.mirar(false)
+            return
         }
+        if (page !== undefined && String(page).length > 0
+            && currentPage !== String(page).toLowerCase())
+            abrirPagina(page)
+        else
+            close()
     }
 
-    function close() { open = false }
+    function close() {
+        open = false
+        currentPage = ""
+    }
 
     //  The background glance, so the news does not depend on Settings being
     //  opened. Every six hours and once at startup — with a minute of grace,
