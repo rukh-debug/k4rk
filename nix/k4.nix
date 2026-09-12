@@ -26,13 +26,14 @@
   curl,
   grim,
   slurp,
+  awww,
   swaybg,
   ffmpeg,
   imagemagick,
   zenity,
   wl-clipboard,
   fd,
-  pulseaudio, #  pactl — the client works against pipewire-pulse too
+  pulseaudio, # pactl — the client works against pipewire-pulse too
   wireplumber,
   networkmanager,
   bluez,
@@ -47,7 +48,7 @@
 
   #  the two fonts k4 is written against
   adwaita-fonts,
-  nerd-fonts, #  .meslo-lg → «MesloLGS Nerd Font Mono», every icon in the bar
+  nerd-fonts, # .meslo-lg → «MesloLGS Nerd Font Mono», every icon in the bar
 
   #  Qt: quickshell does not pull the multimedia module, and k4's editor and
   #  video wallpapers need it (the ffmpeg backend rides along in its plugins)
@@ -73,7 +74,7 @@ let
     includes = [ "/etc/fonts/fonts.conf" ];
   };
   binpath = lib.makeBinPath [
-    coreutils #  the launcher and `arrancar` themselves: cp, mkdir, mv, tee…
+    coreutils # the launcher and `arrancar` themselves: cp, mkdir, mv, tee…
     quickshell
     hyprland
     python3
@@ -81,6 +82,7 @@ let
     curl
     grim
     slurp
+    awww
     swaybg
     ffmpeg
     imagemagick
@@ -107,7 +109,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   dontConfigure = true;
   dontBuild = true;
-  dontFixup = true; #  plain files + a shell launcher; no ELF of ours to patch
+  dontFixup = true; # plain files + a shell launcher; no ELF of ours to patch
 
   installPhase = ''
     runHook preInstall

@@ -80,7 +80,7 @@ not be declared inside the view.
 | `K4.Pildora` | Small indicators in the folded pill |
 | `K4.Capsule` | Flank extensions: the capsule growing with your text |
 | `K4.Sonido` | Short sound effect (permission `sonido`) |
-| `K4.Tema` | Palette, fonts, island geometry — and `tintar()` to tint the bar's ambience |
+| `K4.Tema` | Palette, fonts, island geometry — `tintar()` to tint the bar ambience, plus the current tint owner and colour |
 | `K4.Guardado` | Plugin state as JSON, in its own directory |
 | `K4.Etiqueta` | Text with the bar's defaults |
 | `K4.Glifo` | Nerd Font glyph |

@@ -678,7 +678,9 @@ everything painted with the theme recolors itself. The ink and the colors
 with meaning (green, red…) are not touched, so text stays readable and an
 alert stays an alert. Strength is capped at 0.45 by the host; `duracionMs`
 0 means "until you call `destintar(tuId)`", and disabling your plugin
-untints on its own.
+untints on its own. The current tint is readable back: `K4.Tema.tinteDueno`
+names whoever holds it and `K4.Tema.tinteColor` is its colour — the
+wallpaper palette uses exactly this to dress the bar from your image.
 
 ```qml
 K4.Tema.tintar("mi-juego", "#26324f", 0.35, 4000)   // abismo, 4 segundos

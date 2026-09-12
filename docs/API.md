@@ -276,9 +276,9 @@ Call it from Hyprland with:
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hello toggle
 ```
 
-The target is `k4.<id>`. Two house plugins carry older names — `k4.term`
-(terminal) and `k4.theme` (hyprtheme) — kept for the muscle memory that
-already types them; anything new follows the convention.
+The target is `k4.<id>`. One house plugin carries an older name — `k4.term`
+(terminal) — kept for the muscle memory that already types it; anything new
+follows the convention.
 
 - `K4.Ventana`: a full-screen `wlr-layer-shell` surface that does not reserve
   layout space. `capa` picks the level: `"encima"` above everything (the
@@ -423,6 +423,9 @@ K4.Lanzador {
   theme recolors itself reactively. Ink and semantic colors stay untouched
   so text stays readable; strength is capped at 0.45 by the host, and
   `K4.Tema.destintar(id)` — or disabling the plugin — reverts it.
+- `K4.Tema.tinteDueno` and `K4.Tema.tinteColor` expose the current tint when
+  a plugin needs to follow a native host-owned palette without sampling or
+  owning it itself.
 - `K4.Isla.efecto(id, name, strength)` asks for a physical gesture:
   `"sacudida"` (a hit), `"empujon"` (something heavy lands), `"tiron"`
   (something pulls, like a fish on the line). The host animates and

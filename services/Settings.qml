@@ -77,6 +77,10 @@ Singleton {
     property int settingsIslandWidth: 940    // 720–1400, steps of 20
     property int settingsIslandHeight: 620    // 420–900, steps of 20
 
+    //  The native wallpaper palette tints the bar's neutral scaffold; the
+    //  wallpaper page turns it off and on.
+    property bool wallpaperPalette: true
+
     //  ── the control centre ──────────────────
     //  plugins/Panel dresses itself with these. The WIDTH is a number you
     //  turn; the height is not, and on purpose: it is derived from what is
@@ -571,7 +575,7 @@ Singleton {
         "popupMode",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "settingsIslandWidth", "settingsIslandHeight",
-        "shellFont",
+        "shellFont", "wallpaperPalette",
         "panelWidth", "panelShowToggles", "panelTileWifi",
         "panelTileBluetooth", "panelTileSound", "panelShowMedia",
         "panelShowShortcuts", "panelShowWorkspaces", "panelWorkspaceStyle",

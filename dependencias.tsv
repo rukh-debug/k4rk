@@ -38,7 +38,8 @@ pkg:adwaita-fonts	adwaita-fonts	base	Texto de la interfaz y rótulos
 #  ── Adjuntar la pantalla a una pregunta ─────────────────────────────────────
 grim	grim	base	Adjuntar la pantalla a una pregunta de Ask
 slurp	slurp	base	Elegir una región con el ratón
-swaybg	swaybg	base	Poner el fondo de pantalla desde el selector de temas
+awww	awww	base	Apply wallpapers with transitions from the native Wallpaper page
+swaybg	swaybg	base	Fallback wallpaper backend for the native Wallpaper page
 ffmpeg	ffmpeg	base	Fondos de vídeo y efectos de tema
 ffprobe	ffmpeg	base	Sondear los vídeos del selector de fondos
 magick	imagemagick	base	Miniaturas y conversiones de imagen
