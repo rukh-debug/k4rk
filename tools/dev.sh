@@ -55,14 +55,17 @@ fi
 echo "==> running $STORE"
 
 # ── out with the old ────────────────────────────────────────────────
-#  Walk /proc directly instead of trusting pgrep's flags: an engine
-#  is a process whose argv says «quickshell -p …» OR whose comm
-#  contains «quickshell» (the wrapped store binary is truncated to
-#  `.quickshell-wra`, which an exact-name kill never matched — and
-#  the survivor drew a second bar). The matcher is spelled out here,
-#  so it cannot match the very shell spelling it: this script's own
-#  argv is «bash tools/dev.sh», and the tiny tr/cat helpers say so
-#  too. Every match dies, no matter how many instances there are.
+#  Walk /proc directly instead of trusting pgrep's flags — the same
+#  walk `k4 kill` does, kept here so the dev loop works even against
+#  a store path older than that subcommand. An instance is a process
+#  whose argv says «quickshell -p …» or whose comm contains
+#  «quickshell» (the wrapped store binary truncates to
+#  `.quickshell-wra`, which an exact-name kill never matched — the
+#  survivor drew a second bar). Launcher shells are not matched:
+#  they exec into the engine or die with it, and a looser pattern
+#  kills processes that merely mention a path in their command line.
+#  The matcher cannot match the very shell spelling it: this
+#  script's own argv is «bash tools/dev.sh».
 bar_pids() {
     local d pid cmd comm
     for d in /proc/[0-9]*; do
@@ -113,6 +116,12 @@ if [ -z "$OUT" ]; then
     echo "!! IPC never answered; check $LOG and $HOME/.local/state/k4/k4.log" >&2
     exit 1
 fi
+#  The first answer can beat the catalog: user plugins register a beat
+#  after the repo's own, and a count taken too early reads as plugins
+#  gone missing. Let it settle and ask again — the later answer wins.
+sleep 1.2
+SETTLED="$(quickshell ipc -p "$MIRROR/shell.qml" call k4 pluginStatus 2>/dev/null || true)"
+case "$SETTLED" in \[*\]*) OUT="$SETTLED" ;; esac
 echo "$OUT" | python3 -c '
 import json, sys
 d = json.load(sys.stdin)

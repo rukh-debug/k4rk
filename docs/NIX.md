@@ -22,7 +22,7 @@ What the package does instead:
 ```
 /nix/store/…-k4  ──(first run, or after an update)──▶  ~/.local/share/k4/code
                                                                │
-                                               exec arrancar ──┘
+                                              exec quickshell ─┘
 ```
 
 The launcher (`bin/k4`) materializes a writable copy at
@@ -56,7 +56,7 @@ same inside a Hyprland session on NixOS as on any other distro:
 - **The two fonts as ever**, Adwaita Sans and MesloLGS Nerd Font Mono,
   through a `FONTCONFIG_FILE` that includes the system configuration:
   your other fonts keep resolving as before.
-- **The `K4` QML module** (`api/`), which `arrancar` puts on the import
+- **The `K4` QML module** (`api/`), which the launcher puts on the import
   path, same as on Arch.
 
 ## Home Manager

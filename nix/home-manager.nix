@@ -5,7 +5,7 @@
 #      ~/.local/share/k4/code mirror first);
 #    · writes the Hyprland integration from the repo's own templates —
 #      hypr/k4.conf and hypr/config/k4.lua — with three substitutions:
-#        - the exec hook launches the wrapper, not $mirror/arrancar,
+#        - the exec hook launches the wrapper, not $mirror/launch,
 #          because on a cold start the mirror does not exist yet and the
 #          wrapper is what creates it;
 #        - IPC shortcuts target $mirror/shell.qml, the path the running
@@ -74,17 +74,24 @@ let
 
   #  hypr/k4.conf (or k4.lua) with @RAIZ@ resolved. Order matters: the
   #  exec-once line embeds @RAIZ@ itself, so it goes before the blanket
-  #  substitution.
+  #  substitution. The bar starts through the package's `bin/k4` — the
+  #  launcher owns the mirror, the environment and the log — whichever
+  #  spelling the template uses for the start script (`launch`, and the
+  #  old `arrancar` for templates written before the rename).
   substituteTemplate =
     path:
     builtins.replaceStrings
       [
+        "exec-once = @RAIZ@/launch"
+        "raiz .. \"/launch"
         "exec-once = @RAIZ@/arrancar"
         "raiz .. \"/arrancar"
         "@RAIZ@"
         "quickshell ipc"
       ]
       [
+        "exec-once = ${cfg.package}/bin/k4"
+        "\"${cfg.package}/bin/k4"
         "exec-once = ${cfg.package}/bin/k4"
         "\"${cfg.package}/bin/k4"
         mirror

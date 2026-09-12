@@ -88,7 +88,7 @@ mkShell {
   QT_PLUGIN_PATH = "${qt6.qtmultimedia}/lib/qt-6/plugins";
   QT_MEDIA_BACKEND = "ffmpeg";
 
-  #  The fonts k4 is written against, for `./arrancar` and the glyph tools.
+  #  The fonts k4 is written against, for `./launch` and the glyph tools.
   FONTCONFIG_FILE = toString (makeFontsConf {
     fontDirectories = [
       "${adwaita-fonts}/share/fonts"
@@ -105,7 +105,7 @@ mkShell {
 
     echo "k4 dev shell — quickshell $(quickshell --version 2>/dev/null | head -1)"
     echo "  nix develop   · this shell, against the checkout"
-    echo "  ./arrancar    · run the bar from here"
+    echo "  ./launch     · run the bar from here"
     echo "  python3 tools/plugins.py --test <id>   · a plugin alone"
   '';
 }
