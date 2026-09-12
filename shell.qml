@@ -172,7 +172,8 @@ Scope {
     }
 
     // ── IPC ───────────────────────────────────────────────────────
-    // Cada módulo publica su propio target (k4.panel, k4.ask, k4.launcher).
+    // Each module publishes its own target (k4.panel, k4.openwebui,
+    // k4.launcher).
     // Esto es la capa de compatibilidad: mantiene el target `k4` con los
     // nombres de siempre para no romper los atajos ya configurados.
     //  Atajo del registro: el plugin vivo con ese id, o null si está
@@ -218,22 +219,27 @@ Scope {
         function bluetooth(): void { _p("panel")?.openTab("bluetooth") }
         function sound(): void { _p("panel")?.openTab("sound") }
         function clearNotifications(): void { Notifs.clear() }
+        //  The chat's verbs kept their old names — Super+G and a
+        //  year of muscle memory point here — but they land on the
+        //  OpenWebUI plugin now, the way `k4.term` outlived its own
+        //  rename.
         function ask(): void {
-            const a = _p("ask")
+            const a = _p("openwebui")
             if (!a)
                 return
             if (a.open) a.close()
             else a.openAsk(false)
         }
-        function askSelection(): void { _p("ask")?.openAsk(true) }
+        function askSelection(): void { _p("openwebui")?.openAsk(true) }
         function askNow(question: string): void {
-            _p("ask")?.preguntar(question)
+            //  A direct question from a script: fresh thread, always.
+            _p("openwebui")?.preguntar(question, true)
         }
         function askFollowUp(question: string): void {
-            _p("ask")?.preguntar(question)
+            _p("openwebui")?.preguntar(question)
         }
-        function askScreen(): void { _p("ask")?.attachScreenshot() }
-        function askRegion(): void { _p("ask")?.attachRegion() }
+        function askScreen(): void { _p("openwebui")?.attachScreenshot() }
+        function askRegion(): void { _p("openwebui")?.attachRegion() }
         function togglePlay(): void { Media.togglePlaying() }
         function nextTrack(): void { Media.siguiente() }
         function prevTrack(): void { Media.anterior() }

@@ -85,9 +85,9 @@ moment its plugin dies, and comes back when it returns.
 
 ### Requiring a binary: `require: "bin:…"`
 
-A manifest may declare `"require": "bin:codex"` — the plugin exists only
+A manifest may declare `"require": "bin:yt-dlp"` — the plugin exists only
 when that tool is on `PATH`. The bar probes in one sweep, says so honestly
-in Settings («needs 'codex' installed»), keeps re-probing while it is
+in Settings («needs 'yt-dlp' installed»), keeps re-probing while it is
 missing, and brings the plugin back by itself the moment the tool appears.
 
 ## Visual components

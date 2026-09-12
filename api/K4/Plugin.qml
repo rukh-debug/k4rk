@@ -52,7 +52,7 @@ QtObject {
 
     // Quién se queda la island cuando varios plugins la piden a la vez.
     // Referencia de los actuales: idle 0 · volume 40 · clock 50 · player 55 ·
-    // toast 59 · panel 60 · launcher 80 · ask 90.
+    // toast 59 · panel 60 · launcher 80 · openwebui 90.
     //
     //  THE HOVER BAND — offering a view while the mouse rests on the
     //  pill is not a separate API: it is this ladder plus one readable
@@ -118,10 +118,10 @@ QtObject {
     //  list is derived from the live ones.
     property bool colocable: false
 
-    // Pide foco de teclado EXCLUSIVO: mientras esté activo, ninguna ventana
-    // recibe una tecla. Solo para lo que se escribe de verdad —el lanzador, la
-    // pregunta a la IA, la clave del wifi—, porque bloquea el resto del
-    // escritorio.
+    // Exclusive keyboard focus: while active, no window receives a
+    // key. Only for what is truly typed into — the launcher, the AI
+    // chat, the Wi-Fi password — because it blocks the rest of the
+    // desktop.
     property bool grabKeyboard: false
 
     // Foco BAJO DEMANDA: la capa recibe teclas si interactúas con ella y se las
@@ -197,8 +197,8 @@ QtObject {
     //      · buscar(query) — arrive with a search already written.
     //      · preguntar(texto) — a question asked from outside.
     //      · openAsk(selection) — arrive asking: open with your picker
-    //        ready (Ask opens fresh, or on the region/screenshot picker
-    //        when `selection` is true).
+    //        ready (fresh, or on the region/screenshot picker when
+    //        `selection` is true).
     //      · attachScreenshot() / attachRegion() — arrive with a fresh
     //        screenshot, or with the region picker running.
     //      · refresh() — look again at whatever you show (Packages

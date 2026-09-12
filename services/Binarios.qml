@@ -2,9 +2,9 @@ pragma Singleton
 
 //  Which binaries exist on this machine.
 //
-//  A plugin can depend on a tool the user may or may not have — codex,
+//  A plugin can depend on a tool the user may or may not have — yt-dlp,
 //  any CLI — and until now it could only find out by trying and failing
-//  in public. The catalog says it up front (`"require": "bin:codex"`),
+//  in public. The catalog says it up front (`"require": "bin:yt-dlp"`),
 //  and this service is the one honest answer to that question: one
 //  batched `command -v` sweep for every name anyone asked about.
 //

@@ -78,20 +78,22 @@
    ],
    "icon": "0xF0349"
   },
-  {
-   "id": "ask",
-   "entry": "Ask/AskPlugin.qml",
-   "version": "1.0.0",
-   "title": "Ask",
-   "description": "Ask an agent: prompts, screenshots and regions",
-   "enabledByDefault": true,
-   "permissions": [
-    "procesos",
-    "portapapeles"
-   ],
-   "require": "bin:codex",
-   "icon": "0xF0674"
-  },
+   {
+    "id": "openwebui",
+    "entry": "OpenWebUI/OpenWebUIPlugin.qml",
+    "version": "1.0.0",
+    "title": "OpenWebUI",
+    "description": "Chat with an OpenWebUI server: streaming answers, models and saved chats",
+    "enabledByDefault": true,
+    "permissions": [
+     "procesos",
+     "red",
+     "paginas",
+     "portapapeles",
+     "ficheros"
+    ],
+    "icon": "0xF0674"
+   },
    {
     "id": "displays",
    "entry": "Pantallas/PantallasPlugin.qml",
