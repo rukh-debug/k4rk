@@ -261,9 +261,12 @@ resolves.
 
 **[k4term](https://github.com/k4ditano/k4term)** is this project's own
 terminal. It is never assumed: the bar looks for `k4term`, then `$TERMINAL`,
-then the usual suspects, so everything works the same with any terminal. If
-k4term shows up later the bar notices within a minute and the island terminal
-turns itself on.
+then the usual suspects, so everything works the same with any terminal. The
+island terminal needs no build either — the Terminal plugin carries
+`island.py`, a bundled session core that speaks k4term-isla's protocol over
+the python3 k4 already runs on. Install k4term and fresh sessions take the
+compiled core on their own; nothing to reconfigure, and sessions already
+running keep running.
 
 </details>
 

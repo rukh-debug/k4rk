@@ -26,7 +26,15 @@ Singleton {
 
     //  La terminal elegida, y si tenemos la sesión de la island.
     property string binario: ""
+    //  Whether an island session can exist at all: k4term-isla when
+    //  it is installed, or the Terminal plugin's bundled core, which
+    //  needs nothing but the python3 k4 already runs on.
     property bool hayIsla: false
+    //  And whether the island core is OURS — k4term's compiled one,
+    //  the only one with a window to hand a session to. The bundled
+    //  core speaks the same protocol but has no window, so the
+    //  move-to-window door stays shut without it.
+    property bool islaNuestra: false
 
     readonly property bool esNuestra: binario === "k4term"
 
@@ -179,13 +187,19 @@ Singleton {
             "done\n" +
             "isla=no\n" +
             "command -v k4term-isla >/dev/null 2>&1 && isla=si\n" +
-            "printf '%s %s\\n' \"$elegida\" \"$isla\"\n"]
+            "python=no\n" +
+            "command -v python3 >/dev/null 2>&1 && python=si\n" +
+            "printf '%s %s %s\\n' \"$elegida\" \"$isla\" \"$python\"\n"]
 
         stdout: StdioCollector {
             onStreamFinished: {
                 const trozos = this.text.trim().split(/\s+/)
                 consola.binario = trozos[0] || ""
-                consola.hayIsla = trozos[1] === "si"
+                consola.islaNuestra = trozos[1] === "si"
+                //  An island session exists with either core:
+                //  k4term-isla when it is installed, the Terminal
+                //  plugin's bundled python one otherwise.
+                consola.hayIsla = trozos[1] === "si" || trozos[2] === "si"
             }
         }
     }

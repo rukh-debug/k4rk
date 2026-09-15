@@ -5,6 +5,13 @@
 //  resolved. Nothing more — who is shown, in what order and with which
 //  keys is the plugin's business.
 //
+//  When k4term is not installed the session is `island.py`, the
+//  bundled core that speaks the same protocol. The choice is made
+//  here and not in the plugin because this is the one file that owns
+//  the process; whoever changes hands, the bar cannot tell the
+//  difference — and when k4term shows up, fresh sessions take it
+//  without anyone reconfiguring anything.
+//
 //  It lives in its own file precisely so there can be SEVERAL: this
 //  used to live loose inside the plugin, and that is why only one
 //  could exist.
@@ -16,10 +23,16 @@ import "../../services"
 QtObject {
     id: sesion
 
+    //  The plugin's own folder, where island.py lives. Set by the
+    //  host on the plugin and handed down; a path and not a URL
+    //  because a process wants a path.
+    property string carpeta: ""
+
     //  A session that already exists waiting on that socket: it comes
     //  from a window giving it back. With this the binary opens no
     //  shell — it adopts the one there, with whatever was running
-    //  inside it.
+    //  inside it. Only k4term's windows produce sockets, so adoption
+    //  is always the compiled binary's job.
     property string heredar: ""
 
     //  Which server it is connected to right now, if any. The plugin
@@ -91,8 +104,13 @@ QtObject {
     }
 
     property K4.Process proceso: K4.Process {
-        command: sesion.heredar ? ["k4term-isla", "--heredar", sesion.heredar]
-                                : ["k4term-isla"]
+        command: {
+            if (sesion.heredar)
+                return ["k4term-isla", "--heredar", sesion.heredar]
+            if (Consola.islaNuestra)
+                return ["k4term-isla"]
+            return ["python3", sesion.carpeta + "/island.py"]
+        }
         running: sesion.viva
         porLineas: true
         entradaAbierta: true

@@ -185,13 +185,13 @@
    "entry": "Terminal/TerminalPlugin.qml",
    "version": "1.1.0",
    "title": "Terminal",
-   "description": "k4term in the island: sessions, tunnels and keys",
+   "description": "The island terminal: sessions, blocks and keys, with k4term when installed and a bundled core otherwise",
    "enabledByDefault": true,
    "permissions": [
     "procesos",
     "ficheros"
    ],
-   "require": "k4term",
+   "require": "bin:python3",
    "icon": "0xF018D",
    "application": true
   },

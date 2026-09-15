@@ -454,9 +454,10 @@ K4Plugin {
     }
 
     function toggle() {
-        //  Without k4term-isla there is no mini-terminal —it speaks a
-        //  protocol that is ours— but there is no reason to do nothing
-        //  either: a window opens with whatever terminal there is.
+        //  Without an island core there is no mini-terminal —but the
+        //  plugin bundles one (island.py), so this only falls back to
+        //  a window on hosts without python3, which is nowhere k4
+        //  itself runs.
         if (!Consola.hayIsla) {
             K4.Sistema.lanzar(Consola.abrir(""))
             return
@@ -537,6 +538,8 @@ K4Plugin {
             required property int sid
             required property string socket
             numero: sid
+            //  Where island.py lives: the plugin's own folder.
+            carpeta: self.carpeta
             //  If it comes with a socket, this session does not start a
             //  shell: it adopts the one a window has just let go.
             heredar: socket
@@ -1264,9 +1267,11 @@ K4Plugin {
         plugin: "terminal"
         grupo: "Terminal"
 
-        //  Only if k4term is around. They are ITS settings: without
-        //  it, this section offered to change the font size and glass
-        //  of a terminal that is not installed, writing to a file
+        //  Only if an island terminal is around. They are the session
+        //  core's settings — k4term's when installed, island.py's
+        //  otherwise — and both read the same file; without either,
+        //  this section offered to change the font size and glass of
+        //  a terminal that is not installed, writing to a file
         //  nobody reads. With the list empty, the whole section does
         //  not show.
         //
@@ -1274,9 +1279,9 @@ K4Plugin {
         //  startup—, so this reads «no» for the first milliseconds;
         //  what makes it appear later is K4.Ajustes registering again
         //  when `opciones` changes.
-        opciones: !Consola.esNuestra ? [] : [
+        opciones: !Consola.hayIsla ? [] : [
             { id: "tamaño", nombre: "Font size",
-              desc: "Window only; the island uses its own space",
+              desc: "The island and the windows both follow it",
               glifo: 0xF0207, tipo: "eleccion",
               alternativas: [{ codigo: "11", nombre: "11" },
                              { codigo: "13", nombre: "13" },
