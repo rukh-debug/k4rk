@@ -32,6 +32,28 @@ Flickable {
     contentHeight: contentItem.childrenRect.height
     flickableDirection: Flickable.VerticalFlick
 
+    // Keyboard traversal must reveal the focused control inside this viewport.
+    Connections {
+        target: rodillo.Window.window
+        function onActiveFocusItemChanged() {
+            const item = rodillo.Window.window.activeFocusItem
+            if (!item) return
+            let ancestor = item.parent
+            while (ancestor && ancestor !== rodillo.contentItem)
+                ancestor = ancestor.parent
+            if (!ancestor) return
+            Qt.callLater(function () {
+                if (!item || !rodillo.visible) return
+                const point = item.mapToItem(rodillo.contentItem, 0, 0)
+                if (point.y < rodillo.contentY + 8)
+                    rodillo.contentY = Math.max(0, point.y - 8)
+                else if (point.y + item.height > rodillo.contentY + rodillo.height - 8)
+                    rodillo.contentY = Math.min(Math.max(0, rodillo.contentHeight - rodillo.height),
+                        point.y + item.height - rodillo.height + 8)
+            })
+        }
+    }
+
     //  The wheel catcher must live on the FLICKABLE, not in the content.
     //
     //  Everything declared inside a Flickable is reparented into its
@@ -55,9 +77,10 @@ Flickable {
             if (alto <= 0)
                 return
             //  angleDelta comes in eighths of a degree; 120 is one notch.
-            const pasos = ev.angleDelta.y / 120
+            const delta = ev.pixelDelta.y !== 0 ? ev.pixelDelta.y
+                : ev.angleDelta.y / 120 * rodillo.muesca
             rodillo.contentY = Math.max(0, Math.min(alto,
-                rodillo.contentY - pasos * rodillo.muesca))
+                rodillo.contentY - delta))
         }
     }
 

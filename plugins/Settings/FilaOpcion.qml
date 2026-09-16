@@ -1,17 +1,6 @@
-//  A Settings row: the icon, the name, the explanation and the control.
-//
-//  It lived inside `SettingsView.qml`, embedded as a delegate. It
-//  moves to its own file because TWO views use it now —the usual
-//  panel and the sidebar window— and two copies of three hundred
-//  lines diverge at the first fix: one gets fixed and the other
-//  keeps lying.
-//
-//  It does not know where it is painted. It receives the option's
-//  definition and talks to the `Settings` service, same as before.
-
+// One responsive row for host and plugin settings. Values remain owner-controlled.
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
 import K4 as K4
 import "../../core"
 import "../../services"
@@ -19,503 +8,275 @@ import "../../services"
 Rectangle {
     id: opcion
     required property var modelData
-    //  With `!!` and not bare. `Settings.valor`
-    //  answers `undefined` for options with nothing
-    //  saved yet and for those that are not
-    //  switches, and assigning that to a bool is a
-    //  log warning for EVERY row and EVERY time
-    //  Settings opens — noise covering the real
-    //  warnings.
-    //
-    //  Coerce and not compare with `true`: this
-    //  lights the row's ICON, and a choice is worth
-    //  «travel» and a text field is worth a URL.
-    //  With `=== true` every row that was not a
-    //  switch went dark.
-    readonly property bool activa:
-        !!Settings.valor(modelData.id)
+    property bool highlighted: false
 
-    //  A section title inside the stack of rows: not a setting, a divider
-    //  that names the group the rows below it belong to. One `tipo` more in
-    //  the option definitions — and a page stops being a wall of
-    //  forty-pixel rectangles that all weigh the same.
     readonly property bool esTitulo: modelData.tipo === "titulo"
-
-    //  A text option's value, always as a string:
-    //  an external registry answers `false` when
-    //  nothing is saved yet.
+    readonly property bool activa: !!Settings.valor(modelData.id)
+    readonly property bool disponible:
+        (!modelData.requiere || Settings.valor(modelData.requiere))
+        && modelData.disponible !== false && modelData.error !== "fijo"
     readonly property string valorTexto: {
         const v = Settings.valor(modelData.id)
-        return (v === undefined || v === null || v === false)
-            ? "" : String(v)
+        return v === undefined || v === null || v === false ? "" : String(v)
     }
-
-    // Some options paint nothing when their master
-    // switch is off: they dim and stop responding,
-    // instead of lying about what they do.
-    //  And plain `disponible: false`, for what does
-    //  not depend on another setting but on the
-    //  world: a program not installed. Without
-    //  this, the only way to say «this cannot work
-    //  here» was not offering it, and then nobody
-    //  learns it exists.
-    readonly property bool disponible:
-        (!modelData.requiere
-         || Settings.valor(modelData.requiere))
-        && modelData.disponible !== false
-
-    //  Network actions go in two beats: the first
-    //  touch arms and the second executes, and if
-    //  you think it over for more than a few
-    //  seconds it disarms itself. A modal dialog
-    //  would be more pompous and protect no
-    //  better.
+    readonly property bool stacked: width < 520 && !!modelData.tipo
+    readonly property string description: {
+        if (armada)
+            return modelData.descArmado || modelData.desc || ""
+        if (modelData.requiere && !Settings.valor(modelData.requiere))
+            return (modelData.desc || "") + " · Enable the parent setting to adjust this."
+        return modelData.desc || ""
+    }
     property bool armada: false
 
-    Timer {
-        id: desarmar
-        interval: 4000
-        onTriggered: opcion.armada = false
-    }
-
-    //  Close and reopen must not leave a row armed, waiting for a stray
-    //  click. The signal is the row's OWN — the context's `view` is not
-    //  guaranteed here, and a Connections to something without the signal
-    //  warns once per row and disarms nothing.
-    onVisibleChanged: if (!visible)
-        opcion.armada = false
-
-    opacity: disponible ? 1 : 0.4
-    Behavior on opacity { NumberAnimation { duration: 140 } }
-
+    objectName: "setting-" + (modelData.id || "")
     Layout.fillWidth: true
-    Layout.preferredHeight: esTitulo ? 24 : 40
+    implicitHeight: esTitulo ? 32 : Math.max(52, body.implicitHeight + 24)
+    Layout.preferredHeight: implicitHeight
     radius: 10
-    color: esTitulo ? "transparent"
-         : opcion.armada ? "#2a0f12"
-         : (filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface)
-    border.width: !esTitulo && opcion.armada ? 1 : 0
-    border.color: Theme.red
+    color: esTitulo ? "transparent" : Theme.surface
+    border.width: highlighted || armada ? 1 : 0
+    border.color: armada ? Theme.red : Theme.blue
 
-    Behavior on color { ColorAnimation { duration: 120 } }
+    onVisibleChanged: if (!visible) armada = false
+    Timer { id: disarm; interval: 4000; onTriggered: opcion.armada = false }
 
-    //  ── the section title ───────────────
-    //
-    //  Small, spaced-out letters over a hairline: enough to part groups,
-    //  quiet enough not to compete with the rows it names. It takes the
-    //  place of the whole row — no icon, no switch, nothing to press.
     IslandLabel {
         visible: opcion.esTitulo
         anchors.left: parent.left
-        anchors.leftMargin: 12
-        anchors.bottom: underline.top
-        anchors.bottomMargin: 3
-        text: opcion.modelData.nombre
+        anchors.leftMargin: 4
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 6
+        text: opcion.modelData.nombre || ""
         color: Theme.muted
-        font.pixelSize: 10
+        font.pixelSize: 12
         font.weight: Font.DemiBold
-        font.letterSpacing: 1.1
     }
 
-    Rectangle {
-        id: underline
-        visible: opcion.esTitulo
+    MouseArea {
+        anchors.fill: parent
+        enabled: !opcion.modelData.tipo && opcion.disponible
+        cursorShape: Qt.PointingHandCursor
+        onClicked: Settings.alternar(opcion.modelData.id)
+    }
+
+    GridLayout {
+        id: body
+        visible: !opcion.esTitulo
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
-        anchors.bottom: parent.bottom
-        height: 1
-        color: Theme.track
-    }
+        anchors.top: parent.top
+        anchors.margins: 12
+        columns: opcion.stacked ? 1 : 2
+        columnSpacing: 16
+        rowSpacing: 12
 
-    RowLayout {
-        visible: !opcion.esTitulo
-        anchors.fill: parent
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
-        spacing: 11
-
-        K4.IconoPlugin {
-            //  A plugin can bring its own image;
-            //  the rest of the options are glyphs
-            //  and fall in the same place.
-            imagen: opcion.modelData.imagen || ""
-            glifo: opcion.modelData.glifo || 0
-            color: opcion.activa ? Theme.ink : Theme.dim
-            tamano: 15
-            Layout.preferredWidth: 18
-            Layout.alignment: Qt.AlignVCenter
-        }
-
-        ColumnLayout {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 0
+            spacing: 12
 
-            IslandLabel {
-                text: (opcion.armada
-                       ? (opcion.modelData.nombreArmado
-                          || "Are you sure? This cannot be undone")
-                       : opcion.modelData.nombre) || ""
-                color: opcion.armada ? Theme.red : Theme.ink
-                font.pixelSize: 12
-                font.weight: Font.DemiBold
-            }
-
-            IslandLabel {
-                text: (opcion.armada
-                       ? (opcion.modelData.descArmado
-                          || opcion.modelData.desc)
-                       : opcion.modelData.desc) || ""
-                //  A broken plugin's reason goes
-                //  in red: it is the difference
-                //  between «off» and «cannot».
-                color: opcion.armada ? "#ff9f9f"
-                     : (opcion.modelData.error ? Theme.red : Theme.muted)
-                font.pixelSize: 9
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
-        }
-
-        //  A plugin that cannot load carries no
-        //  switch: turning on the impossible is
-        //  lying. If the failure was at load, the
-        //  whole row retries.
-        IslandLabel {
-            visible: opcion.modelData.error === "recargable"
-            text: "retry"
-            color: Theme.blue
-            font.pixelSize: 10
-            Layout.alignment: Qt.AlignVCenter
-
-            MouseArea {
-                anchors.fill: parent
-                anchors.margins: -6
-                cursorShape: Qt.PointingHandCursor
-                onClicked: PluginManager.reintentar(
-                    opcion.modelData.pluginId)
-            }
-        }
-
-        //  ── a network action ────────────────
-        RowLayout {
-            visible: opcion.modelData.tipo === "peligro"
-            spacing: 8
-            Layout.alignment: Qt.AlignVCenter
-
-            //  A way out without scares: cancel
-            //  sits next to the red button.
-            IslandLabel {
-                visible: opcion.armada
-                text: "cancel"
-                color: Theme.muted
-                font.pixelSize: 10
-
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -6
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        opcion.armada = false
-                        desarmar.stop()
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.preferredWidth: etiquetaAccion.implicitWidth + 24
-                Layout.preferredHeight: 26
+            K4.IconoPlugin {
+                imagen: opcion.modelData.imagen || ""
+                glifo: opcion.modelData.glifo || 0
+                tamano: 16
+                color: opcion.disponible ? Theme.muted : Theme.dim
+                Layout.preferredWidth: 20
                 Layout.alignment: Qt.AlignVCenter
-                radius: 13
-                color: opcion.armada
-                    ? (accionRaton.containsMouse ? "#ff6961" : Theme.red)
-                    : (accionRaton.containsMouse ? Theme.surfaceHi : Theme.track)
+            }
 
-                Behavior on color { ColorAnimation { duration: 120 } }
-
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
                 IslandLabel {
-                    id: etiquetaAccion
-                    anchors.centerIn: parent
+                    Layout.fillWidth: true
                     text: opcion.armada
-                        ? (opcion.modelData.confirmar || "Yes")
-                        : (opcion.modelData.accion || "Do it")
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
+                        ? (opcion.modelData.nombreArmado || "Confirm this action")
+                        : (opcion.modelData.nombre || "")
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    color: opcion.armada ? Theme.red : Theme.ink
+                    wrapMode: Text.WordWrap
                 }
-
-                MouseArea {
-                    id: accionRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (opcion.armada) {
-                            Settings.ejecutar(opcion.modelData.id)
-                            opcion.armada = false
-                            desarmar.stop()
-                        } else {
-                            opcion.armada = true
-                            desarmar.restart()
-                        }
-                    }
+                IslandLabel {
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: opcion.description
+                    font.pixelSize: 11
+                    color: opcion.modelData.error ? Theme.red : Theme.muted
+                    wrapMode: Text.WordWrap
                 }
             }
         }
 
-        IslandSwitch {
-            //  Only the default type: a choice
-            //  carries chips and a text carries a
-            //  field.
-            visible: !opcion.modelData.tipo
-                     && opcion.modelData.error !== "fijo"
-            checked: opcion.activa
-            onToggled: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
-            Layout.alignment: Qt.AlignVCenter
+        Loader {
+            id: editor
+            Layout.fillWidth: opcion.stacked
+            Layout.preferredWidth: item ? item.implicitWidth : 0
+            Layout.preferredHeight: item ? item.implicitHeight : 0
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+            enabled: opcion.disponible
+            visible: !opcion.esTitulo && opcion.modelData.tipo !== "eleccion"
+            sourceComponent: opcion.modelData.error === "recargable" ? retryControl
+                : !opcion.modelData.tipo ? switchControl
+                : opcion.modelData.tipo === "numero" ? numberControl
+                : opcion.modelData.tipo === "texto" ? textControl
+                : opcion.modelData.tipo === "peligro" ? actionControl : null
         }
 
-        // ── multi-answer options
-        //  The alternatives come from the service. This used to
-        //  have `de === "idiomas"` hard-wired and anything else
-        //  returned an empty list, so adding a choice forced
-        //  touching this screen.
-        //
-        //  An outside plugin cannot add its case to the service:
-        //  it brings its own in `alternativas`, exactly as
-        //  K4.Ajustes has promised from the start — until now
-        //  that promise painted an empty row.
-        RowLayout {
+        Flow {
+            id: choices
             visible: opcion.modelData.tipo === "eleccion"
-            Layout.fillWidth: false
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 5
+            Layout.columnSpan: body.columns
+            Layout.fillWidth: true
+            Layout.leftMargin: 32
+            Layout.preferredHeight: implicitHeight
+            spacing: 8
+            enabled: opcion.disponible
 
             Repeater {
+                id: choiceRepeater
                 model: opcion.modelData.alternativas
-                       || Settings.opcionesDe(opcion.modelData.de)
-
-                delegate: Rectangle {
-                    id: eleccion
+                    || Settings.opcionesDe(opcion.modelData.de)
+                delegate: K4.ActionButton {
                     required property var modelData
-                    readonly property bool puesta:
-                        Settings.valor(opcion.modelData.id) === modelData.codigo
-
-                    Layout.preferredWidth: textoEleccion.implicitWidth + 20
-                    Layout.preferredHeight: 24
-                    radius: 12
-                    color: puesta ? Theme.blue
-                        : (eleccionRaton.containsMouse
-                           ? Theme.surfaceHi : Theme.track)
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    IslandLabel {
-                        id: textoEleccion
-                        anchors.centerIn: parent
-                        text: eleccion.modelData.nombre
-                        color: eleccion.puesta ? Theme.ink : Theme.muted
-                        font.pixelSize: 10
-                        font.weight: eleccion.puesta
-                            ? Font.DemiBold : Font.Normal
+                    required property int index
+                    text: modelData.nombre
+                    width: Math.min(implicitWidth, choices.width)
+                    selected: Settings.valor(opcion.modelData.id) === modelData.codigo
+                    Accessible.role: Accessible.RadioButton
+                    Accessible.checkable: true
+                    Accessible.checked: selected
+                    Accessible.name: opcion.modelData.nombre + ": " + text
+                    onClicked: Settings.poner(opcion.modelData.id, modelData.codigo)
+                    Keys.onPressed: function (event) {
+                        const direction = event.key === Qt.Key_Right ? 1
+                            : event.key === Qt.Key_Left ? -1 : 0
+                        if (!direction) return
+                        const next = choiceRepeater.itemAt(
+                            (index + direction + choiceRepeater.count) % choiceRepeater.count)
+                        if (next) { next.forceActiveFocus(); next.clicked() }
+                        event.accepted = true
                     }
-
-                    MouseArea {
-                        id: eleccionRaton
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Settings.poner(opcion.modelData.id,
-                                                  eleccion.modelData.codigo)
-                    }
-                }
-            }
-        }
-
-        //  ── numeric options ───────────
-        //  Widths and heights: a value you nudge, not one you type. Two
-        //  steppers and the number between them, in the same chip language
-        //  as the choices above — a spinbox with a text field would ask for
-        //  the keyboard in a page that never needed it.
-        RowLayout {
-            id: numerico
-            visible: opcion.modelData.tipo === "numero"
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 6
-
-            //  The current value, as a number: what arrives from `Settings`
-            //  after a `poner` is an int, but a hand-edited file can hold a
-            //  string, and `parseInt` of nothing is NaN — which would render
-            //  as "NaN px" and clamp to nonsense.
-            readonly property int valor: {
-                const v = parseInt(Settings.valor(opcion.modelData.id), 10)
-                return isNaN(v) ? 0 : v
-            }
-
-            //  One step in one direction, clamped to the option's bounds.
-            function paso(cuantos) {
-                const paso = opcion.modelData.paso || 1
-                let n = numerico.valor + cuantos * paso
-                if (opcion.modelData.min !== undefined)
-                    n = Math.max(opcion.modelData.min, n)
-                if (opcion.modelData.max !== undefined)
-                    n = Math.min(opcion.modelData.max, n)
-                if (n !== numerico.valor)
-                    Settings.poner(opcion.modelData.id, n)
-            }
-
-            //  A spent stepper does not answer and says so, at 35 % — `enabled`
-            //  and not just opacity, or it teaches that clicking does nothing.
-            //  The minus goes by codepoint like the ×: a literal minus in a
-            //  `text:` is harvested by the text extractor.
-            Rectangle {
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                radius: 13
-                opacity: menosRaton.enabled ? 1 : 0.35
-                color: menosRaton.enabled && menosRaton.containsMouse
-                    ? Theme.surfaceHi : Theme.track
-
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                MouseArea {
-                    id: menosRaton
-                    enabled: numerico.valor
-                        > (opcion.modelData.min ?? -Infinity)
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: numerico.paso(-1)
-                }
-
-                IslandLabel {
-                    anchors.centerIn: parent
-                    text: String.fromCodePoint(0x2212)
-                    color: menosRaton.enabled ? Theme.ink : Theme.muted
-                    font.pixelSize: 14
-                }
-            }
-
-            IslandLabel {
-                text: numerico.valor
-                    + (opcion.modelData.unidad ? " " + opcion.modelData.unidad : "")
-                color: Theme.ink
-                font.pixelSize: 11
-                font.weight: Font.DemiBold
-                Layout.preferredWidth: 64
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            Rectangle {
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                radius: 13
-                opacity: masRaton.enabled ? 1 : 0.35
-                color: masRaton.enabled && masRaton.containsMouse
-                    ? Theme.surfaceHi : Theme.track
-
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                MouseArea {
-                    id: masRaton
-                    enabled: numerico.valor
-                        < (opcion.modelData.max ?? Infinity)
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: numerico.paso(1)
-                }
-
-                IslandLabel {
-                    anchors.centerIn: parent
-                    text: "+"
-                    color: masRaton.enabled ? Theme.ink : Theme.muted
-                    font.pixelSize: 14
-                }
-            }
-        }
-
-        // ── free-text options
-        //  A URL, a model, an API key: what a switch cannot
-        //  say. El valor se entrega
-        //  al confirmar —Intro o clic fuera—, no tecla a
-        //  tecla: quien guarda escribe un fichero cada vez.
-        Rectangle {
-            visible: opcion.modelData.tipo === "texto"
-            Layout.preferredWidth: 210
-            Layout.preferredHeight: 26
-            Layout.alignment: Qt.AlignVCenter
-            radius: 13
-            color: campo.activeFocus ? Theme.surfaceHi : Theme.track
-            border.width: campo.activeFocus ? 1 : 0
-            border.color: Theme.blue
-
-            Behavior on color { ColorAnimation { duration: 120 } }
-
-            //  The hint only with the field empty and unfocused:
-            //  en cuanto tecleas ya no hace falta.
-            IslandLabel {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 11
-                visible: campo.text.length === 0 && !campo.activeFocus
-                text: opcion.modelData.pista || ""
-                color: Theme.dim
-                font.pixelSize: 10
-            }
-
-            TextInput {
-                id: campo
-                cursorDelegate: IslandCursor {}
-                anchors.fill: parent
-                anchors.leftMargin: 11
-                anchors.rightMargin: 11
-                verticalAlignment: TextInput.AlignVCenter
-                color: Theme.ink
-                font.family: Theme.uiFont
-                font.pixelSize: 10
-                clip: true
-                selectByMouse: true
-                selectionColor: Theme.blue
-                //  A secret shows while typed and covers
-                //  when stopped: it can be corrected without
-                //  the whole token being left in sight.
-                echoMode: opcion.modelData.secreto
-                    ? TextInput.PasswordEchoOnEdit
-                    : TextInput.Normal
-                text: opcion.valorTexto
-                onEditingFinished: {
-                    if (text !== opcion.valorTexto)
-                        Settings.poner(opcion.modelData.id, text)
-                }
-                //  Escape descarta lo tecleado, no lo guarda.
-                Keys.onEscapePressed: {
-                    text = opcion.valorTexto
-                    focus = false
                 }
             }
         }
     }
 
-    //  The whole row toggles, not just the switch: they are
-    //  40 px tall targets, it would be absurd to force aiming
-    //  at the 24 px one.
-    //
-    //  But only on switch rows. On multi-answer ones this area
-    //  sits OVER the chips —it is declared later— and ate their
-    //  clicks: the 54 px right margin lets the last one through
-    //  and nothing else, so in the language picker only
-    //  «English» could be chosen. It had been there since the
-    //  screen exists. And the same on text ones: the click is
-    //  for the field.
-    MouseArea {
-        id: filaMouse
-        enabled: !opcion.modelData.tipo
-        anchors.fill: parent
-        anchors.rightMargin: 54     // lets the switch through
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: if (opcion.disponible)
-                Settings.alternar(opcion.modelData.id)
+    Component {
+        id: switchControl
+        K4.Interruptor {
+            marcado: opcion.activa
+            Accessible.name: opcion.modelData.nombre || ""
+            onAlternado: Settings.alternar(opcion.modelData.id)
+        }
+    }
+
+    Component {
+        id: retryControl
+        K4.ActionButton {
+            text: "Retry"
+            onClicked: PluginManager.reintentar(opcion.modelData.pluginId)
+        }
+    }
+
+    Component {
+        id: numberControl
+        RowLayout {
+            id: number
+            spacing: 8
+            readonly property int value: Number(Settings.valor(opcion.modelData.id)) || 0
+            readonly property int minimum: opcion.modelData.min ?? -2147483647
+            readonly property int maximum: opcion.modelData.max ?? 2147483647
+            function setValue(value) {
+                if (!opcion.disponible || !Number.isFinite(value)) return
+                Settings.poner(opcion.modelData.id,
+                    Math.max(minimum, Math.min(maximum, Math.round(value))))
+            }
+            K4.ActionButton {
+                text: "−"
+                implicitWidth: 32
+                enabled: number.value > number.minimum
+                Accessible.name: "Decrease " + opcion.modelData.nombre
+                onClicked: number.setValue(number.value - (opcion.modelData.paso || 1))
+            }
+            K4.TextField {
+                id: numericInput
+                Layout.preferredWidth: 64
+                horizontalAlignment: TextInput.AlignHCenter
+                Accessible.name: opcion.modelData.nombre || ""
+                validator: IntValidator { bottom: number.minimum; top: number.maximum }
+                text: String(number.value)
+                onEditingFinished: {
+                    if (acceptableInput) number.setValue(Number(text))
+                    text = Qt.binding(function () { return String(number.value) })
+                }
+                Keys.onEscapePressed: function (event) {
+                    text = Qt.binding(function () { return String(number.value) })
+                    focus = false
+                    event.accepted = true
+                }
+                Keys.onUpPressed: number.setValue(number.value + (opcion.modelData.paso || 1))
+                Keys.onDownPressed: number.setValue(number.value - (opcion.modelData.paso || 1))
+            }
+            IslandLabel {
+                visible: text.length > 0
+                text: opcion.modelData.unidad || ""
+                color: Theme.muted
+                font.pixelSize: 11
+            }
+            K4.ActionButton {
+                text: "+"
+                implicitWidth: 32
+                enabled: number.value < number.maximum
+                Accessible.name: "Increase " + opcion.modelData.nombre
+                onClicked: number.setValue(number.value + (opcion.modelData.paso || 1))
+            }
+        }
+    }
+
+    Component {
+        id: textControl
+        K4.TextField {
+            Accessible.name: opcion.modelData.nombre || ""
+            placeholderText: opcion.modelData.pista || ""
+            echoMode: opcion.modelData.secreto ? TextInput.Password : TextInput.Normal
+            text: opcion.valorTexto
+            onEditingFinished: {
+                if (opcion.disponible && text !== opcion.valorTexto)
+                    Settings.poner(opcion.modelData.id, text)
+                text = Qt.binding(function () { return opcion.valorTexto })
+            }
+            Keys.onEscapePressed: function (event) {
+                text = Qt.binding(function () { return opcion.valorTexto })
+                focus = false
+                event.accepted = true
+            }
+        }
+    }
+
+    Component {
+        id: actionControl
+        RowLayout {
+            spacing: 8
+            K4.ActionButton {
+                visible: opcion.armada
+                text: "Cancel"
+                onClicked: { opcion.armada = false; disarm.stop() }
+            }
+            K4.ActionButton {
+                text: opcion.armada ? (opcion.modelData.confirmar || "Confirm")
+                    : (opcion.modelData.accion || "Run")
+                onClicked: {
+                    if (opcion.armada) {
+                        Settings.ejecutar(opcion.modelData.id)
+                        opcion.armada = false
+                        disarm.stop()
+                    } else {
+                        opcion.armada = true
+                        disarm.restart()
+                    }
+                }
+            }
+        }
     }
 }

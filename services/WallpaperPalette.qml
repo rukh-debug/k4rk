@@ -20,6 +20,15 @@ Singleton {
     property string pantallaElegida: ""
     readonly property var transiciones: ["fade", "grow", "wave", "none"]
     property string transicion: "fade"
+    property string applyStatus: "idle"
+    property string applyError: ""
+    property bool applyPending: false
+    property string applyingSource: ""
+    property string applyingTool: ""
+    property string playingVideoSource: ""
+    signal retryVideo()
+    readonly property bool supportsTransitions: (wallTool === "awww" || wallTool === "swww")
+        && !isMoving(source)
 
     //  ── palette styles ────────────────────────────────────────────
     //
@@ -86,8 +95,20 @@ Singleton {
     function apply() {
         if (source.length === 0)
             return
-        applicator.running = false
+        if (applicator.running) {
+            applyPending = true
+            return
+        }
+        applyPending = false
+        applyingSource = source
+        applyingTool = isMoving(source) ? "video" : wallTool
+        applyStatus = "applying"
+        applyError = ""
         if (isMoving(source)) {
+            if (playingVideoSource === source)
+                applyStatus = "applied"
+            else
+                retryVideo()
             // Remove external background layers before the native animated
             // surface starts decoding its first frame.
             applicator.command = ["sh", "-c",
@@ -96,8 +117,11 @@ Singleton {
             applicator.running = true
             return
         }
-        if (wallTool.length === 0)
+        if (wallTool.length === 0) {
+            applyStatus = "failed"
+            applyError = "Install awww, swww or swaybg to apply wallpapers."
             return
+        }
         if (wallTool === "swaybg") {
             applicator.command = ["sh", "-c", "pkill -x swaybg 2>/dev/null || true;"
                 + " swaybg -i " + JSON.stringify(source) + " -m fill >/dev/null 2>&1 &"]
@@ -267,7 +291,10 @@ Singleton {
         sampler.running = true
     }
 
-    onSourceChanged: if (ready) extract()
+    onSourceChanged: {
+        playingVideoSource = ""
+        if (ready) extract()
+    }
     onTransicionChanged: save()
     //  A new style is both a save and a re-derivation: the swatches
     //  and the tint follow the chip as it is pressed.
@@ -317,7 +344,22 @@ Singleton {
         }
     }
 
-    Process { id: applicator }
+    Process {
+        id: applicator
+        onExited: function (code, status) {
+            if (root.applyPending || root.applyingSource !== root.source) {
+                Qt.callLater(root.apply)
+                return
+            }
+            if (code !== 0) {
+                root.applyStatus = "failed"
+                root.applyError = "Could not apply this wallpaper. Check the file and try again."
+            } else if (root.applyingTool !== "video") {
+                // swaybg detaches: process launch alone cannot confirm the rendered image.
+                root.applyStatus = root.applyingTool === "swaybg" ? "unverified" : "applied"
+            }
+        }
+    }
 
     Process {
         id: selector
@@ -442,6 +484,27 @@ Singleton {
                 source: root.isVideo(root.source)
                     ? "file://" + root.source : ""
                 onSourceChanged: if (source !== "") play()
+                onPlaybackStateChanged: if (playbackState === MediaPlayer.PlayingState
+                        && String(source) === "file://" + root.source) {
+                    root.playingVideoSource = root.source
+                    root.applyStatus = "applied"
+                    root.applyError = ""
+                }
+                onErrorOccurred: function (error, message) {
+                    if (String(source) !== "file://" + root.source) return
+                    root.playingVideoSource = ""
+                    root.applyStatus = "failed"
+                    root.applyError = message || "Could not play this wallpaper."
+                }
+            }
+            Connections {
+                target: root
+                function onRetryVideo() {
+                    if (String(player.source) === "file://" + root.source) {
+                        player.stop()
+                        player.play()
+                    }
+                }
             }
         }
     }

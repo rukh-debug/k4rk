@@ -86,7 +86,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: Math.round(width * 9 / 16)
-        Layout.maximumHeight: 360
+        Layout.maximumHeight: 220
         radius: 10
         color: "#0d1117"
         border.width: 1

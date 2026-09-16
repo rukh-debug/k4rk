@@ -8,15 +8,38 @@ import "../../widgets"
 
 FadeIn {
     id: view
-
     required property var plugin
+    property string lastDetail: "wifi"
+    property string launchError: ""
 
-    //  Whether a centre block is on show, by id. The rule itself lives
-    //  in Settings — `bloqueVisible` — because three read it (this
-    //  view, the height count in the plugin, and the editor's sketch),
-    //  and a rule told three ways drifts.
-    function editorVisibilidad(id) {
-        return Settings.bloqueVisible(id)
+    function focusBack() { backButton.forceActiveFocus(Qt.TabFocusReason) }
+    function findTile(item, name) {
+        if (item.objectName === name) return item
+        for (let i = 0; i < item.children.length; ++i) {
+            const found = view.findTile(item.children[i], name)
+            if (found) return found
+        }
+        return null
+    }
+    function focusView() {
+        if (plugin.tab !== "controls") { focusBack(); return }
+        const tile = view.findTile(dashboard.contentItem, "tile-" + lastDetail)
+        if (tile && tile.visible) tile.forceActiveFocus(Qt.TabFocusReason)
+        else bellButton.forceActiveFocus(Qt.TabFocusReason)
+    }
+    Component.onCompleted: Qt.callLater(function() { view.focusView() })
+    Connections {
+        target: view.plugin
+        function onTabChanged() {
+            if (view.plugin.tab !== "controls") view.lastDetail = view.plugin.tab
+            Qt.callLater(function() { view.focusView() })
+        }
+    }
+    Keys.onEscapePressed: function (event) {
+        if (Wifi.pskTarget) { Wifi.cancelPsk(); focusBack() }
+        else if (plugin.tab !== "controls") plugin.openTab("controls")
+        else plugin.close()
+        event.accepted = true
     }
 
     ColumnLayout {
@@ -27,763 +50,472 @@ FadeIn {
         anchors.bottomMargin: 20
         spacing: 12
 
-        // ── header
         RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: false
             Layout.preferredHeight: 30
             spacing: 10
-
-            MediaButton {
+            K4.Boton {
+                id: backButton
                 visible: view.plugin.tab !== "controls"
-                glyph: Theme.ico.back
-                glyphSize: 16
-                glyphColor: Theme.muted
-                onActivated: {
-                    Wifi.cancelPsk()
-                    view.plugin.tab = "controls"
-                }
-                Layout.alignment: Qt.AlignVCenter
+                glifo: Theme.ico.back
+                tamano: 16
+                color: Theme.muted
+                Accessible.name: "Back to control centre"
+                onPulsado: view.plugin.openTab("controls")
             }
-
             IslandLabel {
+                Layout.fillWidth: true
                 text: view.plugin.tab === "notifications" ? "Notifications"
-                    : view.plugin.tab === "wifi" ? "Wi‑Fi"
+                    : view.plugin.tab === "wifi" ? "Wi-Fi"
                     : view.plugin.tab === "bluetooth" ? "Bluetooth"
-                    : view.plugin.tab === "sound" ? "Sound"
-                    : "Control centre"
+                    : view.plugin.tab === "sound" ? "Sound" : "Control centre"
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
-                Layout.alignment: Qt.AlignVCenter
+                elide: Text.ElideRight
             }
-
-            Rectangle {
+            K4.ActionButton {
                 visible: view.plugin.tab === "notifications" && Notifs.tracked.values.length > 0
-                Layout.preferredWidth: clearAllFila.implicitWidth + 20
-                Layout.preferredHeight: 24
-                Layout.alignment: Qt.AlignVCenter
-                radius: 12
-                // Red on hover and with its icon: in gray on gray and
-                // without a symbol it looked like one more label, not
-                // something clickable.
-                color: clearAllMouse.containsMouse ? Theme.red : Theme.surfaceHi
-
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                RowLayout {
-                    id: clearAllFila
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: Theme.ico.clearAll
-                        color: clearAllMouse.containsMouse ? Theme.ink : Theme.muted
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: clearAllLabel
-                        text: "Clear all"
-                        color: clearAllMouse.containsMouse ? Theme.ink : Theme.muted
-                        font.pixelSize: 11
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: clearAllMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Notifs.clear()
-                }
+                text: "Clear all"
+                implicitHeight: 28
+                onClicked: Notifs.clear()
             }
-
-            Item { Layout.fillWidth: true }
-
-            RowLayout {
-                id: deskRow
-                spacing: 5
-                Layout.fillWidth: false
-                Layout.fillHeight: false
-                Layout.alignment: Qt.AlignVCenter
-
-                //  One size for every bubble: the widest label in the
-                //  roster, weighed in both dresses (the focused digit
-                //  goes DemiBold and pays for it). A bubble that grows
-                //  with its focus shoves the whole row sideways at every
-                //  desk switch — uniform bubbles move nothing.
-                readonly property real bubbleWidth: {
-                    let w = 0
-                    for (let i = 0; i < Workspaces.shownList.length; ++i) {
-                        const texto = Workspaces.label(Workspaces.shownList[i])
-                        w = Math.max(w, numberMetric.advanceWidth(texto),
-                                        focusMetric.advanceWidth(texto))
-                    }
-                    return Math.max(18, w + 12)
-                }
-
-                FontMetrics {
-                    id: numberMetric
-                    font.family: Theme.uiFont
-                    font.pixelSize: 10
-                }
-                FontMetrics {
-                    id: focusMetric
-                    font.family: Theme.uiFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
-
-                Repeater {
-                    model: Workspaces.shownList
-
-                    delegate: Rectangle {
-                        //  The desks in the header are decoration, and the
-                        //  header is theirs to dress: the Control Centre
-                        //  page can turn them off, and the same page picks
-                        //  their dress — a dot per desk, or its number.
-                        id: sitio
-                        visible: Settings.panelShowWorkspaces
-                        required property var modelData
-                        readonly property bool numeros:
-                            Settings.panelWorkspaceStyle === "numbers"
-
-                        Layout.preferredWidth: numeros
-                            ? deskRow.bubbleWidth
-                            : (modelData.focused ? 24 : 8)
-                        Layout.preferredHeight: numeros ? 18 : 8
-                        radius: numeros ? 9 : 4
-                        color: modelData.focused ? Theme.ink : Theme.surfaceHi
-
-                        Behavior on Layout.preferredWidth { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                        Behavior on Layout.preferredHeight { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-
-                        IslandLabel {
-                            id: numero
-                            anchors.centerIn: parent
-                            visible: sitio.numeros
-                            text: Workspaces.label(sitio.modelData)
-                            color: sitio.modelData.focused
-                                ? Theme.islandBg : Theme.muted
-                            font.pixelSize: 10
-                            font.weight: sitio.modelData.focused
-                                ? Font.DemiBold : Font.Normal
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: parent.modelData.activate()
+            Flickable {
+                id: workspaceStrip
+                visible: Settings.panelShowWorkspaces
+                Layout.preferredWidth: Math.min(workspaceRow.implicitWidth, view.width * 0.25)
+                Layout.preferredHeight: 28
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.HorizontalFlick
+                contentWidth: workspaceRow.implicitWidth
+                contentHeight: 28
+                Row {
+                    id: workspaceRow
+                    spacing: 4
+                    Repeater {
+                        model: Workspaces.shownList
+                        delegate: Rectangle {
+                            id: workspace
+                            required property var modelData
+                            readonly property bool currentWorkspace: modelData.focused
+                            width: Settings.panelWorkspaceStyle === "numbers" ? 36 : 24
+                            height: 28
+                            radius: 8
+                            color: "transparent"
+                            border.width: activeFocus ? 1 : 0
+                            border.color: Theme.blue
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Workspace " + Workspaces.label(modelData)
+                            Keys.onReturnPressed: modelData.activate()
+                            Keys.onSpacePressed: modelData.activate()
+                            onActiveFocusChanged: if (activeFocus)
+                                workspaceStrip.contentX = Math.max(0, Math.min(x,
+                                    workspaceStrip.contentWidth - workspaceStrip.width))
+                            onCurrentWorkspaceChanged: if (currentWorkspace) Qt.callLater(function () {
+                                workspaceStrip.contentX = Math.max(0, Math.min(workspace.x,
+                                    workspaceStrip.contentWidth - workspaceStrip.width))
+                            })
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: Settings.panelWorkspaceStyle === "numbers" ? 32
+                                    : workspace.modelData.focused ? 20 : 8
+                                height: Settings.panelWorkspaceStyle === "numbers" ? 20 : 8
+                                radius: height / 2
+                                color: workspace.modelData.focused ? Theme.ink : Theme.surfaceHi
+                                IslandLabel {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 3
+                                    anchors.rightMargin: 3
+                                    visible: Settings.panelWorkspaceStyle === "numbers"
+                                    text: Workspaces.label(workspace.modelData)
+                                    color: workspace.modelData.focused ? Theme.islandBg : Theme.muted
+                                    font.pixelSize: 10
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { workspace.forceActiveFocus(); workspace.modelData.activate() }
+                                onWheel: function (event) {
+                                    workspaceStrip.contentX = Math.max(0, Math.min(
+                                        workspaceStrip.contentWidth - workspaceStrip.width,
+                                        workspaceStrip.contentX - event.angleDelta.y / 120 * 48))
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            Item { Layout.fillWidth: true }
-
             IslandLabel {
-                //  The header's other decoration; same page, same switch.
                 visible: Settings.panelShowClock
                 text: Qt.formatDateTime(Clock.date, "HH:mm")
                 color: Theme.muted
                 font.pixelSize: 13
-                Layout.alignment: Qt.AlignVCenter
             }
-
-            MediaButton {
-                glyph: Notifs.count > 0 ? Theme.ico.bell : Theme.ico.bellOutline
-                glyphSize: 15
-                glyphColor: view.plugin.tab === "notifications" ? Theme.ink : Theme.muted
-                Layout.alignment: Qt.AlignVCenter
-                onActivated: {
-                    view.plugin.tab = view.plugin.tab === "notifications" ? "controls" : "notifications"
-                    if (view.plugin.tab === "notifications")
-                        Notifs.markRead()
-                }
+            K4.Boton {
+                id: bellButton
+                glifo: Notifs.count > 0 ? Theme.ico.bell : Theme.ico.bellOutline
+                tamano: 16
+                color: view.plugin.tab === "notifications" ? Theme.ink : Theme.muted
+                Accessible.name: "Notifications, " + Notifs.count + " unread"
+                onPulsado: view.plugin.openTab(view.plugin.tab === "notifications" ? "controls" : "notifications")
             }
-
-            MediaButton {
-                glyph: Theme.ico.chevronUp
-                glyphSize: 16
-                glyphColor: Theme.muted
-                onActivated: view.plugin.close()
-                Layout.alignment: Qt.AlignVCenter
+            K4.Boton {
+                glifo: Theme.ico.chevronUp
+                tamano: 16
+                color: Theme.muted
+                Accessible.name: "Close control centre"
+                onPulsado: view.plugin.close()
             }
         }
 
-        // ── the centre's blocks, in the stored order ───────────
-        //
-        //  `Layout.order` does not exist in this QtQuick.Layouts, so the
-        //  order is the MODEL's: one Repeater over panelOrdenEfectivo, one
-        //  Loader per slot picking its block's Component. Moving a block is
-        //  rewriting the list, and the column follows on the next polish.
-        Repeater {
-            model: Settings.panelOrdenEfectivo
-
-            delegate: Loader {
-                id: hueco
-                required property var modelData
-
-                Layout.fillWidth: true
-                Layout.preferredHeight: view.plugin.altoDe(hueco.modelData)
-                //  Only while the tab is controls AND the block is on show —
-                //  a hidden block is no height at all, and the centre's own
-                //  height counts on this staying honest (alturaControles).
-                visible: view.plugin.tab === "controls"
-                         && editorVisibilidad(hueco.modelData)
-                //  The native blocks are parked here as Components; a
-                //  card ("<plugin>.<name>", the dot gives it away) is
-                //  asked to the registry BY NAME — a Component that
-                //  travelled inside a modelData copy does not
-                //  instantiate.
-                sourceComponent: hueco.modelData === "toggles" ? compToggles
-                    : hueco.modelData === "media" ? compMedia
-                    : hueco.modelData === "shortcuts" ? compAccesos
-                    : String(hueco.modelData).indexOf(".") > 0
-                      ? Enganches.componenteDeCard(
-                            String(hueco.modelData).split(".")[0],
-                            String(hueco.modelData).split(".")[1])
-                      : null
-            }
-        }
-
-        //  ── the blocks themselves, parked as Components ─────────
-        //
-        //  They keep their insides exactly as they were; what they lose is
-        //  their Layout.* attacheds, because a Loader's loaded item is not
-        //  the layout's child — the LOADER is, and it carries the sizes.
-        Component {
-            id: compToggles
-
-            //  Only while some tile is on show: a row of three hidden tiles
-            //  is a 78 px hole.
-            RowLayout {
+        // The header stays fixed; unusually tall card collections scroll inside it.
+        K4.Rodillo {
+            id: dashboard
+            visible: view.plugin.tab === "controls"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Column {
                 width: parent.width
-                height: parent.height
-                spacing: 10
-
-                IslandTile {
-                    id: wifiTile
-                    visible: Settings.panelTileWifi
-                    Layout.fillWidth: true
-                Layout.fillHeight: true
-                // the icon's circle carries its own MouseArea on top,
-                // so clicking it toggles the radio and the rest opens
-                // the detail
-                onPulsada: view.plugin.openTab("wifi")
-
-                ColumnLayout {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 8
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: false
-                        spacing: 10
-
-                        Rectangle {
-                            Layout.preferredWidth: 30
-                            Layout.preferredHeight: 30
-                            radius: 15
-                            color: Wifi.activada ? Theme.blue : Theme.surfaceHi
-
-                            Behavior on color { ColorAnimation { duration: 180 } }
-
-                            IconGlyph {
-                                anchors.centerIn: parent
-                                text: Wifi.activada ? Theme.ico.wifi : Theme.ico.wifiOff
-                                font.pixelSize: 15
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: Wifi.activada = !Wifi.activada
-                            }
-                        }
-
-                        ColumnLayout {
-                            spacing: 0
-                            Layout.fillWidth: true
-                            Layout.fillHeight: false
-
-                            IslandLabel { text: "Wi‑Fi"; font.pixelSize: 12; font.weight: Font.DemiBold }
-                            IslandLabel {
-                                text: Wifi.activada ? Wifi.name : "Disabled"
-                                color: Theme.muted
-                                font.pixelSize: 10
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                        }
-
-                        IconGlyph {
-                            text: Theme.ico.forward
-                            color: wifiTile.hovered ? Theme.ink : Theme.dim
-                            font.pixelSize: 14
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-                    }
-                }
-            }
-
-            IslandTile {
-                id: btTile
-                visible: Settings.panelTileBluetooth
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                onPulsada: view.plugin.openTab("bluetooth")
-
-                ColumnLayout {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 8
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: false
-                        spacing: 10
-
-                        Rectangle {
-                            Layout.preferredWidth: 30
-                            Layout.preferredHeight: 30
-                            radius: 15
-                            color: Bt.adapter && Bt.adapter.enabled ? Theme.blue : Theme.surfaceHi
-
-                            Behavior on color { ColorAnimation { duration: 180 } }
-
-                            IconGlyph {
-                                anchors.centerIn: parent
-                                text: Bt.adapter && Bt.adapter.enabled
-                                    ? Theme.ico.bluetooth : Theme.ico.bluetoothOff
-                                font.pixelSize: 15
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: if (Bt.adapter) Bt.adapter.enabled = !Bt.adapter.enabled
-                            }
-                        }
-
-                        ColumnLayout {
-                            spacing: 0
-                            Layout.fillWidth: true
-                            Layout.fillHeight: false
-
-                            IslandLabel { text: "Bluetooth"; font.pixelSize: 12; font.weight: Font.DemiBold }
-                            IslandLabel {
-                                text: Bt.adapter
-                                    ? (Bt.adapter.enabled ? "Enabled" : "Disabled")
-                                    : "No adapter"
-                                color: Theme.muted
-                                font.pixelSize: 10
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                        }
-
-                        IconGlyph {
-                            text: Theme.ico.forward
-                            color: btTile.hovered ? Theme.ink : Theme.dim
-                            font.pixelSize: 14
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-                    }
-                }
-            }
-
-            IslandTile {
-                id: sonidoTile
-                visible: Settings.panelTileSound
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                //  The slider takes almost the whole tile and has its
-                //  own mouse; what is left —the title row— opens the
-                //  detail, same as in the Wi‑Fi one.
-                onPulsada: view.plugin.openTab("sound")
-
-                ColumnLayout {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 8
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: false
-                        spacing: 8
-
-                        IslandLabel { text: "Sound"; font.pixelSize: 12; font.weight: Font.DemiBold }
-                        Item { Layout.fillWidth: true }
-                        IslandLabel {
-                            //  Which device is playing, which is what
-                            //  one comes to look at here; the bar
-                            //  already says the volume.
-                            text: Audio.salidaActiva
-                                ? Audio.nombreDe(Audio.salidaActiva)
-                                : (Audio.muted ? "Muted" : Audio.volume + "%")
-                            color: Theme.muted
-                            font.pixelSize: 11
-                            elide: Text.ElideRight
-                            Layout.maximumWidth: 120
-                        }
-
-                        IconGlyph {
-                            text: Theme.ico.forward
-                            color: sonidoTile.hovered ? Theme.ink : Theme.dim
-                            font.pixelSize: 14
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 26
-
-                        Rectangle {
-                            id: volumeSliderTrack
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: 26
-                            radius: 13
-                            color: Theme.surfaceHi
-                            clip: true
-
-                            Rectangle {
-                                width: volumeSliderTrack.width * Math.max(0, Math.min(100, Audio.volume)) / 100
-                                height: parent.height
-                                radius: parent.radius
-                                color: Audio.muted ? Theme.dim : Theme.ink
-
-                                Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-                            }
-
-                            IconGlyph {
-                                anchors.left: parent.left
-                                anchors.leftMargin: 8
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: Audio.muted ? Theme.ico.volOff : Theme.ico.volMed
-                                color: Audio.volume > 12 && !Audio.muted ? "#000000" : Theme.muted
-                                font.pixelSize: 13
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: function (mouse) { Audio.setVolume(mouse.x / width * 100) }
-                            onPositionChanged: function (mouse) {
-                                if (pressed)
-                                    Audio.setVolume(mouse.x / width * 100)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        }
-
-        // ── playback, compact ─────────────────────────────────────
-        // It used to take half a tab with a 52 px cover. In macOS's
-        // control centre "Playing" is a discreet row, not the
-        // protagonist: here it drops to 62 px tall and gains the
-        // whole width.
-        Component {
-            id: compMedia
-
-            IslandTile {
-                width: parent.width
-                height: parent.height
-                pulsable: false
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 8
                 spacing: 12
-
-                Artwork {
-                    Layout.preferredWidth: 40
-                    Layout.preferredHeight: 40
-                    Layout.alignment: Qt.AlignVCenter
-                    placeholder: Theme.surfaceHi
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter
-                    spacing: 1
-
-                    IslandLabel {
-                        Layout.fillWidth: true
-                        text: Media.hasPlayer && Media.activePlayer.trackTitle.length > 0
-                            ? Media.activePlayer.trackTitle : "Nothing playing"
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                    }
-
-                    IslandLabel {
-                        Layout.fillWidth: true
-                        text: Media.hasPlayer ? Media.activePlayer.trackArtist : ""
-                        color: Theme.muted
-                        font.pixelSize: 10
-                        elide: Text.ElideRight
+                Repeater {
+                    model: Settings.panelOrdenEfectivo
+                    delegate: Loader {
+                        required property var modelData
+                        width: parent.width
+                        height: active ? view.plugin.altoDe(modelData) : 0
+                        visible: active
+                        active: view.plugin.tab === "controls" && Settings.bloqueVisible(modelData)
+                        sourceComponent: modelData === "toggles" ? quickControls
+                            : modelData === "media" ? media
+                            : modelData === "shortcuts" ? shortcuts
+                            : String(modelData).indexOf(".") > 0
+                              ? Enganches.componenteDeCard(String(modelData).split(".")[0],
+                                  String(modelData).split(".")[1]) : null
                     }
                 }
-
-                Visualizer {
-                    visible: Media.isPlaying
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredHeight: 12
-                    Layout.rightMargin: 2
-                }
-
-                MediaButton {
-                    glyph: Theme.ico.prev
-                    glyphSize: 16
-                    glyphColor: Theme.muted
-                    enabledAction: Media.hasPlayer && Media.activePlayer.canGoPrevious
-                    onActivated: Media.activePlayer.previous()
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                MediaButton {
-                    glyph: Media.isPlaying ? Theme.ico.pause : Theme.ico.play
-                    glyphSize: 21
-                    enabledAction: Media.hasPlayer && Media.activePlayer.canTogglePlaying
-                    onActivated: Media.activePlayer.togglePlaying()
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                MediaButton {
-                    glyph: Theme.ico.next
-                    glyphSize: 16
-                    glyphColor: Theme.muted
-                    enabledAction: Media.hasPlayer && Media.activePlayer.canGoNext
-                    onActivated: Media.activePlayer.next()
-                    Layout.alignment: Qt.AlignVCenter
+                IslandLabel {
+                    width: parent.width
+                    visible: view.launchError.length > 0
+                    text: view.launchError
+                    color: Theme.red
+                    wrapMode: Text.WordWrap
                 }
             }
         }
-        }
 
-        // ── shortcuts ──────────────────────────────────────────────
-        //
-        //  Whatever the user pinned, with its icon and name taken
-        //  from the catalog, and at the end the button opening the
-        //  whole drawer. They get pinned with the application
-        //  center's pin and reordered by dragging them right here,
-        //  where they are seen.
-        Component {
-            id: compAccesos
-
-            AccesosDirectos {
-                width: parent.width
-                height: altura
-
-            onAbrir: function (id) {
-                view.plugin.close()
-                PluginManager.abrirAplicacion(id)
-            }
-        }
-        }
-
-        // ── the notifications tab
         IslandTile {
+            visible: view.plugin.tab === "notifications"
             Layout.fillWidth: true
             Layout.fillHeight: true
             pulsable: false
-            visible: view.plugin.tab === "notifications"
-
             ListView {
-                //  The house scrollbar: comes out on its own when
-                //  there is more than fits.
-                ScrollBar.vertical: IslandScrollBar {}
+                id: notifications
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: 12
                 clip: true
                 spacing: 8
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: IslandScrollBar {}
                 model: Notifs.tracked
-
-                delegate: Rectangle {
-                    id: notificationCard
+                delegate: K4.Baldosa {
+                    id: notification
                     required property var modelData
+                    required property int index
                     readonly property var actions: Notifs.buttons(modelData)
-                    readonly property string icon: Notifs.iconFor(modelData)
-
+                    readonly property string image: Notifs.iconFor(modelData)
                     width: ListView.view.width
-                    height: notificationBody.implicitHeight + 22
-                        + (actions.length > 0 ? 28 : 0)
-                    radius: 12
-                    color: cardMouse.containsMouse ? "#38383a" : Theme.surfaceHi
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    // Besides taking you to the application, it
-                    // swallows clicks so a miss near the ✕ does not
-                    // reach the island's background (which would
-                    // close the panel).
-                    MouseArea {
-                        id: cardMouse
+                    height: notificationContent.implicitHeight + 24
+                    radius: 10
+                    Accessible.name: modelData.appName + ": " + modelData.summary
+                    onPulsada: Notifs.activate(modelData)
+                    onActiveFocusChanged: if (activeFocus)
+                        notifications.positionViewAtIndex(index, ListView.Contain)
+                    RowLayout {
                         anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Notifs.activate(notificationCard.modelData)
-                    }
-
-                    Image {
-                        id: cardIcon
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
-                        anchors.top: parent.top
-                        anchors.topMargin: 12
-                        width: 20
-                        height: 20
-                        source: notificationCard.icon
-                        sourceSize.width: 40
-                        sourceSize.height: 40
-                        fillMode: Image.PreserveAspectFit
-                        visible: status === Image.Ready
-                    }
-
-                    Column {
-                        id: notificationBody
-                        anchors.left: cardIcon.visible ? cardIcon.right : parent.left
-                        anchors.right: closeButton.left
-                        anchors.top: parent.top
-                        anchors.topMargin: 11
-                        anchors.leftMargin: cardIcon.visible ? 10 : 14
-                        anchors.rightMargin: 10
-                        spacing: 2
-
-                        IslandLabel {
-                            text: notificationCard.modelData.appName
-                            color: Theme.muted
-                            font.pixelSize: 10
+                        anchors.margins: 12
+                        spacing: 12
+                        Image {
+                            source: notification.image
+                            visible: status === Image.Ready
+                            sourceSize.width: 40
+                            sourceSize.height: 40
+                            Layout.preferredWidth: 20
+                            Layout.preferredHeight: 20
+                            Layout.alignment: Qt.AlignTop
+                            fillMode: Image.PreserveAspectFit
                         }
-                        IslandLabel {
-                            text: notificationCard.modelData.summary
-                            font.pixelSize: 12
-                            font.weight: Font.DemiBold
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-                        IslandLabel {
-                            text: notificationCard.modelData.body
-                            color: Theme.muted
-                            font.pixelSize: 11
-                            wrapMode: Text.WordWrap
-                            width: parent.width
-                            maximumLineCount: 3
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    // the buttons the application sends
-                    Row {
-                        anchors.left: notificationBody.left
-                        anchors.top: notificationBody.bottom
-                        anchors.topMargin: 6
-                        spacing: 6
-                        visible: notificationCard.actions.length > 0
-
-                        Repeater {
-                            model: notificationCard.actions
-
-                            delegate: Rectangle {
-                                id: cardAction
-                                required property var modelData
-                                width: Math.min(cardActionLabel.implicitWidth + 20, 160)
-                                height: 22
-                                radius: 11
-                                color: cardActionMouse.containsMouse ? Theme.blue : Theme.track
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-
-                                IslandLabel {
-                                    id: cardActionLabel
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 8
-                                    anchors.rightMargin: 8
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    text: cardAction.modelData.text
-                                    font.pixelSize: 10
-                                    font.weight: Font.DemiBold
-                                    elide: Text.ElideRight
-                                }
-
-                                MouseArea {
-                                    id: cardActionMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Notifs.invokeAction(notificationCard.modelData,
-                                                                   cardAction.modelData)
+                        ColumnLayout {
+                            id: notificationContent
+                            Layout.fillWidth: true
+                            spacing: 4
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: notification.modelData.appName
+                                color: Theme.muted
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+                            }
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: notification.modelData.summary
+                                font.weight: Font.Medium
+                                wrapMode: Text.Wrap
+                            }
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                visible: text.length > 0
+                                text: notification.modelData.body
+                                color: Theme.muted
+                                font.pixelSize: 11
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 3
+                                elide: Text.ElideRight
+                            }
+                            Flow {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: implicitHeight
+                                Layout.topMargin: visible ? 4 : 0
+                                visible: notification.actions.length > 0
+                                spacing: 8
+                                Repeater {
+                                    model: notification.actions
+                                    delegate: K4.ActionButton {
+                                        required property var modelData
+                                        text: modelData.text
+                                        width: Math.min(implicitWidth, parent.width)
+                                        onClicked: Notifs.invokeAction(notification.modelData, modelData)
+                                    }
                                 }
                             }
                         }
-                    }
-
-                    Rectangle {
-                        id: closeButton
-                        anchors.right: parent.right
-                        anchors.rightMargin: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 30
-                        height: 30
-                        radius: 15
-                        color: closeMouse.containsMouse ? Theme.track : "transparent"
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-
-                        IconGlyph {
-                            anchors.centerIn: parent
-                            text: Theme.ico.close
-                            color: closeMouse.containsMouse ? Theme.ink : Theme.muted
-                            font.pixelSize: 15
-                        }
-
-                        MouseArea {
-                            id: closeMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: notificationCard.modelData.dismiss()
+                        K4.Boton {
+                            Layout.alignment: Qt.AlignTop
+                            glifo: Theme.ico.close
+                            tamano: 16
+                            color: Theme.muted
+                            Accessible.name: "Dismiss " + notification.modelData.summary
+                            onPulsado: notification.modelData.dismiss()
                         }
                     }
                 }
-
                 IslandLabel {
                     anchors.centerIn: parent
                     visible: Notifs.tracked.values.length === 0
                     text: "No notifications"
                     color: Theme.muted
-                    font.pixelSize: 12
                 }
             }
         }
-
-        // ── the Wi‑Fi detail, in its own piece
         DetalleWifi { view: view }
-
-        // ── detalle Bluetooth, en su propia pieza
         DetalleBluetooth { view: view }
-
-        // ── the Sound detail: where it comes out and where it goes in
         DetalleSonido { view: view }
+    }
+
+    component RadioTile: IslandTile {
+        id: radio
+        property string label
+        property string status
+        property string glyph
+        property bool checked
+        property bool available: true
+        signal toggled()
+        Accessible.name: "Open " + label + " details"
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            spacing: 10
+            K4.Boton {
+                glifo: radio.glyph
+                tamano: 16
+                implicitWidth: 32
+                implicitHeight: 32
+                activo: radio.available
+                Accessible.name: (radio.checked ? "Turn off " : "Turn on ") + radio.label
+                onPulsado: radio.toggled()
+                Rectangle {
+                    anchors.fill: parent
+                    z: -1
+                    radius: 16
+                    color: radio.checked ? Theme.blue : Theme.surfaceHi
+                }
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+                IslandLabel { text: radio.label; font.weight: Font.Medium }
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: radio.status
+                    color: Theme.muted
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                }
+            }
+            IconGlyph { text: Theme.ico.forward; color: Theme.muted; font.pixelSize: 14 }
+        }
+    }
+
+    Component {
+        id: quickControls
+        RowLayout {
+            anchors.fill: parent
+            spacing: 10
+            RadioTile {
+                objectName: "tile-wifi"
+                visible: Settings.panelTileWifi
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                label: "Wi-Fi"
+                status: Wifi.name
+                checked: Wifi.activada
+                available: !!Wifi.device
+                glyph: checked ? Theme.ico.wifi : Theme.ico.wifiOff
+                onToggled: Wifi.activada = !Wifi.activada
+                onPulsada: view.plugin.openTab("wifi")
+            }
+            RadioTile {
+                objectName: "tile-bluetooth"
+                visible: Settings.panelTileBluetooth
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                label: "Bluetooth"
+                status: Bt.summary
+                checked: !!Bt.adapter && Bt.adapter.enabled
+                available: !!Bt.adapter
+                glyph: checked ? Theme.ico.bluetooth : Theme.ico.bluetoothOff
+                onToggled: if (Bt.adapter) Bt.adapter.enabled = !Bt.adapter.enabled
+                onPulsada: view.plugin.openTab("bluetooth")
+            }
+            IslandTile {
+                objectName: "tile-sound"
+                visible: Settings.panelTileSound
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Accessible.name: "Open sound details"
+                onPulsada: view.plugin.openTab("sound")
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 4
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        IslandLabel { text: "Sound"; font.weight: Font.Medium }
+                        IslandLabel {
+                            Layout.fillWidth: true
+                            text: Audio.salidaActiva ? Audio.nombreDe(Audio.salidaActiva) : "No output"
+                            color: Theme.muted
+                            font.pixelSize: 11
+                            elide: Text.ElideRight
+                        }
+                        IconGlyph { text: Theme.ico.forward; color: Theme.muted; font.pixelSize: 14 }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        K4.Boton {
+                            glifo: Audio.muted ? Theme.ico.volOff : Theme.ico.volMed
+                            tamano: 14
+                            color: Audio.muted ? Theme.red : Theme.muted
+                            activo: !!Audio.salidaActiva && !!Audio.salidaActiva.audio
+                            Accessible.name: Audio.muted ? "Unmute output" : "Mute output"
+                            onPulsado: Audio.toggleMute()
+                        }
+                        K4.Deslizador {
+                            Layout.fillWidth: true
+                            enabled: !!Audio.salidaActiva && !!Audio.salidaActiva.audio
+                            Accessible.name: "Output volume"
+                            valor: Audio.volume
+                            sufijo: "%"
+                            onMovido: function (value) { Audio.setVolume(value) }
+                            onDraggingChanged: view.plugin.interactionActive = dragging
+                            Component.onDestruction: view.plugin.interactionActive = false
+                        }
+                        IslandLabel {
+                            text: Audio.salidaActiva ? Audio.volume + "%" : "—"
+                            color: Audio.volume > 100 ? Theme.yellow : Theme.muted
+                            font.pixelSize: 11
+                            Layout.preferredWidth: 36
+                            horizontalAlignment: Text.AlignRight
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: media
+        IslandTile {
+            pulsable: false
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 8
+                spacing: 12
+                Artwork {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    placeholder: Theme.surfaceHi
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: Media.hasPlayer && Media.activePlayer.trackTitle.length > 0
+                            ? Media.activePlayer.trackTitle : "Nothing playing"
+                        font.weight: Font.Medium
+                        elide: Text.ElideRight
+                    }
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: Media.hasPlayer ? Media.activePlayer.trackArtist : "Playback controls appear when a player is available"
+                        color: Theme.muted
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                    }
+                }
+                Visualizer { visible: Media.isPlaying; Layout.preferredHeight: 12 }
+                K4.Boton {
+                    glifo: Theme.ico.prev; tamano: 16; color: Theme.muted
+                    activo: Media.hasPlayer && Media.activePlayer.canGoPrevious
+                    Accessible.name: "Previous track"
+                    onPulsado: Media.activePlayer.previous()
+                }
+                K4.Boton {
+                    glifo: Media.isPlaying ? Theme.ico.pause : Theme.ico.play
+                    tamano: 21
+                    activo: Media.hasPlayer && Media.activePlayer.canTogglePlaying
+                    Accessible.name: Media.isPlaying ? "Pause playback" : "Start playback"
+                    onPulsado: Media.activePlayer.togglePlaying()
+                }
+                K4.Boton {
+                    glifo: Theme.ico.next; tamano: 16; color: Theme.muted
+                    activo: Media.hasPlayer && Media.activePlayer.canGoNext
+                    Accessible.name: "Next track"
+                    onPulsado: Media.activePlayer.next()
+                }
+            }
+        }
+    }
+    Component {
+        id: shortcuts
+        AccesosDirectos {
+            onDraggingChanged: view.plugin.interactionActive = dragging
+            Component.onDestruction: view.plugin.interactionActive = false
+            onAbrir: function (id) {
+                if (PluginManager.abrirAplicacion(id)) {
+                    view.launchError = ""
+                    view.plugin.close()
+                } else view.launchError = "This application is unavailable. Check its status in Settings → Plugins."
+            }
+        }
     }
 }

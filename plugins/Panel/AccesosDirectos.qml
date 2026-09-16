@@ -1,268 +1,197 @@
-//  The control centre's shortcuts strip, reorderable.
-//
-//  It uses no RowLayout but computed positions, and it is because
-//  of dragging: a Layout places its children itself, so while you
-//  drag one the Layout gives it back its place and it cannot move.
-//  With a computed `x` and a Behavior, the dragged one follows the
-//  mouse and the others step aside on their own with an animation —
-//  which is moreover what makes one understand they are being
-//  reordered and not simply moved.
-//
-//  Click and drag share a single MouseArea: if on release there was
-//  no real movement, it was a click and it opens. With two separate
-//  areas —one to click, one to drag— one always wins and the other
-//  looks broken.
-
+// Pinned applications keep useful cell widths; overflow scrolls beside All apps.
 import QtQuick
 import K4 as K4
 import "../../core"
 import "../../services"
 
 Item {
-    id: franja
-
-    //  What to do on opening one: the panel sets it, being the one
-    //  that knows how to close itself.
+    id: strip
     signal abrir(string id)
-
-    readonly property int esp: 10
     readonly property int altura: 40
-
-    //  The ones painted: the saved ones that also exist and are on.
-    //  This list does not change while dragging: the new order is
-    //  drawn with slots and only saved on release.
-    readonly property var disponibles: {
+    readonly property bool dragging: dragIndex >= 0
+    readonly property var available: {
         const apps = PluginManager.aplicaciones
-        const salida = []
-        const ids = Settings.quickAccess || []
-        for (let i = 0; i < ids.length; ++i) {
-            for (let j = 0; j < apps.length; ++j) {
-                if (apps[j].id === ids[i] && apps[j].habilitado) {
-                    salida.push(apps[j])
-                    break
-                }
-            }
-        }
-        return salida
+        return (Settings.quickAccess || []).map(function (id) {
+            return apps.find(function (app) {
+                return app.id === id && app.habilitado && app.disponible
+            })
+        }).filter(function (app) { return !!app })
     }
+    readonly property bool overflow: available.length * 120 > Math.max(0, width - 104)
+    readonly property real cellWidth: available.length > 0
+        ? Math.max(112, (viewport.width - 8 * (available.length - 1)) / available.length) : 112
+    property int dragIndex: -1
+    property int targetIndex: -1
+    property string focusedId: ""
 
-    //  While dragging, the MODEL IS NOT TOUCHED.
-    //
-    //  It was tried the other way —reordering the list on every
-    //  move— and the drag died at the first one: on the model
-    //  changing, the Repeater destroys and recreates its cells, and
-    //  the one being dragged took the mouse grip with it. It let go
-    //  by itself and the click ended up opening something else.
-    //
-    //  So while dragging there are only two numbers —where it came
-    //  from and where it goes— and each cell computes which SLOT is
-    //  its own. It is pure drawing. The model is reordered once,
-    //  on release.
-    property int arrastrando: -1
-    property int destino: -1
-
-    readonly property var lista: disponibles
-
-    //  One more than the shortcuts: the button opening the whole
-    //  drawer.
-    readonly property int anchoCelda:
-        lista.length > 0
-            ? (width - esp * lista.length) / (lista.length + 1)
-            : width
-
-    function posicion(i) { return i * (anchoCelda + esp) }
-
-    //  Which slot each cell takes while dragging: the dragged one
-    //  goes to the target's and those caught in between shift one
-    //  place, which is what makes reordering visible and not just
-    //  moving.
-    function ranuraDe(i) {
-        if (arrastrando < 0 || destino < 0 || arrastrando === destino)
-            return i
-        if (i === arrastrando)
-            return destino
-        if (arrastrando < destino && i > arrastrando && i <= destino)
-            return i - 1
-        if (arrastrando > destino && i >= destino && i < arrastrando)
-            return i + 1
-        return i
+    function slot(index) {
+        if (dragIndex < 0 || targetIndex < 0) return index
+        if (index === dragIndex) return targetIndex
+        if (dragIndex < targetIndex && index > dragIndex && index <= targetIndex) return index - 1
+        if (dragIndex > targetIndex && index >= targetIndex && index < dragIndex) return index + 1
+        return index
     }
-
-    //  And here yes: once, on release.
-    //
-    //  It receives from and to instead of reading them off
-    //  `arrastrando`, because the caller must have set them to -1
-    //  already: otherwise the model changes with the drag still
-    //  «alive», the slots are computed over the NEW list with the
-    //  OLD shift, and the strip is left with a gap and one cell
-    //  missing. It showed.
-    function aplicar(de, a) {
-        if (de < 0 || a < 0 || de === a)
-            return
-        const ids = disponibles.map(function (x) { return x.id })
-        ids.splice(a, 0, ids.splice(de, 1)[0])
-        //  Saved ones not painted now —a plugin off— are kept at the
-        //  end: turning something off must not erase that you had it
-        //  pinned.
-        const resto = (Settings.quickAccess || []).filter(function (id) {
+    function move(from, to) {
+        if (from < 0 || to < 0 || to >= available.length || from === to) return
+        const ids = available.map(function (app) { return app.id })
+        focusedId = ids[from]
+        ids.splice(to, 0, ids.splice(from, 1)[0])
+        Settings.quickAccess = ids.concat((Settings.quickAccess || []).filter(function (id) {
             return ids.indexOf(id) < 0
-        })
-        Settings.quickAccess = ids.concat(resto)
+        }))
         Settings.guardar()
+        Qt.callLater(function () {
+            for (let i = 0; i < cells.count; ++i) {
+                const cell = cells.itemAt(i)
+                if (cell && cell.modelData.id === strip.focusedId) cell.forceActiveFocus()
+            }
+        })
+    }
+    function scroll(delta) {
+        viewport.contentX = Math.max(0, Math.min(Math.max(0, viewport.contentWidth - viewport.width),
+            viewport.contentX + delta))
     }
 
-    Repeater {
-        model: franja.lista
-
-        delegate: K4.Baldosa {
-            id: celda
-            required property var modelData
-            required property int index
-
-            //  The visuals are carried by the MouseArea below: the
-            //  tile does not listen so as not to fight the drag.
-            pulsable: false
-            activa: raton.containsMouse || franja.arrastrando === index
-
-            width: franja.anchoCelda
-            height: franja.altura
-            y: 0
-            radius: 12
-            z: franja.arrastrando === index ? 2 : 1
-
-            //  The x is ALWAYS a binding, never an assignment.
-            //  Assigning it by hand breaks the binding forever, and
-            //  since the row has no width yet when the cells are
-            //  created, they all stayed piled at zero — a single one
-            //  showed.
-            //
-            //  So there are two sources and the dragging one rules
-            //  while it lasts: on release, `arrastrando` returns to
-            //  -1, the binding recovers its place and the Behavior
-            //  carries it there with an animation.
-            property real desplazado: 0
-
-            x: franja.arrastrando === index
-                ? desplazado
-                : franja.posicion(franja.ranuraDe(index))
-
-            //  The dragged one does NOT animate —it must stay glued
-            //  to the mouse—; the ones stepping aside do.
-            Behavior on x {
-                enabled: franja.arrastrando !== celda.index
-                NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
-            }
-
-            Row {
-                anchors.centerIn: parent
-                spacing: 7
-
+    K4.Boton {
+        visible: strip.overflow
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        glifo: Theme.ico.back
+        tamano: 16
+        activo: viewport.contentX > 0
+        Accessible.name: "Previous shortcuts"
+        onPulsado: strip.scroll(-strip.cellWidth - 8)
+    }
+    IslandLabel {
+        visible: strip.available.length === 0
+        anchors.left: parent.left
+        anchors.right: viewport.right
+        anchors.verticalCenter: parent.verticalCenter
+        text: "Pin applications from All apps"
+        color: Theme.muted
+        font.pixelSize: 11
+        elide: Text.ElideRight
+    }
+    Flickable {
+        id: viewport
+        x: strip.overflow ? 32 : 0
+        width: Math.max(0, strip.width - 104 - (strip.overflow ? 64 : 0))
+        height: strip.altura
+        contentWidth: strip.available.length * (strip.cellWidth + 8) - (strip.available.length ? 8 : 0)
+        contentHeight: height
+        clip: true
+        interactive: false
+        boundsBehavior: Flickable.StopAtBounds
+        Repeater {
+            id: cells
+            model: strip.available
+            delegate: K4.Baldosa {
+                id: cell
+                required property var modelData
+                required property int index
+                property real dragX: 0
+                x: strip.dragIndex === index ? dragX : strip.slot(index) * (strip.cellWidth + 8)
+                width: strip.cellWidth
+                height: strip.altura
+                radius: 10
+                pulsable: false
+                activa: pointer.containsMouse || strip.dragIndex === index
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData.nombre
+                Accessible.description: "Open application. Use Control and Left or Right to reorder."
+                Keys.onReturnPressed: strip.abrir(modelData.id)
+                Keys.onSpacePressed: strip.abrir(modelData.id)
+                Keys.onPressed: function (event) {
+                    if (!(event.modifiers & Qt.ControlModifier)) return
+                    if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+                        strip.move(index, index + (event.key === Qt.Key_Right ? 1 : -1))
+                        event.accepted = true
+                    }
+                }
+                onActiveFocusChanged: if (activeFocus) {
+                    if (x < viewport.contentX) strip.scroll(x - viewport.contentX)
+                    else if (x + width > viewport.contentX + viewport.width)
+                        strip.scroll(x + width - viewport.width - viewport.contentX)
+                }
+                Behavior on x {
+                    enabled: strip.dragIndex !== cell.index
+                    NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+                }
                 K4.IconoPlugin {
-                    imagen: celda.modelData.imagen
-                    glifo: celda.modelData.glifo
-                    tamano: 15
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
+                    imagen: cell.modelData.imagen
+                    glifo: cell.modelData.glifo
+                    tamano: 16
                 }
-
                 IslandLabel {
-                    text: celda.modelData.nombre
-                    font.pixelSize: 11
-                    font.weight: Font.Medium
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 36
+                    anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
+                    text: cell.modelData.nombre
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
                 }
-            }
-
-            MouseArea {
-                id: raton
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-
-                property real cogidoEn: 0
-                property bool movido: false
-
-                onPressed: function (ev) {
-                    cogidoEn = ev.x
-                    movido = false
-                    celda.desplazado = celda.x
-                    franja.arrastrando = celda.index
-                    franja.destino = celda.index
-                }
-
-                onPositionChanged: function (ev) {
-                    if (franja.arrastrando !== celda.index)
-                        return
-                    //  A short threshold: without it, the hand's
-                    //  tremble on a click already counts as a drag
-                    //  and the shortcut never opens.
-                    if (!movido && Math.abs(ev.x - cogidoEn) < 6)
-                        return
-                    movido = true
-
-                    celda.desplazado = Math.max(0,
-                        Math.min(franja.width - celda.width,
-                                 celda.desplazado + ev.x - cogidoEn))
-
-                    const d = Math.round(
-                        celda.desplazado / (franja.anchoCelda + franja.esp))
-                    if (d >= 0 && d < franja.lista.length)
-                        franja.destino = d
-                }
-
-                onReleased: {
-                    //  Everything by hand BEFORE touching anything:
-                    //  on reordering, this very cell is destroyed and
-                    //  recreated, so reading it afterwards is reading
-                    //  a corpse.
-                    const hubo = movido
-                    const de = franja.arrastrando
-                    const a = franja.destino
-                    const cual = celda.modelData.id
-
-                    franja.arrastrando = -1
-                    franja.destino = -1
-
-                    if (hubo)
-                        franja.aplicar(de, a)
-                    else
-                        franja.abrir(cual)
+                MouseArea {
+                    id: pointer
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    property real startX: 0
+                    property bool moved: false
+                    onPressed: function (event) {
+                        cell.forceActiveFocus(Qt.MouseFocusReason)
+                        startX = event.x
+                        moved = false
+                        cell.dragX = cell.x
+                        strip.dragIndex = cell.index
+                        strip.targetIndex = cell.index
+                    }
+                    onPositionChanged: function (event) {
+                        if (!pressed || strip.dragIndex !== cell.index) return
+                        if (!moved && Math.abs(event.x - startX) < 6) return
+                        moved = true
+                        cell.dragX = Math.max(0, Math.min(viewport.contentWidth - cell.width,
+                            cell.dragX + event.x - startX))
+                        strip.targetIndex = Math.max(0, Math.min(strip.available.length - 1,
+                            Math.round(cell.dragX / (strip.cellWidth + 8))))
+                    }
+                    onReleased: {
+                        const from = strip.dragIndex, to = strip.targetIndex
+                        const id = cell.modelData.id, reorder = moved
+                        strip.dragIndex = -1
+                        strip.targetIndex = -1
+                        if (reorder) strip.move(from, to)
+                        else strip.abrir(id)
+                    }
+                    onCanceled: { strip.dragIndex = -1; strip.targetIndex = -1 }
+                    onWheel: function (event) {
+                        if (strip.overflow) strip.scroll(-event.angleDelta.y / 120 * 120)
+                        else event.accepted = false
+                    }
                 }
             }
         }
     }
-
-    //  The whole drawer, always last and still: it does not
-    //  reorder because it is not a shortcut, it is the way out to
-    //  all the others.
-    K4.Baldosa {
-        x: franja.posicion(franja.lista.length)
-        width: franja.anchoCelda
-        height: franja.altura
-        radius: 12
-
-        Behavior on x {
-            NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
-        }
-
-        Row {
-            anchors.centerIn: parent
-            spacing: 7
-
-            K4.Glifo {
-                text: String.fromCodePoint(0xF02C1)     // md-grid
-                color: Theme.muted
-                font.pixelSize: 15
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            IslandLabel {
-                text: "All"
-                font.pixelSize: 11
-                font.weight: Font.Medium
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
-
-        onPulsada: franja.abrir("apps")
+    K4.Boton {
+        visible: strip.overflow
+        x: viewport.x + viewport.width
+        anchors.verticalCenter: parent.verticalCenter
+        glifo: Theme.ico.forward
+        tamano: 16
+        activo: viewport.contentX < viewport.contentWidth - viewport.width
+        Accessible.name: "More shortcuts"
+        onPulsado: strip.scroll(strip.cellWidth + 8)
+    }
+    K4.ActionButton {
+        anchors.right: parent.right
+        width: 96
+        height: strip.altura
+        text: "All apps"
+        onClicked: strip.abrir("apps")
     }
 }

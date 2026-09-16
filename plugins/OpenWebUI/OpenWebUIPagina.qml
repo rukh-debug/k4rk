@@ -1,841 +1,366 @@
+// Plugin-owned Settings page using the shared control and section vocabulary.
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import "../../core"
+import K4 as K4
 import "Api.js" as Api
 
-//  The Settings page the plugin ships: server, sign-in and behavior.
-//  Instantiated by the Settings window while its page is on screen;
-//  `plugin` is the live engine, so the knobs edited here are the
-//  ones the island reads.
-
 ColumnLayout {
-    id: pagina
-
+    id: page
     required property var plugin
-
-    //  The model list, narrowed by the search field. Same rule as
-    //  the island's selector: a fragment, case-blind. The chosen
-    //  default always says first — `Api.withDefaultFirst`.
-    property string modelFilter: ""
-
-    //  Which pin list the editor below is working on. Clicking a
-    //  chip moves the editor; every list shows in the island's
-    //  picker as its own group, so there is no «active» one to
-    //  promote — only this editor's subject.
+    property string authMode: "password"
     property string editList: ""
+    property int modelPage: 0
+    property var deletedList: null
+    readonly property string currentList: plugin.pinLists.some(function (list) {
+        return list.name === page.editList
+    }) ? editList : plugin.pinLists.length ? plugin.pinLists[0].name : ""
+    readonly property var pinned: {
+        const list = plugin.pinLists.find(function (entry) { return entry.name === page.currentList })
+        return list ? list.models || [] : []
+    }
+    readonly property var filteredModels: Api.withDefaultFirst(plugin.models, plugin.currentModel)
+        .filter(function (model) { return model.toLowerCase().indexOf(modelSearch.text.trim().toLowerCase()) >= 0 })
+    readonly property int pageCount: Math.max(1, Math.ceil(filteredModels.length / 8))
+    onPageCountChanged: modelPage = Math.min(modelPage, pageCount - 1)
+    spacing: 16
 
-    Component.onCompleted: {
-        editList = plugin.pinLists.length > 0
-            ? plugin.pinLists[0].name : ""
+    Component.onCompleted: if (plugin.autenticado && !plugin.connectionVerified) plugin.fetchModels()
+    Component.onDestruction: {
+        plugin.draftPassword = ""
+        plugin.draftApiKey = ""
     }
 
-    readonly property string listaActual: {
-        for (let i = 0; i < plugin.pinLists.length; ++i)
-            if (plugin.pinLists[i].name === editList)
-                return editList
-        return plugin.pinLists.length > 0 ? plugin.pinLists[0].name : ""
+    function signIn() {
+        plugin.draftServer = server.text
+        plugin.draftEmail = email.text.trim()
+        plugin.iniciarSesion(email.text.trim(), password.text)
+    }
+    function saveKey() {
+        plugin.draftServer = server.text
+        plugin.guardarClave(apiKey.text)
+        if (plugin.autenticado) apiKey.clear()
+    }
+    function addList() {
+        if (!listName.text.trim()) return
+        plugin.nuevaListaPin(listName.text)
+        editList = listName.text.trim()
+        listName.clear()
     }
 
-    readonly property var modelosDeLista: {
-        for (let i = 0; i < plugin.pinLists.length; ++i)
-            if (plugin.pinLists[i].name === listaActual)
-                return plugin.pinLists[i].models || []
-        return []
-    }
-
-    readonly property var filteredModels:
-        Api.withDefaultFirst(plugin.models, plugin.currentModel).filter(
-            function (m) {
-                const f = modelFilter.trim().toLowerCase()
-                return f.length === 0
-                    || String(m).toLowerCase().indexOf(f) >= 0
-            })
-
-    spacing: 14
-
-    //  Drafts are saved on a short delay, not per keystroke: writing
-    //  the state file on every key is churn for nothing.
-    Timer {
-        id: borradorTimer
-        interval: 500
-        onTriggered: pagina.plugin.guardarAjustes()
-    }
-
-    //  Leaving the page is the quiet way to commit: the server typed
-    //  but never Entered takes effect, and everything else has been
-    //  kept along the way.
-    Component.onDestruction: pagina.plugin.confirmarBorradores()
-
-    // ── a field, the page's one input shape ───────────────────────
-
-    component Campo: Rectangle {
-        id: campo
-        property string valor: ""
-        property string pista: ""
-        property bool secreto: false
-        signal aceptado()
-        signal editado()
-
-        function clear() {
-            entrada.text = ""
-            valor = ""
+    component Section: Rectangle {
+        id: section
+        property string title: ""
+        default property alias contents: sectionBody.data
+        Layout.fillWidth: true
+        implicitHeight: sectionBody.implicitHeight + 24
+        radius: 12
+        color: K4.Tema.superficie
+        ColumnLayout {
+            id: sectionBody
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 12
+            spacing: 12
+            K4.Etiqueta { text: section.title; font.pixelSize: 13; font.weight: Font.DemiBold }
         }
+    }
+    component Help: K4.Etiqueta {
+        Layout.fillWidth: true
+        color: K4.Tema.apagado
+        font.pixelSize: 11
+        wrapMode: Text.Wrap
+    }
 
-        implicitHeight: 30
-        implicitWidth: 220
-        radius: 8
-        color: Theme.islandBg
-        border.width: 1
-        border.color: entrada.activeFocus ? Theme.blue : Theme.track
-
-        IslandLabel {
-            anchors.fill: parent
-            anchors.margins: 8
-            visible: entrada.text.length === 0
-            text: campo.pista
-            color: Theme.dim
-            font.pixelSize: 12
-            verticalAlignment: Text.AlignVCenter
-        }
-
-        TextInput {
-            id: entrada
-            anchors.fill: parent
-            anchors.margins: 8
-            verticalAlignment: TextInput.AlignVCenter
-            color: Theme.ink
-            font.family: Theme.uiFont
-            font.pixelSize: 12
-            clip: true
-            selectByMouse: true
-            cursorDelegate: IslandCursor {}
-            echoMode: campo.secreto ? TextInput.Password : TextInput.Normal
-            text: campo.valor
-
-            onTextEdited: {
-                campo.valor = text
-                campo.editado()
+    Section {
+        title: "Connection"
+        RowLayout {
+            Layout.fillWidth: true
+            Help {
+                text: page.plugin.signingIn ? "Signing in…"
+                    : page.plugin.fetchingModels ? "Checking connection…"
+                    : page.plugin.connectionVerified ? "Connected to " + page.plugin.baseUrl
+                    : page.plugin.modelsError ? "Connection could not be verified"
+                    : page.plugin.autenticado ? "Credentials saved · connection not verified" : "Not signed in"
+                color: page.plugin.connectionVerified ? K4.Tema.verde : K4.Tema.apagado
             }
-            Keys.onPressed: function (event) {
-                if (event.key === Qt.Key_Return
-                        || event.key === Qt.Key_Enter) {
-                    campo.aceptado()
+            K4.ActionButton {
+                visible: page.plugin.autenticado
+                text: "Log out"
+                enabled: !page.plugin.generating
+                onClicked: page.plugin.salir()
+            }
+        }
+        K4.Etiqueta { text: "Server address"; font.pixelSize: 12 }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            K4.TextField {
+                id: server
+                Layout.fillWidth: true
+                text: page.plugin.draftServer || page.plugin.baseUrl
+                placeholderText: "http://localhost:3000"
+                Accessible.name: "Server address"
+                enabled: !page.plugin.signingIn && !page.plugin.generating
+                onAccepted: {
+                    page.plugin.draftServer = text
+                    page.plugin.confirmarBorradores()
+                }
+                Keys.onEscapePressed: function (event) {
+                    text = page.plugin.baseUrl
+                    focus = false
                     event.accepted = true
                 }
             }
-        }
-    }
-
-    // ── a pill button ─────────────────────────────────────────────
-
-    component Boton: Rectangle {
-        id: pastilla
-        property string texto: ""
-        signal activado()
-
-        implicitHeight: 28
-        implicitWidth: etiqueta.implicitWidth + 26
-        radius: 14
-        color: raton.containsMouse ? Theme.track : Theme.surfaceHi
-
-        Behavior on color { ColorAnimation { duration: 120 } }
-
-        IslandLabel {
-            id: etiqueta
-            anchors.centerIn: parent
-            text: pastilla.texto
-            color: Theme.ink
-            font.pixelSize: 11
-            font.weight: Font.DemiBold
-        }
-
-        MouseArea {
-            id: raton
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: pastilla.activado()
-        }
-    }
-
-    // ── connection status ─────────────────────────────────────────
-
-    Rectangle {
-        Layout.fillWidth: true
-        implicitHeight: filaEstado.implicitHeight + 24
-        radius: 14
-        color: pagina.plugin.autenticado
-            ? Qt.rgba(0.19, 0.82, 0.34, 0.10)
-            : Qt.rgba(1.0, 0.27, 0.23, 0.10)
-
-        RowLayout {
-            id: filaEstado
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 10
-
-            Rectangle {
-                width: 9
-                height: 9
-                radius: 5
-                color: pagina.plugin.autenticado ? Theme.green : Theme.red
-
-                SequentialAnimation on opacity {
-                    running: pagina.plugin.signingIn
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.3; duration: 620; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 620; easing.type: Easing.InOutSine }
+            K4.ActionButton {
+                text: "Apply"
+                enabled: !page.plugin.signingIn && !page.plugin.generating
+                    && !page.plugin.fetchingModels && !page.plugin.fetchingChats
+                onClicked: {
+                    page.plugin.draftServer = server.text
+                    page.plugin.confirmarBorradores()
                 }
             }
-
-            IslandLabel {
-                Layout.fillWidth: true
-                text: pagina.plugin.autenticado
-                    ? "Connected to " + pagina.plugin.baseUrl
-                    : (pagina.plugin.baseUrl.length > 0
-                       ? "Not connected — " + pagina.plugin.baseUrl
-                       : "Not connected")
-                color: pagina.plugin.autenticado ? Theme.ink : Theme.muted
-                font.pixelSize: 12
-                elide: Text.ElideRight
-            }
-
-            Boton {
-                visible: pagina.plugin.autenticado
-                texto: "Log out"
-                onActivado: pagina.plugin.salir()
-            }
         }
-    }
-
-    // ── the server ────────────────────────────────────────────────
-
-    Rectangle {
-        Layout.fillWidth: true
-        implicitHeight: colServidor.implicitHeight + 24
-        radius: 14
-        color: Qt.rgba(1, 1, 1, 0.03)
-
+        Help { text: "Apply saves the server address. Changing servers signs out of the previous server." }
+        Help {
+            visible: page.plugin.signInError.length > 0
+            text: page.plugin.signInError
+            color: K4.Tema.rojo
+        }
         ColumnLayout {
-            id: colServidor
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
-
-            IslandLabel {
-                text: "Server"
-                color: Theme.ink
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-            }
-
-            Campo {
-                id: campoServidor
-                Layout.fillWidth: true
-                valor: pagina.plugin.draftServer
-                pista: "http://localhost:3000"
-
-                //  Typing is remembered, not applied: a half-written
-                //  URL only becomes the server on Enter — or when
-                //  the page closes, in `confirmarBorradores`.
-                onEditado: {
-                    pagina.plugin.draftServer = valor
-                    borradorTimer.restart()
-                }
-
-                onAceptado: {
-                    pagina.plugin.draftServer = valor
-                    pagina.plugin.baseUrl = valor.trim()
-                    pagina.plugin.guardarAjustes()
-                    if (pagina.plugin.autenticado) {
-                        pagina.plugin.fetchModels()
-                        pagina.plugin.refreshChats()
-                    }
-                }
-            }
-
-            IslandLabel {
-                text: "Where your OpenWebUI lives. Enter applies it."
-                color: Theme.dim
-                font.pixelSize: 10
-            }
-        }
-    }
-
-    // ── sign in, or bring a key ───────────────────────────────────
-
-    Rectangle {
-        Layout.fillWidth: true
-        visible: !pagina.plugin.autenticado
-        implicitHeight: colSesion.implicitHeight + 24
-        radius: 14
-        color: Qt.rgba(1, 1, 1, 0.03)
-
-        ColumnLayout {
-            id: colSesion
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
-
-            IslandLabel {
-                text: "Sign in"
-                color: Theme.ink
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-            }
-
-            Campo {
-                id: campoCorreo
-                Layout.fillWidth: true
-                pista: "email"
-                valor: pagina.plugin.draftEmail
-
-                onEditado: {
-                    pagina.plugin.draftEmail = valor
-                    borradorTimer.restart()
-                }
-            }
-
-            Campo {
-                id: campoClave
-                Layout.fillWidth: true
-                pista: "password"
-                secreto: true
-                valor: pagina.plugin.draftPassword
-
-                onEditado: {
-                    pagina.plugin.draftPassword = valor
-                    borradorTimer.restart()
-                }
-
-                onAceptado: pagina.plugin.iniciarSesion(
-                    campoCorreo.valor.trim(), campoClave.valor)
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Boton {
-                    texto: pagina.plugin.signingIn ? "Signing in…" : "Sign in"
-                    onActivado: pagina.plugin.iniciarSesion(
-                        campoCorreo.valor.trim(), campoClave.valor)
-                }
-
-                IslandLabel {
-                    Layout.fillWidth: true
-                    visible: pagina.plugin.signInError.length > 0
-                    text: pagina.plugin.signInError
-                    color: Theme.red
-                    font.pixelSize: 10
-                    elide: Text.ElideRight
-                }
-            }
-
-            // the divider that says the two roads are equal
-            Item {
-                Layout.fillWidth: true
-                implicitHeight: 18
-
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.right: palabraIzquierda.left
-                    anchors.rightMargin: 8
-                    height: 1
-                    color: Theme.surfaceHi
-                }
-
-                IslandLabel {
-                    id: palabraIzquierda
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "or"
-                    color: Theme.dim
-                    font.pixelSize: 10
-                }
-
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: palabraIzquierda.right
-                    anchors.leftMargin: 8
-                    anchors.right: parent.right
-                    height: 1
-                    color: Theme.surfaceHi
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                IconGlyph {
-                    text: String.fromCodePoint(0xF0306) // md-key
-                    color: Theme.muted
-                    font.pixelSize: 13
-                }
-
-                Campo {
-                    id: campoLlave
-                    Layout.fillWidth: true
-                    pista: "sk-…"
-                    secreto: true
-                    valor: pagina.plugin.draftApiKey
-
-                    onEditado: {
-                        pagina.plugin.draftApiKey = valor
-                        borradorTimer.restart()
-                    }
-
-                    onAceptado: pagina.plugin.guardarClave(valor)
-                }
-
-                Boton {
-                    texto: "Save"
-                    onActivado: pagina.plugin.guardarClave(campoLlave.valor)
-                }
-            }
-
-            IslandLabel {
-                Layout.fillWidth: true
-                text: "The token is stored under ~/.local/state/k4, like the web client's cookie."
-                color: Theme.dim
-                font.pixelSize: 10
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-
-    // ── the model ─────────────────────────────────────────────────
-
-    Rectangle {
-        Layout.fillWidth: true
-        visible: pagina.plugin.autenticado
-        implicitHeight: colModelo.implicitHeight + 24
-        radius: 14
-        color: Qt.rgba(1, 1, 1, 0.03)
-
-        ColumnLayout {
-            id: colModelo
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                IconGlyph {
-                    text: String.fromCodePoint(0xF06A9) // md-robot
-                    color: Theme.muted
-                    font.pixelSize: 13
-                }
-
-                IslandLabel {
-                    Layout.fillWidth: true
-                    text: "Model"
-                    color: Theme.ink
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                }
-
-                Boton {
-                    texto: pagina.plugin.fetchingModels ? "…" : "Refresh"
-                    onActivado: pagina.plugin.fetchModels()
-                }
-            }
-
-            IslandLabel {
-                Layout.fillWidth: true
-                text: pagina.plugin.fetchingModels
-                    ? "Loading models…"
-                    : pagina.plugin.modelsError.length > 0
-                        ? pagina.plugin.modelsError
-                        : (pagina.plugin.models.length > 0
-                           ? pagina.plugin.currentModel + "  ·  "
-                             + pagina.plugin.models.length + " models"
-                           : "No models yet — refresh to look")
-                color: pagina.plugin.modelsError.length > 0
-                        ? Theme.red : Theme.dim
-                font.pixelSize: 10
-                elide: Text.ElideRight
-            }
-
-            // ── pin lists: what the island's picker speaks
-            IslandLabel {
-                Layout.fillWidth: true
-                visible: pagina.plugin.autenticado
-                text: "Pin lists"
-                color: Theme.ink
-                font.pixelSize: 12
-                font.weight: Font.DemiBold
-            }
-
-            //  The lists themselves: click one to edit it below.
-            Flow {
-                Layout.fillWidth: true
-                spacing: 6
-                visible: pagina.plugin.pinLists.length > 0
-
-                Repeater {
-                    model: pagina.plugin.pinLists
-
-                    delegate: Rectangle {
-                        required property var modelData
-                        width: chipLista.implicitWidth + 20
-                        height: 24
-                        radius: 12
-                        color: modelData.name === pagina.listaActual
-                            ? (chipMouse.containsMouse ? Theme.track : Theme.surfaceHi)
-                            : (chipMouse.containsMouse ? Theme.surfaceHi : "transparent")
-
-                        RowLayout {
-                            id: chipLista
-                            anchors.centerIn: parent
-                            spacing: 5
-
-                            IslandLabel {
-                                text: modelData.name
-                                color: modelData.name === pagina.listaActual
-                                        ? Theme.ink : Theme.muted
-                                font.pixelSize: 11
-                            }
-
-                            IconGlyph {
-                                text: String.fromCodePoint(0xF0403) // md-pin
-                                color: modelData.name === pagina.listaActual
-                                        ? Theme.blue : Theme.dim
-                                font.pixelSize: 10
-                            }
-                        }
-
-                        MouseArea {
-                            id: chipMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: pagina.editList = modelData.name
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Campo {
-                    id: campoLista
-                    Layout.fillWidth: true
-                    pista: "new list name"
-
-                    onAceptado: {
-                        pagina.plugin.nuevaListaPin(valor)
-                        pagina.editList = valor.trim()
-                        campoLista.clear()
-                    }
-                }
-
-                Boton {
-                    texto: "Add"
-                    onActivado: {
-                        pagina.plugin.nuevaListaPin(campoLista.valor)
-                        pagina.editList = campoLista.valor.trim()
-                        campoLista.clear()
-                    }
-                }
-            }
-
-            //  The list under the editor: its models as chips, one
-            //  click to take one out.
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                visible: pagina.listaActual.length > 0
-
-                Flow {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    visible: pagina.modelosDeLista.length > 0
-
-                    Repeater {
-                        model: pagina.modelosDeLista
-
-                        delegate: Rectangle {
-                            required property var modelData
-                            width: chipPineado.implicitWidth + 24
-                            height: 24
-                            radius: 12
-                            color: pineadoMouse.containsMouse
-                                ? Theme.track : Theme.surfaceHi
-
-                            RowLayout {
-                                id: chipPineado
-                                anchors.centerIn: parent
-                                spacing: 5
-
-                                IslandLabel {
-                                    text: modelData
-                                    color: Theme.ink
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
-
-                                IconGlyph {
-                                    text: Theme.ico.close
-                                    color: Theme.muted
-                                    font.pixelSize: 10
-                                }
-                            }
-
-                            MouseArea {
-                                id: pineadoMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: pagina.plugin.despinear(
-                                    pagina.listaActual, modelData)
-                            }
-                        }
-                    }
-                }
-
-                IslandLabel {
-                    visible: pagina.modelosDeLista.length === 0
-                    text: "Empty — pin models from the list below"
-                    color: Theme.dim
-                    font.pixelSize: 10
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Boton {
-                        texto: "Delete list"
-                        onActivado: pagina.plugin.borrarListaPin(
-                            pagina.listaActual)
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    IslandLabel {
-                        visible: pagina.modelosDeLista.length > 0
-                        text: pagina.modelosDeLista.length + " pinned"
-                        color: Theme.dim
-                        font.pixelSize: 10
-                    }
-                }
-            }
-
-            //  Finding one name among dozens: the search narrows the
-            //  list below as it is typed, case-blind.
-            Campo {
-                visible: pagina.plugin.models.length > 0
-                Layout.fillWidth: true
-                pista: "Search models…"
-
-                onEditado: pagina.modelFilter = valor
-            }
-
-            ListView {
-                Layout.fillWidth: true
-                visible: pagina.plugin.models.length > 0
-                implicitHeight: Math.min(240,
-                                         pagina.filteredModels.length * 30 + 4)
-                clip: true
-                spacing: 2
-                model: pagina.filteredModels
-                boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: IslandScrollBar {}
-
-                delegate: Rectangle {
-                    required property var modelData
-                    width: ListView.view.width
-                    height: 30
-                    radius: 8
-                    color: modelData === pagina.plugin.currentModel
-                        ? (ratonModelo.containsMouse ? Theme.track : Theme.surfaceHi)
-                        : (ratonModelo.containsMouse ? Theme.surfaceHi : "transparent")
-
-                    //  The row's click goes UNDER the content: the
-                    //  pin icon carries a MouseArea of its own, and
-                    //  a row declared later would sit on top of it
-                    //  and eat every pin click — picking the default
-                    //  instead, which is what the pin was not doing.
-                    MouseArea {
-                        id: ratonModelo
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: pagina.plugin.setModel(modelData)
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 8
-
-                        IslandLabel {
-                            text: modelData
-                            color: modelData === pagina.plugin.currentModel
-                                ? Theme.ink : Theme.muted
-                            font.weight: modelData
-                                === pagina.plugin.currentModel
-                                ? Font.DemiBold : Font.Normal
-                            font.pixelSize: 11
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-
-                        IconGlyph {
-                            visible: modelData === pagina.plugin.currentModel
-                            text: Theme.ico.check
-                            color: Theme.blue
-                            font.pixelSize: 11
-                        }
-
-                        //  Pin it to the list being edited — or take
-                        //  it out. With no list to edit, the pin is
-                        //  asleep: nothing to pin to.
-                        IconGlyph {
-                            visible: pagina.listaActual.length > 0
-                            text: pagina.modelosDeLista.indexOf(modelData) >= 0
-                                ? String.fromCodePoint(0xF0403)      // md-pin
-                                : String.fromCodePoint(0xF0931)      // md-pin_outline
-                            color: pinMouse.containsMouse ? Theme.blue : Theme.muted
-                            font.pixelSize: 12
-                            Layout.leftMargin: 6
-
-                            MouseArea {
-                                id: pinMouse
-                                anchors.fill: parent
-                                anchors.margins: -6
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (pagina.modelosDeLista.indexOf(
-                                            modelData) >= 0)
-                                        pagina.plugin.despinear(
-                                            pagina.listaActual, modelData)
-                                    else
-                                        pagina.plugin.pinear(
-                                            pagina.listaActual, modelData)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            IslandLabel {
-                Layout.fillWidth: true
-                visible: pagina.plugin.models.length > 0
-                          && pagina.filteredModels.length === 0
-                text: "No model matches the search"
-                color: Theme.dim
-                font.pixelSize: 10
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            //  How the pieces meet, said where the pieces live: the
-            //  island's picker shows every pin list as its own
-            //  group, the default rides on top of its group, and
-            //  everything here is remembered.
-            IslandLabel {
-                Layout.fillWidth: true
-                visible: pagina.plugin.autenticado
-                text: "The chat island's model picker shows every pin list as its own group — the default model's group first, the default on top of it — and grows tall enough to be read. «Show all models» there brings the whole catalog back for a moment. Clicking a row here sets the default; the pin puts a model in, or takes it out of, the list being edited. The default and the lists are kept in the plugin's state, across restarts."
-                color: Theme.dim
-                font.pixelSize: 10
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-
-    // ── behavior ──────────────────────────────────────────────────
-
-    Rectangle {
-        Layout.fillWidth: true
-        implicitHeight: colComportamiento.implicitHeight + 24
-        radius: 14
-        color: Qt.rgba(1, 1, 1, 0.03)
-
-        ColumnLayout {
-            id: colComportamiento
-            anchors.fill: parent
-            anchors.margins: 12
+            visible: !page.plugin.autenticado
+            Layout.fillWidth: true
             spacing: 12
-
             RowLayout {
+                spacing: 8
+                K4.ActionButton { text: "Email and password"; selected: page.authMode === "password"; onClicked: page.authMode = "password" }
+                K4.ActionButton { text: "API key"; selected: page.authMode === "key"; onClicked: page.authMode = "key" }
+            }
+            ColumnLayout {
+                visible: page.authMode === "password"
                 Layout.fillWidth: true
-                spacing: 10
-
-                ColumnLayout {
+                spacing: 8
+                K4.Etiqueta { text: "Email" }
+                K4.TextField {
+                    id: email
                     Layout.fillWidth: true
-                    spacing: 2
-
-                    IslandLabel {
-                        text: "Remember chat history"
-                        color: Theme.ink
-                        font.pixelSize: 12
-                    }
-
-                    IslandLabel {
-                        Layout.fillWidth: true
-                        text: "Keep the conversation across restarts and in the set-aside pill"
-                        color: Theme.dim
-                        font.pixelSize: 10
-                        wrapMode: Text.WordWrap
-                    }
+                    text: page.plugin.draftEmail
+                    Accessible.name: "Email"
+                    placeholderText: "you@example.com"
+                    enabled: !page.plugin.signingIn
                 }
+                K4.Etiqueta { text: "Password" }
+                K4.TextField {
+                    id: password
+                    Layout.fillWidth: true
+                    Accessible.name: "Password"
+                    echoMode: TextInput.Password
+                    enabled: !page.plugin.signingIn
+                    onAccepted: page.signIn()
+                    Keys.onEscapePressed: function (event) { clear(); focus = false; event.accepted = true }
+                }
+                K4.ActionButton {
+                    text: page.plugin.signingIn ? "Signing in…" : "Sign in"
+                    enabled: !page.plugin.signingIn && email.text.trim().length > 0 && password.text.length > 0
+                    onClicked: page.signIn()
+                }
+            }
+            ColumnLayout {
+                visible: page.authMode === "key"
+                Layout.fillWidth: true
+                spacing: 8
+                K4.Etiqueta { text: "API key" }
+                K4.TextField {
+                    id: apiKey
+                    Layout.fillWidth: true
+                    Accessible.name: "API key"
+                    echoMode: TextInput.Password
+                    placeholderText: "sk-…"
+                    onAccepted: page.saveKey()
+                    Keys.onEscapePressed: function (event) { clear(); focus = false; event.accepted = true }
+                }
+                K4.ActionButton { text: "Use API key"; enabled: apiKey.text.trim().length > 0; onClicked: page.saveKey() }
+            }
+            Help { text: "Your authentication token is saved locally. Password and API-key drafts are cleared when you leave this page." }
+        }
+    }
 
-                IslandSwitch {
-                    checked: pagina.plugin.rememberHistory
-                    onToggled: {
-                        //  The switch never flips itself — the state
-                        //  is the owner's to set, so say the opposite
-                        //  of what it shows, not what it shows.
-                        pagina.plugin.rememberHistory = !checked
-                        pagina.plugin.guardarAjustes()
+    Section {
+        title: "Models"
+        visible: page.plugin.autenticado
+        RowLayout {
+            Layout.fillWidth: true
+            Help { text: "Default · " + (page.plugin.currentModel || "Choose a model below") }
+            K4.ActionButton {
+                text: page.plugin.fetchingModels ? "Loading…" : "Refresh"
+                enabled: !page.plugin.fetchingModels
+                onClicked: page.plugin.fetchModels()
+            }
+        }
+        Help { visible: page.plugin.modelsError.length > 0; text: page.plugin.modelsError; color: K4.Tema.rojo }
+        K4.TextField {
+            id: modelSearch
+            Layout.fillWidth: true
+            Accessible.name: "Search models"
+            placeholderText: "Search models"
+            onTextChanged: page.modelPage = 0
+            Keys.onEscapePressed: function (event) {
+                if (text.length > 0) { clear(); event.accepted = true }
+                else event.accepted = false
+            }
+        }
+        Help {
+            text: page.currentList ? "Pin buttons edit “" + page.currentList + "”. Manage pin lists below."
+                : "Choose a default model. Create a pin list below to organize favorites."
+        }
+        Repeater {
+            model: page.filteredModels.slice(page.modelPage * 8, page.modelPage * 8 + 8)
+            delegate: K4.Baldosa {
+                id: modelRow
+                required property var modelData
+                Layout.fillWidth: true
+                Layout.preferredHeight: 44
+                radius: 8
+                activa: modelData === page.plugin.currentModel
+                Accessible.name: "Use " + modelData + " as the default model"
+                onPulsada: page.plugin.setModel(modelData)
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 8
+                    spacing: 12
+                    K4.Glifo {
+                        text: String.fromCodePoint(0xF012C)
+                        opacity: modelRow.activa ? 1 : 0
+                        color: K4.Tema.azul
+                        font.pixelSize: 14
+                        Layout.preferredWidth: 20
+                    }
+                    K4.Etiqueta { Layout.fillWidth: true; text: modelRow.modelData; elide: Text.ElideRight }
+                    K4.ActionButton {
+                        visible: page.currentList.length > 0
+                        text: page.pinned.indexOf(modelRow.modelData) >= 0 ? "Unpin" : "Pin"
+                        Accessible.name: text + " " + modelRow.modelData + " in " + page.currentList
+                        onClicked: page.pinned.indexOf(modelRow.modelData) >= 0
+                            ? page.plugin.despinear(page.currentList, modelRow.modelData)
+                            : page.plugin.pinear(page.currentList, modelRow.modelData)
                     }
                 }
             }
+        }
+        Help {
+            visible: page.filteredModels.length === 0
+            text: page.plugin.fetchingModels ? "Loading models…" : page.plugin.models.length > 0
+                ? "No matching models. Try a different name." : "No models available. Refresh to try again."
+        }
+        RowLayout {
+            visible: page.pageCount > 1
+            Layout.fillWidth: true
+            K4.ActionButton { text: "Previous"; enabled: page.modelPage > 0; onClicked: page.modelPage-- }
+            Help { text: "Page " + (page.modelPage + 1) + " of " + page.pageCount; horizontalAlignment: Text.AlignHCenter }
+            K4.ActionButton { text: "Next"; enabled: page.modelPage + 1 < page.pageCount; onClicked: page.modelPage++ }
+        }
+    }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
-                    IslandLabel {
-                        text: "Reopen when an answer lands"
-                        color: Theme.ink
-                        font.pixelSize: 12
-                    }
-
-                    IslandLabel {
-                        Layout.fillWidth: true
-                        text: "A background answer brings the chat back to the front; off, it only notifies"
-                        color: Theme.dim
-                        font.pixelSize: 10
-                        wrapMode: Text.WordWrap
-                    }
+    Section {
+        title: "Pin lists"
+        visible: page.plugin.autenticado
+        Help { text: "Organize models into named groups for the chat's model picker." }
+        Flow {
+            Layout.fillWidth: true
+            spacing: 8
+            Repeater {
+                model: page.plugin.pinLists
+                delegate: K4.ActionButton {
+                    required property var modelData
+                    text: modelData.name
+                    selected: text === page.currentList
+                    width: Math.min(implicitWidth, parent.width)
+                    onClicked: page.editList = modelData.name
                 }
-
-                IslandSwitch {
-                    checked: pagina.plugin.openAfterResponse
-                    onToggled: {
-                        pagina.plugin.openAfterResponse = !checked
-                        pagina.plugin.guardarAjustes()
-                    }
+            }
+        }
+        K4.Etiqueta { text: "New list name" }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            K4.TextField { id: listName; Layout.fillWidth: true; Accessible.name: "New list name"; onAccepted: page.addList() }
+            K4.ActionButton { text: "Add list"; enabled: listName.text.trim().length > 0; onClicked: page.addList() }
+        }
+        Flow {
+            Layout.fillWidth: true
+            spacing: 8
+            Repeater {
+                model: page.pinned
+                delegate: K4.ActionButton {
+                    required property var modelData
+                    text: modelData + "  ×"
+                    width: Math.min(implicitWidth, parent.width)
+                    Accessible.name: "Unpin " + modelData + " from " + page.currentList
+                    onClicked: page.plugin.despinear(page.currentList, modelData)
+                }
+            }
+        }
+        Help { visible: page.currentList.length > 0 && page.pinned.length === 0; text: "This list is empty. Pin models from the Models section." }
+        K4.ActionButton {
+            visible: page.currentList.length > 0
+            text: "Delete list"
+            onClicked: {
+                const list = page.plugin.pinLists.find(function (entry) { return entry.name === page.currentList })
+                page.deletedList = { name: list.name, models: list.models.slice() }
+                page.plugin.borrarListaPin(page.currentList)
+            }
+        }
+        RowLayout {
+            visible: page.deletedList !== null
+            Layout.fillWidth: true
+            Help { text: page.deletedList ? "Deleted “" + page.deletedList.name + "”." : "" }
+            K4.ActionButton {
+                text: "Undo"
+                onClicked: {
+                    const list = page.deletedList
+                    page.plugin.nuevaListaPin(list.name)
+                    for (const model of list.models) page.plugin.pinear(list.name, model)
+                    page.editList = list.name
+                    page.deletedList = null
                 }
             }
         }
     }
 
-    Item { Layout.fillHeight: false; implicitHeight: 1 }
+    Section {
+        title: "Chat behavior"
+        Repeater {
+            model: [
+                { key: "rememberHistory", label: "Remember chat history", help: "Keep conversations across restarts and while set aside." },
+                { key: "openAfterResponse", label: "Reopen when an answer arrives", help: "Bring the chat forward when a background response finishes." }
+            ]
+            delegate: RowLayout {
+                required property var modelData
+                Layout.fillWidth: true
+                spacing: 16
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    K4.Etiqueta { Layout.fillWidth: true; text: modelData.label; wrapMode: Text.WordWrap }
+                    Help { text: modelData.help }
+                }
+                K4.Interruptor {
+                    marcado: page.plugin[modelData.key]
+                    Accessible.name: modelData.label
+                    onAlternado: {
+                        page.plugin[modelData.key] = !marcado
+                        page.plugin.guardarAjustes()
+                    }
+                }
+            }
+        }
+    }
+    Connections {
+        target: page.plugin
+        function onAutenticadoChanged() {
+            if (page.plugin.autenticado) { password.clear(); apiKey.clear() }
+        }
+    }
 }

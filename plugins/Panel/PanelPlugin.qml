@@ -1,5 +1,5 @@
 //  Control centre: Wi‑Fi, Bluetooth, volume, playback, shortcuts and
-//  notifications. Four tabs inside the same view.
+//  notifications. Five views inside the same surface.
 
 import QtQuick
 import K4 as K4
@@ -19,6 +19,7 @@ K4Plugin {
     // "controls" | "notifications" | "wifi" | "bluetooth" | "sound"
     property string tab: "controls"
     property bool open: false
+    property bool interactionActive: false
 
     //  The launcher, injected by the host: the shortcuts strip opens apps
     //  through it. A reference is declared by catalog id and filled by
@@ -72,33 +73,32 @@ K4Plugin {
     onBackgroundTapped: toggle()
 
     function toggle(wanted) {
-        // asking for a tab that is not the visible one switches to
-        // it instead of closing
-        const wantsTab = wanted !== undefined && wanted.length > 0
-        open = !open || (wantsTab && wanted !== tab)
-
-        if (open) {
-            if (wantsTab)
-                tab = wanted
-            Notifs.dismissToast()
-            if (tab === "notifications")
-                Notifs.markRead()
-        }
+        const destination = wanted || "controls"
+        if (open && destination === tab) close()
+        else openTab(destination)
     }
 
     function openTab(wanted) {
+        if (["controls", "notifications", "wifi", "bluetooth", "sound"].indexOf(wanted) < 0)
+            return
+        if (wanted !== tab) Wifi.cancelPsk()
         tab = wanted
         open = true
+        Notifs.dismissToast()
+        if (wanted === "notifications") Notifs.markRead()
         //  The baselines —each device's natural level— are a
         //  process, and only needed while the list is being looked
         //  at.
         if (wanted === "sound")
             Audio.mirarBases()
-        Wifi.cancelPsk()
-        Wifi.notice = ""
     }
 
-    function close() { open = false }
+    function close() {
+        Wifi.cancelPsk()
+        interactionActive = false
+        open = false
+    }
+    onOpenChanged: if (!open) Wifi.cancelPsk()
 
     // The scanner only while the matching list is being looked at.
     Binding {
@@ -113,18 +113,10 @@ K4Plugin {
         value: self.open && self.tab === "bluetooth"
     }
 
-    // A notification steps the panel aside.
-    Connections {
-        target: Notifs
-        function onNotified() { self.open = false }
-    }
-
-    // It closes on its own when the mouse leaves, but not if the
-    // launcher is on top.
-    closeOnHoverExit: true
+    // Detail tasks and direct manipulation survive incidental pointer exits.
+    closeOnHoverExit: tab === "controls" && !interactionActive
     onHoverTimedOut: {
-        if (!launcher || !launcher.open)
-            open = false
+        if (!interactionActive && (!launcher || !launcher.open)) close()
     }
 
     K4.Ipc {

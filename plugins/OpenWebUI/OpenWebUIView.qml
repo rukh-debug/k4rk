@@ -452,8 +452,8 @@ FadeIn {
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 6
-                width: botonAjustes.implicitWidth + 26
-                height: 28
+                Layout.preferredWidth: botonAjustes.implicitWidth + 26
+                Layout.preferredHeight: 28
                 radius: 14
                 color: ajustesMouse.containsMouse ? Theme.track
                                                   : Theme.surfaceHi

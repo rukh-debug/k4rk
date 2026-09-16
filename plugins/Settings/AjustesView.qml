@@ -33,8 +33,88 @@ FadeIn {
     //  Which section is on screen, and what the search field holds. It lives
     //  here and not in the plugin: closing and reopening starts at the top
     //  with no filter, not where you left it three days ago.
-    property int seccion: 0
+    property string selectedPage: "island"
+    readonly property int seccion: {
+        const index = lateral.findIndex(function (g) { return pageKey(g) === selectedPage })
+        return Math.max(0, index)
+    }
     property string busqueda: ""
+    readonly property string query: busqueda.trim().toLowerCase()
+    readonly property bool searching: query.length > 0
+    property var scrollPositions: ({})
+    property string highlightedSetting: ""
+
+    function pageKey(group) {
+        return group.pagina ? group.pagina.plugin + "." + group.pagina.name
+            : group.vista || group.grupo
+    }
+
+    function saveScroll() {
+        if (!searching)
+            scrollPositions[selectedPage] = pageScroll.contentY
+    }
+
+    function search(text) {
+        saveScroll()
+        busqueda = text
+        pageScroll.contentY = 0
+        if (!searching)
+            Qt.callLater(function () {
+                pageScroll.contentY = Math.min(scrollPositions[selectedPage] || 0,
+                    Math.max(0, pageScroll.contentHeight - pageScroll.height))
+            })
+    }
+
+    function openResult(group) {
+        if (group.dePlugin) {
+            ponerFilaAbierta(group.dePlugin, true)
+            irASeccion("plugins")
+        } else irASeccion(group.grupo)
+        highlightedSetting = group.opciones.length > 0 ? group.opciones[0].id : ""
+        revealResult.restart()
+    }
+
+    function findSetting(item, name) {
+        if (item.objectName === name) return item
+        for (let i = 0; i < item.children.length; ++i) {
+            const found = findSetting(item.children[i], name)
+            if (found) return found
+        }
+        return null
+    }
+
+    Timer {
+        id: revealResult
+        interval: 80
+        onTriggered: {
+            if (!vista.highlightedSetting) return
+            const row = vista.findSetting(pageScroll.contentItem,
+                "setting-" + vista.highlightedSetting)
+            if (row) {
+                const position = row.mapToItem(pageScroll.contentItem, 0, 0)
+                pageScroll.contentY = Math.max(0, Math.min(position.y - 8,
+                    pageScroll.contentHeight - pageScroll.height))
+            }
+            clearHighlight.restart()
+        }
+    }
+    Timer { id: clearHighlight; interval: 1800; onTriggered: vista.highlightedSetting = "" }
+
+    Keys.onEscapePressed: function (event) {
+        if (campo.text.length > 0) {
+            campo.text = ""
+            search("")
+            campo.forceActiveFocus()
+        } else plugin.close()
+        event.accepted = true
+    }
+    Keys.onPressed: function (event) {
+        if (event.key === Qt.Key_F && event.modifiers & Qt.ControlModifier) {
+            campo.forceActiveFocus()
+            campo.selectAll()
+            event.accepted = true
+        }
+    }
 
     //  The keyboard: typing searches, ESC undoes and then closes. The layer
     //  takes a moment to grant focus, so it is asked with retries — the same
@@ -76,6 +156,10 @@ FadeIn {
     //  matters — the search walks the whole list and finds them anyway.
     readonly property var lateral: vista.todas.filter(function (g) {
         return g.enLateral !== false
+    })
+    onLateralChanged: Qt.callLater(function () {
+        if (!vista.lateral.some(function (g) { return vista.pageKey(g) === vista.selectedPage }))
+            vista.elegir(0)
     })
 
     //  ── the tree ────────────────────────────────────────────
@@ -141,7 +225,7 @@ FadeIn {
     //  «capture» does not know which drawer it is in, or they would not be
     //  typing.
     readonly property var contenido: {
-        const q = String(vista.busqueda).trim().toLowerCase()
+        const q = vista.query
         if (q.length === 0)
             return vista.seccion < vista.lateral.length
                 ? [vista.lateral[vista.seccion]] : []
@@ -150,24 +234,29 @@ FadeIn {
         for (let i = 0; i < vista.todas.length; ++i) {
             const g = vista.todas[i]
             const casaGrupo = String(g.grupo).toLowerCase().indexOf(q) >= 0
+                || String(g.desc || "").toLowerCase().indexOf(q) >= 0
                 || (g.claves || []).some(function (c) {
                     return String(c).toLowerCase().indexOf(q) >= 0
                 })
+            let heading = ""
             const ops = (g.opciones || []).filter(function (o) {
-                return casaGrupo
+                if (o.tipo === "titulo") { heading = o.nombre || ""; return false }
+                const choices = o.alternativas || Settings.opcionesDe(o.de)
+                return casaGrupo || heading.toLowerCase().indexOf(q) >= 0
                     || String(o.nombre || "").toLowerCase().indexOf(q) >= 0
                     || String(o.desc || "").toLowerCase().indexOf(q) >= 0
+                    || choices.some(function (choice) {
+                        return String(choice.nombre).toLowerCase().indexOf(q) >= 0
+                    })
             })
             if (ops.length > 0) {
-                fuera.push({ grupo: g.grupo, glifo: g.glifo, desc: g.desc,
-                             vista: g.vista, opciones: ops })
+                fuera.push(Object.assign({}, g, { opciones: ops }))
             } else if (casaGrupo) {
                 //  A section that matches but has no options of its own: its
                 //  controls live inside a widget. Offer it as a destination
                 //  instead of dropping it — «blur» used to find NOTHING even
                 //  though the switch sits right there.
-                fuera.push({ grupo: g.grupo, glifo: g.glifo, desc: g.desc,
-                             vista: g.vista, opciones: [], atajo: i })
+                fuera.push(Object.assign({}, g, { opciones: [], atajo: i }))
             }
         }
         return fuera
@@ -195,7 +284,8 @@ FadeIn {
         for (let i = 0; i < vista.lateral.length; ++i) {
             const g = vista.lateral[i]
             if (String(g.grupo).toLowerCase() === n
-                || String(g.vista || "").toLowerCase() === n) {
+                || String(g.vista || "").toLowerCase() === n
+                || String(g.pagina ? g.pagina.name : "").toLowerCase() === n) {
                 //  A child opens its family's drawer on the way in — landing
                 //  on a page whose row is hidden is landing nowhere.
                 if (g.padre)
@@ -206,24 +296,9 @@ FadeIn {
         }
     }
 
-    //  A parent row: opens its drawer and lands on its overview. Closing it
-    //  while you stand inside (on it or on one of its children) takes you up
-    //  to the overview, so the header never names a page whose row is hidden.
+    // Disclosure is independent from navigation to the overview.
     function tocarPadre(grupo) {
-        const idx = vista.indiceDe(grupo)
-        if (idx < 0)
-            return
-        if (!vista.expandidos[grupo.grupo]) {
-            vista.ponerExpandido(grupo.grupo, true)
-            vista.elegir(idx)
-        } else {
-            vista.ponerExpandido(grupo.grupo, false)
-            const sel = vista.lateral[vista.seccion]
-            if (sel !== undefined
-                && (sel.grupo === grupo.grupo
-                    || sel.padre === grupo.grupo))
-                vista.elegir(idx)
-        }
+        vista.ponerExpandido(grupo.grupo, !vista.expandidos[grupo.grupo])
     }
 
     function elegirHijo(grupo) {
@@ -262,10 +337,16 @@ FadeIn {
         //  against nothing.
         if (i < 0 || i >= vista.lateral.length)
             return
-        vista.seccion = i
+        saveScroll()
+        vista.selectedPage = pageKey(vista.lateral[i])
         vista.busqueda = ""
         campo.text = ""
+        highlightedSetting = ""
         reportPage()
+        Qt.callLater(function () {
+            pageScroll.contentY = Math.min(scrollPositions[selectedPage] || 0,
+                Math.max(0, pageScroll.contentHeight - pageScroll.height))
+        })
     }
 
     RowLayout {
@@ -326,7 +407,7 @@ FadeIn {
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: campo.text.length === 0
                                 text: "Search settings"
-                                color: Theme.dim
+                                color: Theme.muted
                                 font.pixelSize: 12
                             }
 
@@ -342,7 +423,9 @@ FadeIn {
                                 selectByMouse: true
                                 selectionColor: Theme.blue
                                 text: vista.busqueda
-                                onTextEdited: vista.busqueda = text
+                                activeFocusOnTab: true
+                                Accessible.name: "Search settings"
+                                onTextEdited: vista.search(text)
 
                                 //  ESC undoes the inside first and only closes
                                 //  when there is nothing left to undo. If it
@@ -353,7 +436,7 @@ FadeIn {
                                         return
                                     if (campo.text.length > 0) {
                                         campo.text = ""
-                                        vista.busqueda = ""
+                                        vista.search("")
                                     } else {
                                         vista.plugin.close()
                                     }
@@ -416,14 +499,22 @@ FadeIn {
                                         && sel.padre === rama.modelData.grupo
                                 }
                                 readonly property bool activa:
-                                    vista.busqueda.length === 0
+                                    !vista.searching
                                     && !rama.acogida
                                     && vista.seccion === rama.indice
 
                                 Rectangle {
+                                    id: parentNavigation
                                     width: parent.width
                                     height: 34
                                     radius: 9
+                                    activeFocusOnTab: true
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: rama.modelData.grupo
+                                    Keys.onReturnPressed: vista.elegir(rama.indice)
+                                    Keys.onSpacePressed: vista.elegir(rama.indice)
+                                    border.width: activeFocus ? 1 : 0
+                                    border.color: Theme.blue
                                     color: rama.activa
                                         ? Qt.rgba(Theme.blue.r, Theme.blue.g,
                                                   Theme.blue.b, 0.18)
@@ -440,15 +531,10 @@ FadeIn {
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
-                                        //  A parent opens its drawer AND lands
-                                        //  on its overview; closing it while
-                                        //  you are inside takes you up to the
-                                        //  overview too, so the header never
-                                        //  names a page whose row you cannot
-                                        //  see.
-                                        onClicked: rama.despliega
-                                            ? vista.tocarPadre(rama.modelData)
-                                            : vista.elegir(rama.indice)
+                                        onClicked: {
+                                            parentNavigation.forceActiveFocus(Qt.MouseFocusReason)
+                                            vista.elegir(rama.indice)
+                                        }
                                     }
 
                                     RowLayout {
@@ -486,27 +572,14 @@ FadeIn {
                                             maximumLineCount: 1
                                         }
 
-                                        //  The drawer's handle. It turns with
-                                        //  the drawer and not on its own click:
-                                        //  the whole row is the target, same as
-                                        //  every other row — a 16 px chevron
-                                        //  would ask for aim.
-                                        IconGlyph {
+                                        K4.Boton {
                                             visible: rama.despliega
                                             Layout.alignment: Qt.AlignVCenter
-                                            text: Theme.ico.chevronDown
-                                            color: rama.acogida || rama.activa
-                                                ? Theme.blue : Theme.dim
-                                            font.pixelSize: 13
-                                            renderType: Text.NativeRendering
-                                            rotation: rama.abierta ? 0 : -90
-
-                                            Behavior on rotation {
-                                                NumberAnimation {
-                                                    duration: 200
-                                                    easing.type: Easing.OutCubic
-                                                }
-                                            }
+                                            glifo: rama.abierta ? Theme.ico.chevronDown : Theme.ico.forward
+                                            color: Theme.muted
+                                            tamano: 13
+                                            Accessible.name: (rama.abierta ? "Collapse " : "Expand ") + rama.modelData.grupo
+                                            onPulsado: vista.tocarPadre(rama.modelData)
                                         }
                                     }
                                 }
@@ -523,11 +596,12 @@ FadeIn {
                                     height: rama.abierta
                                         ? columnaHijos.height : 0
                                     clip: true
+                                    enabled: rama.abierta
                                     opacity: rama.abierta ? 1 : 0
 
                                     Behavior on height {
                                         NumberAnimation {
-                                            duration: 240
+                                            duration: 180
                                             easing.type: Easing.OutCubic
                                         }
                                     }
@@ -550,12 +624,19 @@ FadeIn {
                                                 readonly property int indice:
                                                     vista.indiceDe(hija.modelData)
                                                 readonly property bool activa:
-                                                    vista.busqueda.length === 0
+                                                    !vista.searching
                                                     && vista.seccion === hija.indice
 
                                                 width: parent.width
                                                 height: 30
                                                 radius: 8
+                                                activeFocusOnTab: rama.abierta
+                                                Accessible.role: Accessible.Button
+                                                Accessible.name: modelData.grupo
+                                                Keys.onReturnPressed: vista.elegirHijo(modelData)
+                                                Keys.onSpacePressed: vista.elegirHijo(modelData)
+                                                border.width: activeFocus ? 1 : 0
+                                                border.color: Theme.blue
                                                 color: hija.activa
                                                     ? Qt.rgba(Theme.blue.r,
                                                               Theme.blue.g,
@@ -587,8 +668,10 @@ FadeIn {
                                                     anchors.fill: parent
                                                     hoverEnabled: true
                                                     cursorShape: Qt.PointingHandCursor
-                                                    onClicked:
+                                                    onClicked: {
+                                                        hija.forceActiveFocus(Qt.MouseFocusReason)
                                                         vista.elegirHijo(hija.modelData)
+                                                    }
                                                 }
 
                                                 RowLayout {
@@ -664,7 +747,7 @@ FadeIn {
                     IconGlyph {
                         anchors.centerIn: parent
                         text: String.fromCodePoint(
-                            vista.busqueda.length > 0 ? 0xF0349
+                            vista.searching ? 0xF0349
                             : (vista.contenido.length > 0
                                && vista.contenido[0].glifo
                                ? vista.contenido[0].glifo : 0xF0431))
@@ -681,8 +764,8 @@ FadeIn {
 
                     IslandLabel {
                         Layout.fillWidth: true
-                        text: vista.busqueda.length > 0
-                            ? `${vista.cuantasCasan} match “${vista.busqueda}”`
+                        text: vista.searching
+                            ? `${vista.cuantasCasan} ${vista.cuantasCasan === 1 ? "result" : "results"}`
                             : (vista.contenido.length > 0
                                ? vista.contenido[0].grupo : "")
                         textFormat: Text.PlainText
@@ -695,13 +778,17 @@ FadeIn {
                     IslandLabel {
                         Layout.fillWidth: true
                         visible: text.length > 0
-                        text: vista.busqueda.length > 0
-                            ? "From every section at once"
+                        text: vista.searching
+                            ? `Settings matching “${vista.busqueda.trim()}”`
                             : (vista.contenido.length > 0
-                               ? (vista.contenido[0].desc || "") : "")
+                               ? (vista.contenido[0].vista === "display"
+                                  ? "Wallpaper, palette, fonts and monitor layout."
+                                  : vista.contenido[0].vista === "placement"
+                                  ? "Choose where each view opens. Follow the bar or set its own position."
+                                  : vista.contenido[0].desc || "") : "")
                         textFormat: Text.PlainText
-                        color: Theme.dim
-                        font.pixelSize: 10
+                        color: Theme.muted
+                        font.pixelSize: 11
                         wrapMode: Text.WordWrap
                         maximumLineCount: 2
                     }
@@ -725,49 +812,25 @@ FadeIn {
                 //  it would be a button that does not do what it says. The
                 //  situation is stated and whoever reads it decides; the
                 //  uncommitted work is theirs.
-                Rectangle {
+                K4.ActionButton {
                     id: novedad
                     visible: vista.plugin.version.hayNovedad
-                    Layout.preferredWidth: textoNovedad.implicitWidth + 20
-                    Layout.preferredHeight: 22
                     Layout.alignment: Qt.AlignVCenter
-                    radius: 11
-
-                    readonly property bool ofrece: !vista.plugin.version.sucio
-
-                    color: !ofrece ? Theme.track
-                        : (ratonNovedad.containsMouse ? "#4a9eff" : Theme.blue)
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    IslandLabel {
-                        id: textoNovedad
-                        anchors.centerIn: parent
-                        textFormat: Text.PlainText
-                        text: novedad.ofrece
-                            ? `${vista.plugin.version.detras} new · Update`
-                            : `${vista.plugin.version.detras} new · save your changes first`
-                        color: novedad.ofrece ? Theme.ink : Theme.muted
-                        font.pixelSize: 9
-                        font.weight: novedad.ofrece ? Font.DemiBold : Font.Normal
-                    }
-
-                    MouseArea {
-                        id: ratonNovedad
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: novedad.ofrece
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            vista.plugin.version.actualizar()
-                            vista.plugin.close()
-                        }
+                    text: vista.plugin.version.sucio ? "Update pending"
+                        : "Update (" + vista.plugin.version.detras + ")"
+                    enabled: !vista.plugin.version.sucio
+                    Accessible.description: vista.plugin.version.sucio
+                        ? "Save your local changes before updating" : "Update k4"
+                    onClicked: {
+                        vista.plugin.version.actualizar()
+                        vista.plugin.close()
                     }
                 }
             }
 
             // ── the options ──────────────────────────────────────
             K4.Rodillo {
+                id: pageScroll
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
@@ -791,21 +854,18 @@ FadeIn {
 
                             width: parent.width - parent.leftPadding
                                    - parent.rightPadding
-                            spacing: 6
+                            spacing: 8
 
                             //  While searching there are several sections at
                             //  once, and without their titles the matches read
                             //  as a loose list with no context. With a single
                             //  section the title is already in the header and
                             //  repeating it would be noise.
-                            IslandLabel {
-                                visible: vista.busqueda.length > 0
-                                text: bloque.modelData.grupo
-                                textFormat: Text.PlainText
-                                color: Theme.dim
-                                font.pixelSize: 9
-                                font.capitalization: Font.AllUppercase
-                                Layout.leftMargin: 2
+                            K4.ActionButton {
+                                visible: vista.searching && bloque.modelData.atajo === undefined
+                                text: bloque.modelData.grupo + "  →"
+                                Accessible.name: "Open in " + bloque.modelData.grupo
+                                onClicked: vista.openResult(bloque.modelData)
                             }
 
                             //  ── the landing of a family ──────────────
@@ -823,7 +883,7 @@ FadeIn {
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.vista === "display"
                                         && bloque.modelData.atajo === undefined
-                                        && vista.busqueda.length === 0
+                                        && !vista.searching
                                 sourceComponent: Component {
                                     PortadaFamilia {
                                         familia: bloque.modelData
@@ -831,9 +891,8 @@ FadeIn {
                                             vista.elegirHijo(grupo)
                                         }
                                         onPedidaApp: {
-                                            vista.plugin.close()
-                                            PluginManager.abrirAplicacion(
-                                                bloque.modelData.app)
+                                            if (PluginManager.abrirAplicacion(bloque.modelData.app))
+                                                vista.plugin.close()
                                         }
                                     }
                                 }
@@ -847,6 +906,7 @@ FadeIn {
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.vista === "wallpaper"
+                                        && !vista.searching
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     PaletteFromWallpaper {}
@@ -875,6 +935,7 @@ FadeIn {
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.vista === "wallpaper"
+                                        && !vista.searching
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component {
                                     RejillaFondos {
@@ -893,6 +954,7 @@ FadeIn {
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.vista === "fonts"
+                                        && !vista.searching
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component { SelectorFuentes {} }
                             }
@@ -905,6 +967,7 @@ FadeIn {
                                 Layout.preferredHeight: visible ? 42 : 0
                                 visible: bloque.modelData.atajo !== undefined
                                 radius: 10
+                                Accessible.name: "Open " + bloque.modelData.grupo
 
                                 onPulsada: vista.irASeccion(
                                     bloque.modelData.grupo)
@@ -981,6 +1044,7 @@ FadeIn {
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.pagina !== undefined
+                                        && !vista.searching
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: bloque.modelData.pagina
                                     ? Enganches.componenteDe(
@@ -992,12 +1056,18 @@ FadeIn {
                             //  The placement editor: one card per
                             //  openable view, wrapping side controls and a
                             //  draggable monitor preview for precise placement.
+                            FilaOpcion {
+                                visible: bloque.modelData.vista === "placement" && !vista.searching
+                                modelData: ({ id: "openOnHoverEnabled", nombre: "Open on hover",
+                                    desc: "Open configured views when the pointer reaches their edge.", glifo: 0xF05B1 })
+                            }
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.vista === "placement"
+                                        && !vista.searching
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component { PlacementPage {} }
                             }
@@ -1011,6 +1081,7 @@ FadeIn {
                                 Layout.preferredHeight: active && item
                                     ? item.implicitHeight : 0
                                 active: bloque.modelData.vista === "panel"
+                                        && !vista.searching
                                         && bloque.modelData.atajo === undefined
                                 sourceComponent: Component { PanelEditor {} }
                             }
@@ -1029,7 +1100,7 @@ FadeIn {
                                 //  the section, you enter it.
                                 active: bloque.modelData.vista === "island"
                                         && bloque.modelData.atajo === undefined
-                                        && vista.busqueda.length === 0
+                                        && !vista.searching
                                 sourceComponent: Component { PrevioIsland {} }
                             }
 
@@ -1040,7 +1111,12 @@ FadeIn {
                             //  wants its own, it is added here and nothing else
                             //  is touched.
                             Repeater {
-                                model: bloque.modelData.opciones
+                                model: vista.searching ? bloque.modelData.opciones
+                                    : (bloque.modelData.opciones || []).filter(function (option) {
+                                        if (bloque.modelData.vista === "placement") return false
+                                        return bloque.modelData.vista !== "panel"
+                                            || ["panelShowToggles", "panelShowMedia", "panelShowShortcuts"].indexOf(option.id) < 0
+                                    })
                                 delegate: Loader {
                                     required property var modelData
                                     Layout.fillWidth: true
@@ -1065,7 +1141,7 @@ FadeIn {
                         topPadding: 60
                         text: `Nothing matches “${vista.busqueda}”`
                         textFormat: Text.PlainText
-                        color: Theme.dim
+                        color: Theme.muted
                         font.pixelSize: 12
                     }
                 }
@@ -1090,104 +1166,40 @@ FadeIn {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                //  Two doors to what is NOT a setting but gets looked for
-                //  from here: the store —bring, update, remove— and the
-                //  Hyprland theme —wallpapers, colours, effects—. They are
-                //  applications with their own screen, and those screens are
-                //  fine as they are; what was missing was reaching them from
-                //  the place where you configure things.
-                //
-                //  They open instead of hiding under this view: this closes
-                //  first.
-                Repeater {
-                    model: [
-                        { nombre: "Plugins", id: "tienda" }
-                    ]
-
-                    delegate: K4.Baldosa {
-                        id: acceso
-                        required property var modelData
-
-                        Layout.preferredWidth: etiquetaAcceso.implicitWidth + 22
-                        Layout.preferredHeight: 24
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: 12
-                        onPulsada: {
-                            vista.plugin.close()
-                            PluginManager.abrirAplicacion(acceso.modelData.id)
-                        }
-
-                        IslandLabel {
-                            id: etiquetaAcceso
-                            anchors.centerIn: parent
-                            text: acceso.modelData.nombre
-                            textFormat: Text.PlainText
-                            color: Theme.muted
-                            font.pixelSize: 10
-                        }
-                    }
+                K4.ActionButton {
+                    text: "Plugins"
+                    Accessible.name: "Manage plugins"
+                    onClicked: vista.irASeccion("plugins")
                 }
 
                 IslandLabel {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
-                    text: PluginManager.catalogo.length + " plugins · "
-                        + PluginManager.catalogo.filter(function (m) {
+                    text: Object.keys(PluginManager.errores).length > 0
+                        ? Object.keys(PluginManager.errores).length + " with errors"
+                        : PluginManager.catalogo.filter(function (m) {
                             return PluginManager.estaHabilitado(m.id)
                         }).length + " enabled"
-                        + (Object.keys(PluginManager.errores).length > 0
-                           ? " · " + Object.keys(PluginManager.errores).length
-                             + " with errors" : "")
-                    color: Theme.dim
-                    font.pixelSize: 9
+                    color: Theme.muted
+                    font.pixelSize: 11
                     elide: Text.ElideRight
-                }
-
-                IslandLabel {
-                    text: "System tools"
-                    color: Theme.dim
-                    font.pixelSize: 9
-                    Layout.alignment: Qt.AlignVCenter
                 }
 
                 Repeater {
                     model: [
-                        { nombre: "Networks", glifo: 0xF05A9,
-                          orden: ["nm-connection-editor"] },
-                        { nombre: "Sound", glifo: 0xF057E,
-                          orden: ["pavucontrol"] }
+                        { nombre: "Wi-Fi", tab: "wifi" },
+                        { nombre: "Sound", tab: "sound" }
                     ]
 
-                    delegate: K4.Baldosa {
+                    delegate: K4.ActionButton {
                         id: herramienta
                         required property var modelData
-
-                        Layout.preferredWidth: contenido.implicitWidth + 20
-                        Layout.preferredHeight: 24
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: 12
-
-                        onPulsada: {
-                            K4.Sistema.lanzar(herramienta.modelData.orden)
+                        text: modelData.nombre
+                        enabled: !!vista.plugin.panel
+                        Accessible.name: "Open " + text + " in control centre"
+                        onClicked: {
                             vista.plugin.close()
-                        }
-
-                        RowLayout {
-                            id: contenido
-                            anchors.centerIn: parent
-                            spacing: 6
-
-                            IconGlyph {
-                                text: String.fromCodePoint(herramienta.modelData.glifo)
-                                color: Theme.muted
-                                font.pixelSize: 12
-                                renderType: Text.NativeRendering
-                            }
-
-                            IslandLabel {
-                                text: herramienta.modelData.nombre
-                                font.pixelSize: 10
-                            }
+                            vista.plugin.panel.openTab(modelData.tab)
                         }
                     }
                 }
@@ -1198,7 +1210,10 @@ FadeIn {
     // ── the two ways to paint a row ──────────────────────────────
     Component {
         id: comoOpcion
-        FilaOpcion { modelData: parent.dato }
+        FilaOpcion {
+            modelData: parent.dato
+            highlighted: vista.highlightedSetting === modelData.id
+        }
     }
 
     Component {

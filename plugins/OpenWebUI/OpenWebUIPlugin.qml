@@ -39,17 +39,26 @@ K4Plugin {
     //  take the desk.
     property bool openAfterResponse: false
 
-    //  What the Settings page was told, mid-typing. Reopening the
-    //  page must find the words where they were left, not start
-    //  over: a server half-written, an email, a key pasted but not
-    //  yet applied. Saved with the knobs, applied only when the
-    //  user says so (Enter, «Save», or leaving the page).
+    // Non-secret drafts may survive reopening. Credentials are transient;
+    // changing servers is an explicit action, never a page-destruction effect.
     property string draftServer: ""
     property string draftEmail: ""
     property string draftPassword: ""
     property string draftApiKey: ""
 
     readonly property bool autenticado: apiToken.length > 0
+    property bool connectionVerified: false
+    property int connectionEpoch: 0
+    onBaseUrlChanged: invalidateConnection()
+    onApiTokenChanged: invalidateConnection()
+    function invalidateConnection() {
+        connectionEpoch++
+        connectionVerified = false
+        fetchingModels = false
+        fetchingChats = false
+        fetchingChatId = ""
+        signingIn = false
+    }
 
     // ── the conversation ──────────────────────────────────────────
     property bool open: false
@@ -141,8 +150,8 @@ K4Plugin {
             self.openAfterResponse = d.openAfterResponse === true
             self.draftServer = d.draftServer || d.baseUrl || ""
             self.draftEmail = d.draftEmail || ""
-            self.draftPassword = d.draftPassword || ""
-            self.draftApiKey = d.draftApiKey || ""
+            self.draftPassword = ""
+            self.draftApiKey = ""
             self.pinLists = Array.isArray(d.pinLists) ? d.pinLists : []
             //  The two files load in any order: if this one lands
             //  after the conversation, its verdict on remembering is
@@ -152,6 +161,8 @@ K4Plugin {
                 self.currentChatId = ""
                 self.chatTitle = ""
             }
+            if (d.draftPassword !== undefined || d.draftApiKey !== undefined)
+                Qt.callLater(self.guardarAjustes)
         }
     }
 
@@ -162,8 +173,6 @@ K4Plugin {
                           openAfterResponse: openAfterResponse,
                           draftServer: draftServer,
                           draftEmail: draftEmail,
-                          draftPassword: draftPassword,
-                          draftApiKey: draftApiKey,
                           pinLists: pinLists })
     }
 
@@ -217,21 +226,25 @@ K4Plugin {
         }
     }
 
-    //  The page's fields, committed when it goes away: the server
-    //  takes effect (typed but never Entering is the normal way to
-    //  leave a field), the rest only keep their place for next time.
-    //  An empty server is never applied — clearing the box is not a
-    //  wish to point at nothing.
+    // Apply a server explicitly. Credentials belong to the server that issued them.
     function confirmarBorradores() {
-        const nuevo = draftServer.trim()
-        if (nuevo.length > 0 && nuevo !== baseUrl) {
-            baseUrl = nuevo
-            if (autenticado) {
-                fetchModels()
-                refreshChats()
-            }
+        const nuevo = draftServer.trim().replace(/\/+$/, "")
+        if (!/^https?:\/\/[^/\s]+(?:\/[^\s]*)?$/.test(nuevo)) {
+            signInError = "Enter a complete http:// or https:// server address."
+            return false
         }
+        if (nuevo !== baseUrl.replace(/\/+$/, "")) {
+            if (signingIn || generating || fetchingModels || fetchingChats) {
+                signInError = "Wait for the current request to finish before changing servers."
+                return false
+            }
+            salir()
+            baseUrl = nuevo
+        }
+        draftServer = nuevo
+        signInError = ""
         guardarAjustes()
+        return true
     }
 
     K4.Guardado {
@@ -572,8 +585,10 @@ K4Plugin {
         const datos = Api.exportChat(chatTitle.length > 0
                                      ? chatTitle : tituloProvisional(),
                                      currentModel, messages)
+        const epoch = connectionEpoch
         Api.saveChat(baseUrl, apiToken, currentChatId, datos,
             function (resp) {
+                if (epoch !== connectionEpoch) return
                 if (resp && resp.id && resp.id !== currentChatId) {
                     currentChatId = resp.id
                     guardarEstado()
@@ -584,6 +599,7 @@ K4Plugin {
             }, function (fallo) {
                 //  Not fatal: the conversation goes on, it just won't
                 //  be in the web UI's list. The next exchange retries.
+                if (epoch !== connectionEpoch) return
                 errorMessage = ""
                 console.warn("k4.openwebui: " + fallo)
             })
@@ -613,8 +629,10 @@ K4Plugin {
                     || messages[i].role === "assistant")
                 primeros.push({ role: messages[i].role,
                                 content: messages[i].content })
+        const epoch = connectionEpoch
         Api.generateTitle(baseUrl, apiToken, currentModel, primeros,
             function (titulo) {
+                if (epoch !== connectionEpoch) return
                 chatTitle = titulo
                 guardarEstado()
                 // the title travels with the next save; a save with
@@ -622,6 +640,7 @@ K4Plugin {
                 sincronizarServidor()
                 refreshChats()
             }, function (fallo) {
+                if (epoch !== connectionEpoch) return
                 console.warn("k4.openwebui: title: " + fallo)
             })
     }
@@ -641,14 +660,17 @@ K4Plugin {
         fetchingChats = true
         chatsError = ""
         const pagina = chatPage + 1
+        const epoch = connectionEpoch
         Api.fetchChats(baseUrl, apiToken, pagina,
             function (lista) {
+                if (epoch !== connectionEpoch) return
                 fetchingChats = false
                 chatPage = pagina
                 hasMoreChats = lista.length > 0
                 const juntas = chatList.concat(lista)
                 chatList = pagina === 1 ? lista : juntas
             }, function (fallo) {
+                if (epoch !== connectionEpoch) return
                 fetchingChats = false
                 chatsError = fallo
             })
@@ -660,8 +682,10 @@ K4Plugin {
         if (generating)
             stopGeneration()
         fetchingChatId = id
+        const epoch = connectionEpoch
         Api.fetchChat(baseUrl, apiToken, id,
             function (remoto) {
+                if (epoch !== connectionEpoch) return
                 fetchingChatId = ""
                 const orden = Api.orderedMessages(remoto)
                 if (orden.length === 0)
@@ -678,6 +702,7 @@ K4Plugin {
                 chatLoads++
                 guardarEstado()
             }, function (fallo) {
+                if (epoch !== connectionEpoch) return
                 fetchingChatId = ""
                 chatsError = fallo
             })
@@ -699,16 +724,21 @@ K4Plugin {
             return
         fetchingModels = true
         modelsError = ""
+        const epoch = connectionEpoch
         Api.fetchModels(baseUrl, apiToken,
             function (lista) {
+                if (epoch !== connectionEpoch) return
                 fetchingModels = false
+                connectionVerified = true
                 models = lista
                 //  A first run has no model chosen; the first one the
                 //  server offers is a better default than a blank.
                 if (currentModel.length === 0 && lista.length > 0)
                     setModel(lista[0])
             }, function (fallo) {
+                if (epoch !== connectionEpoch) return
                 fetchingModels = false
+                connectionVerified = false
                 modelsError = fallo
             })
     }
@@ -723,28 +753,36 @@ K4Plugin {
     // ── auth, driven from the Settings page ───────────────────────
 
     function iniciarSesion(correo, clave) {
+        if (signingIn || !correo.trim() || !clave || !confirmarBorradores()) return
         signingIn = true
         signInError = ""
+        const epoch = connectionEpoch
         Api.signin(baseUrl, correo, clave,
             function (token) {
+                if (epoch !== connectionEpoch) return
                 signingIn = false
                 apiToken = token
                 currentChatId = ""       // the token's account, not
                 chatList = []            // whoever was there before
                 models = []
+                draftPassword = ""
+                draftApiKey = ""
                 guardarAjustes()
                 fetchModels()
                 refreshChats()
             }, function (fallo) {
+                if (epoch !== connectionEpoch) return
                 signingIn = false
                 signInError = fallo
             })
     }
 
     function guardarClave(clave) {
-        if (clave.trim().length === 0)
+        if (signingIn || clave.trim().length === 0 || !confirmarBorradores())
             return
         apiToken = clave.trim()
+        draftPassword = ""
+        draftApiKey = ""
         guardarAjustes()
         fetchModels()
         refreshChats()
@@ -752,6 +790,9 @@ K4Plugin {
 
     function salir() {
         apiToken = ""
+        draftPassword = ""
+        draftApiKey = ""
+        modelsError = ""
         guardarAjustes()
         newChat()
         chatList = []
@@ -916,7 +957,7 @@ K4Plugin {
         titulo: "OpenWebUI"
         glifo: 0xF0B79 // md-chat
         desc: "Server, sign-in and chat behavior"
-        claves: ["openwebui", "chat", "ai", "model", "llm"]
+        claves: ["openwebui", "chat", "ai", "model", "llm", "server", "sign in", "api key", "password", "history", "pin lists"]
         componente: Component { OpenWebUIPagina { plugin: self } }
     }
 

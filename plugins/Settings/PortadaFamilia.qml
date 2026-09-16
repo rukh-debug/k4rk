@@ -129,7 +129,7 @@ ColumnLayout {
     //  the family can grow a fifth without this page noticing.
     GridLayout {
         Layout.fillWidth: true
-        columns: 2
+        columns: width < 520 ? 1 : 2
         columnSpacing: 10
         rowSpacing: 10
 
@@ -143,6 +143,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 72
                 radius: 12
+                Accessible.name: "Open " + modelData.grupo
 
                 onPulsada: portada.pedida(tarjeta.modelData)
 
@@ -189,8 +190,8 @@ ColumnLayout {
                             Layout.fillWidth: true
                             text: tarjeta.modelData.desc || ""
                             textFormat: Text.PlainText
-                            color: Theme.dim
-                            font.pixelSize: 9
+                            color: Theme.muted
+                            font.pixelSize: 11
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
                         }
@@ -223,10 +224,13 @@ ColumnLayout {
 
         //  Off or broken, the door says so instead of pretending: a card
         //  that does nothing teaches that cards do nothing.
-        readonly property bool lista: PluginManager.estaHabilitado(
-            String(portada.familia.app || ""))
+        readonly property bool lista: PluginManager.aplicaciones.some(function (app) {
+            return app.id === portada.familia.app && app.habilitado && app.disponible
+        })
 
         opacity: tarjetaApp.lista ? 1 : 0.45
+        enabled: lista
+        Accessible.name: "Open monitor layout"
 
         onPulsada: {
             if (tarjetaApp.lista)
@@ -265,10 +269,10 @@ ColumnLayout {
                     Layout.fillWidth: true
                     text: tarjetaApp.lista
                         ? "Arrange and enable your screens"
-                        : "The displays plugin is off"
+                        : "Enable the Displays plugin to configure monitors"
                     textFormat: Text.PlainText
-                    color: Theme.dim
-                    font.pixelSize: 10
+                    color: Theme.muted
+                    font.pixelSize: 11
                     elide: Text.ElideRight
                 }
             }

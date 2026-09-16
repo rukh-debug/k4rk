@@ -110,11 +110,64 @@ The bar's look, ready to assemble — every piece takes the palette from
 | `K4.Medidor` | A read-only bar: `valor` out of `maximo`, with the house track and easing |
 | `K4.Baldosa` | Pressable card: hover lift, press sink |
 | `K4.Boton` | Round one-glyph button |
+| `K4.ActionButton` | Compact text action or controlled choice chip |
+| `K4.TextField` | Single-line editor with shared sizing, selection and focus styling |
 | `K4.Aparicion` | Fade-in for views |
 | `K4.Rodillo` | Scrollable column whose wheel works over hoverable rows |
 | `K4.FocoInicial` | Grabs keyboard focus when a view opens |
 
 `ejemplos/piezas/` is the runnable showcase of all of them.
+
+### Controls, keyboard and focus
+
+`K4.ActionButton` inherits Qt Quick Controls `AbstractButton`: set `text`,
+handle `clicked()`, and use inherited `enabled` to disable interaction.
+Its additional `selected: bool` property defaults to false and is controlled by
+the caller; activation does not change it. Its default height is 32 logical px.
+
+`K4.TextField` inherits Qt Quick Controls `TextField` and defaults to 210 × 32
+logical px. It supports `text`, `placeholderText`, `validator`, `echoMode`,
+`accepted()` and `editingFinished()`. The caller supplies a persistent visible
+label and `Accessible.name`, and owns validation and commit/cancel policy.
+Use password echo mode for secrets and keep credential drafts transient.
+
+`K4.Boton`, pressable `K4.Baldosa`, and `K4.Interruptor` support Tab focus,
+Enter/Space activation and a visible focus outline. Supply `Accessible.name`
+for icon actions, navigation cards and switches. Their existing signals remain
+owner-controlled; a switch emits `alternado()` without changing `marcado`.
+`enabled: false` prevents pointer and keyboard interaction. `Boton.activo`
+also controls its default enabled state.
+
+`K4.Deslizador` supports arrows to change by `paso`, Home/End for bounds, and
+accessible increase/decrease actions. Read-only `dragging` reports pointer
+manipulation. An empty `etiqueta` hides its heading/value row (28 px total);
+a labelled slider is 48 px high. Set `Accessible.name` explicitly when hiding
+the heading. Pointer feedback is immediate while dragging; external updates
+ease into place. Quantization starts at `desde` and respects both bounds.
+
+`K4.Rodillo` also reveals focused descendant controls during keyboard traversal
+and accepts pixel-based trackpad scrolling.
+
+From the repository root, run the pointer, keyboard, controlled-state and
+focus-scrolling regression tests with Quickshell's static QML modules loaded:
+
+```sh
+QML_IMPORT_PATH="$PWD/api${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}" \
+  QT_QPA_PLATFORM=offscreen quickshell -p tools/ui-controls-test.qml
+```
+
+```qml
+K4.ActionButton {
+    text: "Retry"
+    enabled: !requestPending
+    onClicked: retryRequest()
+}
+K4.Interruptor {
+    Accessible.name: "Enable notifications"
+    marcado: notificationsEnabled
+    onAlternado: setNotificationsEnabled(!notificationsEnabled)
+}
+```
 
 ## Plugin state that survives: `K4.Guardado`
 

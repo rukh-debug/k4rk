@@ -304,36 +304,13 @@ ColumnLayout {
                         //  declares no summon command (the Hyprland
                         //  island opens when a mode does): a button
                         //  that copied nothing would lie.
-                        Rectangle {
+                        K4.Boton {
                             visible: tarjeta.modelData.ipc.length > 0
-                            implicitWidth: 26
-                            implicitHeight: 22
-                            radius: 6
-                            color: copyMouse.containsMouse
-                                    ? Theme.surfaceHi : "transparent"
-
-                            Behavior on color {
-                                ColorAnimation { duration: 120 }
-                            }
-
-                            IconGlyph {
-                                anchors.centerIn: parent
-                                text: String.fromCodePoint(
-                                    tarjeta.copied
-                                        ? 0x000F012C   // md-check
-                                        : 0x000F018F)  // md-content_copy
-                                color: tarjeta.copied
-                                        ? Theme.blue : Theme.muted
-                                font.pixelSize: 13
-                            }
-
-                            MouseArea {
-                                id: copyMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: tarjeta.copyIpc()
-                            }
+                            glifo: tarjeta.copied ? Theme.ico.check : Theme.ico.copy
+                            tamano: 16
+                            color: tarjeta.copied ? Theme.blue : Theme.muted
+                            Accessible.name: "Copy command for " + tarjeta.modelData.nombre
+                            onPulsado: tarjeta.copyIpc()
                         }
                     }
 
@@ -356,10 +333,10 @@ ColumnLayout {
 
                         IslandLabel {
                             Layout.fillWidth: true
-                            text: "Paste it in a terminal and press Enter — or hang it on a key: bind = SUPER, T, exec, <the copied command>"
-                            color: Theme.dim
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
+                            text: "Command copied. Run it in a terminal or add it to your compositor's key bindings."
+                            color: Theme.muted
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
                         }
                     }
 
@@ -375,8 +352,8 @@ ColumnLayout {
                                   Settings.barAlignment)
                             : pagina.palabraPunto(tarjeta.efectiva.side,
                                                   tarjeta.efectiva.align)
-                        color: tarjeta.propia === null ? Theme.dim : Theme.muted
-                        font.pixelSize: 9
+                        color: Theme.muted
+                        font.pixelSize: 11
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
@@ -389,12 +366,12 @@ ColumnLayout {
                     Flow {
                         Layout.fillWidth: true
                         Layout.preferredHeight: childrenRect.height
-                        spacing: 5
+                        spacing: 8
 
                         Repeater {
                             model: pagina.lados
 
-                            delegate: Rectangle {
+                            delegate: K4.ActionButton {
                                 id: chipLado
                                 required property var modelData
 
@@ -410,34 +387,10 @@ ColumnLayout {
                                           || tarjeta.parLados.v
                                              === chipLado.modelData.codigo
 
-                                implicitWidth: textoLado.implicitWidth + 20
-                                implicitHeight: 24
-                                radius: 12
-                                color: puesta ? Theme.blue
-                                    : (ratonLado.containsMouse
-                                       ? Theme.surfaceHi : Theme.track)
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 120 }
-                                }
-
-                                IslandLabel {
-                                    id: textoLado
-                                    anchors.centerIn: parent
-                                    text: chipLado.modelData.nombre
-                                    color: chipLado.puesta ? Theme.ink
-                                                           : Theme.muted
-                                    font.pixelSize: 10
-                                    font.weight: chipLado.puesta
-                                        ? Font.DemiBold : Font.Normal
-                                }
-
-                                MouseArea {
-                                    id: ratonLado
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
+                                text: modelData.nombre
+                                selected: puesta
+                                Accessible.name: tarjeta.modelData.nombre + ": " + text
+                                onClicked: {
                                         if (chipLado.modelData.codigo === "")
                                             Settings.ponerPlacement(
                                                 tarjeta.idVista, "", 50)
@@ -445,9 +398,28 @@ ColumnLayout {
                                             tarjeta.pulsarLado(
                                                 chipLado.modelData.codigo)
                                         tarjeta.revisarHover()
-                                    }
                                 }
                             }
+                        }
+                    }
+
+                    K4.Deslizador {
+                        Layout.fillWidth: true
+                        visible: tarjeta.propia !== null
+                        etiqueta: "Alignment"
+                        Accessible.name: "Alignment of " + tarjeta.modelData.nombre
+                        valor: tarjeta.efectiva.align
+                        sufijo: "%"
+                        onMovido: function (value) {
+                            Settings.ponerPlacementMemoria(tarjeta.idVista, tarjeta.efectiva.side, value)
+                            if (!dragging) {
+                                Settings.guardar()
+                                tarjeta.revisarHover()
+                            }
+                        }
+                        onDraggingChanged: if (!dragging) {
+                            Settings.guardar()
+                            tarjeta.revisarHover()
                         }
                     }
 
@@ -468,6 +440,7 @@ ColumnLayout {
                             id: interruptorHover
                             Layout.alignment: Qt.AlignVCenter
                             checked: tarjeta.hoverArmed
+                            Accessible.name: "Open " + tarjeta.modelData.nombre + " on hover"
                             enabled: tarjeta.hoverArmed
                                        || (tarjeta.propia !== null
                                            && !tarjeta.hoverBusy)
@@ -487,14 +460,13 @@ ColumnLayout {
                                       ? "Open on hover off — wall busy: "
                                         + pagina.nombreDe(tarjeta.avisoHover)
                                       : tarjeta.hoverArmed
-                                        ? "Opens when the pointer reaches it"
+                                        ? (Settings.openOnHoverEnabled
+                                           ? "Opens when the pointer reaches it"
+                                           : "Configured · global Open on hover is off")
                                         : "Touch its wall to open it"
-                            color: tarjeta.hoverBusy
-                                       || tarjeta.avisoHover.length > 0
-                                       || tarjeta.propia === null
-                                   ? Theme.dim : Theme.muted
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
+                            color: Theme.muted
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
                         }
                     }
                 }
@@ -735,6 +707,7 @@ ColumnLayout {
 
                     MouseArea {
                         id: ratonMonitor
+                        property var previousPlacement: null
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -743,6 +716,8 @@ ColumnLayout {
                         //  and the disk is written once, on release —
                         //  not per pixel.
                         onPressed: function (mouse) {
+                            previousPlacement = tarjeta.propia
+                                ? { side: tarjeta.propia.side, align: tarjeta.propia.align } : null
                             const c = monitor.colocacionEn(mouse.x, mouse.y)
                             Settings.ponerPlacementMemoria(tarjeta.idVista,
                                 c.side, c.align)
@@ -759,6 +734,11 @@ ColumnLayout {
                             Settings.ponerPlacement(tarjeta.idVista,
                                 c.side, c.align)
                             tarjeta.revisarHover()
+                        }
+                        onCanceled: {
+                            Settings.ponerPlacementMemoria(tarjeta.idVista,
+                                previousPlacement ? previousPlacement.side : "",
+                                previousPlacement ? previousPlacement.align : 50)
                         }
                     }
                 }
