@@ -1,23 +1,13 @@
-//  The house terminal, seen from the bar.
+// Island terminal sessions and native k4term integration. Hiding the view
+// preserves sessions; closing a tab or disabling the plugin ends them.
 //
-//  k4term lives outside (Rust, libghostty + GPUI) and this is its embassy:
-//  it opens windows over IPC and turns what the terminal reports into
-//  notifications.
-//
-//  The plugin never occupies the island. It is a service piece shaped like
-//  a plugin, and that is fine: it turns on and off from Settings like
-//  everything else, and its IPC target unregisters itself when off.
-//
-//      quickshell ipc -p shell.qml call k4.term abrir
-//      quickshell ipc -p shell.qml call k4.term aqui
-//      quickshell ipc -p shell.qml call k4.term ejecutar "yay -Syu"
+//     quickshell ipc -p shell.qml call k4.term island
+//     quickshell ipc -p shell.qml call k4.term run "git status"
 
 import QtQuick
 import K4 as K4
-import "../../core"
-import "../../services"
 
-K4Plugin {
+K4.Plugin {
     id: self
 
     name: "terminal"
@@ -98,7 +88,9 @@ K4Plugin {
     }
 
     readonly property int filasMinimas: 6
-    readonly property int filasMaximas: 26
+    readonly property int filasMaximas: Math.max(filasMinimas,
+        Math.min(26, Math.floor((560 - chrome) / altoLinea)))
+    onFilasMaximasChanged: objetivo = Math.min(objetivo, filasMaximas)
 
     //  Growing and folding, at a steady pace and with ONE number.
     //
@@ -128,7 +120,8 @@ K4Plugin {
 
     property real objetivo: filasMinimas
     property real filasReales: objetivo
-    readonly property int filasDeseadas: Math.max(filasMinimas, Math.round(filasReales))
+    readonly property int filasDeseadas: Math.max(filasMinimas,
+        Math.min(filasMaximas, Math.round(filasReales)))
 
     //  The animation engine moves it, not a Timer, and that is not a
     //  detail: a 16 ms Timer does not fire sixty times a second —measured,
@@ -159,7 +152,7 @@ K4Plugin {
                 && marco.ultimo.estado !== "corre") {
             salirDe(claveIsla(sesion.numero))
             mandar({ que: "tinte", color: "" })
-            Consola.salioDe(sesion.conectadoA)
+            K4.Terminal.connectionEnded(sesion.conectadoA)
             sesion.conectadoA = ""
         }
 
@@ -167,10 +160,10 @@ K4Plugin {
         //  frames arriving now are the newborn session putting out its
         //  prompt, not anybody's answer. Switching off here left the path
         //  unseen forever.
-        if (Consola.conectando && !pendiente) {
-            const esperado = Date.now() - Consola.conectandoDesde
+        if (K4.Terminal.connecting && sesion && !sesion.pendingCommand) {
+            const esperado = Date.now() - K4.Terminal.connectionStartedAt
             if (esperado > 250)
-                Consola.conectado()
+                K4.Terminal.connectionFinished()
         }
         //  «Full» means reaching the last row or the one before. The
         //  one-before is not a concession: a full-screen program ALWAYS
@@ -270,17 +263,22 @@ K4Plugin {
     }
 
     function pegar(primaria) {
+        if (pegador.running || !sesion)
+            return
+        pegador.sessionId = sesion.numero
         pegador.primaria = primaria === true
         pegador.running = true
     }
 
     property K4.Process pegador: K4.Process {
         property bool primaria: false
+        property int sessionId: -1
         command: primaria ? ["wl-paste", "--primary", "--no-newline"]
                           : ["wl-paste", "--no-newline"]
         onSalida: function (texto) {
-            if (texto)
-                self.mandar({ que: "pegar", valor: texto })
+            const index = self.indiceDe(sessionId)
+            if (texto && index >= 0)
+                self.vivas[index].mandar({ que: "pegar", valor: texto })
         }
         onTerminado: running = false
     }
@@ -367,33 +365,37 @@ K4Plugin {
     //  service cannot depend on a plugin existing, and this one turns
     //  off from Settings like any other. When off, the offer is
     //  withdrawn and everything opens in a window again.
-    Component.onCompleted: Consola.registrarIsla(function (guion) {
+    Component.onCompleted: K4.Terminal.registerIsland(function (guion) {
         self.correrAqui(guion)
     })
-    Component.onDestruction: Consola.registrarIsla(null)
+    Component.onDestruction: K4.Terminal.registerIsland(null)
 
     function correrAqui(guion) {
-        if (!Consola.hayIsla) {
-            K4.Sistema.lanzar(Consola.orden(guion))
+        if (!K4.Terminal.islandAvailable) {
+            K4.Sistema.lanzar(K4.Terminal.scriptCommand(guion))
             return
         }
         //  House commands ALWAYS go to a new terminal, not the one in
         //  front of you: if you were halfway through claude, dropping a
         //  `yay -Syu` on top would be a dirty trick.
-        nueva()
+        const target = nueva()
         abierto = true
         mandar({ que: "pinta" })
         //  Always with a wait, because it is always a newborn session:
         //  text arriving before the shell puts out its prompt is
         //  repeated raw by the tty and the command shows twice, once
         //  loose at the top and once in its place.
-        pendiente = guion
-        esperarPrompt.restart()
+        target.pendingPassword = K4.Terminal.takeConnectionPassword()
+        target.pendingDestination = K4.Terminal.connecting
+        target.pendingTint = K4.Terminal.connectionTint
+        target.queueCommand(guion)
     }
 
-    property string pendiente: ""
-
-    function escribirMandato(guion) {
+    function escribirMandato(target) {
+        const guion = target.pendingCommand
+        if (!guion)
+            return
+        target.pendingCommand = ""
         //  Ctrl-U in front: if you had left something half-written, the
         //  command would paste behind it and some chimera would come out.
         //
@@ -405,22 +407,22 @@ K4Plugin {
         //  BEFORE the command goes out: when the far side asks for it,
         //  the terminal types it. It is neither stored nor shown here;
         //  the moment it is handed over, it is erased.
-        if (Consola.claveConexion) {
+        if (target.pendingPassword) {
             //  If the binary on the other side predates this, it swallows
             //  the order silently and the password never gets typed. It
             //  is said out loud, because waiting without knowing why is
             //  the worst that can happen here.
-            if (sesion && sesion.sabeClaves) {
-                mandar({ que: "clave", valor: Consola.claveConexion })
+            if (target.sabeClaves) {
+                target.mandar({ que: "clave", valor: target.pendingPassword })
             } else {
                 K4.Sistema.lanzar(["notify-send", "-a", "k4",
                                    "Update k4term",
                                    "This version of k4term-isla cannot type passwords: the connection will ask you by hand."])
             }
-            Consola.claveConexion = ""
+            target.pendingPassword = ""
         }
 
-        mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\r" })
+        target.mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\r" })
 
         //  The quarter-second of grace counts from HERE, which is when
         //  the command truly leaves: the island session is brand new and
@@ -428,28 +430,15 @@ K4Plugin {
         //  pressing Enter and this almost half a second passes — and the
         //  echo arrived «late» and switched the path off before it
         //  started.
-        if (Consola.conectando) {
-            Consola.conectandoDesde = Date.now()
+        if (target.pendingDestination) {
+            K4.Terminal.markConnectionStarted()
 
             //  The place is noted on the session —not the plugin— because
             //  there can be several, each on its own server.
-            if (sesion) {
-                sesion.conectadoA = Consola.conectando
-                if (Consola.tinteConexion)
-                    mandar({ que: "tinte", color: Consola.tinteConexion })
-                entrarEn(claveIsla(sesion.numero), Consola.conectando)
-            }
-        }
-    }
-
-    Timer {
-        id: esperarPrompt
-        interval: 450
-        onTriggered: {
-            if (!self.pendiente)
-                return
-            self.escribirMandato(self.pendiente)
-            self.pendiente = ""
+            target.conectadoA = target.pendingDestination
+            if (target.pendingTint)
+                target.mandar({ que: "tinte", color: target.pendingTint })
+            entrarEn(claveIsla(target.numero), target.pendingDestination)
         }
     }
 
@@ -458,8 +447,8 @@ K4Plugin {
         //  plugin bundles one (island.py), so this only falls back to
         //  a window on hosts without python3, which is nowhere k4
         //  itself runs.
-        if (!Consola.hayIsla) {
-            K4.Sistema.lanzar(Consola.abrir(""))
+        if (!K4.Terminal.islandAvailable) {
+            K4.Sistema.lanzar(K4.Terminal.windowCommand(""))
             return
         }
         //  The first session does not start until you ask for it:
@@ -481,8 +470,8 @@ K4Plugin {
     //  Without k4term there is nobody to hand it to: then whatever
     //  there is opens, which is what was done before this existed.
     function sacar() {
-        if (!sesion || !Consola.esNuestra) {
-            K4.Sistema.lanzar(Consola.abrir(""))
+        if (!sesion || !sesion.nativeBackend || !K4.Terminal.nativeWindowAvailable) {
+            K4.Sistema.avisar("Terminal", "Moving a session requires the native k4term backend", false)
             return
         }
         mandar({ que: "emigrar" })
@@ -494,7 +483,7 @@ K4Plugin {
     function alEmigrar(socket) {
         if (!socket)
             return
-        K4.Sistema.lanzar([Consola.binario, "--heredar", socket])
+        K4.Sistema.lanzar([K4.Terminal.cual, "--heredar", socket])
         abierto = false
     }
 
@@ -535,6 +524,7 @@ K4Plugin {
     property Instantiator criadero: Instantiator {
         model: self.listaSesiones
         delegate: SesionIsla {
+            id: sessionDelegate
             required property int sid
             required property string socket
             numero: sid
@@ -543,6 +533,7 @@ K4Plugin {
             //  If it comes with a socket, this session does not start a
             //  shell: it adopts the one a window has just let go.
             heredar: socket
+            onCommandReady: self.escribirMandato(sessionDelegate)
             onDonde: function (ruta) { self.alDecirDonde(ruta) }
             onDifunta: self.alMorir(numero)
             onTrabajo: function (estado, mandato, salida, segundos) {
@@ -569,7 +560,9 @@ K4Plugin {
             const v = self.vivas.slice()
             v.splice(indice, 1)
             self.vivas = v
-            if (self.actual >= v.length)
+            if (indice < self.actual)
+                self.actual -= 1
+            else if (self.actual >= v.length)
                 self.actual = Math.max(0, v.length - 1)
             if (v.length === 0)
                 self.abierto = false
@@ -640,8 +633,8 @@ K4Plugin {
     //  stops publishing it, which is exactly what should happen— and
     //  the console one finds out which terminal is installed, which
     //  even the updater needs.
-    readonly property string ambiente: Ambiente.ruta
-    readonly property string cual: Consola.binario
+    readonly property string ambiente: K4.Terminal.themePath
+    readonly property string cual: K4.Terminal.cual
 
     //  ── work in progress ──────────────────────────────────────────
     //
@@ -707,8 +700,8 @@ K4Plugin {
     //  the function, not the data.
     function insigniaDe(mandato) {
         const agente = esAgente(mandato)
-        return { glifo: agente ? Theme.ico.ask.codePointAt(0) : 0xF018D,
-                 color: agente ? Theme.green : Theme.blue }
+        return { glifo: agente ? 0xF06A9 : 0xF018D,
+                 color: agente ? K4.Tema.verde : K4.Tema.azul }
     }
 
     function apuntar(pid, mandato, llevaba) {
@@ -740,8 +733,8 @@ K4Plugin {
         //  The theme's bell: it says «they are calling you» without
         //  needing to be read, and in yellow, which demands without
         //  alarming.
-        K4.Pildora.registrar(idEspera(pid), nombre.slice(0, 18), Theme.ico.bell.codePointAt(0),
-                             Theme.yellow, 29, true)
+        K4.Pildora.registrar(idEspera(pid), nombre.slice(0, 18), 0xF009A,
+                             K4.Tema.amarillo, 29, true)
         //  It is kept WITH WHOM, not a `true`: on attending it, its
         //  notification must be removable, and for that one needs to
         //  know which one it was.
@@ -756,7 +749,7 @@ K4Plugin {
         //  no window —their key is `isla.N`— and there is no pid to
         //  note there.
         if (String(pid).indexOf("isla.") !== 0)
-            Notifs.apuntarDestino("k4term", nombre, pid)
+            K4.Terminal.trackNotice(nombre, pid)
 
         K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "8000",
                            "Waiting for you", nombre])
@@ -770,8 +763,7 @@ K4Plugin {
         //  removing one and leaving the other leaves half the notice
         //  up, and that half is what later shows in the strip under
         //  the clock.
-        Notifs.descartarDeApp("k4term", esperas[pid])
-        Notifs.olvidarDestino("k4term", esperas[pid])
+        K4.Terminal.clearNotice(esperas[pid])
         const e = Object.assign({}, esperas)
         delete e[pid]
         esperas = e
@@ -793,9 +785,9 @@ K4Plugin {
     //  Work in progress is NOT touched: that indicator counts
     //  something still happening and looking at it does not end it.
     property Connections foco: Connections {
-        target: Ventanas
-        function onPidActivoChanged() {
-            self.dejarDeEsperar(Ventanas.pidActivo)
+        target: K4.Terminal
+        function onFocusedPidChanged() {
+            self.dejarDeEsperar(K4.Terminal.focusedPid)
         }
     }
 
@@ -953,7 +945,7 @@ K4Plugin {
         d[clave] = nombre
         dentroDe = d
         K4.Pildora.registrar(idConexion(clave), nombre.slice(0, 20),
-                             0xF08C0, Theme.blue, 28, true)
+                             0xF08C0, K4.Tema.azul, 28, true)
     }
 
     function salirDe(clave) {
@@ -963,7 +955,7 @@ K4Plugin {
             const d = Object.assign({}, dentroDe)
             delete d[clave]
             dentroDe = d
-            Consola.salioDe(destino)
+            K4.Terminal.connectionEnded(destino)
         }
     }
 
@@ -1051,7 +1043,7 @@ K4Plugin {
             return
         }
         K4.Pildora.registrar(idAbiertas, String(vivas.length),
-                             0xF018D, Theme.muted, 31, true)
+                             0xF018D, K4.Tema.apagado, 31, true)
     }
 
     onVivasChanged: refrescarAbiertas()
@@ -1084,11 +1076,11 @@ K4Plugin {
         //  inherited when launching from here is the bar's directory,
         //  which nobody cares about.
         function open(): void {
-            K4.Sistema.lanzar(Consola.abrir(K4.Sistema.entorno("HOME")))
+            K4.Terminal.abrir(K4.Sistema.entorno("HOME"))
         }
 
         function openAt(ruta: string): void {
-            K4.Sistema.lanzar(Consola.abrir(ruta))
+            K4.Terminal.abrir(ruta)
         }
 
         //  Where the house runs things: the island if there is one,
@@ -1096,7 +1088,7 @@ K4Plugin {
         //  inconsistent with Update indeed showing in the island.
         function run(mandato: string): void {
             if (mandato)
-                Consola.ejecutar(mandato)
+                K4.Terminal.ejecutar(mandato)
         }
 
         //  The island one, big and in the same place.
@@ -1143,10 +1135,22 @@ K4Plugin {
         //  The island terminal, for the quick things.
         function island(): void { self.toggle() }
 
+        // Read-only diagnostics for bindings, sessions, and backend health.
+        function status(): string {
+            return JSON.stringify({ open: self.abierto, activeSession: self.sesion ? self.sesion.numero : null,
+                sessions: self.vivas.map(function (session) {
+                    return { id: session.numero, pid: session.processPid,
+                        backend: session.nativeBackend ? "native" : "bundled",
+                        ready: session.ready, cwd: session.cwd,
+                        columns: session.marco ? session.marco.cols : 0,
+                        rows: session.marco ? session.marco.filas_n : 0 }
+                }) })
+        }
+
         //  A window gives its session back: a tab opens to adopt it.
         //  The window closes itself as soon as it has been taken.
         function adopt(socket: string): void {
-            if (!socket)
+            if (!socket || !K4.Terminal.nativeIslandAvailable)
                 return
             self.nueva(socket)
             self.abierto = true
@@ -1156,7 +1160,7 @@ K4Plugin {
         //  them and closing the spare. The same as the keys, for
         //  whoever prefers a script.
         function newSession(): void {
-            if (!Consola.hayIsla)
+            if (!K4.Terminal.islandAvailable)
                 return
             self.nueva()
             self.abierto = true
@@ -1225,20 +1229,37 @@ K4Plugin {
     //  whole file on purpose: whoever hand-edited it has the right to
     //  keep their comments and their keys.
 
-    readonly property string ficheroConf: K4.Sistema.entorno("HOME") + "/.config/k4term/k4term.conf"
+    readonly property string ficheroConf: (K4.Sistema.entorno("XDG_CONFIG_HOME")
+        || K4.Sistema.entorno("HOME") + "/.config") + "/k4term/k4term.conf"
 
     property var conf: ({ tamaño: "13", opacidad: "0.92", estela: "si",
                           tranquilo: "no" })
+    property string pendingConfig: ""
+
+    K4.Process {
+        id: configDirectory
+        command: ["mkdir", "-p", self.ficheroConf.slice(0, self.ficheroConf.lastIndexOf("/"))]
+        onTerminado: function (code) {
+            if (code === 0) {
+                fConf.setText(self.pendingConfig)
+                self.pendingConfig = ""
+            } else {
+                K4.Sistema.avisar("Terminal", "Could not create the terminal settings directory", false)
+            }
+        }
+    }
 
     function leerConf() {
         const texto = fConf.text() || ""
         const nuevo = Object.assign({}, conf)
         texto.split("\n").forEach(function (linea) {
-            const limpia = linea.split("#")[0].trim()
+            const limpia = linea.trim()
+            if (limpia.indexOf("#") === 0)
+                return
             const corte = limpia.indexOf("=")
             if (corte < 0)
                 return
-            nuevo[limpia.slice(0, corte).trim()] = limpia.slice(corte + 1).trim()
+            nuevo[limpia.slice(0, corte).trim()] = limpia.slice(corte + 1).split(/\s+#/)[0].trim()
         })
         conf = nuevo
     }
@@ -1248,18 +1269,21 @@ K4Plugin {
         nuevo[clave] = String(valor)
         conf = nuevo
 
-        let texto = fConf.text() || ""
+        let texto = pendingConfig || fConf.text() || ""
         const patron = new RegExp("^[ \\t]*" + clave + "[ \\t]*=.*$", "m")
         if (patron.test(texto))
             texto = texto.replace(patron, clave + " = " + valor)
         else
             texto = (texto.length && texto.slice(-1) !== "\n" ? texto + "\n" : texto)
                   + clave + " = " + valor + "\n"
-        fConf.setText(texto)
+        pendingConfig = texto
+        configDirectory.running = true
     }
 
     property K4.Fichero fConf: K4.Fichero {
         path: self.ficheroConf
+        watchChanges: true
+        onFileChanged: reload()
         onLoaded: self.leerConf()
     }
 
@@ -1279,7 +1303,7 @@ K4Plugin {
         //  startup—, so this reads «no» for the first milliseconds;
         //  what makes it appear later is K4.Ajustes registering again
         //  when `opciones` changes.
-        opciones: !Consola.hayIsla ? [] : [
+        opciones: !K4.Terminal.islandAvailable ? [] : [
             { id: "tamaño", nombre: "Font size",
               desc: "The island and the windows both follow it",
               glifo: 0xF0207, tipo: "eleccion",
@@ -1288,7 +1312,8 @@ K4Plugin {
                              { codigo: "15", nombre: "15" },
                              { codigo: "18", nombre: "18" }] },
             { id: "opacidad", nombre: "Glass",
-              desc: "How much shows through",
+              desc: "Native k4term window opacity",
+              disponible: K4.Terminal.nativeWindowAvailable,
               glifo: 0xF00B5, tipo: "eleccion",
               alternativas: [{ codigo: "1", nombre: "Opaque" },
                              { codigo: "0.94", nombre: "Soft" },
@@ -1395,7 +1420,7 @@ K4Plugin {
             " while c=$(pgrep -P \"$p\" -n 2>/dev/null); [ -n \"$c\" ]; do p=$c; done;" +
             " readlink /proc/$p/cwd 2>/dev/null"]
         onSalida: function (texto) {
-            K4.Sistema.lanzar(Consola.abrir(texto.trim()))
+            K4.Terminal.abrir(texto.trim())
         }
         onTerminado: running = false
     }

@@ -26,6 +26,7 @@
 #  Resolution happens once, at dump time.
 
 import base64
+import codecs
 import unicodedata
 
 #  Flag bits, as the bar's view reads them (`n` in every run):
@@ -87,19 +88,6 @@ def _from_rgb(text):
     return _hex(*values)
 
 
-def _one_per_cell(text):
-    #  A cell may HOLD a grapheme — base letter plus combining marks,
-    #  joined in put_char — but the dump must give ONE codepoint per
-    #  cell: the view lays a run out as `t.length` cells wide, and a
-    #  cell that reads as two codepoints pushes everything after it
-    #  one cell to the right. NFC keeps what it can («e» + acute
-    #  becomes «é», one codepoint and still the right letter to
-    #  copy); what has no composed form degrades to its base glyph,
-    #  which paints straight and reads close enough.
-    composed = unicodedata.normalize("NFC", text)
-    return composed if len(composed) == 1 else composed[0]
-
-
 class VT:
     def __init__(self, cols, rows, history_limit=10000):
         #  No minimums here: the protocol layer clamps what the bar
@@ -113,6 +101,8 @@ class VT:
         self.grid = [self._blank_row() for _ in range(self.rows)]
         self.grid_alt = [self._blank_row() for _ in range(self.rows)]
         self.history = []
+        self.history_start = 0
+        self.event_sink = None
 
         #  Cursor and the pen it writes with.
         self.x = 0
@@ -140,12 +130,13 @@ class VT:
         self.margin_bottom = None
 
         #  Tab stops: explicit ones over the implicit every-eight.
-        self.tabs = set()
+        self.tabs = set(range(8, cols, 8))
 
         #  Charsets: G0..G3 names and which one is shifted in.
         self._charsets = ["B", "B", "B", "B"]
         self._shift = 0
         self._saved = None
+        self._primary_saved = None
         self._charset_slot = 0
 
         #  The palette the cells point at, a copy so OSC 4 can move it.
@@ -179,7 +170,7 @@ class VT:
         self._csi_params = b""
         self._csi_inter = b""
         self._osc = b""
-        self._utf8 = b""
+        self._decoder = codecs.getincrementaldecoder("utf-8")("replace")
 
     # ── construction helpers ─────────────────────────────────────
 
@@ -197,30 +188,37 @@ class VT:
     @property
     def top(self):
         #  The first absolute line the viewport shows.
-        return max(0, len(self.history) - self.scrolled)
+        return self.screen_start - (0 if self.alt_screen else self.scrolled)
+
+    @property
+    def screen_start(self):
+        return self.history_start + len(self.history)
 
     @property
     def total(self):
-        return len(self.history) + self.rows
+        return self.screen_start + self.rows
 
     def cursor_abs_row(self):
-        return len(self.history) + self.y
+        return self.screen_start + self.y
 
     def row(self, abs_row):
-        if abs_row < 0 or abs_row >= self.total:
+        if abs_row < self.history_start or abs_row >= self.total:
             return None
-        if abs_row < len(self.history):
-            return self.history[abs_row]
-        return self.grid[abs_row - len(self.history)]
+        if abs_row < self.screen_start:
+            return None if self.alt_screen else self.history[abs_row - self.history_start]
+        return self.grid[abs_row - self.screen_start]
 
     def row_text(self, abs_row):
         line = self.row(abs_row)
         if line is None:
             return ""
-        #  One codepoint per cell here too: search compares what the
-        #  view shows, and copy takes the composed letter, which is
-        #  the faithful text.
-        return "".join(_one_per_cell(c[0]) for c in line)
+        return "".join(unicodedata.normalize("NFC", c[0]) for c in line)
+
+    def row_slice(self, abs_row, start=0, end=None):
+        line = self.row(abs_row)
+        if line is None:
+            return ""
+        return "".join(unicodedata.normalize("NFC", c[0]) for c in line[start:end])
 
     def scroll_viewport(self, delta):
         #  With no history there is nowhere to go; the alt screen has
@@ -245,6 +243,7 @@ class VT:
         if c is None:
             return self.default_bg if background else self.default_fg
         if isinstance(c, int):
+            c = max(0, min(255, c))
             return self.palette[c] if c < 16 else color_256(c)
         return c
 
@@ -260,22 +259,31 @@ class VT:
         n = len(line)
         while i < n:
             text, fg, bg, flags, link = line[i]
+            if text == "":
+                i += 1
+                continue
+            fg, bg = self._color(fg), self._color(bg, True)
             if flags & REVERSED:
                 fg, bg = bg, fg
             flags &= ~REVERSED
-            letters = [text]
-            j = i + 1
+            letters = [unicodedata.normalize("NFC", text)]
+            j = i + (2 if i + 1 < n and line[i + 1][0] == "" else 1)
+            # Non-ASCII graphemes stand alone. Their column and explicit
+            # width keep Qt's shaping and UTF-16 string length out of the
+            # terminal's cell arithmetic.
             while j < n:
                 t2, fg2, bg2, f2, l2 = line[j]
+                if not text.isascii() or not t2.isascii() or not t2:
+                    break
+                fg2, bg2 = self._color(fg2), self._color(bg2, True)
                 if f2 & REVERSED:
                     fg2, bg2 = bg2, fg2
                 if (fg2, bg2, f2 & ~REVERSED, l2) != (fg, bg, flags, link):
                     break
-                letters.append(_one_per_cell(t2))
+                letters.append(t2)
                 j += 1
             run = {"c": i + 1, "t": "".join(letters),
-                   "f": self._color(fg), "b": self._color(bg, True),
-                   "n": flags}
+                   "f": fg, "b": bg, "n": flags, "width": j - i}
             if link:
                 run["u"] = link
             runs.append(run)
@@ -303,11 +311,9 @@ class VT:
         #  region feeds the history: a TUI scrolling its own box must
         #  not fill the scrollback with boxes.
         top, bottom = self._region()
-        for _ in range(count):
+        for _ in range(min(count, bottom - top + 1)):
             if top == 0 and bottom == self.rows - 1 and not self.alt_screen:
-                self.history.append(self.grid[0])
-                if len(self.history) > self.history_limit:
-                    del self.history[0]
+                self._remember(self.grid[top])
                 #  Whoever is reading from up there stays anchored to
                 #  the content — the same absolute top, while the
                 #  screen grows below. And whoever is at the bottom
@@ -317,21 +323,25 @@ class VT:
                 #  of history and no output was ever seen again.
                 if self.scrolled > 0:
                     self.scrolled = min(self.scrolled + 1, len(self.history))
-            else:
-                del self.grid[bottom]
-                self.grid.insert(top, self._blank_row())
-        del self.grid[self.rows:]
-        while len(self.grid) < self.rows:
-            self.grid.append(self._blank_row())
+            del self.grid[top]
+            self.grid.insert(bottom, [self._blank_with_bg()] * self.cols)
+
+    def _remember(self, row):
+        self.history.append(row)
+        self.trim_history()
+
+    def trim_history(self):
+        excess = max(0, len(self.history) - self.history_limit)
+        if excess:
+            del self.history[:excess]
+            self.history_start += excess
+        self.scrolled = min(self.scrolled, len(self.history))
 
     def _scroll_down(self, count=1):
         top, bottom = self._region()
-        for _ in range(count):
-            del self.grid[top]
-            self.grid.insert(bottom, self._blank_row())
-        del self.grid[self.rows:]
-        while len(self.grid) < self.rows:
-            self.grid.append(self._blank_row())
+        for _ in range(min(count, bottom - top + 1)):
+            del self.grid[bottom]
+            self.grid.insert(top, [self._blank_with_bg()] * self.cols)
 
     def _linefeed(self):
         #  One line down, scrolling when at the region's bottom.
@@ -356,11 +366,15 @@ class VT:
             #  combining mark alone is nothing anyone can see.
             if self.x > 0 or (self.x == 0 and self.grid[self.y][0][0] != " "):
                 line = self.grid[self.y]
-                x = max(0, self.x - 1)
+                x = self.x if self._wrap_pending else max(0, self.x - 1)
+                if line[x][0] == "" and x > 0:
+                    x -= 1
                 text, fg, bg, flags, link = line[x]
                 line[x] = (text + ch, fg, bg, flags, link)
             return
         width = self._char_width(ch)
+        if width > self.cols:
+            return
 
         if self._wrap_pending:
             if self.autowrap:
@@ -381,6 +395,13 @@ class VT:
         if self.insert_mode:
             line = self.grid[self.y]
             line[self.x + width:] = line[self.x:max(self.x, self.cols - width)]
+        # Erasing either half of a wide character clears the other half.
+        line = self.grid[self.y]
+        if line[self.x][0] == "" and self.x > 0:
+            line[self.x - 1] = self._blank_with_bg()
+        for pos in range(self.x, min(self.cols, self.x + width)):
+            if pos + 1 < self.cols and line[pos + 1][0] == "":
+                line[pos + 1] = self._blank_with_bg()
         cell = (ch, self._fg, self._bg, self._flags, self._link)
         self.grid[self.y][self.x] = cell
         if width == 2:
@@ -389,7 +410,7 @@ class VT:
             #  was there before, and a dump said the row had one cell
             #  fewer than it paints: text after the glyph landed one
             #  column left of where the terminal put it.
-            self.grid[self.y][self.x + 1] = (" ", self._fg, self._bg,
+            self.grid[self.y][self.x + 1] = ("", self._fg, self._bg,
                                              self._flags, self._link)
         self._last_char = ch
         self.x += width
@@ -406,7 +427,7 @@ class VT:
     def _tab(self):
         target = self.x + 1
         while target < self.cols:
-            if target in self.tabs or target % 8 == 0:
+            if target in self.tabs:
                 break
             target += 1
         self.x = min(target, self.cols - 1)
@@ -419,6 +440,9 @@ class VT:
         #  character, and that is what makes this simple loop safe.
         self.events = []
         for i, b in enumerate(data):
+            if b in (0x18, 0x1A):
+                self._state = "ground"
+                continue
             state = self._state
             if state == "ground":
                 self._ground(b, i)
@@ -446,16 +470,22 @@ class VT:
                 #  Whatever a DCS said, it is swallowed whole: sixel
                 #  and kitty's keyboard negotiation both end at ST,
                 #  unheeded. Not claiming what we do not draw.
-                if b != 0x5C:
-                    self._state = "dcs"
+                self._state = "ground" if b == 0x5C else "dcs"
+
+    def _emit(self, index, kind, value):
+        self.events.append((index, kind, value))
+        if self.event_sink:
+            self.event_sink(kind, value)
 
     def _ground(self, b, i):
         if b == 0x1B:
             self._state = "esc"
-            self._utf8 = b""
+            for ch in self._decoder.decode(b"", final=True):
+                self._print(ch)
+            self._decoder.reset()
             return
         if b == 0x07:
-            self.events.append((i + 1, "bell", None))
+            self._emit(i + 1, "bell", None)
             return
         if b < 0x20 or b == 0x7F:
             if b in (0x0A, 0x0B, 0x0C):
@@ -475,22 +505,8 @@ class VT:
             elif b == 0x0F:
                 self._shift = 0
             return
-        if b < 0x80:
-            self._print(chr(b))
-            return
-        #  UTF-8 continuation: finish the character before anything
-        #  else — an escape can only come between characters.
-        self._utf8 += bytes([b])
-        if len(self._utf8) > 4:
-            self._print("\ufffd")
-            self._utf8 = b""
-            return
-        try:
-            ch = self._utf8.decode("utf-8")
-        except UnicodeDecodeError:
-            return
-        self._utf8 = b""
-        self._print(ch)
+        for ch in self._decoder.decode(bytes([b])):
+            self._print(ch)
 
     def _esc(self, b):
         self._state = "ground"
@@ -528,6 +544,12 @@ class VT:
             self._full_reset()
 
     def _csi_byte(self, b):
+        if b == 0x1B:
+            self._state = "esc"
+            return
+        if len(self._csi_params) + len(self._csi_inter) > 1024:
+            self._state = "ground"
+            return
         if 0x30 <= b <= 0x3F:
             self._csi_params += bytes([b])
             return
@@ -544,13 +566,16 @@ class VT:
             self._set_modes(params, private, True)
         elif final == "l":
             self._set_modes(params, private, False)
-        elif final == "m":
-            self._sgr(params)
+        elif final == "m" and not private:
+            self._sgr(self._sgr_params())
         elif final == "A":
-            self.y = max(self._region()[0], self.y - max(1, n))
+            top, bottom = self._region()
+            self.y = max(top if top <= self.y <= bottom else 0, self.y - max(1, n))
             self._wrap_pending = False
         elif final in ("B", "e"):
-            self.y = min(self._region()[1], self.y + max(1, n))
+            top, bottom = self._region()
+            self.y = min(bottom if top <= self.y <= bottom else self.rows - 1,
+                         self.y + max(1, n))
             self._wrap_pending = False
         elif final in ("C", "a"):
             self.x = min(self.cols - 1, self.x + max(1, n))
@@ -576,12 +601,16 @@ class VT:
             for _ in range(max(1, n)):
                 self._tab()
         elif final == "Z":
-            target = self.x - 1
-            while target >= 0:
-                if target in self.tabs or target % 8 == 0:
-                    break
-                target -= 1
-            self.x = max(0, target)
+            for _ in range(min(max(1, n), self.cols)):
+                target = self.x - 1
+                while target > 0 and target not in self.tabs:
+                    target -= 1
+                self.x = max(0, target)
+        elif final == "g":
+            if n == 0:
+                self.tabs.discard(self.x)
+            elif n == 3:
+                self.tabs.clear()
         elif final == "J":
             self._erase_display(n)
         elif final == "K":
@@ -603,14 +632,16 @@ class VT:
         elif final == "T":
             self._scroll_down(max(1, n))
         elif final == "b":
-            for _ in range(max(1, n)):
+            for _ in range(min(max(1, n), self.rows * self.cols)):
                 self.put_char(self._last_char)
         elif final == "r":
             self._set_margins(params)
             self._goto(1, 1)
         elif final == "s":
             self._save_cursor()
-        elif final == "u":
+        elif final == "u" and private == "?":
+            self.replies.append(b"\x1b[?0u")
+        elif final == "u" and not private:
             self._restore_cursor()
         elif final == "n":
             self._report(n)
@@ -620,7 +651,7 @@ class VT:
             elif not private:
                 #  VT220-with-modern-features: what everything from
                 #  vim to ncurses probes for and branches on.
-                self.replies.append(b"\x1b[?62;1;2;6;9;15;22c")
+                self.replies.append(b"\x1b[?62;22c")
         elif final == "q":
             #  DECSCUSR, with a space intermediate. The names are the
             #  wire protocol's (Spanish): the bar's view matches
@@ -656,6 +687,20 @@ class VT:
                 out.append(0)
         return out or [0], private
 
+    def _sgr_params(self):
+        # Preserve colon groups before flattening. A following semicolon
+        # attribute is never a colorspace slot in an RGB specification.
+        params = []
+        for group in self._csi_params.decode("ascii", "replace").split(";"):
+            try:
+                values = [int(v or "0") for v in group.split(":")]
+            except ValueError:
+                continue
+            if len(values) >= 6 and values[0] in (38, 48, 58) and values[1] == 2:
+                values = values[:2] + values[3:6]
+            params.extend(values)
+        return params or [0]
+
     def _absolute_row_of(self, n):
         if self.origin_mode:
             top, bottom = self._region()
@@ -688,7 +733,6 @@ class VT:
             if p == 0:
                 self._fg = self._bg = None
                 self._flags = 0
-                self._link = None
             elif p == 1:
                 self._flags |= BOLD
             elif p == 2:
@@ -729,18 +773,13 @@ class VT:
                 #  behind made it land as a fresh SGR and repaint the
                 #  very thing being set.
                 if i + 1 < len(params) and params[i + 1] == 5 and i + 2 < len(params):
-                    color = params[i + 2]
+                    color = max(0, min(255, params[i + 2]))
                     i += 2
                 elif i + 1 < len(params) and params[i + 1] == 2:
-                    values = params[i + 2:i + 6]
-                    if len(values) >= 4:
-                        values = values[1:4]
-                        i += 5   #  2 + colorspace + r + g + b
-                    elif len(values) == 3:
-                        i += 4   #  2 + r + g + b
-                    else:
-                        values = []
-                    color = _hex(*values) if values else None
+                    values = params[i + 2:i + 5]
+                    i += 4
+                    color = _hex(*(max(0, min(255, v)) for v in values)) \
+                        if len(values) == 3 else None
                 else:
                     color = None
                 if p == 38:
@@ -753,7 +792,7 @@ class VT:
                 if i + 1 < len(params) and params[i + 1] == 5:
                     i += 2
                 elif i + 1 < len(params) and params[i + 1] == 2:
-                    i += 5 if len(params) - (i + 2) >= 4 else 4
+                    i += 4
             i += 1
 
     def _set_modes(self, params, private, on):
@@ -800,8 +839,10 @@ class VT:
         if enter:
             if save_cursor:
                 self._save_cursor()
+                self._primary_saved = self._saved
             self.grid, self.grid_alt = self.grid_alt, self.grid
-            self.grid[:] = [self._blank_row() for _ in range(self.rows)]
+            if save_cursor:
+                self.grid[:] = [self._blank_row() for _ in range(self.rows)]
             self.alt_screen = True
             self.scrolled = 0
             self.x = self.y = 0
@@ -812,7 +853,10 @@ class VT:
             self.alt_screen = False
             self.scrolled = 0
             if save_cursor:
+                self._saved = self._primary_saved
                 self._restore_cursor()
+        self.margin_top = self.margin_bottom = None
+        self._wrap_pending = False
 
     def _save_cursor(self):
         self._saved = (self.x, self.y, self._fg, self._bg, self._flags,
@@ -824,31 +868,17 @@ class VT:
             (self.x, self.y, self._fg, self._bg, self._flags,
              self._link, self.origin_mode, charsets, self._shift) = self._saved
             self._charsets = list(charsets)
+            self.x = max(0, min(self.cols - 1, self.x))
+            self.y = max(0, min(self.rows - 1, self.y))
             self._wrap_pending = False
 
     def _full_reset(self):
-        #  The full reset, what a hard vim exit leaves behind.
-        self.grid[:] = [self._blank_row() for _ in range(self.rows)]
-        self.history = []
-        self.scrolled = 0
-        self.x = self.y = 0
-        self._fg = self._bg = None
-        self._flags = 0
-        self._link = None
-        self.autowrap = True
-        self.origin_mode = False
-        self.insert_mode = False
-        self.cursor_visible = True
-        self.app_cursor = False
-        self.bracketed_paste = False
-        self.mouse_mode = 0
-        self.mouse_sgr = False
-        self.margin_top = self.margin_bottom = None
-        self.tabs = set()
-        self.palette = list(BASE_PALETTE)
-        if self.alt_screen:
-            self.grid, self.grid_alt = self.grid_alt, self.grid
-            self.alt_screen = False
+        start, sink = self.total, self.event_sink
+        fg, bg = self.default_fg, self.default_bg
+        self.__init__(self.cols, self.rows, self.history_limit)
+        self.history_start, self.event_sink = start, sink
+        self.default_fg, self.default_bg = fg, bg
+        self._emit(0, "reset", None)
 
     def _erase_display(self, mode):
         if mode == 0:
@@ -865,6 +895,7 @@ class VT:
         elif mode == 3:
             #  xterm's «erase saved lines»: the scrollback and only
             #  it, which is what `clear` asks the driver to ask.
+            self.history_start = self.screen_start
             self.history = []
             self.scrolled = 0
 
@@ -943,7 +974,7 @@ class VT:
         try:
             if code in ("0", "2"):
                 self.title = rest
-                self.events.append((i + 1, "title", rest))
+                self._emit(i + 1, "title", rest)
             elif code == "4":
                 self._osc_palette(rest)
             elif code == "8":
@@ -962,10 +993,10 @@ class VT:
                 self._osc_prompt_mark(rest, i)
             elif code == "633":
                 if rest.startswith("E;"):
-                    self.events.append((i + 1, "command", rest[2:]))
+                    self._emit(i + 1, "command", rest[2:])
             elif code == "9":
                 if rest:
-                    self.events.append((i + 1, "notice", ("k4term", rest)))
+                    self._emit(i + 1, "notice", ("k4term", rest))
             elif code == "777":
                 if rest.startswith("notify;"):
                     body = rest[7:]
@@ -974,7 +1005,7 @@ class VT:
                     else:
                         title, text_body = body, ""
                     if title:
-                        self.events.append((i + 1, "notice", (title, text_body)))
+                        self._emit(i + 1, "notice", (title, text_body))
         except Exception:
             #  An OSC we half-understood is dropped whole: guessing at
             #  a half-parse leaves the screen in a state no one sent.
@@ -991,6 +1022,8 @@ class VT:
                 continue
             spec = pieces[j + 1]
             j += 2
+            if not 0 <= index <= 255:
+                continue
             if spec == "?":
                 color = (self.palette[index] if index < 16
                          else color_256(index)).lstrip("#")
@@ -1030,44 +1063,46 @@ class VT:
             text = base64.b64decode(payload).decode("utf-8", "replace")
         except Exception:
             return
-        self.events.append((i + 1, "clipboard", text))
+        self._emit(i + 1, "clipboard", text)
 
     def _osc_prompt_mark(self, rest, i):
         #  The semantic prompt, iTerm2's convention half the shells
         #  speak: C is «the command runs», D;<code> is «it ended».
-        if rest == "C":
-            self.events.append((i + 1, "start", None))
+        if rest == "A":
+            self._emit(i + 1, "prompt", None)
+        elif rest == "C":
+            self._emit(i + 1, "start", None)
         elif rest == "D" or rest.startswith("D;"):
             code = rest[2:] if rest.startswith("D;") else ""
             try:
                 status = int(code.strip() or "0")
             except ValueError:
                 status = 0
-            self.events.append((i + 1, "finish", status))
+            self._emit(i + 1, "finish", status)
 
     # ── resizing ─────────────────────────────────────────────────
 
     def resize(self, cols, rows):
+        cols, rows = max(1, cols), max(1, rows)
         if cols == self.cols and rows == self.rows:
             return
         #  Shrinking keeps the cursor on screen by handing lines to
         #  the history — what one sees pulling a window's bottom up
         #  over a running command.
         while self.rows > rows and self.y >= rows and not self.alt_screen:
-            self.history.append(self.grid[0])
-            if len(self.history) > self.history_limit:
-                del self.history[0]
+            self._remember(self.grid[0])
             del self.grid[0]
             self.y -= 1
-        self.grid[:] = self.grid[:rows]
-        while len(self.grid) < rows:
-            self.grid.append(self._blank_row())
-        for r in range(len(self.grid)):
-            line = self.grid[r]
-            if len(line) > cols:
-                self.grid[r] = line[:cols]
-            elif len(line) < cols:
-                self.grid[r] = line + [BLANK] * (cols - len(line))
+        for grid in (self.grid, self.grid_alt):
+            del grid[rows:]
+            while len(grid) < rows:
+                grid.append([BLANK] * cols)
+            for r, line in enumerate(grid):
+                cropped = len(line) > cols and line[cols][0] == ""
+                grid[r] = line[:cols] + [BLANK] * max(0, cols - len(line))
+                if cropped:
+                    grid[r][-1] = BLANK
+        self.tabs.update(range(((self.cols + 7) // 8) * 8, cols, 8))
         self.rows = rows
         self.cols = cols
         self.y = min(self.y, rows - 1)

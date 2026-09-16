@@ -515,6 +515,38 @@ K4.Lanzador {
 
 `ejemplos/efectos/` has every piece working, hand included.
 
+## Terminal access and providers
+
+`K4.Terminal` routes `ejecutar(script)` to the registered island provider when
+available, otherwise to a window. `abrir(path)` always opens a window.
+`cual` is the selected window executable, `enLaIsla` reports whether scripts
+will run in the island, and `cierre` is the optional shell fragment that keeps
+a command window open. Launching processes requires `procesos`.
+
+The terminal provider uses the following host adapter instead of importing
+host services:
+
+| Member | Contract |
+|---|---|
+| `islandAvailable` | An island backend is available; Python is bundled with the Nix package |
+| `nativeIslandAvailable`, `nativeWindowAvailable` | Availability of k4term-isla and the selected k4term window terminal, respectively |
+| `registerIsland(callback)` | Register the provider's script runner; pass `null` on destruction |
+| `refreshBackends()` | Recheck binaries through the host's dependency service |
+| `windowCommand(path)`, `scriptCommand(script)` | Return argument arrays for a window; executing them requires `procesos` |
+| `themePath` | Published terminal theme file; reading it requires `ficheros` |
+| `focusedPid` | Focused window's PID as a string, or an empty string |
+| `connecting`, `connectionStartedAt`, `connectionTint` | Shared connection destination, start time in milliseconds, and tint |
+| `takeConnectionPassword()` | Consume and clear the pending connection password; keep it only on the intended session |
+| `markConnectionStarted()` | Record when the connection command actually starts |
+| `connectionFinished()` | Clear the pending connection indicator and password |
+| `connectionEnded(destination)` | Notify the host that the session left a server |
+| `trackNotice(title, pid)`, `clearNotice(title)` | Route and clear the terminal's own attention notifications; clearing requires `notificaciones` |
+
+Backend selection is fixed for each session. Installing a native backend
+affects new sessions only. Hiding a terminal preserves its PTY; closing a tab,
+disabling the plugin, or stopping the bar terminates the owned session.
+Native session transfer requires both native binaries and a native session.
+
 ## Current boundaries
 
 Plugin loading is dynamic and isolated: each plugin is created on its own, a

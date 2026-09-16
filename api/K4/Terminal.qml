@@ -1,56 +1,44 @@
 pragma Singleton
 
-//  La terminal de la casa, para plugins.
-//
-//  Sin esto, un plugin que quisiera correr algo en una terminal tenía que
-//  escribir `kitty -e …` a mano y cruzar los dedos: adivinar cuál hay
-//  instalada, saberse la forma de cada una —wezterm y gnome-terminal no
-//  aceptan `-e` como las demás— y quedarse sin terminal en cuanto el usuario
-//  usara otra. La barra ya sabe todo eso; aquí se ofrece.
-//
-//      K4.Terminal.ejecutar("yay -Syu" + K4.Terminal.cierre)
-//      K4.Terminal.abrir("/home/tu/proyecto")
-//
-//  Y si el usuario tiene k4term, lo que ejecutes se ve DENTRO de la island en
-//  vez de abrir una ventana. Tu plugin no tiene que hacer nada distinto para
-//  eso: `enLaIsla` te lo dice por si quieres redactar el mensaje de otra
-//  forma, pero llamar a `ejecutar` es igual en los dos casos.
-//
-//  Pide el permiso `procesos`: correr un guion en una terminal es correr un
-//  guion, y da igual que lo lance otro por ti.
+// Terminal access for plugins. The host selects a window terminal and owns
+// shared connection state; a terminal provider registers the island runner.
+// Process-launching operations require the procesos permission.
 
 import QtQuick
 
 QtObject {
+    id: api
     readonly property var _c: Puente.consola
-
-    //  Qué terminal ha encontrado la barra: "k4term", "kitty", lo que haya.
-    //  Vacío mientras la busca, que tarda un instante al arrancar.
     readonly property string cual: _c ? _c.binario : ""
-
-    //  Si lo que ejecutes se va a ver dentro de la island en vez de en una
-    //  ventana. No hace falta mirarlo para usar `ejecutar`; está para cuando
-    //  el texto de tu aviso cambie según dónde vaya a salir.
     readonly property bool enLaIsla: _c ? _c.usaIsla : false
-
-    //  Lo que hay que añadir al final de un guion para que la ventana no se
-    //  cierre con el error a medio leer. En la island devuelve cadena vacía:
-    //  allí la sesión se queda, y un `read` de más dejaría la terminal
-    //  esperando un Intro que nadie sabe que tiene que dar.
-    //
-    //      "cosa-que-puede-fallar || { echo mal; " + K4.Terminal.cierre + " }"
     readonly property string cierre: _c ? _c.cierre : ""
 
-    //  Correr un guion de shell donde mejor esté.
-    function ejecutar(guion) {
-        if (_c && guion)
-            _c.ejecutar(String(guion))
-    }
+    function ejecutar(script) { if (_c && script) _c.ejecutar(String(script)) }
+    function abrir(path) { if (_c) Sistema.lanzar(_c.abrir(path ? String(path) : "")) }
 
-    //  Una terminal a secas, en un directorio si se lo pides. Esta SIEMPRE
-    //  abre ventana: es «dame una terminal para trastear», no «corre esto».
-    function abrir(ruta) {
-        if (_c)
-            Sistema.lanzar(_c.abrir(ruta ? String(ruta) : ""))
+    // Provider operations keep service imports out of the Terminal plugin.
+    readonly property bool islandAvailable: _c ? _c.hayIsla : false
+    readonly property bool nativeIslandAvailable: _c ? _c.nativeIslandAvailable : false
+    readonly property bool nativeWindowAvailable: _c ? _c.esNuestra : false
+    readonly property string themePath: _c ? _c.themePath : ""
+    readonly property string focusedPid: _c ? _c.focusedPid : ""
+    readonly property string connecting: _c ? _c.conectando : ""
+    readonly property double connectionStartedAt: _c ? _c.conectandoDesde : 0
+    readonly property string connectionTint: _c ? _c.tinteConexion : ""
+
+    function registerIsland(callback) { if (_c) _c.registrarIsla(callback) }
+    function refreshBackends() { if (_c) _c.revisar() }
+    function windowCommand(path) { return _c ? _c.abrir(path || "") : [] }
+    function scriptCommand(script) { return _c ? _c.orden(script) : [] }
+    function connectionFinished() { if (_c) _c.conectado() }
+    function connectionEnded(destination) { if (_c) _c.salioDe(destination) }
+    function markConnectionStarted() { if (_c) _c.conectandoDesde = Date.now() }
+    function takeConnectionPassword() {
+        if (!_c) return ""
+        const password = _c.claveConexion
+        _c.claveConexion = ""
+        return password
     }
+    function trackNotice(title, pid) { if (_c) _c.trackNotice(title, pid) }
+    function clearNotice(title) { if (_c) _c.clearNotice(title) }
 }

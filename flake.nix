@@ -63,6 +63,14 @@
       checks = forAllSystems (pkgs: {
         k4 = mkK4 pkgs;
 
+        terminal = pkgs.runCommand "k4-terminal-tests" {
+          nativeBuildInputs = [ pkgs.python3 pkgs.bash pkgs.zsh ];
+        } ''
+          python3 -B ${self}/plugins/Terminal/island.py --selftest
+          python3 -B ${self}/tools/test_terminal.py
+          touch "$out"
+        '';
+
         #  The Home Manager module must evaluate with the integration on,
         #  both config flavors, and off.
         home-manager-hyprlang =

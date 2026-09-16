@@ -95,7 +95,7 @@ not be declared inside the view.
 | `K4.Rodillo` | Scroll area that obeys the wheel, house scroll bar included |
 | `K4.Desplazador` | The house scroll bar, for your own lists |
 | `K4.Estela` | The house caret with its trail, as a `cursorDelegate` |
-| `K4.Terminal` | Run a script in the house terminal, or open one (needs `procesos`) |
+| `K4.Terminal` | Run a script or open a window (`procesos`); providers use `registerIsland`, backend availability, window/script command arrays, connection state, and attention routing through the [host adapter](../docs/API.md#terminal-access-and-providers) |
 | `K4.Aparicion` | Fade in instead of popping |
 | `K4.FocoInicial` | Move the caret into your text field |
 | `K4.Audio` | Volume and mute (writing needs `audio`) |

@@ -462,7 +462,7 @@ bar's directory, not yours.
 | `K4.Guardado` | your state as JSON, in YOUR directory, with `cargado`/`guardar` |
 | `K4.Ipc` | your IPC target (`k4.<id>`) |
 | `K4.Process` | external processes — requires the `procesos` permission |
-| `K4.Terminal` | the house terminal: run a script where it best fits, open one — `ejecutar`/`abrir` require `procesos` |
+| `K4.Terminal` | the house terminal: run a script where it best fits, open a window, or register an island provider through its host adapter — process launches require `procesos`; see [the provider reference](API.md#terminal-access-and-providers) |
 | `K4.Sonido` | a short sound — requires the `sound` permission |
 | `K4.Fichero` | reading and writing files — requires `ficheros` |
 | `K4.Pildora` | an indicator on the folded pill |

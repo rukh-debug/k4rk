@@ -14,10 +14,7 @@
 //  header button and the same key that opened it.
 
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import "../../core"
-import "../../services"
+import K4 as K4
 
 Item {
     id: vista
@@ -30,6 +27,7 @@ Item {
     required property var plugin
 
     readonly property var marco: plugin.marco
+    readonly property bool cursorVisible: marco !== null && marco.cursor_visible !== false
 
     //  The same font as the window terminal: truly monospaced, so the
     //  cell width comes from measuring one em.
@@ -139,18 +137,33 @@ Item {
     //  A grid row as text, padding the gaps between runs with spaces:
     //  runs come with their column, and without the padding the
     //  positions would not line up with what is seen.
-    function textoFila(i) {
+    function rowData(i) {
+        const result = { text: "", starts: [], ends: [] }
         if (!marco || i < 0 || i >= marco.filas.length)
-            return ""
+            return result
         const tramos = marco.filas[i]
-        let linea = ""
+        let column = 1
         for (let k = 0; k < tramos.length; ++k) {
-            while (linea.length < tramos[k].c - 1)
-                linea += " "
-            linea += tramos[k].t
+            const run = tramos[k]
+            while (column < run.c) {
+                result.text += " "
+                result.starts.push(column)
+                result.ends.push(column++)
+            }
+            // Bundled frames isolate non-ASCII graphemes and state their
+            // cell width. UTF-16 offsets remain only string-search offsets.
+            const grapheme = run.width !== undefined && /[^\x00-\x7f]/.test(run.t)
+            for (let j = 0; j < run.t.length; ++j) {
+                result.starts.push(grapheme ? run.c : column++)
+                result.ends.push(grapheme ? run.c + run.width - 1 : column - 1)
+            }
+            result.text += run.t
+            column = run.c + (run.width || run.t.length)
         }
-        return linea
+        return result
     }
+
+    function textoFila(i) { return rowData(i).text }
 
     //  ── the selection ─────────────────────────────────────────────
     //
@@ -210,18 +223,22 @@ Item {
     //  dots or slashes would be exactly the opposite of what is
     //  sought.
     function palabraEn(filaVista, col) {
-        const linea = textoFila(filaVista - 1)
-        if (col > linea.length)
+        const data = rowData(filaVista - 1)
+        const linea = data.text
+        let offset = -1
+        for (let i = 0; i < data.starts.length; ++i)
+            if (data.starts[i] <= col && col <= data.ends[i]) { offset = i; break }
+        if (offset < 0)
             return null
         const corte = /[\s"'`]/
-        if (corte.test(linea.charAt(col - 1)))
+        if (corte.test(linea.charAt(offset)))
             return null
-        let a = col, b = col
-        while (a > 1 && !corte.test(linea.charAt(a - 2)))
+        let a = offset, b = offset
+        while (a > 0 && !corte.test(linea.charAt(a - 1)))
             --a
-        while (b < linea.length && !corte.test(linea.charAt(b)))
+        while (b + 1 < linea.length && !corte.test(linea.charAt(b + 1)))
             ++b
-        return { a: a, b: b }
+        return { a: data.starts[a], b: data.ends[b] }
     }
 
     //  A link under that cell, if any.
@@ -234,16 +251,17 @@ Item {
         const tramos = marco && marco.filas[filaVista - 1] ? marco.filas[filaVista - 1] : []
         for (let k = 0; k < tramos.length; ++k) {
             const tr = tramos[k]
-            if (tr.u && col >= tr.c && col < tr.c + tr.t.length)
+            if (tr.u && col >= tr.c && col < tr.c + (tr.width || tr.t.length))
                 return tr.u
         }
 
-        const linea = textoFila(filaVista - 1)
+        const data = rowData(filaVista - 1)
+        const linea = data.text
         const patron = /(https?:\/\/|www\.)[^\s"'`<>()\[\]]+/g
         let m
         while ((m = patron.exec(linea)) !== null) {
-            const a = m.index + 1
-            const b = m.index + m[0].length
+            const a = data.starts[m.index]
+            const b = data.ends[m.index + m[0].length - 1]
             if (col >= a && col <= b)
                 return m[0]
         }
@@ -276,11 +294,13 @@ Item {
         const aguja = String(plugin.aguja).toLowerCase()
         if (!buscando || aguja.length === 0)
             return []
-        const linea = textoFila(i).toLowerCase()
+        const data = rowData(i)
+        const linea = data.text.toLowerCase()
         const sitios = []
         let donde = linea.indexOf(aguja)
         while (donde >= 0) {
-            sitios.push(donde + 1)
+            sitios.push({ column: data.starts[donde],
+                          width: data.ends[donde + aguja.length - 1] - data.starts[donde] + 1 })
             donde = linea.indexOf(aguja, donde + aguja.length)
         }
         return sitios
@@ -336,7 +356,7 @@ Item {
     Component.onCompleted: {
         plugin.mandar({ que: "medida", cols: cols, filas: filas })
         plugin.mandar({ que: "pinta" })
-        forzarFoco.start()
+        forzarFoco.reclamar()
         pintadoX = destinoX
         pintadoY = destinoY
     }
@@ -354,10 +374,18 @@ Item {
 
     //  Focus arrives a hair after the island opens; without this wait
     //  the first keys are lost.
-    Timer {
+    K4.FocoInicial {
         id: forzarFoco
-        interval: 60
-        onTriggered: campo.forceActiveFocus()
+        objetivo: campo
+    }
+
+    Connections {
+        target: vista.plugin
+        function onSesionChanged() {
+            vista.limpiarSeleccion()
+            medir.restart()
+            forzarFoco.reclamar()
+        }
     }
 
     //  ── the header: which terminals there are and how to hide them ──
@@ -408,8 +436,8 @@ Item {
                     //  knowing it keeps thinking. With neither, the
                     //  tab goes clean.
                     readonly property var insignia: llamando
-                        ? ({ glifo: Theme.ico.bell.codePointAt(0),
-                             color: Theme.yellow })
+                        ? ({ glifo: 0xF009A,
+                             color: K4.Tema.amarillo })
                         : (trabajo ? vista.plugin.insigniaDe(trabajo.mandato)
                                    : null)
 
@@ -449,7 +477,7 @@ Item {
                     //  you go to click them.
                     width: fila.width + 18 + 14
                     radius: height / 2
-                    color: esta ? Theme.surfaceHi : "transparent"
+                    color: esta ? K4.Tema.superficieAlta : "transparent"
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -466,21 +494,21 @@ Item {
                         //  through them. A row skips what it cannot see
                         //  on its own, so without a badge not even the
                         //  slot remains.
-                        IconGlyph {
+                        K4.Glifo {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: pestana.insignia !== null
                             text: visible
                                 ? String.fromCodePoint(pestana.insignia.glifo)
                                 : ""
-                            color: visible ? pestana.insignia.color : Theme.dim
+                            color: visible ? pestana.insignia.color : K4.Tema.tenue
                             font.pixelSize: 11
                         }
 
-                        IslandLabel {
+                        K4.Etiqueta {
                             id: etiqueta
                             anchors.verticalCenter: parent.verticalCenter
                             text: (pestana.index + 1) + "  " + pestana.nombre
-                            color: pestana.esta ? Theme.ink : Theme.muted
+                            color: pestana.esta ? K4.Tema.tinta : K4.Tema.apagado
                             font.pixelSize: 10
                             elide: Text.ElideRight
                             //  A long name cannot push the rest out.
@@ -507,13 +535,13 @@ Item {
                     //  Close this terminal. Only on approach: at rest
                     //  the header says what there is, it does not offer
                     //  buttons.
-                    IslandLabel {
+                    K4.Etiqueta {
                         anchors.right: parent.right
                         anchors.rightMargin: 7
                         anchors.verticalCenter: parent.verticalCenter
                         text: "✕"
                         font.pixelSize: 10
-                        color: aspaRaton.containsMouse ? Theme.ink : Theme.muted
+                        color: aspaRaton.containsMouse ? K4.Tema.tinta : K4.Tema.apagado
                         opacity: pestanaRaton.containsMouse || aspaRaton.containsMouse ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 120 } }
 
@@ -530,10 +558,10 @@ Item {
             }
 
             //  One more.
-            IconGlyph {
+            K4.Glifo {
                 anchors.verticalCenter: parent.verticalCenter
                 text: String.fromCodePoint(0xF0415)
-                color: masRaton.containsMouse ? Theme.ink : Theme.dim
+                color: masRaton.containsMouse ? K4.Tema.tinta : K4.Tema.tenue
                 font.pixelSize: 13
 
                 MouseArea {
@@ -549,12 +577,12 @@ Item {
 
         //  Hide it without touching what runs inside. It exists
         //  because ESC no longer closes: the terminal takes it.
-        IconGlyph {
+        K4.Glifo {
             id: menos
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: String.fromCodePoint(0xF0374)
-            color: menosRaton.containsMouse ? Theme.ink : Theme.dim
+            color: menosRaton.containsMouse ? K4.Tema.tinta : K4.Tema.tenue
             font.pixelSize: 14
 
             MouseArea {
@@ -599,7 +627,7 @@ Item {
             y: vista.margen + vista.altoCabecera + index * vista.altoLinea
             width: tramo ? (tramo.b - tramo.a + 1) * vista.anchoCelda : 0
             height: vista.altoLinea
-            color: Theme.blue
+            color: K4.Tema.azul
             opacity: 0.3
         }
     }
@@ -621,12 +649,12 @@ Item {
                 delegate: Rectangle {
                     required property var modelData
 
-                    x: vista.margen + (modelData - 1) * vista.anchoCelda
+                    x: vista.margen + (modelData.column - 1) * vista.anchoCelda
                     y: vista.margen + vista.altoCabecera
                        + filaBuscada.index * vista.altoLinea
-                    width: String(vista.plugin.aguja).length * vista.anchoCelda
+                    width: modelData.width * vista.anchoCelda
                     height: vista.altoLinea
-                    color: Theme.yellow
+                    color: K4.Tema.amarillo
                     opacity: filaBuscada.esLaBuena ? 0.5 : 0.25
                 }
             }
@@ -656,8 +684,8 @@ Item {
                 width: 2
                 height: parent.height
                 radius: 1
-                color: parent.modelData.estado === "bien" ? Theme.green
-                     : (parent.modelData.estado === "mal" ? Theme.red : Theme.muted)
+                color: parent.modelData.estado === "bien" ? K4.Tema.verde
+                     : (parent.modelData.estado === "mal" ? K4.Tema.rojo : K4.Tema.apagado)
                 opacity: parent.modelData.estado === "corre" ? 0.6
                        : (filete.containsMouse ? 1 : 0.9)
             }
@@ -699,7 +727,7 @@ Item {
                     anchors.fill: parent
                     anchors.rightMargin: parent.width * 0.55
                     visible: vista.esResumen(parent.index)
-                    color: Theme.surfaceHi
+                    color: K4.Tema.superficieAlta
                     opacity: 0.35
                     radius: 4
                 }
@@ -720,13 +748,13 @@ Item {
                         //  Its place in the grid, not wherever the
                         //  neighbor ended.
                         x: (modelData.c - 1) * vista.anchoCelda
-                        width: modelData.t.length * vista.anchoCelda
+                        width: (modelData.width || modelData.t.length) * vista.anchoCelda
                         height: vista.altoLinea
 
                         Rectangle {
                             anchors.fill: parent
                             color: modelData.b
-                            visible: modelData.b !== String(Theme.islandBg)
+                            visible: modelData.b !== String(K4.Tema.fondo)
                         }
 
                         Text {
@@ -745,7 +773,7 @@ Item {
                             textFormat: Text.PlainText
                             text: modelData.t
                             color: modelData.f
-                            font.family: plugin.fuente
+                            font.family: vista.plugin.fuente
                             font.pixelSize: vista.cuerpo
                             //  The VT's 0x02 bit is bold.
                             font.weight: (modelData.n & 0x02) ? Font.Bold : Font.Normal
@@ -848,7 +876,7 @@ Item {
     //  The ghosts, oldest to newest and ever more present. Declared
     //  before the cursor so it stays on top.
     Repeater {
-        model: vista.fantasmas
+        model: vista.cursorVisible ? vista.fantasmas : []
 
         delegate: Rectangle {
             required property var modelData
@@ -858,7 +886,7 @@ Item {
                               ? vista.altoLinea - vista.altoCursor : 0)
             width: vista.anchoCursor
             height: vista.altoCursor
-            color: Theme.ink
+            color: K4.Tema.tinta
             opacity: (index + 1) / Math.max(1, vista.fantasmas.length) * 0.35
         }
     }
@@ -875,13 +903,13 @@ Item {
     Rectangle {
         id: cursor
 
-        visible: vista.marco !== null
+        visible: vista.cursorVisible
         x: vista.pintadoX
         y: vista.pintadoY + (vista.figuraCursor === "subrayado"
                              ? vista.altoLinea - vista.altoCursor : 0)
         width: vista.anchoCursor
         height: vista.altoCursor
-        color: Theme.ink
+        color: K4.Tema.tinta
         //  The block is translucent on purpose: it covers the letter
         //  underneath and it reads the same, which is what a terminal
         //  does when inverting.
@@ -891,7 +919,7 @@ Item {
         Behavior on height { NumberAnimation { duration: 90 } }
 
         SequentialAnimation on opacity {
-            running: vista.marco !== null && vista.marco.cursor_parpadea === true
+            running: vista.cursorVisible && vista.marco.cursor_parpadea === true
             loops: Animation.Infinite
             alwaysRunToEnd: true
             NumberAnimation { to: 0.05; duration: 530; easing.type: Easing.InOutQuad }
@@ -1011,7 +1039,7 @@ Item {
         }
 
         onPositionChanged: function (e) {
-            if (reportando) {
+            if (reportando || esSuyo(e.modifiers)) {
                 contar("mover", nombreBoton(pressedButtons & Qt.MiddleButton ? Qt.MiddleButton
                                           : (pressedButtons & Qt.RightButton ? Qt.RightButton
                                                                              : Qt.LeftButton)),
@@ -1089,7 +1117,7 @@ Item {
     //  are given by hand from what the frame says. It comes out on
     //  its own when there is something to travel and fades when
     //  stopping, as everywhere.
-    IslandScrollBar {
+    K4.Desplazador {
         id: barra
 
         orientation: Qt.Vertical
@@ -1266,6 +1294,7 @@ Item {
             //  while the island kept it there was no way to send it.
             //  To hide the view there is the button above and the same
             //  key that opened it.
+            case Qt.Key_Escape:       return conNombre("escape")
             case Qt.Key_Return:
             case Qt.Key_Enter:        return conNombre("enter")
             case Qt.Key_Backspace:    return conNombre("backspace")
@@ -1325,31 +1354,31 @@ Item {
         width: 250
         height: 26
         radius: 8
-        color: Theme.surface
+        color: K4.Tema.superficie
         border.width: 1
-        border.color: vista.plugin.sinRastro ? Theme.red : Theme.surfaceHi
+        border.color: vista.plugin.sinRastro ? K4.Tema.rojo : K4.Tema.superficieAlta
         opacity: vista.buscando ? 1 : 0
 
         Behavior on opacity { NumberAnimation { duration: 180 } }
         Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
-        IconGlyph {
+        K4.Glifo {
             id: lupa
             anchors.left: parent.left
             anchors.leftMargin: 8
             anchors.verticalCenter: parent.verticalCenter
             text: String.fromCodePoint(0xF0349)
-            color: Theme.muted
+            color: K4.Tema.apagado
             font.pixelSize: 12
         }
 
-        IslandLabel {
+        K4.Etiqueta {
             anchors.left: lupa.right
             anchors.leftMargin: 7
             anchors.verticalCenter: parent.verticalCenter
             visible: campoBusqueda.text.length === 0
             text: "search"
-            color: Theme.dim
+            color: K4.Tema.tenue
             font.pixelSize: 11
         }
 
@@ -1362,13 +1391,12 @@ Item {
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
             verticalAlignment: TextInput.AlignVCenter
-            cursorDelegate: IslandCursor {}
-            color: Theme.ink
-            font.family: Theme.uiFont
+            color: K4.Tema.tinta
+            font.family: K4.Tema.fuente
             font.pixelSize: 11
             clip: true
             selectByMouse: true
-            selectionColor: Theme.blue
+            selectionColor: K4.Tema.azul
 
             onTextEdited: {
                 vista.plugin.aguja = text
@@ -1401,7 +1429,7 @@ Item {
     //  puts it out.
     Item {
         anchors.fill: parent
-        visible: Consola.conectando !== ""
+        visible: K4.Terminal.connecting !== ""
         z: 10
 
         //  Opaque, not translucent: underneath pass the command, the
@@ -1417,7 +1445,7 @@ Item {
         //  corner to cover there: the tabs' header is there.
         Rectangle {
             anchors.fill: parent
-            color: Theme.islandBg
+            color: K4.Tema.fondo
             bottomLeftRadius: Math.min(32, vista.height / 2)
             bottomRightRadius: Math.min(32, vista.height / 2)
         }
@@ -1436,7 +1464,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width
                     height: 2
-                    color: Theme.blue
+                    color: K4.Tema.azul
                     opacity: 0.25
                 }
 
@@ -1445,14 +1473,14 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 10
                     height: 2
-                    color: Theme.blue
+                    color: K4.Tema.azul
 
                     //  From one side to the other and back to the
                     //  start. It rides the animation engine and not a
                     //  Timer, like everything that moves in this
                     //  house.
                     NumberAnimation on x {
-                        running: Consola.conectando !== ""
+                        running: K4.Terminal.connecting !== ""
                         loops: Animation.Infinite
                         from: 0
                         to: 210
@@ -1466,7 +1494,7 @@ Item {
                     width: 16
                     height: 16
                     radius: 8
-                    color: Theme.blue
+                    color: K4.Tema.azul
                 }
 
                 //  The key: a drawn keyhole, not a glyph — a letter
@@ -1477,10 +1505,10 @@ Item {
                     width: 26
                     height: 26
                     radius: 13
-                    color: Theme.blue
+                    color: K4.Tema.azul
 
                     SequentialAnimation on opacity {
-                        running: Consola.conectando !== ""
+                        running: K4.Terminal.connecting !== ""
                         loops: Animation.Infinite
                         NumberAnimation { to: 0.55; duration: 700; easing.type: Easing.InOutQuad }
                         NumberAnimation { to: 1.0;  duration: 700; easing.type: Easing.InOutQuad }
@@ -1492,7 +1520,7 @@ Item {
                         width: 8
                         height: 8
                         radius: 4
-                        color: Theme.islandBg
+                        color: K4.Tema.fondo
                     }
 
                     Rectangle {
@@ -1501,7 +1529,7 @@ Item {
                         width: 3
                         height: 6
                         radius: 1
-                        color: Theme.islandBg
+                        color: K4.Tema.fondo
                     }
                 }
 
@@ -1511,17 +1539,17 @@ Item {
                     width: 16
                     height: 16
                     radius: 8
-                    color: Theme.blue
+                    color: K4.Tema.azul
                     opacity: chispa.x > 180 ? 1 : 0.25
 
                     Behavior on opacity { NumberAnimation { duration: 200 } }
                 }
             }
 
-            IslandLabel {
+            K4.Etiqueta {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "connecting to " + Consola.conectando + "…"
-                color: Theme.muted
+                text: "Connecting to " + K4.Terminal.connecting + "…"
+                color: K4.Tema.apagado
                 font.pixelSize: 12
             }
         }
@@ -1531,23 +1559,23 @@ Item {
     //  the exit reminder in small type on the right. With the same
     //  margin as the grid, since the island has rounded corners and
     //  what hugs the edge spills under the clip.
-    IslandLabel {
+    K4.Etiqueta {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
         anchors.leftMargin: vista.margen
         anchors.bottomMargin: 6
         text: vista.marco && vista.marco.cwd ? vista.corto(vista.marco.cwd) : ""
-        color: Theme.muted
+        color: K4.Tema.apagado
         font.pixelSize: 10
     }
 
-    IslandLabel {
+    K4.Etiqueta {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.rightMargin: vista.margen
         anchors.bottomMargin: 6
         text: "ctrl+shift: ←→ switches · T new · V paste · C copy · F find"
-        color: Theme.dim
+        color: K4.Tema.tenue
         font.pixelSize: 10
     }
 }

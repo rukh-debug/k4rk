@@ -18,7 +18,6 @@
 
 import QtQuick
 import K4 as K4
-import "../../services"
 
 QtObject {
     id: sesion
@@ -27,6 +26,40 @@ QtObject {
     //  host on the plugin and handed down; a path and not a URL
     //  because a process wants a path.
     property string carpeta: ""
+    property bool nativeBackend: false
+    property bool started: false
+    property bool ready: false
+    readonly property int processPid: proceso.pid
+    property var queuedOrders: []
+    property string pendingCommand: ""
+    property string pendingPassword: ""
+    property string pendingDestination: ""
+    property string pendingTint: ""
+    signal commandReady()
+
+    Component.onCompleted: {
+        nativeBackend = !!heredar || K4.Terminal.nativeIslandAvailable
+        proceso.command = heredar ? ["k4term-isla", "--heredar", heredar]
+            : nativeBackend ? ["k4term-isla"] : ["python3", "-B", carpeta + "/island.py"]
+        proceso.running = true
+    }
+
+    function queueCommand(script) {
+        pendingCommand = script
+        if (ready)
+            commandReady()
+    }
+
+    // Cores or shells without prompt marks use a quiet first frame. Shell
+    // integration reports readiness explicitly and bypasses this fallback.
+    property Timer promptSettled: Timer {
+        interval: 450
+        onTriggered: {
+            sesion.ready = true
+            if (sesion.pendingCommand)
+                sesion.commandReady()
+        }
+    }
 
     //  A session that already exists waiting on that socket: it comes
     //  from a window giving it back. With this the binary opens no
@@ -99,21 +132,26 @@ QtObject {
     property bool viva: true
 
     function mandar(orden) {
-        if (viva)
+        if (!viva)
+            return
+        if (started)
             proceso.escribir(JSON.stringify(orden) + "\n")
+        else
+            queuedOrders = queuedOrders.concat([orden])
     }
 
     property K4.Process proceso: K4.Process {
-        command: {
-            if (sesion.heredar)
-                return ["k4term-isla", "--heredar", sesion.heredar]
-            if (Consola.islaNuestra)
-                return ["k4term-isla"]
-            return ["python3", sesion.carpeta + "/island.py"]
-        }
-        running: sesion.viva
         porLineas: true
         entradaAbierta: true
+
+        onArrancado: {
+            sesion.started = true
+            const orders = sesion.queuedOrders
+            sesion.queuedOrders = []
+            for (let i = 0; i < orders.length; ++i)
+                sesion.mandar(orders[i])
+        }
+        onLineaError: function (text) { console.warn("Terminal session " + sesion.numero + ": " + text) }
 
         onLinea: function (linea) {
             let m = null
@@ -126,6 +164,12 @@ QtObject {
                 return
             if (m.que === "marco") {
                 sesion.marco = m
+                if (!sesion.ready)
+                    sesion.promptSettled.restart()
+            } else if (m.que === "ready") {
+                sesion.ready = true
+                if (sesion.pendingCommand)
+                    sesion.commandReady()
             } else if (m.que === "config") {
                 //  `estela` without a guard was the only field
                 //  without one: a k4term that does not send it leaves
@@ -161,14 +205,18 @@ QtObject {
             }
         }
 
-        onTerminado: {
+        onTerminado: function (code) {
             //  Dead having painted NOTHING: either the binary is no
             //  longer there, or it does not start. In both cases the
             //  answer is the same —look again at what is installed—,
             //  and so the plugin turns itself off with its reason
             //  instead of trying over and over.
-            if (!sesion.marco)
-                Consola.revisar()
+            if (!sesion.marco) {
+                K4.Terminal.refreshBackends()
+                if (code !== 0)
+                    sesion.aviso("The terminal session could not start (exit " + code + ")")
+            }
+            sesion.pendingPassword = ""
             sesion.viva = false
             sesion.marco = null
             sesion.difunta()

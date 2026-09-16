@@ -34,7 +34,9 @@ import fcntl
 import json
 import os
 import pty
+import re
 import select
+import shutil
 import signal
 import struct
 import sys
@@ -48,7 +50,10 @@ COLS, ROWS = 90, 16
 QUIET = 0.030    #  screen calm before a frame goes out
 LONGEST = 0.120  #  longest a busy screen keeps one waiting
 BLOCK_CAP = 400
-JOB_THRESHOLD = float(os.environ.get("K4TERM_PILLAR_SECONDS", "3") or 3)
+try:
+    JOB_THRESHOLD = max(0, float(os.environ.get("K4TERM_PILLAR_SECONDS", "3") or 3))
+except ValueError:
+    JOB_THRESHOLD = 3
 
 #  The house gray for what asks for no attention (a folded block's
 #  summary line); the same constant Theme.qml keeps on that side.
@@ -76,7 +81,7 @@ def say(message):
         sys.stdout.write(json.dumps(message, ensure_ascii=False) + "\n")
         sys.stdout.flush()
     except (BrokenPipeError, OSError):
-        os._exit(0)
+        raise SystemExit(0)
 
 
 def notice(text):
@@ -173,10 +178,11 @@ class Settings:
         try:
             with open(self.path, "r", encoding="utf-8", errors="replace") as f:
                 for line in f:
-                    clean = line.split("#")[0].strip()
-                    if "=" not in clean:
+                    clean = line.strip()
+                    if clean.startswith("#") or "=" not in clean:
                         continue
                     key, value = (part.strip() for part in clean.split("=", 1))
+                    value = re.split(r"\s+#", value, maxsplit=1)[0].strip()
                     self._apply(key.lower(), value)
         except OSError:
             pass
@@ -230,7 +236,8 @@ class Theme:
     def __init__(self):
         self.path = os.environ.get(
             "K4TERM_TEMA",
-            os.path.join(os.path.expanduser("~"), ".local/state/k4/tema.json"))
+            os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
+                         "k4/tema.json"))
         self.background = "#000000"
         self.ink = "#ffffff"
 
@@ -243,7 +250,7 @@ class Theme:
             if background and ink:
                 self.background, self.ink = background, ink
                 return True
-        except (OSError, ValueError):
+        except (OSError, ValueError, TypeError, AttributeError):
             pass
         return False
 
@@ -325,6 +332,8 @@ def key_bytes(name, shift, control, alt, app_cursor):
         return "\x7f"
     if name == "tab":
         return "\x1b[Z" if shift else "\t"
+    if name == "escape":
+        return "\x1b"
     return None
 
 
@@ -332,11 +341,11 @@ def mouse_bytes(kind, button, col, row, shift, control, alt, sgr):
     #  SGR is what everything speaks today; the old three-byte form
     #  stays for programs that never moved. Wheel events are presses
     #  only — no terminal sends their release.
-    buttons = {"izquierdo": 0, "medio": 1, "derecho": 2,
+    buttons = {"izquierdo": 0, "medio": 1, "derecho": 2, "none": 3,
                "arriba": 64, "abajo": 65}
     b = buttons.get(button, 0)
-    mods = (1 if shift else 0) + (2 if alt else 0) + (4 if control else 0)
-    cb = b | (mods << 3)
+    mods = (4 if shift else 0) | (8 if alt else 0) | (16 if control else 0)
+    cb = b | mods
     col = max(1, col)
     row = max(1, row)
     if sgr:
@@ -345,10 +354,10 @@ def mouse_bytes(kind, button, col, row, shift, control, alt, sgr):
         final = "M" if kind != "soltar" else "m"
         return "\x1b[<%d;%d;%d%s" % (cb, col, row, final)
     if kind == "soltar":
-        cb = 3
+        cb = 3 | mods
     if kind == "mover":
         cb |= 32
-    return "\x1b[M" + "".join(chr(32 + min(v, 223)) for v in (cb, col, row))
+    return b"\x1b[M" + bytes(32 + min(v, 223) for v in (cb, col, row))
 
 
 #  ── the session ───────────────────────────────────────────────────
@@ -361,6 +370,7 @@ class Island:
         self.theme.read()
 
         self.vt = VT(COLS, ROWS, self.settings.scrollback)
+        self.vt.event_sink = self._event
         self.tint_name = ""
         self._apply_theme()
 
@@ -382,6 +392,10 @@ class Island:
 
         self.dirty = False
         self.dirty_since = None
+        self.input_buffer = bytearray()
+        self.mouse_button = "none"
+        self.search_row = None
+        self.search_text = ""
 
         self.shell_pid, self.master = self._spawn()
         self.shell_gone = False
@@ -397,7 +411,10 @@ class Island:
     # ── birth ───────────────────────────────────────────────────
 
     def _spawn(self):
-        shell = self.settings.shell or os.environ.get("SHELL") or "/bin/bash"
+        shell = self.settings.shell or os.environ.get("SHELL") or shutil.which("sh")
+        shell = shutil.which(shell) if shell else None
+        if not shell:
+            raise RuntimeError("The configured terminal shell could not be found")
         master, slave = pty.openpty()
         fcntl.ioctl(master, termios.TIOCSWINSZ,
                     struct.pack("HHHH", ROWS, COLS, 0, 0))
@@ -421,6 +438,9 @@ class Island:
             #  The shell integration hooks on this name: it is what
             #  tells zsh «you may emit the marks».
             env["TERM_PROGRAM"] = "k4term"
+            env["K4TERM_INTEGRACION"] = os.path.join(os.path.dirname(__file__), "integration.zsh")
+            for mark in ("TMUX", "TMUX_PANE", "STY"):
+                env.pop(mark, None)
             names, agents = server_names_for_env()
             if names:
                 env["K4_SERVIDORES"] = names
@@ -436,7 +456,8 @@ class Island:
             argv += ["-l"]
             try:
                 os.execve(shell, ["-" + os.path.basename(shell)] + argv[1:], env)
-            except OSError:
+            except OSError as error:
+                os.write(2, ("Could not start terminal shell: %s\r\n" % error).encode())
                 os._exit(127)
 
         os.close(slave)
@@ -474,6 +495,7 @@ class Island:
                 self.settings.read()
                 say(self.settings.message())
                 self.vt.history_limit = self.settings.scrollback
+                self.vt.trim_history()
                 self._apply_theme()
                 self.dirty = True
         except OSError:
@@ -521,7 +543,7 @@ class Island:
         r = 0
         while r < vt.rows:
             abs_row = top + r
-            block = self._folded_at(self.blocks, abs_row)
+            block = None if vt.alt_screen else self._folded_at(self.blocks, abs_row)
             if block:
                 rows.append(self._summary(block))
                 rows_abs.append(block["fila"])
@@ -538,16 +560,17 @@ class Island:
         #  The cursor goes by its true history row, which may have
         #  moved when something above folded; if it is inside the
         #  fold it stays at the end — the least false place.
-        cursor_abs = len(vt.history) + vt.y
+        cursor_abs = vt.cursor_abs_row()
         cursor_row = rows_abs.index(cursor_abs) + 1 if cursor_abs in rows_abs \
-            else max(1, len(rows))
+            else 0
         used = 0
         for i, row in enumerate(rows):
             if row:
                 used = i + 1
 
         bottom = top + vt.rows
-        visible = [b for b in self.blocks if top <= b["fila"] < bottom]
+        self.blocks = [b for b in self.blocks if b["fin"] == 0 or b["fin"] > vt.history_start]
+        visible = [] if vt.alt_screen else [b for b in self.blocks if top <= b["fila"] < bottom]
 
         return {
             "que": "marco",
@@ -555,6 +578,7 @@ class Island:
             "filas_abs": rows_abs,
             "resumidas": folded,
             "cursor": [vt.x + 1, cursor_row],
+            "cursor_visible": vt.cursor_visible and cursor_row > 0,
             "cursor_figura": vt.cursor_shape,
             "cursor_parpadea": vt.cursor_blinks,
             "cols": vt.cols,
@@ -562,16 +586,20 @@ class Island:
             "usadas": max(used, cursor_row),
             "cwd": self._cwd(),
             "titulo": vt.title,
-            "scroll": [top, max(total, vt.rows)],
+            "scroll": [0, vt.rows] if vt.alt_screen else [top - vt.history_start, total - vt.history_start],
             "raton": vt.mouse_active,
             "bloques": visible,
-            "ultimo": self.blocks[-1] if self.blocks else None,
+            "ultimo": self.blocks[-1] if self.blocks and not vt.alt_screen else None,
         }
 
     # ── stream events ───────────────────────────────────────────
 
     def _event(self, kind, value):
-        if kind == "command":
+        if kind == "prompt":
+            say({"que": "ready"})
+        elif kind == "reset":
+            self.blocks = []
+        elif kind == "command":
             self.command = value
         elif kind == "start":
             self.blocks.append({"fila": self.vt.cursor_abs_row(),
@@ -582,7 +610,7 @@ class Island:
             if self.job is None:
                 self.job = [self.command, time.monotonic(), False]
         elif kind == "finish":
-            if self.blocks:
+            if self.blocks and self.blocks[-1]["estado"] == "corre":
                 last = self.blocks[-1]
                 last["estado"] = "bien" if value == 0 else "mal"
                 last["fin"] = self.vt.cursor_abs_row()
@@ -609,8 +637,6 @@ class Island:
 
     def _consume(self, data):
         self.vt.feed(data)
-        for _, kind, value in self.vt.events:
-            self._event(kind, value)
         if self.vt.replies:
             #  A program that asked is waiting: the answer leaves with
             #  the same breath as the bytes that asked for it.
@@ -659,22 +685,16 @@ class Island:
         #  be what is seen and not whole rows — and with ONE row both
         #  cuts apply at once, or the good part is cut away.
         vt = self.vt
-        stop = vt.total if end == 0 else min(end, vt.total)
+        start = max(start, vt.history_start)
+        stop = vt.total - 1 if end == 0 and not col_end else min(end, vt.total - 1)
         lines = []
         for r in range(start, stop + 1):
-            text = vt.row_text(r)
-            if text is None:
-                break
-            lines.append(text.rstrip())
+            first = max(0, col_start - 1) if r == start else 0
+            last = col_end if r == stop and col_end else None
+            text = vt.row_slice(r, first, last)
+            lines.append(text if r == stop and col_end else text.rstrip())
         while lines and lines[-1] == "":
             lines.pop()
-        head = max(0, col_start - 1)
-        tail = None if col_end == 0 else col_end
-        if len(lines) == 1:
-            lines[0] = lines[0][head:tail]
-        elif lines:
-            lines[0] = lines[0][head:]
-            lines[-1] = lines[-1][:tail]
         return "\n".join(lines)
 
     # ── orders from the bar ──────────────────────────────────────
@@ -682,7 +702,14 @@ class Island:
     def order(self, line):
         try:
             m = json.loads(line)
-        except ValueError:
+            if not isinstance(m, dict):
+                return
+            self._order(m)
+        except (ValueError, TypeError, OverflowError, struct.error):
+            notice("Invalid terminal request")
+
+    def _order(self, m):
+        if not isinstance(m.get("que"), str):
             return
         kind = m.get("que")
         vt = self.vt
@@ -695,13 +722,14 @@ class Island:
             if data:
                 self._write_master(data)
         elif kind == "pegar":
-            payload = m.get("valor", "")
+            payload = str(m.get("valor", "")).replace("\r\n", "\n").replace("\n", "\r")
             if vt.bracketed_paste:
+                payload = payload.replace("\x1b", "")
                 payload = "\x1b[200~" + payload + "\x1b[201~"
             self._write_master(payload)
         elif kind == "medida":
-            cols = max(20, m.get("cols", COLS))
-            rows = max(4, m.get("filas", ROWS))
+            cols = max(20, min(500, int(m.get("cols", COLS))))
+            rows = max(4, min(200, int(m.get("filas", ROWS))))
             try:
                 fcntl.ioctl(self.master, termios.TIOCSWINSZ,
                             struct.pack("HHHH", rows, cols, 0, 0))
@@ -729,14 +757,22 @@ class Island:
             self.dirty = True
         elif kind == "raton":
             if vt.mouse_active:
-                moving = m.get("tipo") == "mover"
-                wanted = not moving or vt.mouse_mode == 1003
+                event = m.get("tipo", "pulsar")
+                button = m.get("boton", "izquierdo")
+                if event == "pulsar":
+                    self.mouse_button = button
+                moving = event == "mover"
+                wanted = (not moving and (event != "soltar" or vt.mouse_mode != 9)) \
+                    or vt.mouse_mode == 1003 \
+                    or (moving and vt.mouse_mode == 1002 and self.mouse_button != "none")
                 if wanted:
                     self._write_master(mouse_bytes(
-                        m.get("tipo", "pulsar"), m.get("boton", "izquierdo"),
+                        event, self.mouse_button if moving else button,
                         m.get("col", 1), m.get("fila", 1),
                         m.get("shift", False), m.get("control", False),
                         m.get("alt", False), vt.mouse_sgr))
+                if event == "soltar":
+                    self.mouse_button = "none"
         elif kind == "texto_de":
             say({"que": "texto",
                  "texto": self.text_of(m.get("desde", 0), m.get("hasta", 0),
@@ -782,30 +818,40 @@ class Island:
     def _write_master(self, data):
         if isinstance(data, str):
             data = data.encode("utf-8")
-        while data:
+        self.input_buffer.extend(data)
+
+    def _flush_input(self):
+        # PTYs apply backpressure, especially during large pastes. Retain
+        # the unwritten suffix and retry only when select reports writable.
+        while self.input_buffer:
             try:
-                data = data[os.write(self.master, data):]
+                count = os.write(self.master, self.input_buffer[:65536])
+                if count == 0:
+                    return
+                del self.input_buffer[:count]
             except OSError as e:
                 if e.errno == errno.EINTR:
                     continue
+                if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
+                    self.shell_gone = True
+                    self.input_buffer.clear()
                 return
 
     def _search(self, text, direction):
         vt = self.vt
-        needle = text.strip().lower()
+        needle = text.lower()
         top, total = vt.top, vt.total
         found = None
         if needle:
-            if direction < 0:
-                for r in range(top - 1, -1, -1):
-                    if needle in vt.row_text(r).lower():
-                        found = r
-                        break
-            else:
-                for r in range(top + 1, total):
-                    if needle in vt.row_text(r).lower():
-                        found = r
-                        break
+            start = self.search_row if needle == self.search_text and self.search_row is not None \
+                else (total if direction < 0 else vt.history_start - 1)
+            candidates = range(start - 1, vt.history_start - 1, -1) if direction < 0 \
+                else range(start + 1, total)
+            for r in candidates:
+                if needle in vt.row_text(r).lower():
+                    found = r
+                    break
+        self.search_row, self.search_text = found, needle
         if found is not None:
             vt.scroll_viewport(found - top)
             self.dirty = True
@@ -890,6 +936,10 @@ class Island:
         os.set_blocking(wake_w, False)
         signal.set_wakeup_fd(wake_w)
         signal.signal(signal.SIGCHLD, lambda *_: None)
+        def stop(*_):
+            raise SystemExit(0)
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGHUP, stop)
 
         stdin_fd = sys.stdin.fileno()
         os.set_blocking(stdin_fd, False)
@@ -910,9 +960,13 @@ class Island:
                 if self.note_fd is not None:
                     watchers.append(self.note_fd)
                 try:
-                    ready, _, _ = select.select(watchers, [], [], timeout)
+                    ready, writable, _ = select.select(
+                        watchers, [self.master] if self.input_buffer else [], [], timeout)
                 except InterruptedError:
                     continue
+
+                if self.master in writable:
+                    self._flush_input()
 
                 if stdin_fd in ready:
                     try:
@@ -929,7 +983,9 @@ class Island:
                                 self.order(line.decode("utf-8", "replace"))
 
                 if self.master in ready or self.shell_gone:
-                    while True:
+                    # Yield to keyboard input and frame delivery even if a
+                    # command can fill the PTY faster than we can drain it.
+                    for _ in range(4):
                         try:
                             chunk = os.read(self.master, 65536)
                         except OSError as e:
@@ -945,6 +1001,8 @@ class Island:
                             self.shell_gone = True
                             break
                     if self.shell_gone and self._shell_reaped():
+                        if self.dirty:
+                            say(self.frame())
                         break
 
                 if self.note_fd is not None and self.note_fd in ready:
@@ -973,9 +1031,43 @@ class Island:
                     self.dirty_since = None
         finally:
             signal.set_wakeup_fd(-1)
+            os.close(wake_r)
+            os.close(wake_w)
+            self._shutdown()
+
+    def _shutdown(self):
+        groups = {self.shell_pid}
+        try:
+            groups.add(os.tcgetpgrp(self.master))
+        except OSError:
+            pass
+        for group in groups:
             try:
-                os.kill(self.shell_pid, signal.SIGHUP)
+                if group > 0 and group != os.getpgrp():
+                    os.killpg(group, signal.SIGHUP)
             except OSError:
+                pass
+        os.close(self.master)
+        deadline = time.monotonic() + 0.5
+        while not self._shell_reaped() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        for group in groups:
+            try:
+                if group > 0 and group != os.getpgrp():
+                    os.killpg(group, signal.SIGKILL)
+            except OSError:
+                pass
+        try:
+            os.waitpid(self.shell_pid, 0)
+        except ChildProcessError:
+            pass
+        if self.note_fd is not None:
+            os.close(self.note_fd)
+        if self.note_child is not None:
+            try:
+                os.kill(self.note_child, signal.SIGTERM)
+                os.waitpid(self.note_child, 0)
+            except (OSError, ChildProcessError):
                 pass
 
     def _shell_reaped(self):
@@ -991,6 +1083,8 @@ class Island:
                 pid, _ = os.waitpid(-1, os.WNOHANG)
                 if pid == 0:
                     break
+                if pid == self.shell_pid:
+                    self.shell_gone = True
                 if pid == self.note_child and self.note_fd is not None:
                     self._collect_note()
         except (ChildProcessError, OSError):
@@ -1163,16 +1257,14 @@ def selftest():
     #  drifts the line to the right of every accent.
     v = V(20, 4)
     v.feed("caf".encode() + "é".encode() + b" and more")
-    run = v.row_runs(0)[0]
-    check(run["t"].rstrip() == "caf\u00e9 and more"
-          and len(run["t"].rstrip()) == v.x,
-          "an accented letter is one codepoint per cell in the dump")
+    check(v.row_text(0).rstrip() == "caf\u00e9 and more" and v.x == 13,
+          "an accented letter retains its text and cell position")
 
     #  A wide glyph writes its continuation cell, not stale content.
     v = V(10, 4)
     v.feed(b"stale")
     v.feed(b"\r" + "日y".encode())
-    check(v.row_text(0).rstrip() == "\u65e5 yle",
+    check(v.row_text(0).rstrip() == "\u65e5yle",
           "the cell after a wide glyph is blank, not yesterday's")
 
     #  Cursor shapes, as the programs ask for them (DECSCUSR).
@@ -1294,7 +1386,7 @@ def selftest():
     check(mouse_bytes("soltar", "derecho", 3, 5, False, False, False, True)
           == "\x1b[<2;3;5m", "SGR release ends with m")
     check(mouse_bytes("pulsar", "izquierdo", 1, 1, False, False, False, False)
-          == "\x1b[M !!", "the old dialect still encodes")
+          == b"\x1b[M !!", "the old dialect still encodes")
 
     #  The tint, the theme colors, the password shapes.
     check(tinted_background((0, 0, 0), (255, 255, 255)) == (46, 46, 46),
