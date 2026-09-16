@@ -452,6 +452,8 @@ bar's directory, not yours.
 | `K4.Medidor` | a bar that measures and is not touched: volume, progress, how much of a quota is gone |
 | `K4.Baldosa` | the control center's pressable card |
 | `K4.Boton` | round one-glyph button |
+| `K4.ActionButton` | compact text action; `text`, controlled `selected`, inherited `enabled`, `clicked()` |
+| `K4.TextField` | shared single-line editor; caller owns labels, validation and commits |
 | `K4.Rodillo` | a scrolling area **that actually obeys the wheel**, house scroll bar included |
 | `K4.Desplazador` | the house scroll bar — thin, fades away; attach it to your own lists |
 | `K4.Estela` | the house caret, with the trail k4term leaves — use it as `cursorDelegate` |
@@ -468,6 +470,16 @@ bar's directory, not yours.
 | `K4.Submaps` | the submap Hyprland is in right now ("" for none). Names follow the parseable standard — `Title: (k)Label (command)` — which the house hyprland-submap plugin turns into its key-chip island; anything else shows as plain text |
 | `K4.Paths` | paths: `estadoDe(id)` is your state directory |
 | `K4.IconoPlugin` | a plugin's icon: its image if it brings one, its glyph if not |
+
+Use the shared controls for consistent keyboard focus and disabled states.
+Give icon buttons, cards and switches an `Accessible.name`. Switches and choice
+buttons report activation; keep the displayed value bound to its owner.
+`K4.Deslizador` supports arrows and Home/End, exposes read-only `dragging`, and
+uses a compact 28 px layout when `etiqueta` is empty (supply an accessible name).
+`K4.Rodillo` brings focused descendants into view during Tab traversal.
+Text fields need a persistent visible label and an explicit commit/cancel
+policy; do not persist password drafts. See the control reference in
+[API.md](API.md#controls-keyboard-and-focus).
 
 And what you need when yours grows past the island:
 

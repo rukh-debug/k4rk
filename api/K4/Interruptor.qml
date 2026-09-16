@@ -1,8 +1,4 @@
-//  El interruptor de la barra: encendido verde, muñequilla que se desliza.
-//
-//  Ojo con una cosa: NO cambia solo. Emite `alternado()` y el estado lo pone
-//  quien manda —normalmente tu plugin, después de guardar—. Así nunca se ve
-//  encendido algo que en realidad falló.
+// Controlled switch: emits a request; the owner supplies the confirmed state.
 
 import QtQuick
 
@@ -16,6 +12,24 @@ Rectangle {
     implicitHeight: 24
     radius: 12
     color: marcado ? Tema.verde : Tema.superficieAlta
+    opacity: enabled ? 1 : 0.45
+    activeFocusOnTab: enabled
+    Accessible.role: Accessible.CheckBox
+    Accessible.checkable: true
+    Accessible.checked: marcado
+    Accessible.onToggleAction: if (enabled) alternado()
+    Keys.onSpacePressed: if (enabled) alternado()
+    Keys.onReturnPressed: if (enabled) alternado()
+    Keys.onEnterPressed: if (enabled) alternado()
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -3
+        radius: 15
+        color: "transparent"
+        border.width: control.activeFocus ? 1 : 0
+        border.color: Tema.azul
+    }
 
     Behavior on color { ColorAnimation { duration: 180 } }
 
@@ -35,6 +49,9 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: control.alternado()
+        onClicked: {
+            control.forceActiveFocus(Qt.MouseFocusReason)
+            control.alternado()
+        }
     }
 }

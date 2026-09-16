@@ -11,7 +11,7 @@ import QtQuick.Layouts
 import K4 as K4
 import "../../services"
 
-Rectangle {
+K4.Baldosa {
     id: tarjeta
 
     required property var plugin
@@ -22,6 +22,16 @@ Rectangle {
 
     radius: 12
     color: K4.Tema.superficie
+    Accessible.name: "Open system information"
+    onPulsada: if (plugin) plugin.abrir()
+
+    K4.Etiqueta {
+        anchors.centerIn: parent
+        visible: !tarjeta.verCpu && !tarjeta.verRam && !tarjeta.verRed
+        text: "System metrics are hidden · Configure them in Settings → Plugins"
+        color: K4.Tema.apagado
+        font.pixelSize: 11
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -44,7 +54,7 @@ Rectangle {
                 font.weight: Font.DemiBold
             }
             K4.Etiqueta {
-                text: Math.round(Sistema.cpuUso) + "%"
+                text: Sistema.cargado ? Math.round(Sistema.cpuUso) + "%" : "—"
                 color: K4.Tema.tinta
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -71,7 +81,7 @@ Rectangle {
                 font.weight: Font.DemiBold
             }
             K4.Etiqueta {
-                text: Math.round(Sistema.ramPct) + "%"
+                text: Sistema.cargado ? Math.round(Sistema.ramPct) + "%" : "—"
                 color: K4.Tema.tinta
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -98,7 +108,8 @@ Rectangle {
                 font.weight: Font.DemiBold
             }
             K4.Etiqueta {
-                text: "↓ " + Sistema.tasa(Sistema.redRx) + "  ↑ " + Sistema.tasa(Sistema.redTx)
+                text: Sistema.cargado
+                    ? "↓ " + Sistema.tasa(Sistema.redRx) + "  ↑ " + Sistema.tasa(Sistema.redTx) : "—"
                 color: K4.Tema.tinta
                 font.pixelSize: 11
                 font.weight: Font.DemiBold
@@ -109,9 +120,4 @@ Rectangle {
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: if (tarjeta.plugin) tarjeta.plugin.abrir()
-    }
 }

@@ -1,8 +1,6 @@
 pragma Singleton
 
-//  Bluetooth vía bluez. Mismo trato que el Wi‑Fi: el descubrimiento solo se
-//  enciende mientras alguien mira la lista.
-
+// BlueZ discovery follows the open list. Initial pairing needs a live agent.
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
@@ -11,25 +9,25 @@ import "../core"
 
 Singleton {
     id: bt
-
-    // Lo pone la vista que esté enseñando la lista de dispositivos.
     property bool discovering: false
-
     readonly property var adapter: Bluetooth.defaultAdapter
-
     readonly property var devices: {
-        if (!adapter)
-            return []
-
-        const list = adapter.devices.values.slice()
-        list.sort(function (a, b) {
-            if (a.connected !== b.connected)
-                return a.connected ? -1 : 1
-            if (a.paired !== b.paired)
-                return a.paired ? -1 : 1
+        if (!adapter) return []
+        return adapter.devices.values.slice().sort(function (a, b) {
+            if (a.connected !== b.connected) return a.connected ? -1 : 1
+            if (a.paired !== b.paired) return a.paired ? -1 : 1
             return a.name.localeCompare(b.name)
         })
-        return list
+    }
+    readonly property string summary: {
+        if (!adapter) return "No adapter"
+        if (!adapter.enabled) return "Off"
+        if (emparejando.length > 0) return "Pairing…"
+        if (devices.some(function (device) { return device.state === BluetoothDeviceState.Connecting }))
+            return "Connecting…"
+        const connected = devices.filter(function (device) { return device.connected })
+        return connected.length === 1 ? connected[0].name || connected[0].address
+            : connected.length > 1 ? connected.length + " devices connected" : "Not connected"
     }
 
     function deviceIcon(device) {
@@ -46,102 +44,53 @@ Singleton {
         if (icon.indexOf("video") !== -1 || icon.indexOf("tv") !== -1) return Theme.ico.television
         return Theme.ico.devices
     }
-
+    function busy(device) {
+        return !!device && (device.pairing || emparejando === device.address
+            || device.state === BluetoothDeviceState.Connecting
+            || device.state === BluetoothDeviceState.Disconnecting)
+    }
     function deviceStatus(device) {
-        if (!device)
-            return ""
-        //  El emparejamiento lo lleva bluetoothctl, así que su estado no
-        //  llega por `pairing`: lo dice el servicio.
-        if (emparejando === device.address)
-            return "Pairing…"
-        if (falloEmparejar === device.address && !device.paired)
-            return "Couldn't pair"
-        if (device.pairing)
-            return "Pairing…"
+        if (!device) return ""
+        if (emparejando === device.address || device.pairing) return "Pairing…"
+        if (device.state === BluetoothDeviceState.Connecting) return "Connecting…"
+        if (device.state === BluetoothDeviceState.Disconnecting) return "Disconnecting…"
+        if (falloEmparejar === device.address && !device.paired) return "Pairing failed"
         if (device.connected)
             return device.batteryAvailable
-                ? "Connected · " + Math.round(device.battery * 100) + "%"
-                : "Connected"
-        if (device.paired || device.bonded)
-            return "Paired"
-        return "Available"
+                ? "Connected · " + Math.round(device.battery * 100) + "%" : "Connected"
+        return device.paired || device.bonded ? "Paired" : "Available"
     }
-
-    //  Emparejar NO es conectar, y sin confianza no dura.
-    //
-    //  Esto solo emparejaba, y con unos auriculares pasaba lo peor: bluez
-    //  los conecta un momento al terminar el emparejamiento —así que la fila
-    //  llegaba a decir «Conectado»—, pero sin `trusted` no autoriza los
-    //  perfiles de audio, el aparato se cae a los pocos segundos y, como no
-    //  está emparejado del todo ni hay descubrimiento al cerrar la pestaña,
-    //  bluez lo borra de su árbol: la fila DESAPARECÍA de la lista. Parecía
-    //  que la barra los perdía y en realidad nunca llegaban a asentarse.
-    //
-    //  La confianza va antes de conectar: es lo que hace que mañana, al
-    //  sacarlos del estuche, vuelvan solos sin abrir esto.
     function activate(device) {
-        if (!device)
-            return
-
-        if (device.connected) {
-            device.disconnect()
-            return
-        }
-
+        if (!adapter || !adapter.enabled || !device || busy(device)) return
+        if (device.connected) { device.disconnect(); return }
         if (device.paired || device.bonded) {
-            if (!device.trusted)
-                device.trusted = true
+            if (!device.trusted) device.trusted = true
             device.connect()
             return
         }
-
-        //  Uno nuevo: emparejar CON AGENTE, que es lo que faltaba.
-        //
-        //  `device.pair()` sale por la API de Quickshell, y esa API no
-        //  registra ningún agente de emparejamiento: solo publica el estado.
-        //  Sin agente que atienda la negociación, bluez abre el enlace, el
-        //  bonding no llega a cuajar y a los dos segundos él mismo cierra y
-        //  desempareja. En el volcado del HCI se ve enterito: `Disconnect`
-        //  salido de aquí, y detrás un `Unpair Device` que el kernel contesta
-        //  con «Not Paired» —nunca hubo clave de enlace—. Por eso el aparato
-        //  hacía su ruido de conexión y se caía solo, y por eso tampoco
-        //  volvía al sacarlo del estuche: sin clave no hay a qué volver.
-        //
-        //  bluetoothctl SÍ registra su agente al arrancar, así que el
-        //  emparejamiento inicial se le encarga a él. Lo demás —conectar,
-        //  desconectar, confiar— sigue por la API, que para eso vale.
+        // Trust before reconnecting so audio profiles remain authorized after pairing.
         emparejar(device)
     }
 
-    //  ── el emparejamiento, por bluetoothctl ──────────────────────
-
-    //  A quién estamos emparejando ahora mismo, para que la fila lo diga.
     property string emparejando: ""
     property string falloEmparejar: ""
+    property string notice: ""
+    property var _reciente: null
 
     function emparejar(device) {
-        if (!device || _agente.running)
+        if (!device) return
+        if (_agente.running) {
+            notice = "Finish the current pairing before pairing another device."
             return
-        //  La dirección se mete en una orden de shell: se comprueba que sea
-        //  una MAC y nada más. Viene de bluez, pero un servicio no da por
-        //  bueno lo que le llega solo porque el remitente sea de casa.
+        }
         const mac = String(device.address || "")
-        if (!/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(mac))
-            return
-
+        if (!/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(mac)) return
         _reciente = device
         emparejando = mac
         falloEmparejar = ""
-
-        //  La sesión entera por la entrada de bluetoothctl, y no `pair` a
-        //  secas, porque hace falta el ESCANEO: sin descubrimiento bluez no
-        //  tiene el aparato en su árbol y contesta «not available» —con
-        //  código 0, para más señas—. Es la misma secuencia que se comprobó
-        //  a mano: buscar, emparejar, confiar y conectar, con sus esperas.
-        //
-        //  `--agent KeyboardDisplay` es lo que trae de verdad bluetoothctl a
-        //  esta historia: cubre el «just works» de unos auriculares y el
-        //  código en pantalla de un teclado o un móvil.
+        notice = ""
+        // Discovery keeps a new device in BlueZ's tree through the complete operation.
+        // This agent handles simple pairing; interactive confirmation needs a system tool.
         _agente.command = ["sh", "-c",
             "{ echo 'scan on'; sleep 4;"
             + " echo 'pair " + mac + "'; sleep 9;"
@@ -153,72 +102,46 @@ Singleton {
 
     property Process _agente: Process {
         running: false
-
-        stdout: StdioCollector { }
-        stderr: StdioCollector { }
-
+        stdout: StdioCollector {}
+        stderr: StdioCollector {}
         onExited: function (code, status) {
-            const d = bt._reciente
+            const device = bt._reciente
             bt.emparejando = ""
-            if (!d) {
-                bt._reciente = null
-                return
-            }
-            //  Emparejado: confiar y conectar. Si no, decirlo —callarse un
-            //  fallo aquí deja al usuario tocando una fila que no responde.
-            if (d.paired || d.bonded) {
-                if (!d.trusted)
-                    d.trusted = true
+            if (!device) return
+            if (device.paired || device.bonded) {
+                if (!device.trusted) device.trusted = true
+                bt.notice = ""
                 bt._vigilancia.vueltas = 0
                 bt._vigilancia.restart()
             } else {
-                bt.falloEmparejar = d.address
+                bt.falloEmparejar = device.address
+                bt.notice = "Could not pair with " + (device.name || device.address)
+                    + ". Check pairing mode and retry. If a passkey or confirmation is required, use your system Bluetooth tool."
                 bt._reciente = null
             }
         }
     }
-
-    //  A quién seguimos: SOLO al que se acaba de tocar. Vigilar a todos los
-    //  emparejados conectaría solo el móvil o la tele en cuanto pasaran por
-    //  el radio, y eso no lo ha pedido nadie.
-    property var _reciente: null
-
-    //  Insistir un rato, porque la primera conexión NO es la buena.
-    //
-    //  Bluez abre una conexión mientras empareja, y con estos auriculares esa
-    //  se cae sola un par de segundos después de terminar —medido: conecta,
-    //  empareja, y a los dos segundos se cae—. Un `connect()` disparado al
-    //  ver `paired` llega cuando todavía está la conexión del emparejamiento
-    //  en pie, no hace nada, y cuando se cae ya no queda nadie mirando: el
-    //  aparato se quedaba muerto justo después de decir «Conectado», que es
-    //  exactamente lo que se veía.
-    //
-    //  Así que después de emparejar se vigila unos segundos y se reconecta
-    //  cada vez que se caiga. Se suelta al agotar las vueltas y no al primer
-    //  «conectado»: darlo por bueno antes es el fallo que arregla esto.
+    // Only follow the device explicitly requested. Its first connection can drop
+    // after bonding, so observe the complete settling interval before releasing it.
     property Timer _vigilancia: Timer {
         property int vueltas: 0
-
         interval: 1500
         repeat: true
-
         onTriggered: {
-            const d = bt._reciente
+            const device = bt._reciente
             vueltas++
-            if (!d || !(d.paired || d.bonded) || vueltas > 6) {
+            if (!device || !(device.paired || device.bonded) || vueltas > 6) {
                 stop()
                 bt._reciente = null
                 return
             }
-            if (!d.connected)
-                d.connect()
+            if (!device.connected && !bt.busy(device)) device.connect()
         }
     }
-
     Binding {
-        target: Bluetooth.defaultAdapter
+        target: bt.adapter
         property: "discovering"
-        value: bt.discovering
-        when: Bluetooth.defaultAdapter !== null
+        value: bt.discovering && !!bt.adapter && bt.adapter.enabled
+        when: bt.adapter !== null
     }
 }

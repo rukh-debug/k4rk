@@ -21,11 +21,14 @@ Rectangle {
     id: fila
 
     required property var modelData
+    objectName: "setting-" + (modelData.id || "")
 
     //  `modelData` comes from `PluginManager.opcionesAjustes`: just
     //  enough for the closed row. The rest is looked up when needed.
     readonly property string ident: String(modelData.pluginId || "")
     readonly property var meta: PluginManager.metadata(fila.ident)
+    readonly property string description: modelData.error ? modelData.desc
+        : (meta && meta.description ? meta.description : modelData.desc || "")
 
     //  Its settings, the ones it registered with `K4.Ajustes`. It may
     //  have none.
@@ -64,7 +67,7 @@ Rectangle {
     //  Broken or missing requirements: it says so and cannot be touched.
     //  `fijo` means there is nothing to do from here; `recargable` means
     //  it can be retried.
-    readonly property bool averiado: modelData.error === "fijo"
+    readonly property bool averiado: !!modelData.error
 
     //  The row's open state lives in the VIEW, not here: this row is
     //  rebuilt every time the roster changes — which is exactly when you
@@ -74,11 +77,18 @@ Rectangle {
         vista.filasAbiertas[fila.ident] === true
 
     Layout.fillWidth: true
-    Layout.preferredHeight: cuerpo.implicitHeight + 18
+    implicitHeight: cuerpo.implicitHeight + 24
+    Layout.preferredHeight: implicitHeight
 
     radius: 12
-    color: fila.abierta ? Theme.surfaceHi
-        : (raton.containsMouse ? Theme.surfaceHi : Theme.surface)
+    color: Theme.surface
+    border.width: activeFocus || vista.highlightedSetting === modelData.id ? 1 : 0
+    border.color: Theme.blue
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: (abierta ? "Collapse " : "Expand ") + modelData.nombre
+    Keys.onSpacePressed: vista.ponerFilaAbierta(ident, !abierta)
+    Keys.onReturnPressed: vista.ponerFilaAbierta(ident, !abierta)
 
     Behavior on color { ColorAnimation { duration: 140 } }
 
@@ -89,13 +99,13 @@ Rectangle {
         anchors.top: parent.top
         anchors.leftMargin: 14
         anchors.rightMargin: 14
-        anchors.topMargin: 9
-        spacing: 10
+        anchors.topMargin: 12
+        spacing: 12
 
         // ── what is always visible ──────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 34
+            Layout.preferredHeight: 40
             spacing: 11
 
             //  The arrow. It turns when opened, which is how you say
@@ -159,10 +169,10 @@ Rectangle {
                 IslandLabel {
                     Layout.fillWidth: true
                     visible: !fila.abierta
-                    text: fila.modelData.desc
+                    text: fila.description
                     textFormat: Text.PlainText
-                    color: fila.averiado ? Theme.red : Theme.dim
-                    font.pixelSize: 10
+                    color: fila.averiado ? Theme.red : Theme.muted
+                    font.pixelSize: 11
                     elide: Text.ElideRight
                     maximumLineCount: 1
                 }
@@ -188,36 +198,17 @@ Rectangle {
                 }
             }
 
-            //  The switch. The same as ever, in the same place.
-            Rectangle {
+            K4.ActionButton {
+                visible: fila.modelData.error === "recargable"
+                text: "Retry"
+                onClicked: PluginManager.reintentar(fila.ident)
+            }
+            K4.Interruptor {
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: 40
-                implicitHeight: 22
-                radius: 11
-                opacity: fila.averiado ? 0.35 : 1
-                color: fila.encendido ? Theme.green : Theme.track
-
-                Behavior on color { ColorAnimation { duration: 140 } }
-
-                Rectangle {
-                    width: 18
-                    height: 18
-                    radius: 9
-                    color: "white"
-                    anchors.verticalCenter: parent.verticalCenter
-                    x: fila.encendido ? parent.width - width - 2 : 2
-
-                    Behavior on x {
-                        NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: !fila.averiado
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Settings.alternar(fila.modelData.id)
-                }
+                marcado: fila.encendido
+                enabled: fila.modelData.error !== "fijo"
+                Accessible.name: "Enable " + fila.modelData.nombre
+                onAlternado: Settings.alternar(fila.modelData.id)
             }
         }
 
@@ -232,7 +223,7 @@ Rectangle {
             IslandLabel {
                 Layout.fillWidth: true
                 visible: text.length > 0
-                text: fila.modelData.desc
+                text: fila.description
                 textFormat: Text.PlainText
                 color: fila.averiado ? Theme.red : Theme.muted
                 font.pixelSize: 11
@@ -308,8 +299,8 @@ Rectangle {
                 IslandLabel {
                     Layout.fillWidth: true
                     text: "What it adds"
-                    color: Theme.dim
-                    font.pixelSize: 10
+                    color: Theme.muted
+                    font.pixelSize: 11
                 }
 
                 Repeater {
@@ -353,11 +344,16 @@ Rectangle {
                                 Layout.fillWidth: true
                                 text: filaPagina.modelData.fuente.desc
                                 textFormat: Text.PlainText
-                                color: Theme.dim
-                                font.pixelSize: 9
+                                    color: Theme.muted
+                                    font.pixelSize: 11
                                 elide: Text.ElideRight
                                 maximumLineCount: 1
                             }
+                        }
+                        K4.ActionButton {
+                            text: "Open"
+                            Accessible.name: "Open " + (filaPagina.modelData.fuente.titulo || filaPagina.modelData.name)
+                            onClicked: vista.irASeccion(filaPagina.modelData.fuente.titulo || filaPagina.modelData.name)
                         }
                     }
                 }
@@ -389,7 +385,9 @@ Rectangle {
 
                 Repeater {
                     model: fila.suGrupo ? fila.suGrupo.opciones : []
-                    delegate: FilaOpcion {}
+                    delegate: FilaOpcion {
+                        highlighted: vista.highlightedSetting === modelData.id
+                    }
                 }
             }
 
@@ -410,10 +408,16 @@ Rectangle {
     //  clicks to themselves.
     MouseArea {
         id: raton
-        anchors.fill: parent
-        z: -1
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: 150
+        height: 64
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: vista.ponerFilaAbierta(fila.ident, !fila.abierta)
+        onClicked: {
+            fila.forceActiveFocus(Qt.MouseFocusReason)
+            vista.ponerFilaAbierta(fila.ident, !fila.abierta)
+        }
     }
 }

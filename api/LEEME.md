@@ -90,6 +90,8 @@ not be declared inside the view.
 | `K4.Medidor` | Read-only bar: `valor` out of `maximo`, house track and easing |
 | `K4.Baldosa` | Pressable card |
 | `K4.Boton` | Round single-glyph button |
+| `K4.ActionButton` | 32 px text action/choice: `text`, controlled `selected`, inherited `enabled`, `clicked()` |
+| `K4.TextField` | 32 px single-line field with shared focus styling; caller owns label and commit policy |
 | `K4.Rodillo` | Scroll area that obeys the wheel, house scroll bar included |
 | `K4.Desplazador` | The house scroll bar, for your own lists |
 | `K4.Estela` | The house caret with its trail, as a `cursorDelegate` |
@@ -110,6 +112,12 @@ not be declared inside the view.
 
 | `K4.Lanzador` | Contribute results to the launcher |
 | `K4.Isla` | Island state: open, occupant, maximum height — plus `rect`/`rectEn()`/`posicion` (geometry, per screen) — `efecto()` (shake, push, tug) and `colocar()` (slide along the edge) |
+
+Shared buttons and switches support Tab and Enter/Space. Set `Accessible.name`
+on icon-only actions and switches. Sliders support arrows and Home/End;
+`dragging` is read-only, and an empty `etiqueta` selects a compact 28 px layout.
+`K4.Rodillo` reveals focused controls automatically. Keep values owner-controlled
+and password drafts transient; see [control details](../docs/API.md#controls-keyboard-and-focus).
 
 ## Catalog and registration
 

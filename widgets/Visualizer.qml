@@ -1,4 +1,4 @@
-// Visualizador de 4 barras
+// Four-bar playback visualizer.
 
 import QtQuick
 import "../core"
@@ -7,13 +7,9 @@ import "../services"
 Item {
     id: viz
 
-    //  Sonando Y a la vista.
-    //
-    //  Con solo `isPlaying`, estas cuatro barritas seguían animándose con la
-    //  barra escondida o retirada —donde no las ve nadie— y
-    //  repintando la escena entera a la tasa del monitor. Medido en la máquina
-    //  del autor: tres puntos de CPU y 137 despertares por segundo, para nada.
-    property bool active: Media.isPlaying && Island.aLaVista
+    // Playback alone is insufficient: hidden bars used to repaint the whole
+    // scene at the monitor refresh rate, costing CPU and unnecessary wakeups.
+    property bool active: Media.isPlaying && Island.aLaVista && visible
     property color barColor: Theme.ink
 
     implicitWidth: 17
@@ -37,7 +33,7 @@ Item {
                 anchors.bottom: parent.bottom
 
                 SequentialAnimation on height {
-                    running: viz.active
+                    running: viz.active && viz.visible
                     loops: Animation.Infinite
                     NumberAnimation { to: 4 + (index % 2 === 0 ? 8 : 4); duration: 320 + index * 85; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 3; duration: 280 + index * 65; easing.type: Easing.InOutSine }

@@ -27,6 +27,7 @@ K4Plugin {
     grabKeyboard: open
 
     property bool open: false
+    property var panel: null
 
     //  Sized once: the sidebar plus one section on the right. The window it
     //  replaces was 1040x700 of card; the island trims the frame and the

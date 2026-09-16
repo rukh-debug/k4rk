@@ -27,11 +27,11 @@ ColumnLayout {
     //  which is the sketch's own scale.
     readonly property var bloques: {
         const nativos = [
-            { id: "toggles", nombre: "Quick toggles", altura: 40,
+            { id: "toggles", nombre: "Quick controls", altura: 40, desc: "Wi-Fi, Bluetooth and sound",
               glifo: 0xF056E },     // md-view_dashboard
-            { id: "media", nombre: "Media", altura: 32,
+            { id: "media", nombre: "Media", altura: 32, desc: "Now playing and playback controls",
               glifo: 0xF0387 },     // md-music_note
-            { id: "shortcuts", nombre: "Shortcuts", altura: 22,
+            { id: "shortcuts", nombre: "Shortcuts", altura: 22, desc: "Pinned applications",
               glifo: 0xF003B }      // md-apps
         ]
         const cards = Enganches.cards
@@ -41,7 +41,8 @@ ColumnLayout {
                 id: cards[i].plugin + "." + cards[i].name,
                 nombre: f.titulo || cards[i].name,
                 altura: Math.max(8, Math.round((f.alto || 0) / 2)),
-                glifo: f.glifo || 0
+                glifo: f.glifo || (PluginManager.metadata(cards[i].plugin) || {}).glifo || 0xF0431,
+                desc: f.desc || "Plugin card"
             })
         }
         return nativos
@@ -102,7 +103,10 @@ ColumnLayout {
             return
         lista.splice(de, 1)
         lista.splice(a, 0, id)
-        Settings.poner("panelOrder", lista)
+        const unavailable = (Settings.panelOrder || []).filter(function (saved) {
+            return lista.indexOf(saved) < 0
+        })
+        Settings.poner("panelOrder", lista.concat(unavailable))
     }
 
     //  ── the sketch ──────────────────────────────────────────
@@ -111,7 +115,9 @@ ColumnLayout {
     //  maps panelWidth's range onto the sketch, so turning the width
     //  stepper visibly widens it.
     Rectangle {
-        Layout.fillWidth: true
+        Layout.preferredWidth: Math.min(editor.width,
+            Math.max(Math.min(340, editor.width), editor.width * Settings.panelWidth / 1100))
+        Layout.alignment: Qt.AlignHCenter
         Layout.preferredHeight: cabeceraSketch.height + 16
             + (function () {
                 let h = 0
@@ -328,6 +334,13 @@ ColumnLayout {
     }
 
     //  ── the blocks: order and eye ──────────────────────────
+    IslandLabel {
+        text: "Blocks and order"
+        font.pixelSize: 12
+        font.weight: Font.DemiBold
+        color: Theme.muted
+        Layout.topMargin: 8
+    }
     Repeater {
         model: editor.orden
 
@@ -340,7 +353,7 @@ ColumnLayout {
                 fila.modelData)
 
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            Layout.preferredHeight: Math.max(56, blockLabels.implicitHeight + 24)
             radius: 10
             color: filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface
 
@@ -371,22 +384,28 @@ ColumnLayout {
                 }
 
                 ColumnLayout {
+                    id: blockLabels
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
                     spacing: 1
 
                     IslandLabel {
+                        Layout.fillWidth: true
                         text: fila.bloque ? fila.bloque.nombre : fila.modelData
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
+                        elide: Text.ElideRight
                     }
 
                     IslandLabel {
-                        text: fila.posicion === 0 ? "Top of the centre"
-                            : fila.posicion === editor.orden.length - 1
-                              ? "Bottom of the centre" : "In between"
-                        color: Theme.dim
-                        font.pixelSize: 9
+                        Layout.fillWidth: true
+                        text: fila.modelData === "toggles" && Settings.panelShowToggles
+                                && !editor.visibleEl("toggles")
+                            ? "All tiles are hidden. Enable a tile below."
+                            : (fila.bloque ? fila.bloque.desc : "Plugin card")
+                        color: Theme.muted
+                        font.pixelSize: 11
+                        wrapMode: Text.WordWrap
                     }
                 }
 
@@ -396,65 +415,24 @@ ColumnLayout {
                 //  grab handle for three items is a ceremony. Up moves the
                 //  block one place, down the other way, and a spent arrow
                 //  stops answering — same rule as the steppers.
-                Rectangle {
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    radius: 13
-                    opacity: fila.posicion > 0 ? 1 : 0.35
-                    color: arriba.containsMouse && fila.posicion > 0
-                        ? Theme.surfaceHi : Theme.track
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    MouseArea {
-                        id: arriba
-                        enabled: fila.posicion > 0
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: editor.mover(fila.modelData, -1)
-                    }
-
-                    IconGlyph {
-                        anchors.centerIn: parent
-                        text: Theme.ico.chevronUp
-                        color: fila.posicion > 0 ? Theme.ink : Theme.muted
-                        font.pixelSize: 14
-                        renderType: Text.NativeRendering
-                    }
+                K4.Boton {
+                    tamano: 16
+                    glifo: Theme.ico.chevronUp
+                    activo: fila.posicion > 0
+                    Accessible.name: "Move " + (fila.bloque ? fila.bloque.nombre : fila.modelData) + " up"
+                    onPulsado: editor.mover(fila.modelData, -1)
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    radius: 13
-                    opacity: fila.posicion < editor.orden.length - 1 ? 1 : 0.35
-                    color: abajo.containsMouse
-                           && fila.posicion < editor.orden.length - 1
-                        ? Theme.surfaceHi : Theme.track
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    MouseArea {
-                        id: abajo
-                        enabled: fila.posicion < editor.orden.length - 1
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: editor.mover(fila.modelData, 1)
-                    }
-
-                    IconGlyph {
-                        anchors.centerIn: parent
-                        text: Theme.ico.chevronDown
-                        color: fila.posicion < editor.orden.length - 1
-                            ? Theme.ink : Theme.muted
-                        font.pixelSize: 14
-                        renderType: Text.NativeRendering
-                    }
+                K4.Boton {
+                    tamano: 16
+                    glifo: Theme.ico.chevronDown
+                    activo: fila.posicion < editor.orden.length - 1
+                    Accessible.name: "Move " + (fila.bloque ? fila.bloque.nombre : fila.modelData) + " down"
+                    onPulsado: editor.mover(fila.modelData, 1)
                 }
 
                 IslandSwitch {
+                    Accessible.name: "Show " + (fila.bloque ? fila.bloque.nombre : fila.modelData)
                     //  The block's own switch, in the row, where the order
                     //  also lives: what shows and where shows together.
                     checked: editor.visibleEl(fila.modelData)

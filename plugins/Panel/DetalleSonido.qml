@@ -10,6 +10,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -26,17 +27,17 @@ IslandTile {
         anchors.margins: 12
         spacing: 8
 
-        AparatosDeSonido {
+        K4.Rodillo {
             Layout.fillWidth: true
+            Layout.fillHeight: true
+            AparatosDeSonido { width: parent.width }
         }
-
-        Item { Layout.fillHeight: true }
 
         IslandLabel {
             Layout.fillWidth: true
             text: "The mark on the slider is the device's natural level: above it, sound is amplified"
-            color: Theme.dim
-            font.pixelSize: 9
+            color: Theme.muted
+            font.pixelSize: 11
             wrapMode: Text.WordWrap
         }
     }
