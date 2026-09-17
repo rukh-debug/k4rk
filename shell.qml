@@ -287,6 +287,8 @@ Scope {
         void Clipboard.cargado
         void Ventanas.count
         void Modulos.count
+        void WallpaperPalette.ready
+        void Fondos.lista
     }
 
     // ── IPC ───────────────────────────────────────────────────────
