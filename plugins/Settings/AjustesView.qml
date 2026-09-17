@@ -1146,64 +1146,6 @@ FadeIn {
                     }
                 }
             }
-
-            // ── the footer ────────────────────────────────────────
-            //
-            //  Loader status and the two system tools. The counter tells
-            //  «you turned it off» from «it failed to load», which is what
-            //  keeps you from diagnosing blind from a terminal.
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 34
-                spacing: 8
-
-                IconGlyph {
-                    text: String.fromCodePoint(0xF06A0)
-                    color: Object.keys(PluginManager.errores).length > 0
-                        ? Theme.red : Theme.green
-                    font.pixelSize: 13
-                    renderType: Text.NativeRendering
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                K4.ActionButton {
-                    text: "Plugins"
-                    Accessible.name: "Manage plugins"
-                    onClicked: vista.irASeccion("plugins")
-                }
-
-                IslandLabel {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter
-                    text: Object.keys(PluginManager.errores).length > 0
-                        ? Object.keys(PluginManager.errores).length + " with errors"
-                        : PluginManager.catalogo.filter(function (m) {
-                            return PluginManager.estaHabilitado(m.id)
-                        }).length + " enabled"
-                    color: Theme.muted
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                }
-
-                Repeater {
-                    model: [
-                        { nombre: "Wi-Fi", tab: "wifi" },
-                        { nombre: "Sound", tab: "sound" }
-                    ]
-
-                    delegate: K4.ActionButton {
-                        id: herramienta
-                        required property var modelData
-                        text: modelData.nombre
-                        enabled: !!vista.plugin.panel
-                        Accessible.name: "Open " + text + " in control centre"
-                        onClicked: {
-                            vista.plugin.close()
-                            vista.plugin.panel.openTab(modelData.tab)
-                        }
-                    }
-                }
-            }
         }
     }
 

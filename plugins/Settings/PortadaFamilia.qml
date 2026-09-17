@@ -278,7 +278,7 @@ ColumnLayout {
             }
 
             //  It leaves, it does not dig: the arrow says «this opens
-            //  elsewhere», the same glyph the footer's tool tiles use.
+            //  elsewhere».
             IconGlyph {
                 Layout.alignment: Qt.AlignVCenter
                 text: Theme.ico.forward
