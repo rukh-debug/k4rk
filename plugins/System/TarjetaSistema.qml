@@ -4,7 +4,8 @@
 //  fills it and nothing more. It paints, it does not measure.
 //
 //  Which meters ride along is the user's call — the toggles live in
-//  the plugin's own settings rows — and a click opens the full view.
+//  the plugin's own settings rows — and a click opens the centre's
+//  System tab, with a back button like the other details.
 
 import QtQuick
 import QtQuick.Layouts
@@ -23,7 +24,12 @@ K4.Baldosa {
     radius: 12
     color: K4.Tema.superficie
     Accessible.name: "Open system information"
-    onPulsada: if (plugin) plugin.abrir()
+    //  In place like the other details; without a centre (panel off)
+    //  fall back to the standalone island.
+    onPulsada: {
+        if (plugin && plugin.panel) plugin.panel.openTab("system")
+        else if (plugin) plugin.abrir()
+    }
 
     K4.Etiqueta {
         anchors.centerIn: parent

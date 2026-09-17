@@ -4,7 +4,6 @@
 #  `python3 tools/plugins.py` checks that it stays complete.
 
 
-Grafica 1.0 Grafica.qml
 SystemPlugin 1.0 SystemPlugin.qml
 SystemView 1.0 SystemView.qml
 TarjetaSistema 1.0 TarjetaSistema.qml

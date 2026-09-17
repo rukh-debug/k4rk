@@ -17,6 +17,12 @@ Controls.AbstractButton {
     focusPolicy: Qt.StrongFocus
     Accessible.name: text
     Accessible.role: Accessible.Button
+    //  The pointing hand every other pressable shows: an AbstractButton
+    //  brings none of its own, so hover gave no affordance at all.
+    HoverHandler {
+        enabled: control.enabled
+        cursorShape: Qt.PointingHandCursor
+    }
     Keys.onReturnPressed: if (enabled) clicked()
     Keys.onEnterPressed: if (enabled) clicked()
     opacity: enabled ? 1 : 0.45

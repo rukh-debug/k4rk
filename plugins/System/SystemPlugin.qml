@@ -50,17 +50,27 @@ K4Plugin {
         SystemView { plugin: self }
     }
 
-    // Turns sampling on and off with the view.
-    onOpenChanged: Sistema.mirando = open
+    // Turns sampling on and off with whoever is looking: the island,
+    // or the control centre's System tab. The tab reads through the
+    // injected panel reference, so this stays the single writer of
+    // both flags.
+    readonly property bool tabAbierta: !!self.panel && self.panel.open
+        && self.panel.tab === "system"
+
+    Binding {
+        target: Sistema
+        property: "mirando"
+        value: self.open || self.tabAbierta
+    }
 
     // The hot path runs while anything wants a number: a chip, a
-    // meter on the card, or the view itself.
+    // meter on the card, the view, or the centre's tab.
     Binding {
         target: Sistema
         property: "rapido"
         value: self.habilitado && (self.enPildora || self.tarjetaCpu
                                    || self.tarjetaRam || self.tarjetaRed
-                                   || self.open)
+                                   || self.open || self.tabAbierta)
     }
 
     // A disabled or reloaded plugin must not leave the sampler on.

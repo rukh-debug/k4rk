@@ -6,7 +6,6 @@
 //  are now.
 
 import QtQuick
-import "../../core"
 
 Item {
     id: grafica

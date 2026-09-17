@@ -68,7 +68,8 @@ FadeIn {
                 text: view.plugin.tab === "notifications" ? "Notifications"
                     : view.plugin.tab === "wifi" ? "Wi-Fi"
                     : view.plugin.tab === "bluetooth" ? "Bluetooth"
-                    : view.plugin.tab === "sound" ? "Sound" : "Control centre"
+                    : view.plugin.tab === "sound" ? "Sound"
+                    : view.plugin.tab === "system" ? "System" : "Control centre"
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
@@ -314,6 +315,7 @@ FadeIn {
         DetalleWifi { view: view }
         DetalleBluetooth { view: view }
         DetalleSonido { view: view }
+        DetalleSistema { view: view }
     }
 
     component RadioTile: IslandTile {

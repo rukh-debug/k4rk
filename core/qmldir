@@ -17,3 +17,5 @@ MediaButton 1.0 MediaButton.qml
 IslandScrollBar 1.0 IslandScrollBar.qml
 AparatosDeSonido 1.0 AparatosDeSonido.qml
 TrayIslandView 1.0 TrayIslandView.qml
+Grafica 1.0 Grafica.qml
+VistaSistema 1.0 VistaSistema.qml

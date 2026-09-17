@@ -1,5 +1,5 @@
-//  Control centre: Wi‑Fi, Bluetooth, volume, playback, shortcuts and
-//  notifications. Five views inside the same surface.
+//  Control centre: Wi‑Fi, Bluetooth, volume, system, playback,
+//  shortcuts and notifications. Six views inside the same surface.
 
 import QtQuick
 import K4 as K4
@@ -16,7 +16,7 @@ K4Plugin {
     summonCommand: "k4.panel toggle"
     active: habilitado && open
 
-    // "controls" | "notifications" | "wifi" | "bluetooth" | "sound"
+    // "controls" | "notifications" | "wifi" | "bluetooth" | "sound" | "system"
     property string tab: "controls"
     property bool open: false
     property bool interactionActive: false
@@ -79,7 +79,7 @@ K4Plugin {
     }
 
     function openTab(wanted) {
-        if (["controls", "notifications", "wifi", "bluetooth", "sound"].indexOf(wanted) < 0)
+        if (["controls", "notifications", "wifi", "bluetooth", "sound", "system"].indexOf(wanted) < 0)
             return
         if (wanted !== tab) Wifi.cancelPsk()
         tab = wanted
@@ -126,6 +126,7 @@ K4Plugin {
         function wifi(): void { self.openTab("wifi") }
         function bluetooth(): void { self.openTab("bluetooth") }
         function sound(): void { self.openTab("sound") }
+        function system(): void { self.openTab("system") }
         function close(): void { self.close() }
     }
 

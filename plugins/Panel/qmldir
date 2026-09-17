@@ -7,6 +7,7 @@
 
 AccesosDirectos 1.0 AccesosDirectos.qml
 DetalleBluetooth 1.0 DetalleBluetooth.qml
+DetalleSistema 1.0 DetalleSistema.qml
 DetalleSonido 1.0 DetalleSonido.qml
 DetalleWifi 1.0 DetalleWifi.qml
 PanelPlugin 1.0 PanelPlugin.qml
