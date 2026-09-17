@@ -29,12 +29,21 @@ Scope {
     //  reparte el gestor: cualquier plugin que declare la propiedad la
     //  recibe, venga del repo o de ~/.config/k4/plugins.
 
+    // ── the native surfaces ─────────────────────────────────────
+    //
+    //  The tray is bar chrome, not a plugin: always on and owned by
+    //  the host (services/TrayIsland.qml). It still quacks like a
+    //  surface — name, priority, active, view, close() — so every
+    //  arbitration below runs over plugins plus natives, in one list.
+    //  A second native surface joins by appending here and nowhere else.
+    readonly property var surfaces: PluginManager.instancias.concat([TrayIsland])
+
     // ── quién se queda la island ──────────────────────────────────
     // Gana el activo de mayor prioridad. El binding se recalcula solo cuando
     // cualquier plugin cambia su `active`.
     readonly property var activePlugin: {
         if (Island.debugMode.length > 0) {
-            const l = PluginManager.instancias
+            const l = root.surfaces
             for (let i = 0; i < l.length; ++i) {
                 if (l[i].name === Island.debugMode)
                     return l[i]
@@ -54,7 +63,7 @@ Scope {
         //  an unloading one, whatever the ladder says; when nobody
         //  is loaded the grace keeps its hold — that is its job.
         let bestCargado = null
-        const lista = PluginManager.instancias
+        const lista = root.surfaces
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (!p.habilitado || !p.active)
@@ -91,7 +100,7 @@ Scope {
         if (!gana || gana.transitorio)
             return
 
-        const lista = PluginManager.instancias
+        const lista = root.surfaces
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (p !== gana && p.transitorio && p.active
@@ -129,7 +138,7 @@ Scope {
     //  same breath as) its `active`.
     readonly property var summonedActive: {
         const salida = []
-        const lista = PluginManager.instancias
+        const lista = root.surfaces
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (p.habilitado && p.active && p.viewLoaded && p.colocable
@@ -165,7 +174,7 @@ Scope {
         if (llegaron.length === 0)
             return          // only departures; nothing was superseded
 
-        const lista = PluginManager.instancias
+        const lista = root.surfaces
         const victimas = []
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
@@ -359,7 +368,7 @@ Scope {
         //  that still call it.
         function wallpaper(): void { _p("settings")?.toggle("wallpaper") }
         function theme(): void { _p("settings")?.toggle("wallpaper") }
-        function tray(): void { _p("tray")?.toggle() }
+        function tray(): void { TrayIsland.toggle() }
         function settings(): void { _p("settings")?.toggle() }
         //  Ajustes abierto en una página concreta, para atarlo a un atajo:
         //  `k4 settingsSection wallpaper`, `… island`, `… effects`, … El
@@ -370,6 +379,15 @@ Scope {
         function session(): void { _p("session")?.toggle() }
         function lock(): void { Sesion.bloquear() }
         function setMode(mode: string): void { Island.debugMode = mode }
+    }
+
+    //  The tray answers here, not from a plugin: `k4.tray toggle` is the
+    //  summonCommand its Placement card hands out, and the compat `k4 tray`
+    //  above lands in the same place.
+    IpcHandler {
+        target: "k4.tray"
+        function toggle(): void { TrayIsland.toggle() }
+        function close(): void { TrayIsland.close() }
     }
 
     Variants {
@@ -591,7 +609,7 @@ Scope {
             //  sin barra sin que el resto se entere. Quien no la declare da
             //  `undefined` y todo sigue como siempre.
             readonly property var apartada: {
-                const lista = PluginManager.instancias
+                const lista = root.surfaces
                 for (let i = 0; i < lista.length; ++i) {
                     const p = lista[i]
                     if (!p.habilitado)
@@ -1704,6 +1722,11 @@ Scope {
                                 const p = stageOwner
                                 if (!p)
                                     return
+                                //  Natives have no catalog row to hang an
+                                //  error on; a load failure still lands in
+                                //  the bar log from the Loader itself.
+                                if (p.nativo === true)
+                                    return
                                 if (status === Loader.Error)
                                     PluginManager.registrarError(
                                         p.name, "The view could not be loaded")
@@ -1752,6 +1775,11 @@ Scope {
                             onStatusChanged: {
                                 const p = stageOwner
                                 if (!p)
+                                    return
+                                //  Natives have no catalog row to hang an
+                                //  error on; a load failure still lands in
+                                //  the bar log from the Loader itself.
+                                if (p.nativo === true)
                                     return
                                 if (status === Loader.Error)
                                     PluginManager.registrarError(

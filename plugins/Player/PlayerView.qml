@@ -8,7 +8,6 @@ FadeIn {
     id: view
 
     property var panel: null
-    property var tray: null
 
     //  Whoever opened it and in which mode. The plugin passes it in
     //  —the host injects nothing— and out of it comes the only
@@ -163,7 +162,7 @@ FadeIn {
                 interactive: true
                 Layout.leftMargin: 4
                 Layout.alignment: Qt.AlignVCenter
-                onMenuRequested: if (view.tray) view.tray.toggle()
+                onMenuRequested: TrayIsland.toggle()
             }
         }
 

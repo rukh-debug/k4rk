@@ -2,22 +2,26 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import K4 as K4
-import "../../core"
-import "../../services"
+import "../services"
+
+//  The native tray surface: application list on the left, the selected
+//  application's DBus menu on the right.
+//
+//  The menu subscription itself lives in services/TrayIsland.qml and
+//  outlives this view, so opening the island paints while a fetch only
+//  revalidates in the background. What this view owes that design:
+//  never flash the loading state when there are stale entries for the
+//  SAME application to show, and never paint one application's entries
+//  under another's header.
 
 FadeIn {
     id: view
 
-    required property var plugin
-
-    readonly property var selected: plugin.selected
-
-    // Opens the selected application's DBus menu and exposes its
-    // entries.
-    K4.MenuBandeja {
-        id: opener
-        menu: view.selected && view.selected.hasMenu ? view.selected.menu : null
-    }
+    readonly property var selected: TrayIsland.selected
+    readonly property bool tieneMenu: selected !== null && selected.hasMenu
+    //  The painted entries belong to the selected application.
+    readonly property bool menuFresco: TrayIsland.modeloDe === selected
+        && selected !== null
 
     ColumnLayout {
         anchors.fill: parent
@@ -61,7 +65,7 @@ FadeIn {
                 glyph: Theme.ico.close
                 glyphSize: 16
                 glyphColor: Theme.muted
-                onActivated: view.plugin.close()
+                onActivated: TrayIsland.close()
                 Layout.alignment: Qt.AlignVCenter
             }
         }
@@ -89,6 +93,7 @@ FadeIn {
                     spacing: 2
                     model: Tray.sorted
                     boundsBehavior: Flickable.StopAtBounds
+                    cacheBuffer: 300
 
                     delegate: Rectangle {
                         id: appRow
@@ -117,6 +122,8 @@ FadeIn {
                                 Layout.preferredWidth: 22
                                 Layout.preferredHeight: 22
                                 Layout.alignment: Qt.AlignVCenter
+                                asynchronous: true
+                                cache: true
 
                                 // NeedsAttention: the icon pulses to be
                                 // noticed
@@ -166,7 +173,7 @@ FadeIn {
                             cursorShape: Qt.PointingHandCursor
                             acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                             onClicked: function (mouse) {
-                                view.plugin.select(appRow.modelData)
+                                TrayIsland.select(appRow.modelData)
                                 if (mouse.button === Qt.MiddleButton)
                                     Tray.secondary(appRow.modelData)
                             }
@@ -220,6 +227,8 @@ FadeIn {
                             Layout.preferredWidth: 26
                             Layout.preferredHeight: 26
                             Layout.alignment: Qt.AlignVCenter
+                            asynchronous: true
+                            cache: true
                         }
 
                         ColumnLayout {
@@ -271,7 +280,7 @@ FadeIn {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     Tray.primary(view.selected)
-                                    view.plugin.close()
+                                    TrayIsland.close()
                                 }
                             }
                         }
@@ -280,6 +289,7 @@ FadeIn {
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.surfaceHi }
 
                     ListView {
+                        id: entryList
                         //  The house scrollbar: comes out on its own when there
             //  is more than fits.
                         ScrollBar.vertical: IslandScrollBar {}
@@ -287,8 +297,11 @@ FadeIn {
                         Layout.fillHeight: true
                         clip: true
                         spacing: 1
-                        model: opener.children
+                        model: TrayIsland.modeloMenu
                         boundsBehavior: Flickable.StopAtBounds
+                        cacheBuffer: 400
+                        visible: view.tieneMenu && view.menuFresco
+                            && TrayIsland.modeloMenu.values.length > 0
 
                         delegate: Item {
                             id: entryRow
@@ -312,10 +325,11 @@ FadeIn {
                                 visible: !entryRow.modelData.isSeparator
                                 anchors.fill: parent
                                 radius: 8
+                                //  No animated hover here: the model
+                                //  repopulates on every selection and N
+                                //  rows fading at once read as jank.
                                 color: entryMouse.containsMouse && entryRow.modelData.enabled
                                     ? Theme.surfaceHi : "transparent"
-
-                                Behavior on color { ColorAnimation { duration: 100 } }
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -344,6 +358,8 @@ FadeIn {
                                         Layout.preferredWidth: 16
                                         Layout.preferredHeight: 16
                                         Layout.alignment: Qt.AlignVCenter
+                                        asynchronous: true
+                                        cache: true
                                     }
 
                                     IslandLabel {
@@ -355,6 +371,11 @@ FadeIn {
                                         Layout.alignment: Qt.AlignVCenter
                                     }
 
+                                    //  A submenu cannot be unfolded: the
+                                    //  menu protocol exposes no nested
+                                    //  handle to open one with, so the
+                                    //  chevron only says where the row
+                                    //  leads in the application itself.
                                     IconGlyph {
                                         visible: entryRow.modelData.hasChildren
                                         text: Theme.ico.forward
@@ -374,24 +395,71 @@ FadeIn {
                                         && !entryRow.modelData.hasChildren
                                     onClicked: {
                                         entryRow.modelData.triggered()
-                                        view.plugin.close()
+                                        TrayIsland.close()
                                     }
                                 }
                             }
                         }
+                    }
+
+                    // ── menu states: loading, empty, or none ─────────
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        visible: !entryList.visible
+                        spacing: 8
+
+                        Item { Layout.fillHeight: true }
 
                         IslandLabel {
-                            anchors.centerIn: parent
-                            width: parent.width - 24
-                            visible: opener.children.values.length === 0
-                            text: view.selected && !view.selected.hasMenu
-                                ? "This application offers no menu"
-                                : "Loading menu…"
-                            color: Theme.muted
-                            font.pixelSize: 12
+                            Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
+                            color: Theme.muted
+                            font.pixelSize: 12
+                            text: {
+                                if (view.selected === null)
+                                    return ""
+                                if (!view.tieneMenu)
+                                    return "This application offers no menu"
+                                if (TrayIsland.menuLoading)
+                                    return "Loading menu…"
+                                return "This menu has no entries"
+                            }
+                            visible: text.length > 0
                         }
+
+                        //  A dead menu deserves a second chance, not a
+                        //  permanent shrug: an empty fetch may be a slow
+                        //  application rather than an empty menu.
+                        Rectangle {
+                            visible: view.tieneMenu && !TrayIsland.menuLoading
+                                && !(view.menuFresco
+                                     && TrayIsland.modeloMenu.values.length > 0)
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: retryLabel.implicitWidth + 28
+                            Layout.preferredHeight: 28
+                            radius: 14
+                            color: retryMouse.containsMouse ? Theme.blue : Theme.surfaceHi
+
+                            IslandLabel {
+                                id: retryLabel
+                                anchors.centerIn: parent
+                                text: "Retry"
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                            }
+
+                            MouseArea {
+                                id: retryMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: TrayIsland.recargarMenu()
+                            }
+                        }
+
+                        Item { Layout.fillHeight: true }
                     }
                 }
 

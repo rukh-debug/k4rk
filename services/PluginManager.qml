@@ -58,7 +58,6 @@ Singleton {
         { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
         { id: "openwebui", title: "OpenWebUI", version: "1.0.0", enabled: true },
         { id: "displays", title: "Displays", version: "1.0.0", enabled: true },
-        { id: "tray", title: "Tray", version: "1.0.0", enabled: true },
         { id: "settings", title: "Settings", version: "1.0.0", enabled: true, configurable: false },
         { id: "clipboard", title: "Clipboard", version: "1.0.0", enabled: true },
         { id: "system", title: "System", version: "1.0.0", enabled: true },

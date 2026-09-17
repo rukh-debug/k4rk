@@ -108,17 +108,8 @@
    "icon": "0xF037A",
    "application": true
   },
-  {
-   "id": "tray",
-   "entry": "Tray/TrayPlugin.qml",
-   "version": "1.0.0",
-   "title": "Tray",
-   "description": "The system tray, tucked into the clock view",
-   "enabledByDefault": true,
-   "icon": "0xF1296"
-  },
-  {
-   "id": "settings",
+   {
+    "id": "settings",
    "entry": "Settings/SettingsPlugin.qml",
    "version": "1.1.0",
    "title": "Settings",

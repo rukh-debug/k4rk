@@ -25,9 +25,6 @@ K4Plugin {
     //  See `closeOnClickOutside` in the plugin contract.
     closeOnClickOutside: false
 
-    // the tray module; the host injects it
-    property var tray: null
-
     // Same layout criteria as the pill, and now the same shape too: each zone
     // takes up ITS OWN space and chains with the next, instead of both flanks
     // reserving the width of the wider one.
@@ -115,7 +112,6 @@ K4Plugin {
 
     view: Component {
         ClockView {
-            tray: self.tray
             //  By Binding and not by assigning in an `on…Changed`: this way
             //  the value also arrives at the first layout pass, which is
             //  exactly when it is needed.

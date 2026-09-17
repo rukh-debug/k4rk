@@ -7,8 +7,6 @@ import "../../widgets"
 FadeIn {
     id: view
 
-    property var tray: null
-
     //  What EACH zone truly measures, so the plugin knows how much
     //  to reserve. It is measured here because it is here the
     //  widgets sit with their font set: how much «🔔 claude · k4»
@@ -116,13 +114,14 @@ FadeIn {
                 }
 
                 // The island is already unfolded and still: here
-                // things can be clicked.
+                // things can be clicked. The tray is native now, so the
+                // row summons it straight from the service.
                 TrayRow {
                     max: 5
                     iconSize: 16
                     interactive: true
                     Layout.alignment: Qt.AlignVCenter
-                    onMenuRequested: if (view.tray) view.tray.toggle()
+                    onMenuRequested: TrayIsland.toggle()
                 }
             }
         }

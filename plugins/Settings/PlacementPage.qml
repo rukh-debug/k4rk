@@ -33,6 +33,10 @@ ColumnLayout {
     //  what is here is what you summon. Each card also carries the
     //  plugin's `summonCommand` — what the copy button hands out, empty
     //  when the surface cannot be opened from outside.
+    //
+    //  Plus the native tray: bar chrome, not a plugin, but a summoned
+    //  surface all the same, so it gets the same card. Its placement id
+    //  stays "tray", and entries users already saved keep working.
     readonly property var vistas: {
         const salida = []
         const lista = PluginManager.instancias
@@ -42,6 +46,8 @@ ColumnLayout {
                 salida.push({ id: p.name, nombre: p.title || p.name,
                               ipc: p.summonCommand || "" })
         }
+        salida.push({ id: TrayIsland.name, nombre: TrayIsland.title,
+                      ipc: TrayIsland.summonCommand })
         return salida
     }
 

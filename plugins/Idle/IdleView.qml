@@ -24,7 +24,6 @@ FadeIn {
     id: view
 
     property var plugin: null
-    property var tray: null
     property int shown: 0
 
     // ── los escritorios asoman al cambiar ─────────────────────────

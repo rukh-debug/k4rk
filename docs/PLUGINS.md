@@ -461,7 +461,10 @@ And what you need when yours grows past the island:
 The last four are for replacing pieces of the bar — a lock screen of your
 own, another tray — more than for an ordinary plugin. They are here because
 the built-in modules use them and the rule is the same for everyone: if a
-repository plugin can, an outside one can too.
+repository plugin can, an outside one can too. (`K4.MenuBandeja` is the one
+exception to the first half: the built-in tray is native now —
+`services/TrayIsland.qml`, always on — and the type stays so a replacement
+tray can still read an application's menu.)
 
 (`K4.Puente` also exists and **is not for you**: it is how the bar hands
 the API what it needs. Only someone implementing the API on another host

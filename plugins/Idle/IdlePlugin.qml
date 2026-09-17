@@ -15,10 +15,6 @@ K4Plugin {
     priority: 0
     active: habilitado
 
-    // the tray module, which opens when its icons are clicked; the
-    // host injects it
-    property var tray: null
-
     // how many icons fit before the pill runs wild; the rest summarize
     readonly property int trayShown: Math.min(Tray.count, 4)
     readonly property int trayWidth: Tray.count === 0 || !Settings.trayInPill
@@ -93,6 +89,6 @@ K4Plugin {
     islandHeight: Theme.baseHeight
 
     view: Component {
-        IdleView { plugin: self; tray: self.tray; shown: self.trayShown }
+        IdleView { plugin: self; shown: self.trayShown }
     }
 }

@@ -124,9 +124,8 @@ K4Plugin {
         }
     }
 
-    // the control center and the tray; the host injects them
+    // the control center; the host injects it
     property var panel: null
-    property var tray: null
 
     //  The plugin chips count too: without them in the sum, an agent bell
     //  pushed the right-hand group over the song title. Same problem the
@@ -156,7 +155,7 @@ K4Plugin {
 
     view: Component {
         PlayerView {
-            panel: self.panel; tray: self.tray
+            panel: self.panel
             //  Without this the view cannot tell it is a peek and comes out
             //  in full.
             plugin: self
