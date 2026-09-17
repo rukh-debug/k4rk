@@ -4,5 +4,8 @@
 #  `python3 tools/plugins.py` checks that it stays complete.
 
 
-AgentesPlugin 1.0 AgentesPlugin.qml
-AgentesView 1.0 AgentesView.qml
+AgentsPlugin 1.0 AgentsPlugin.qml
+AgentsView 1.0 AgentsView.qml
+ProvidersPage 1.0 ProvidersPage.qml
+ProviderRow 1.0 ProviderRow.qml
+ProviderDetails 1.0 ProviderDetails.qml

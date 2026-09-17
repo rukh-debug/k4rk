@@ -1,41 +1,40 @@
-#  Todo lo que k4 necesita del sistema.
+#  Everything k4 needs from the system.
 #
-#  Esta tabla es la fuente única: la lee `instalar` para diagnosticar e instalar,
-#  y de aquí sale la tabla de «Requisitos» del README. Si añades una llamada a un
-#  programa externo desde QML o desde tools/, añádelo aquí en el mismo cambio.
+#  This table is the single source: `instalar` reads it for diagnostics and
+#  installation, and the README's Requirements table comes from here. When
+#  adding an external program call in QML or tools/, add it here in the same change.
 #
-#  Columnas, separadas por TABULADOR:
+#  Columns, separated by TAB:
 #
-#      comprobación   qué mirar para saber si está. Un nombre de binario se busca
-#                     con `command -v`; con el prefijo `pkg:` se pregunta al
-#                     gestor de paquetes, para lo que no trae binario propio
-#                     (tipografías, módulos de Qt).
-#      paquete        cómo se llama en Arch. Un `-` significa que no está
-#                     empaquetado: se avisa, pero no se puede instalar.
-#      nivel          `base`     sin esto la función no existe.
-#                     `opcional` sin esto la barra funciona; algo concreto no.
-#      para qué       una línea, la que ve el usuario cuando le falta.
+#      check          how to detect it. Binary names use `command -v`;
+#                     the `pkg:` prefix queries the package manager for
+#                     dependencies without a binary (fonts and Qt modules).
+#      package        its Arch package name. `-` means it is not packaged:
+#                     report its absence, but it cannot be installed.
+#      level          `base`: required for the feature to exist.
+#                     `opcional`: the bar works, but a specific feature does not.
+#      purpose        the line shown to the user when it is missing.
 #
-#  Comprobado con pacman en julio de 2026: todo lo `base` está en los repos
-#  oficiales de Arch (extra). No hace falta ningún ayudante de AUR.
+#  Checked with pacman in July 2026: every base dependency is in the official
+#  Arch repositories (extra). No AUR helper is needed.
 
-#  ── El motor ────────────────────────────────────────────────────────────────
+#  ── Engine ─────────────────────────────────────────────────────────────────
 pkg:quickshell	quickshell	base	El motor sobre el que corre la barra
 pkg:hyprland	hyprland	base	Compositor: atajos, ventanas, espacios y tema
 git	git	base	Instalar y actualizar k4
 python	python	base	Todas las herramientas de tools/
 
-#  Qt: quickshell ya arrastra qt6-declarative y qt6-wayland, pero no el
-#  multimedia. Sin estos dos no suena nada en la barra.
+#  Qt: quickshell already brings qt6-declarative and qt6-wayland, but not
+#  multimedia. Without these two packages the bar produces no sound.
 pkg:qt6-multimedia	qt6-multimedia	base	Reproducir sonido y vídeo en la barra
 pkg:qt6-multimedia-ffmpeg	qt6-multimedia-ffmpeg	base	Descodificador de lo que se reproduce
 
-#  ── Tipografías ─────────────────────────────────────────────────────────────
-#  Sin la Nerd Font media interfaz son cuadrados: los iconos son glifos.
+#  ── Fonts ──────────────────────────────────────────────────────────────────
+#  Without the Nerd Font, half the interface is squares: icons are glyphs.
 pkg:ttf-meslo-nerd	ttf-meslo-nerd	base	Los iconos de la interfaz
 pkg:adwaita-fonts	adwaita-fonts	base	Texto de la interfaz y rótulos
 
-#  ── Adjuntar la pantalla a una pregunta ─────────────────────────────────────
+#  ── Attach the screen to a question ─────────────────────────────────────────
 grim	grim	base	Attach the screen to an OpenWebUI message
 slurp	slurp	base	Elegir una región con el ratón
 awww	awww	base	Apply wallpapers with transitions from the native Wallpaper page
@@ -46,7 +45,7 @@ magick	imagemagick	base	Miniaturas y conversiones de imagen
 matugen	matugen	base	Material You palette schemes (tonal, monochrome…) for the wallpaper accent
 zenity	zenity	base	El diálogo «Examinar…» para abrir un vídeo
 
-#  ── Escritorio ──────────────────────────────────────────────────────────────
+#  ── Desktop ────────────────────────────────────────────────────────────────
 wl-copy	wl-clipboard	base	Copiar al portapapeles
 wl-paste	wl-clipboard	base	Vigilar el portapapeles para el historial
 fd	fd	base	Buscar ficheros en el lanzador
@@ -60,11 +59,11 @@ xdg-user-dir	xdg-user-dirs	base	Encontrar tus carpetas de Vídeos e Imágenes
 update-desktop-database	desktop-file-utils	base	Mantener el índice del lanzador
 curl	curl	base	El tiempo y las consultas al asistente
 
-#  ── Opcionales ──────────────────────────────────────────────────────────────
-#  Nada de esto se instala salvo que se pida con --opcionales.
+#  ── Optional ───────────────────────────────────────────────────────────────
+#  None of these are installed unless --opcionales is requested.
 kitty	kitty	opcional	Terminal donde instalar paquetes desde el lanzador
 uwsm	uwsm	opcional	Lanzar aplicaciones en su propio ámbito de systemd
 yay	yay	opcional	Buscar e instalar paquetes de AUR desde el lanzador
 nvidia-smi	nvidia-utils	opcional	Temperatura y uso de la GPU NVIDIA
-claude	-	opcional	Sus límites de uso, en el plugin Agentes
+claude	-	opcional	Usage limits in the Agents plugin
 codex	-	opcional	Usage limits in the Agents plugin

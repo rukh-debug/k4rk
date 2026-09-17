@@ -71,6 +71,13 @@
           touch "$out"
         '';
 
+        agents = pkgs.runCommand "k4-agents-tests" {
+          nativeBuildInputs = [ pkgs.python3 ];
+        } ''
+          python3 -B ${self}/tools/test_agents.py
+          touch "$out"
+        '';
+
         #  The Home Manager module must evaluate with the integration on,
         #  both config flavors, and off.
         home-manager-hyprlang =

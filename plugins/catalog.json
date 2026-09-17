@@ -223,16 +223,18 @@
   },
   {
    "id": "agents",
-   "entry": "Agentes/AgentesPlugin.qml",
-   "version": "1.1.0",
+   "entry": "Agents/AgentsPlugin.qml",
+   "version": "1.2.0",
    "title": "Agents",
-   "description": "Usage windows and quotas for your coding agents",
+   "description": "Coding subscription quotas and the models.dev provider catalog",
    "enabledByDefault": true,
    "permissions": [
     "procesos",
-    "ficheros"
+    "ficheros",
+    "paginas"
    ],
    "icon": "0xF06A9",
+   "require": "bin:python3",
    "application": true
   },
   {

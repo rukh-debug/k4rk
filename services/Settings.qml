@@ -1,10 +1,10 @@
 pragma Singleton
 
-//  Preferencias de la barra.
+//  Bar preferences.
 //
-//  Solo vive aquí lo que de verdad cambia algo: un interruptor que no está
-//  conectado a nada es peor que no tenerlo. Cada opción dice qué módulo la
-//  lee, para que no queden huérfanas al refactorizar.
+//  Only settings that actually change something live here: a disconnected
+//  switch is worse than no switch. Each option identifies its reader so
+//  refactoring cannot leave it orphaned.
 //
 //  ── the ownership rule ──────────────────────────────────────────
 //  This is the HOST's registry, and it keeps the knobs that are
@@ -12,7 +12,7 @@ pragma Singleton
 //  Settings' own mock pages (panelShowMedia is Panel's AND the preview's;
 //  the workspace style is Panel's, Idle's and the preview's). A knob
 //  only one plugin reads belongs to that plugin, through `K4.Ajustes` —
-//  as Agentes, Player, Submap and Terminal already do. Whole pages
+//  as Agents, Player, Submap and Terminal already do. Whole pages
 //  belong to the plugin that does the work, through `K4.Pagina`. When in
 //  doubt: two readers, this file; one reader, its plugin.
 
@@ -26,23 +26,23 @@ Singleton {
 
     readonly property string ruta: Quickshell.env("HOME") + "/.local/state/k4/ajustes.json"
 
-    // ── barra ─────────────────────────────────────────────────────
-    //  En qué borde vive la barra. shell.qml ancla la ventana, voltea la
-    //  silueta y orienta los gestos con esto; los plugins lo leen por
-    //  K4.Isla.posicion para adaptar lo que pinten fuera.
+    // ── bar ───────────────────────────────────────────────────────
+    //  The edge the bar lives on. shell.qml anchors the window, flips the
+    //  silhouette and orients gestures with this; plugins read it through
+    //  K4.Isla.posicion to adapt anything they draw outside.
     property string barPosition: "top"        // top · bottom
-    //  En qué punto del borde se centra la island, en tanto por ciento del
-    //  ancho libre: 50 es el centro de siempre. Un plugin puede desplazarla
-    //  TEMPORALMENTE con K4.Isla.colocar; esto es la base a la que vuelve.
+    //  Where the island is centered along the edge, as a percentage of the
+    //  available width: 50 is the usual center. A plugin can move it
+    //  TEMPORARILY with K4.Isla.colocar; this is the base it returns to.
     property int barAlignment: 50            // 0 · 15 · 50 · 85 · 100
-    //  Qué hace la barra con el sitio del escritorio.
+    //  How the bar uses desktop space.
     //
-    //  «reserva» es lo de siempre: la franja plegada se le quita al escritorio
-    //  y ninguna ventana se mete debajo. «encima» no le quita nada —la píldora
-    //  flota sobre las ventanas— y «escondida» además la retira por el borde
-    //  hasta que hay algo que enseñar. Y «completa» no es un cuarto estado
-    //  sino una regla: reserva como siempre, y se esconde SOLO mientras una
-    //  ventana llena la pantalla. shell.qml es quien las obedece.
+    //  Reserve is the usual behavior: the folded strip is taken from the
+    //  desktop, and no window goes beneath it. On top takes no space — the
+    //  pill floats over windows — and hidden also withdraws it over the edge
+    //  until there is something to show. Fullscreen auto-hide is a rule, not
+    //  a fourth state: reserve as usual, but hide ONLY while a window fills
+    //  the screen. shell.qml implements these choices.
     property string islandSpace: "reserve"    // reserve · auto · onTop · hidden
     // Click outside the bar closes whatever view is deployed, like Escape.
     // shell.qml grows its surface to the whole screen while a view is open
@@ -57,17 +57,17 @@ Singleton {
     //  host paints while windows are open. shell.qml reads it both for
     //  the island ladder and the windows.
     property string popupMode: "island"     // island · window
-    // widgets/TrayRow.qml: iconos de bandeja en la píldora
-    // Apagada de fábrica: en la píldora los iconos de bandeja son ruido casi
-    // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
-    // encima se pueden pulsar, que en la píldora no—.
+    // widgets/TrayRow.qml: tray icons in the pill.
+    // Off by default: tray icons in the pill are usually noise, and hovering
+    // already opens the island where they are visible — and clickable,
+    // unlike in the pill.
     property bool trayInPill: false
-    // widgets/NotifStrip.qml: notificaciones recientes al pasar el ratón
+    // widgets/NotifStrip.qml: recent notifications on hover.
     property bool notificationsOnHover: true
-    // services/Notifs.qml: descartar las de una aplicación al ir a su ventana
+    // services/Notifs.qml: dismiss an app's notifications when switching to it.
     property bool notificationsOnFocus: true
 
-    //  ── la isla de Ajustes ──────────────────────
+    //  ── the Settings island ────────────────────
     //  plugins/Settings/SettingsPlugin.qml sizes its island with these. They
     //  are here —and not constants there— because the Island page lets the
     //  user set them, and a value nobody can read back is a setting that lies.
@@ -166,7 +166,7 @@ Singleton {
         return false
     }
 
-    //  ── dónde abre cada vista ─────────────
+    //  ── where each view opens ────────────
     //  Which edge each openable view comes from, and where along that
     //  edge — the control centre from the left, Settings from the bottom
     //  corner, whatever the user draws. A map pluginId → placement, and an
@@ -355,7 +355,7 @@ Singleton {
         guardar()
     }
 
-    //  ── la franja que la trae de vuelta ───────
+    //  ── the strip that brings it back ────────
     //  While the bar is away (hidden mode, retired), thin strips on the
     //  other three edges summon it back — the path TO it when it is not
     //  there. Off means reaching for the bar's own edge only, as before.
@@ -372,7 +372,7 @@ Singleton {
     //  a bold arc. Zero is square, and the rim stays a frame.
     property int rimRadius: 6                   // 0–24, steps of 1
 
-    //  ── la letra del shell ───────────────
+    //  ── the shell's typeface ─────────────
     //  The shell's typeface, as a family name. Empty is the shell's own
     //  default and not a state to repair: the row list shows it as
     //  «Shell default» and picking it again is picking nothing.
@@ -383,14 +383,14 @@ Singleton {
     property string shellFont: ""
     onShellFontChanged: Theme.chosenFont = shellFont
 
-    // ── accesos directos ──────────────────────────────────────────
-    //  Qué aplicaciones salen en la franja del centro de control, por id de
-    //  plugin. plugins/Panel/PanelView.qml la pinta y el centro de
-    //  aplicaciones la edita con la chincheta de cada tarjeta.
+    // ── shortcuts ─────────────────────────────────────────────────
+    //  Which applications appear in the control center strip, by plugin
+    //  ID. plugins/Panel/PanelView.qml draws it, and the application center
+    //  edits it through each card's pin.
     //
-    //  Ids y no una copia de nombres e iconos: así al renombrar un plugin o
-    //  cambiarle el icono el acceso directo se entera solo, y uno que apunte a
-    //  un plugin desinstalado simplemente no se pinta.
+    //  IDs rather than copies of names and icons: renaming a plugin or
+    //  changing its icon updates the shortcut automatically, and one
+    //  pointing to an uninstalled plugin simply is not drawn.
     property var quickAccess: ["game", "settings", "system", "clipboard"]
 
     function esAccesoDirecto(id) {
@@ -408,7 +408,7 @@ Singleton {
         guardar()
     }
 
-    // Cambia el valor de una opción que no es un interruptor.
+    // Change the value of an option that is not a switch.
     function poner(id, valor) {
         if (String(id).indexOf("ext_") === 0) {
             Enganches.ponerAjuste(id, valor)
@@ -423,10 +423,10 @@ Singleton {
             grupo: "Island",
             glifo: 0xF1513,
             desc: "How much room the bar keeps, and when it gets out of the way.",
-            //  Dónde vive, cómo se alinea y cómo ocupa el sitio se explican mal
-            //  con palabras: «Reservar sitio» y «Encima» suenan parecido y
-            //  hacen cosas muy distintas con tus ventanas. Encima de las
-            //  opciones va un croquis que lo enseña.
+            //  Position, alignment and space usage are hard to explain in
+            //  words: Reserve space and On top sound similar but do very
+            //  different things to windows. A sketch above the options
+            //  demonstrates them.
             vista: "island",
             opciones: [
                 { tipo: "titulo", nombre: "Where it lives" },
@@ -623,11 +623,10 @@ Singleton {
             grupo: "Plugins",
             glifo: 0xF0431,
             desc: "What you have installed: on, off, and where it came from.",
-            //  Esta sección no se pinta como una pila de interruptores: son
-            //  casi cuarenta, y el ajuste de cada plugin estaba en OTRA
-            //  sección. Se despliega cada uno con lo suyo dentro. La vista lo
-            //  mira por este nombre; cualquier otro grupo se pinta como
-            //  siempre.
+            //  This section is not drawn as a pile of switches: there are
+            //  almost forty, and each plugin's settings used to be in ANOTHER
+            //  section. Each now expands with its settings inside. The view
+            //  recognizes this name; every other group is drawn as usual.
             vista: "plugins",
             opciones: PluginManager.opcionesAjustes
         }
@@ -639,7 +638,7 @@ Singleton {
     //  file lists them.
     ].concat(Enganches.gruposAjustes).concat(Enganches.gruposPaginas)
 
-    //  Las alternativas de cada opción de varias respuestas.
+    //  The alternatives for each multi-choice option.
     //
     //  Here and not in the view: each multi-choice option lists its
     //  alternatives here, so adding a choice never means touching the view.
@@ -647,8 +646,8 @@ Singleton {
         if (de === "posiciones")
             return [{ codigo: "top",    nombre: "Top" },
                     { codigo: "bottom", nombre: "Bottom" }]
-        //  De menos a más, que es como se lee una escala: quitar sitio
-        //  siempre, quitarlo salvo cuando estorba, no quitarlo, y no estar.
+        //  In scale order: always take space, take it unless it gets in
+        //  the way, take none, and be absent.
         if (de === "reservas")
             return [{ codigo: "reserve", nombre: "Reserve space" },
                     { codigo: "auto",    nombre: "Away when fullscreen" },
@@ -679,9 +678,9 @@ Singleton {
             PluginManager.alternarAjuste(id)
             return
         }
-        //  Los de un plugin no se guardan aquí: los guarda él. Nosotros solo
-        //  le decimos que el usuario ha tocado, y él contesta con el valor
-        //  nuevo en su `valores` — así lo que se ve es siempre lo guardado.
+        //  A plugin saves its own settings. We only tell it the user acted;
+        //  it replies with the new value in valores, so what is shown is
+        //  always what was saved.
         if (String(id).indexOf("ext_") === 0) {
             Enganches.alternarAjuste(id)
             return
@@ -690,9 +689,9 @@ Singleton {
         guardar()
     }
 
-    //  Una acción con red: la pantalla la arma y la confirma, y aquí se hace.
-    //  Va en el servicio y no en la vista porque es donde se declara la
-    //  opción — la pantalla solo sabe pintar filas.
+    //  A guarded action: the screen arms and confirms it, and this executes it.
+    //  It belongs in the service where the option is declared, rather than
+    //  in the view, which only knows how to draw rows.
     function ejecutar(id) {
         if (String(id).indexOf("ext_") === 0)
             Enganches.alternarAjuste(id)
@@ -706,12 +705,12 @@ Singleton {
         return ajustes[id]
     }
 
-    // ── persistencia ──────────────────────────────────────────────
+    // ── persistence ───────────────────────────────────────────────
     //
-    //  Las claves, en una lista. Antes eran una línea por clave al guardar y otra
-    //  al cargar, y con quince preferencias eso son treinta sitios donde
-    //  olvidarse de una. Y una lista y no un recorrido del objeto entero porque
-    //  un singleton tiene decenas de propiedades internas que no son ajustes.
+    //  Keys live in one list. There used to be one line per key for saving
+    //  and another for loading: fifteen preferences meant thirty places to
+    //  forget one. Use a list rather than walking the entire object because
+    //  a singleton has dozens of internal properties that are not settings.
     readonly property var claves: [
         "barPosition", "barAlignment", "islandSpace", "cerrarConClicFuera",
         "popupMode",
@@ -789,7 +788,7 @@ Singleton {
                     if (s[claves[i]] !== undefined)
                         ajustes[claves[i]] = s[claves[i]]
             } catch (e) {
-                // preferencias ilegibles: se quedan las de fábrica
+                // Unreadable preferences: keep the defaults.
             }
         }
 

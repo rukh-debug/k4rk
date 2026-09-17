@@ -19,3 +19,7 @@ recargas
 
 # Agent instructions are per-machine, not part of the project
 AGENTS.md
+
+# Personal planning notes, not part of the project
+/TODO.md
+/PLAN.md

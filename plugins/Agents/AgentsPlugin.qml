@@ -1,16 +1,13 @@
 //  How the agent CLIs' limits are doing.
 //
-//  Claude Code and Codex cut by windows —the five hours, the week,
+//  Coding subscriptions cut by windows —the five hours, the week,
 //  and in Claude also a separate quota for Fable— and finding out
 //  where you stand forces opening each tool and asking it. This
 //  shows it at a glance.
 //
-//  The data is asked of nobody: both programs already save to disk
-//  what the server last answered them, and `tools/agentes.py` reads
-//  it and leaves it in the same shape for both. The flip side is
-//  that the data is from the last time the tool ran, so each card
-//  says when its own is from. An old percentage shown as if current
-//  deceives more than showing nothing.
+//  `tools/agents.py` reads local CLI state and read-only quota APIs,
+//  normalizing the results. Each card says when its data was collected:
+//  an old percentage shown as current deceives more than showing nothing.
 //
 //  Probing only while open is on purpose: with no pill to feed,
 //  nobody looks at these numbers with the island folded, and a
@@ -18,10 +15,8 @@
 
 import QtQuick
 import K4 as K4
-import "../../core"
-import "../../services"
 
-K4Plugin {
+K4.Plugin {
     id: self
 
     name: "agents"
@@ -33,9 +28,18 @@ K4Plugin {
 
     property bool abierto: false
 
-    //  What the reader returned: one entry per installed CLI.
+    // What the reader returned: one entry per enabled usage integration.
     property var agentes: []
     property bool cargado: false
+    property string usageError: ""
+    property bool settingsReady: false
+    property var enabledProviders: ["claude", "codex"]
+    property bool providersPageOpen: false
+    readonly property bool usageBusy: lector.running
+    property int _generation: 0
+    property int _requestGeneration: -1
+    property bool _pendingRefresh: false
+    property bool _received: false
 
     // ── the warning ───────────────────────────────────────────────
     //
@@ -61,11 +65,12 @@ K4Plugin {
         return peor
     }
 
-    readonly property bool aprieta: avisar && apurado !== null
+    readonly property bool aprieta: habilitado && avisar && apurado !== null
                                     && apurado.pct >= umbral
 
     // steps aside when it opens; the host injects it
     property var panel: null
+    property var settings: null
 
     islandWidth: 560
 
@@ -74,17 +79,18 @@ K4Plugin {
     //  18 header, 6 gap and 24+4 per row—; if it changes there, it
     //  changes here too, because a card taller than its slot shows
     //  cut off.
-    islandHeight: {
+    readonly property int contentHeight: {
         if (!cargado || !agentes.length)
-            return 132
+            return 154
 
-        let alto = 51                       // margins, header and its gap
+        let alto = 72                       // margins, header, status and gap
         for (let i = 0; i < agentes.length; i++) {
             const filas = Math.max(1, (agentes[i].limites || []).length)
             alto += 40 + 30 * filas
         }
         return alto + 8 * (agentes.length - 1)
     }
+    islandHeight: Math.min(contentHeight, Math.max(220, K4.Tema.altoMaximo - 80))
 
     //  The whole keyboard while open, and not `tecladoOpcional`.
     //
@@ -127,7 +133,6 @@ K4Plugin {
         if (abierto) {
             if (panel)
                 panel.close()
-            Notifs.dismissToast()
             refrescar()
         }
     }
@@ -137,8 +142,69 @@ K4Plugin {
     }
 
     function refrescar() {
-        if (!lector.running)
-            lector.running = true
+        if (!settingsReady || !habilitado || !enabledProviders.length)
+            return
+        if (lector.running) {
+            _pendingRefresh = true
+            return
+        }
+        _pendingRefresh = false
+        _received = false
+        _requestGeneration = _generation
+        let command = ["python3", K4.Paths.guion("agents.py"), "--providers", enabledProviders.join(",")]
+        if (!enVivo) command.push("--offline")
+        lector.command = command
+        lector.running = true
+    }
+
+    function providerEnabled(id) {
+        return enabledProviders.indexOf(id) >= 0
+    }
+
+    function setProviderEnabled(id, enabled) {
+        if (!settingsReady || !catalogProviders.some(p => p.adapter === id && id.length > 0))
+            return
+        let next = enabledProviders.filter(p => p !== id)
+        if (enabled) next.push(id)
+        enabledProviders = next
+        apuntar()
+    }
+
+    function invalidateUsage(clear) {
+        if (!settingsReady) return
+        ++_generation
+        agentes = clear ? [] : agentes.filter(a => providerEnabled(a.id))
+        usageError = ""
+        cargado = !enabledProviders.length || agentes.length > 0
+        _pendingRefresh = habilitado && enabledProviders.length > 0
+        if (lector.running) lector.parar(15)
+        else if (_pendingRefresh) refrescar()
+    }
+
+    onEnabledProvidersChanged: invalidateUsage(false)
+    onEnVivoChanged: {
+        invalidateUsage(true)
+        if (!enVivo && catalogReader.running) catalogReader.parar(15)
+    }
+    onHabilitadoChanged: {
+        if (!habilitado) abierto = false
+        invalidateUsage(true)
+    }
+
+    function manageProviders() {
+        if (settings) {
+            close()
+            settings.abrirPagina("providers")
+        }
+    }
+
+    function providerStatus(id) {
+        if (!id) return "Usage tracking not supported yet"
+        if (!providerEnabled(id)) return "Not checked · disabled"
+        const result = agentes.find(a => a.id === id)
+        if (!result) return usageError || (usageBusy ? "Checking usage…" : "Waiting for usage data")
+        if (result.razon) return result.razon
+        return result.fuente === "cache" ? "Available · cached CLI data" : "Usage available"
     }
 
     //  Ask the server about YOUR usage, with the token Claude Code
@@ -149,22 +215,28 @@ K4Plugin {
 
     K4.Process {
         id: lector
-        command: self.enVivo
-            ? ["python3", K4.Paths.guion("agentes.py")]
-            : ["python3", K4.Paths.guion("agentes.py"), "--sin-red"]
 
         onSalida: function (texto) {
+            if (self._requestGeneration !== self._generation || !self.habilitado) return
+            self._received = true
             try {
                 const datos = JSON.parse(texto)
-                self.agentes = datos.agentes || []
+                if (!Array.isArray(datos.agentes)) throw new Error("Invalid usage response")
+                self.agentes = datos.agentes.filter(a => self.providerEnabled(a.id))
+                self.usageError = ""
             } catch (e) {
-                console.warn("agentes: respuesta ilegible —", e)
-                self.agentes = []
+                self.usageError = "Could not read usage data. Try refreshing."
             }
             self.cargado = true
         }
 
-        onLineaError: function (linea) { console.warn("agentes:", linea) }
+        onTerminado: function (code) {
+            if (!self._received && self._requestGeneration === self._generation) {
+                self.usageError = "Usage check failed. Try refreshing."
+                self.cargado = true
+            }
+            if (self._pendingRefresh) Qt.callLater(self.refrescar)
+        }
     }
 
     //  While in view it is looked at again now and then: if you
@@ -173,7 +245,8 @@ K4Plugin {
     Timer {
         interval: 20000
         repeat: true
-        running: self.abierto
+        running: self.habilitado && self.settingsReady && self.enabledProviders.length > 0
+                 && (self.abierto || self.providersPageOpen)
         onTriggered: self.refrescar()
     }
 
@@ -184,7 +257,8 @@ K4Plugin {
     Timer {
         interval: 300000
         repeat: true
-        running: self.habilitado && self.avisar && !self.abierto
+        running: self.habilitado && self.settingsReady && self.enabledProviders.length > 0
+                 && self.avisar && !self.abierto && !self.providersPageOpen
         triggeredOnStart: true
         onTriggered: self.refrescar()
     }
@@ -210,7 +284,7 @@ K4Plugin {
         //  and reordering the whole pill every twenty seconds is
         //  noise nobody asked for.
         const pct = Math.round(apurado.pct)
-        const color = apurado.pct >= 95 ? Theme.red : Theme.yellow
+        const color = apurado.pct >= 95 ? K4.Tema.rojo : K4.Tema.amarillo
         if (_avisoPuesto && _avisoPct === pct && String(_avisoColor) === String(color))
             return
         K4.Pildora.registrar("agents.limit", pct + "%",
@@ -241,6 +315,20 @@ K4Plugin {
     property var guardado: K4.Guardado {
         plugin: "agents"
         onCargado: function (d) {
+            // Read the legacy state only after the current state has loaded.
+            // Asynchronous competing readers used to let the old file win.
+            let migrated = false
+            if (!d || typeof d !== "object" || Array.isArray(d)) d = {}
+            if (Object.keys(d).length === 0) {
+                try {
+                    legacyState.path = K4.Paths.estadoDe("agentes") + "/estado.json"
+                    const old = JSON.parse(legacyState.text() || "{}")
+                    if (old && typeof old === "object" && !Array.isArray(old)) {
+                        d = old
+                        migrated = Object.keys(old).length > 0
+                    }
+                } catch (e) {}
+            }
             //  Keys are English now; the Spanish pair is the pre-rename
             //  file saying something — both are honored, new wins.
             if (d.warn !== undefined) self.avisar = d.warn === true
@@ -249,12 +337,19 @@ K4Plugin {
             else if (d.umbral !== undefined) self.umbral = Number(d.umbral) || 85
             if (d.live !== undefined) self.enVivo = d.live === true
             else if (d.enVivo !== undefined) self.enVivo = d.enVivo === true
+            if (Array.isArray(d.providers))
+                self.enabledProviders = d.providers.filter((p, i, all) => typeof p === "string"
+                    && /^[a-z0-9][a-z0-9-]*$/.test(p) && all.indexOf(p) === i)
+            self.settingsReady = true
+            self.cargado = !self.enabledProviders.length
+            if (migrated) self.apuntar()
+            if (self.abierto || self.providersPageOpen) self.refrescar()
         }
     }
 
     function apuntar() {
-        _ajustesTocados = true
-        guardado.guardar({ warn: avisar, threshold: umbral, live: enVivo })
+        if (settingsReady)
+            guardado.guardar({ warn: avisar, threshold: umbral, live: enVivo, providers: enabledProviders })
     }
 
     //  The one-shot move from the pre-rename home: the state lived under
@@ -262,31 +357,17 @@ K4Plugin {
     //  the CATALOG id, not the one written here — a reload would orphan
     //  the pill and the launcher row. Adopted once, saved in the new
     //  home and the new keys; the old file stays as a fossil.
-    property var _estadoViejo: K4.Fichero {
-        path: K4.Paths.estadoDe("agentes") + "/estado.json"
-        onLoaded: {
-            if (self._ajustesTocados)
-                return
-            let viejo = {}
-            try {
-                viejo = JSON.parse(_estadoViejo.text() || "{}")
-            } catch (e) {
-                return
-            }
-            if (viejo.avisar !== undefined) self.avisar = viejo.avisar === true
-            if (viejo.umbral !== undefined) self.umbral = Number(viejo.umbral) || 85
-            if (viejo.enVivo !== undefined) self.enVivo = viejo.enVivo === true
-            self.apuntar()
-        }
+    property var _legacyState: K4.Fichero {
+        id: legacyState
+        blockLoading: true
     }
-    property bool _ajustesTocados: false
 
     K4.Ajustes {
         plugin: "agents"
         grupo: "Agents"
         opciones: [
             { id: "live", nombre: "Ask the server",
-              desc: "Your real usage, right now. Off, it reads the tool's cache, which lags by hours",
+              desc: "Allow live usage, catalog refreshes and provider logos. Off, only local CLI usage is available",
               glifo: 0xF06F2 },
             { id: "warn", nombre: "Warn when it gets tight",
               desc: "A percentage on the pill when the tightest limit crosses the threshold",
@@ -303,7 +384,6 @@ K4Plugin {
         onCambiado: function (id, valor) {
             if (id === "live") {
                 self.enVivo = valor === true
-                self.refrescar()
             } else if (id === "warn") {
                 self.avisar = valor === true
             } else if (id === "threshold") {
@@ -311,6 +391,66 @@ K4Plugin {
             }
             self.apuntar()
         }
+    }
+
+    // Catalog requests never discover credentials and never run on the quota
+    // polling timer. The page loads cached/bundled metadata, then the user
+    // can refresh it or load the selected provider's logo while online.
+    property var catalogProviders: []
+    property var catalogInfo: ({})
+    property string catalogError: ""
+    property bool catalogLoaded: false
+    readonly property bool catalogBusy: catalogReader.running
+    property string _pendingLogo: ""
+
+    function loadCatalog(refresh, logo) {
+        if (!habilitado) return
+        if (catalogReader.running) {
+            if (logo) _pendingLogo = logo
+            return
+        }
+        if (catalogLoaded && !refresh && !logo) return
+        let command = ["python3", K4.Paths.guion("agents.py"), "--catalog",
+                       "--snapshot", fichero("assets/models-dev-providers.json")]
+        if (!enVivo) command.push("--offline")
+        if (refresh) command.push("--refresh-catalog")
+        if (logo) command.push("--logo", logo)
+        catalogReader.command = command
+        catalogReader.running = true
+    }
+
+    K4.Process {
+        id: catalogReader
+        onSalida: function (text) {
+            try {
+                const data = JSON.parse(text)
+                if (!Array.isArray(data.providers)) throw new Error("Invalid catalog")
+                self.catalogProviders = data.providers
+                self.catalogInfo = { origin: data.origin, updated: data.updated || 0 }
+                self.catalogError = data.error || ""
+                self.catalogLoaded = true
+            } catch (e) {
+                self.catalogError = "Could not load the provider catalog"
+            }
+        }
+        onTerminado: function (code) {
+            if (code !== 0) self.catalogError = "Could not load the provider catalog"
+            if (self._pendingLogo) {
+                const logo = self._pendingLogo
+                self._pendingLogo = ""
+                Qt.callLater(function () { self.loadCatalog(false, logo) })
+            }
+        }
+    }
+
+    K4.Pagina {
+        plugin: "agents"
+        name: "providers"
+        titulo: "Agent providers"
+        desc: "Choose usage integrations and browse the models.dev provider catalog"
+        glifo: 0xF06A9
+        claves: ["agents", "providers", "models.dev", "usage", "quota", "claude", "codex", "zai", "opencode"]
+        componente: Component { ProvidersPage { plugin: self } }
     }
 
     K4.Ipc {
@@ -329,10 +469,10 @@ K4Plugin {
             const t = texto.toLowerCase()
             const pega = t.length >= 2
                 && ["agents", "claude", "codex", "usage", "limits", "quota",
-                    "spend", "ai", "agentes", "limites", "cupo", "gasto"].some(p => p.indexOf(t) === 0)
+                    "spend", "ai", "zai", "zhipu", "glm", "opencode", "providers"].some(p => p.indexOf(t) === 0)
             resultados = pega
-                ? [{ id: "abrir", titulo: "Agents",
-                     desc: "Claude and Codex limits" }]
+                 ? [{ id: "open", titulo: "Agents",
+                      desc: "Coding subscription usage and quotas" }]
                 : []
         }
         onElegido: function (id) {
@@ -342,6 +482,8 @@ K4Plugin {
     }
 
     view: Component {
-        AgentesView { plugin: self }
+        AgentsView { plugin: self }
     }
+
+    Component.onDestruction: K4.Pildora.quitar("agents.limit")
 }
