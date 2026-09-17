@@ -890,10 +890,6 @@ FadeIn {
                                         onPedida: function (grupo) {
                                             vista.elegirHijo(grupo)
                                         }
-                                        onPedidaApp: {
-                                            if (PluginManager.abrirAplicacion(bloque.modelData.app))
-                                                vista.plugin.close()
-                                        }
                                     }
                                 }
                             }

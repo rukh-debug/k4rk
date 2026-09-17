@@ -8,10 +8,7 @@
 //
 //  It does not know its children by name: it reads them from the same tree
 //  the sidebar reads (`Settings.definicion` → `hijosDe`), so a family that
-//  grows tomorrow gets its card for free. A group may also carry an `app`:
-//  a full application that belongs to the subject — the displays tool —
-//  which opens as itself and not as a page here, because arranging monitors
-//  is a screen of its own.
+//  grows tomorrow gets its card for free.
 
 import QtQuick
 import QtQuick.Layouts
@@ -29,11 +26,6 @@ ColumnLayout {
     //  (opening the family's drawer on the way in) — this page only knows
     //  its own cards.
     signal pedida(var grupo)
-
-    //  The family's tool card was clicked: open the application, which in
-    //  practice means the hosting view steps aside first. Again the view's
-    //  call; the card just says it was asked.
-    signal pedidaApp()
 
     //  Wallpaper selection is host-owned: the WallpaperPalette service, not
     //  any plugin's business.
@@ -205,86 +197,6 @@ ColumnLayout {
                         renderType: Text.NativeRendering
                     }
                 }
-            }
-        }
-    }
-
-    //  ── the family's tool ─────────────────────────────────────
-    //
-    //  `app` on the group: an application that belongs to the subject but is
-    //  a screen of its own — the displays arrangement. It opens as itself:
-    //  this view steps aside first, because the island hosts one view at a
-    //  time and a hidden switcher would be a lie.
-    K4.Baldosa {
-        id: tarjetaApp
-        visible: String(portada.familia.app || "").length > 0
-        Layout.fillWidth: true
-        Layout.preferredHeight: visible ? 46 : 0
-        radius: 10
-
-        //  Off or broken, the door says so instead of pretending: a card
-        //  that does nothing teaches that cards do nothing.
-        readonly property bool lista: PluginManager.aplicaciones.some(function (app) {
-            return app.id === portada.familia.app && app.habilitado && app.disponible
-        })
-
-        opacity: tarjetaApp.lista ? 1 : 0.45
-        enabled: lista
-        Accessible.name: "Open monitor layout"
-
-        onPulsada: {
-            if (tarjetaApp.lista)
-                portada.pedidaApp()
-        }
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 13
-            anchors.rightMargin: 13
-            spacing: 12
-
-            IconGlyph {
-                Layout.alignment: Qt.AlignVCenter
-                //  md-monitor: the tool this card is, in this family.
-                text: String.fromCodePoint(0xF0379)
-                color: Theme.muted
-                font.pixelSize: 15
-                renderType: Text.NativeRendering
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignVCenter
-                spacing: 1
-
-                IslandLabel {
-                    Layout.fillWidth: true
-                    text: "Monitor layout"
-                    textFormat: Text.PlainText
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                }
-
-                IslandLabel {
-                    Layout.fillWidth: true
-                    text: tarjetaApp.lista
-                        ? "Arrange and enable your screens"
-                        : "Enable the Displays plugin to configure monitors"
-                    textFormat: Text.PlainText
-                    color: Theme.muted
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                }
-            }
-
-            //  It leaves, it does not dig: the arrow says «this opens
-            //  elsewhere».
-            IconGlyph {
-                Layout.alignment: Qt.AlignVCenter
-                text: Theme.ico.forward
-                color: Theme.dim
-                font.pixelSize: 13
-                renderType: Text.NativeRendering
             }
         }
     }

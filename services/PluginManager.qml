@@ -57,7 +57,6 @@ Singleton {
         { id: "panel", title: "Control centre", version: "1.0.0", enabled: true },
         { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
         { id: "openwebui", title: "OpenWebUI", version: "1.0.0", enabled: true },
-        { id: "displays", title: "Displays", version: "1.0.0", enabled: true },
         { id: "settings", title: "Settings", version: "1.0.0", enabled: true, configurable: false },
         { id: "clipboard", title: "Clipboard", version: "1.0.0", enabled: true },
         { id: "system", title: "System", version: "1.0.0", enabled: true },
@@ -672,7 +671,6 @@ Singleton {
     //  away. `ask` is the newest: the Codex assistant became the
     //  OpenWebUI chat, and whoever had it on keeps the chat on.
     readonly property var idsViejos: ({ sonido: "sound",
-                                        pantallas: "displays",
                                         agentes: "agents",
                                         ask: "openwebui",
                                         submap: "hyprland-submap" })

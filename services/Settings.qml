@@ -433,13 +433,8 @@ Singleton {
             glifo: 0xF0379,      // md-monitor
             desc: "The screen: its wallpaper, its colours, its windows, its effects.",
             //  The parent of the sub-tab family. Its own page is the landing:
-            //  the wallpaper at a glance and a card per child. `app` marks a
-            //  card that opens a full application instead of a child page —
-            //  the displays tool, which is a screen of its own and stays one;
-            //  what was missing was reaching it from the place where the
-            //  screen is configured.
+            //  the wallpaper at a glance and a card per child.
             vista: "display",
-            app: "displays",
             opciones: []
         },
         {
@@ -610,7 +605,7 @@ Singleton {
                        "encima": "onTop", "escondida": "hidden" }
     })
     readonly property var idsViejos: ({
-        sonido: "sound", pantallas: "displays", agentes: "agents"
+        sonido: "sound", agentes: "agents"
     })
 
     function cargar() {
