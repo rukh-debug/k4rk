@@ -178,10 +178,10 @@ K4Plugin {
         salida.restart()
     }
 
-    //  The outside knock — quick access, the app centre, the wall's
-    //  hover summon. Overridden on purpose: the contract's default
-    //  would flip `active` imperatively, breaking the binding and
-    //  leaving a view that no longer closes when `abierto` does.
+    //  The outside knock — quick access, the app centre. Overridden
+    //  on purpose: the contract's default would flip `active`
+    //  imperatively, breaking the binding and leaving a view that
+    //  no longer closes when `abierto` does.
     //  Opening means the same setup the picker's own door does.
     function abrir() { open() }
 

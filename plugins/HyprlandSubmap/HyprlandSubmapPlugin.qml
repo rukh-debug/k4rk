@@ -25,8 +25,7 @@
 //  over everything the user may have opened: a mode is the keyboard
 //  speaking another language, and nothing on screen matters more than
 //  which language. The island is a Placement citizen like any summoned
-//  surface — but not one the wall can summon, because without a mode
-//  on there is nothing to show (`hoverArmable: false`).
+//  surface.
 //
 //  Pressing a chip runs the command and resets the submap, exactly
 //  what the key itself does; the island then folds on the `submap`
@@ -45,7 +44,6 @@ K4Plugin {
     //  outranks whatever the user had open.
     priority: 95
     colocable: true
-    hoverArmable: false
     //  Nobody clicks away a mode they did not open — a tap outside
     //  spends itself on the desktop, not on hiding the announcement.
     closeOnClickOutside: false

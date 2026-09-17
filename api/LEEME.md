@@ -48,10 +48,9 @@ K4.Process { running: self.habilitado && self.abierto }
 Timer { running: self.habilitado && self.abierto }
 ```
 
-Where the view renders is the user's choice (Settings → Island → How views
-open): deployed from the island, one at a time, or — each one in its own
-drawer out of the screen's frame, several at a time over a dimmed screen.
-The contract does not change between the two.
+Where the view renders is the island: deployed from the bar, one at a
+time, on the edge and at the point the user drew for it in Settings →
+Placement. The contract does not change with placement.
 
 Processes, timers and IPC handlers are direct children of the plugin. A view is
 mounted only while the host gives the plugin the island, so long-lived work must

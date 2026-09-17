@@ -325,10 +325,10 @@ K4Plugin {
     //  The door the host knocks on for Escape and the click-outside.
     function close() { cerrar() }
 
-    //  The outside knock — quick access, the app centre, the wall's
-    //  hover summon. Overridden on purpose: the contract's default
-    //  would flip `active` imperatively, breaking the binding and
-    //  leaving a view that no longer closes when `abierto` does.
+    //  The outside knock — quick access, the app centre. Overridden
+    //  on purpose: the contract's default would flip `active`
+    //  imperatively, breaking the binding and leaving a view that
+    //  no longer closes when `abierto` does.
     function abrir() { abierto = true }
 
     // ── updates, counted once for the whole bar ────────────────────

@@ -50,13 +50,8 @@ Singleton {
     // the click passes through to the desktop and the view stays.
     property bool cerrarConClicFuera: true
     //  Where the summoned views — control centre, settings, launcher… —
-    //  open. "island": the classic one-at-a-time deployment from the
-    //  bar. "window": each one in a drawer of its own, out of the
-    //  screen's frame at its placement, several at once — and the
-    //  island keeps the pill and its hover previews, over the dim the
-    //  host paints while windows are open. shell.qml reads it both for
-    //  the island ladder and the windows.
-    property string popupMode: "island"     // island · window
+    //  open: deployed from the island, one at a time. shell.qml reads
+    //  each view's placement for the island deployment.
     // widgets/TrayRow.qml: tray icons in the pill.
     // Off by default: tray icons in the pill are usually noise, and hovering
     // already opens the island where they are visible — and clickable,
@@ -181,11 +176,9 @@ Singleton {
     property var islandPlacements: {}
 
     //  The placement a plugin opens with, resolved: its own if it has one,
-    //  the bar's if it does not. Always a { side, align, hover } with side
-    //  one of top/bottom/left/right, align 0–100 and hover the view's
-    //  open-on-hover arm (false for followers — an arm needs a wall of its
-    //  own) — a map hand-edited into the file cannot smuggle anything
-    //  stranger in.
+    //  the bar's if it does not. Always a { side, align } with side
+    //  one of top/bottom/left/right and align 0–100 — a map hand-edited
+    //  into the file cannot smuggle anything stranger in.
     function placementDe(id) {
         const p = (islandPlacements || {})[id]
         if (p && (p.side === "top" || p.side === "bottom"
@@ -193,11 +186,10 @@ Singleton {
             let a = Number(p.align)
             if (!isFinite(a))
                 a = 50
-            return { side: p.side, align: Math.max(0, Math.min(100, a)),
-                     hover: p.hover === true }
+            return { side: p.side, align: Math.max(0, Math.min(100, a)) }
         }
         return { side: barPosition === "bottom" ? "bottom" : "top",
-                 align: barAlignment, hover: false }
+                 align: barAlignment }
     }
 
     //  Writing one placement. side "" is the row's «Follow the bar» chip:
@@ -213,145 +205,13 @@ Singleton {
         if (side === "") {
             delete d[id]
         } else {
-            //  The arm travels with the move: a drag rewrites the
-            //  record dozens of times and must not wear it off.
-            const viejo = (islandPlacements || {})[id]
-            d[id] = { side: side, align: align,
-                      hover: viejo ? viejo.hover === true : false }
+            d[id] = { side: side, align: align }
         }
         islandPlacements = d
     }
 
     function ponerPlacement(id, side, align) {
         ponerPlacementMemoria(id, side, align)
-        guardar()
-    }
-
-    //  ── open on hover: the wall as a doorbell ────────────────────
-    //
-    //  A placement can be hover-ARMED: touching the wall where the
-    //  view lives summons it — in either popup mode, bar visible or
-    //  not — and what the wall opened, the wall closes when the
-    //  pointer leaves (shell.qml and VentanaPopup.qml carry that
-    //  half). An arm needs an OWN placement: "follow the bar" has no
-    //  wall of its own to arm, because the bar's edge is whatever
-    //  the Island page says today.
-    //
-    //  The armed stretch is a PERCENT interval and not the drawer's
-    //  live width: a drawer resizes with its content, and a doorbell
-    //  that moves because a list grew is a door nobody can find
-    //  twice. Corners take the last stretch of BOTH their walls —
-    //  the same ends the placement editor snaps to.
-    property bool openOnHoverEnabled: true
-
-    //  How much of a wall a corner arm answers on, from each end,
-    //  and how wide an edge arm's stretch is around the placement.
-    readonly property int hoverCornerSpan: 8     // percent of the wall
-    readonly property int hoverEdgeSpan: 24      // percent of the wall
-
-    //  The wall intervals an armed placement answers on: one for an
-    //  edge, two (one per wall) for a corner. Empty when the
-    //  placement is not armed.
-    //
-    //  A corner's second wall is where the geometry is easy to get
-    //  wrong: the zone must sit at the END of that wall where the
-    //  corner actually is — the bottom-left corner is at the BOTTOM
-    //  of the left wall (pct 92–100), not at its top — and which
-    //  end that is depends on both spellings. The rule below reads
-    //  it off the first wall: a "bottom"/"right" side puts the
-    //  corner at the second wall's far end, "top"/"left" at its
-    //  start. All eight spellings come out of that one question.
-    function hoverZones(p) {
-        if (!p || p.hover !== true)
-            return []
-        const c = hoverCornerSpan
-        const e = hoverEdgeSpan / 2
-        const ini = p.align <= 0.5
-        const fin = p.align >= 99.5
-        if (ini || fin) {
-            const horizontal = p.side === "top" || p.side === "bottom"
-            const otra = horizontal
-                ? (ini ? "left" : "right")
-                : (ini ? "top" : "bottom")
-            const alFinal = p.side === "bottom" || p.side === "right"
-            return [
-                { side: p.side,
-                  from: fin ? 100 - c : 0, to: fin ? 100 : c },
-                { side: otra,
-                  from: alFinal ? 100 - c : 0, to: alFinal ? 100 : c }
-            ]
-        }
-        return [{ side: p.side,
-                  from: Math.max(0, p.align - e),
-                  to: Math.min(100, p.align + e) }]
-    }
-
-    //  The walls an armed placement lives on — its keep-alive set:
-    //  a hover-summoned view stays out while the pointer is on any
-    //  of them, so leaving the card for the wall it grew from is
-    //  not "hover ended".
-    function hoverWalls(p) {
-        const zonas = hoverZones(p)
-        const lados = []
-        for (let i = 0; i < zonas.length; ++i)
-            lados.push(zonas[i].side)
-        return lados
-    }
-
-    //  Who answers a touch on this wall point: the armed view whose
-    //  stretch contains it, or "".
-    function hoverViewAt(side, pct) {
-        const lista = PluginManager.instancias
-        for (let i = 0; i < lista.length; ++i) {
-            const p = lista[i]
-            if (!p.colocable || p.transitorio)
-                continue
-            const zonas = hoverZones(placementDe(p.name))
-            for (let j = 0; j < zonas.length; ++j)
-                if (zonas[j].side === side
-                        && pct >= zonas[j].from && pct <= zonas[j].to)
-                    return p.name
-        }
-        return ""
-    }
-
-    //  The view whose armed stretch would collide with this
-    //  placement's, or "". One doorbell per piece of wall: two armed
-    //  views on one stretch would each hear the other's touch, so
-    //  arming a second one there is refused (and a MOVE that lands
-    //  on an occupied stretch disarms, in the placement editor).
-    //  `side`/`align` let the caller ask about a placement that is
-    //  not stored yet — the editor's drag.
-    function hoverConflict(id, side, align) {
-        const zonas = hoverZones({ side: side, align: align, hover: true })
-        const lista = PluginManager.instancias
-        for (let i = 0; i < lista.length; ++i) {
-            const otro = lista[i]
-            if (!otro.colocable || otro.transitorio || otro.name === id)
-                continue
-            const suyas = hoverZones(placementDe(otro.name))
-            for (let j = 0; j < zonas.length; ++j)
-                for (let k = 0; k < suyas.length; ++k)
-                    if (zonas[j].side === suyas[k].side
-                            && zonas[j].from < suyas[k].to
-                            && suyas[k].from < zonas[j].to)
-                        return otro.name
-        }
-        return ""
-    }
-
-    //  Arm or disarm one view. Arming needs an own placement and a
-    //  free stretch of wall; disarming always works.
-    function setPlacementHover(id, on) {
-        const d = Object.assign({}, islandPlacements || {})
-        const p = d[id]
-        if (!p || (p.side !== "top" && p.side !== "bottom"
-                   && p.side !== "left" && p.side !== "right"))
-            return
-        if (on === true && hoverConflict(id, p.side, p.align))
-            return
-        d[id] = { side: p.side, align: p.align, hover: on === true }
-        islandPlacements = d
         guardar()
     }
 
@@ -467,11 +327,6 @@ Singleton {
                   desc: "Recent ones, under the clock and player", glifo: 0xF009A },
                 { id: "notificationsOnFocus", nombre: "Dismiss when you switch to the app",
                   desc: "Switching to its window already counts as having attended to them", glifo: 0xF039F },
-                { tipo: "titulo", nombre: "Summoned views" },
-                { id: "popupMode", tipo: "eleccion", de: "modosVista",
-                  nombre: "How views open",
-                  desc: "Each in its own window — several at once — or from the island, one at a time",
-                  glifo: 0xF00C7 },   // md-window_maximize
                 { tipo: "titulo", nombre: "Clicks" },
                 { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
                   desc: "Same as Escape: a deployed view closes when you click outside the bar",
@@ -493,19 +348,14 @@ Singleton {
             grupo: "Placement",
             claves: ["placement", "position", "posicion", "side",
                      "lado", "lados", "edge", "corner", "esquina",
-                     "donde", "abrir", "abre", "sale",
-                     "hover", "cursor", "raton"],
+                     "donde", "abrir", "abre", "sale"],
             glifo: 0xF09BB,        // md-arrow_decision
             desc: "Which side each view opens from, and where along that side — drag the dot to any point, corners included. The pill keeps its own home — see Island.",
             //  One card per openable view: wrapping side controls with
             //  Follow bar first, plus a draggable monitor that previews the
             //  actual edge or corner attachment.
             vista: "placement",
-            opciones: [
-                { id: "openOnHoverEnabled", nombre: "Open on hover",
-                  desc: "Armed views open when the pointer reaches their stretch of wall, and leave when it does",
-                  glifo: 0xF05B1 }    // md-cursor_default_click
-            ]
+            opciones: []
         },
         {
             grupo: "Control Centre",
@@ -667,9 +517,6 @@ Singleton {
         if (de === "workspaceStyles")
             return [{ codigo: "dots",    nombre: "Dots" },
                     { codigo: "numbers", nombre: "Numbers" }]
-        if (de === "modosVista")
-            return [{ codigo: "window", nombre: "Own window" },
-                    { codigo: "island", nombre: "From the island" }]
         return []
     }
 
@@ -713,7 +560,6 @@ Singleton {
     //  a singleton has dozens of internal properties that are not settings.
     readonly property var claves: [
         "barPosition", "barAlignment", "islandSpace", "cerrarConClicFuera",
-        "popupMode",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont", "wallpaperPalette",
@@ -722,7 +568,7 @@ Singleton {
         "panelShowShortcuts", "panelShowWorkspaces", "panelWorkspaceStyle",
         "panelShowClock", "panelShowScratchpad",
         "panelOrder", "panelHiddenBlocks",
-        "islandPlacements", "openOnHoverEnabled",
+        "islandPlacements",
         "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
         "quickAccess"
     ]
@@ -787,6 +633,31 @@ Singleton {
                 for (let i = 0; i < claves.length; ++i)
                     if (s[claves[i]] !== undefined)
                         ajustes[claves[i]] = s[claves[i]]
+                //  Retired keys are simply not copied: an old file's
+                //  `popupMode` and `openOnHoverEnabled` stay on the disk
+                //  it came from and never reach memory. The hover flag
+                //  travels INSIDE `islandPlacements`, so it needs its
+                //  own sweep: entries are rewritten as { side, align }.
+                if (s.islandPlacements !== undefined
+                        && s.islandPlacements !== null
+                        && typeof s.islandPlacements === "object") {
+                    const limpio = {}
+                    for (const id in s.islandPlacements) {
+                        const p = s.islandPlacements[id]
+                        if (p && (p.side === "top" || p.side === "bottom"
+                                  || p.side === "left"
+                                  || p.side === "right")) {
+                            let a = Number(p.align)
+                            if (!isFinite(a))
+                                a = 50
+                            limpio[id] = {
+                                side: p.side,
+                                align: Math.max(0, Math.min(100, a))
+                            }
+                        }
+                    }
+                    ajustes.islandPlacements = limpio
+                }
             } catch (e) {
                 // Unreadable preferences: keep the defaults.
             }

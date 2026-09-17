@@ -312,12 +312,12 @@ K4Plugin {
         open = false
     }
 
-    //  The outside knock — quick access, the app centre, the wall's
-    //  hover summon — opens the way the keybind's toggle does:
-    //  arrive asking, fresh. Overridden on purpose: the contract's
-    //  default would flip `active` imperatively, breaking the
-    //  `habilitado && open` binding and leaving a view that no
-    //  longer closes when `open` does.
+    //  The outside knock — quick access, the app centre — opens the
+    //  way the keybind's toggle does: arrive asking, fresh.
+    //  Overridden on purpose: the contract's default would flip
+    //  `active` imperatively, breaking the `habilitado && open`
+    //  binding and leaving a view that no longer closes when `open`
+    //  does.
     function abrir() { openAsk(false) }
 
     // Truly discarding: this one forgets.

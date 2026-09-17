@@ -1056,11 +1056,6 @@ FadeIn {
                             //  The placement editor: one card per
                             //  openable view, wrapping side controls and a
                             //  draggable monitor preview for precise placement.
-                            FilaOpcion {
-                                visible: bloque.modelData.vista === "placement" && !vista.searching
-                                modelData: ({ id: "openOnHoverEnabled", nombre: "Open on hover",
-                                    desc: "Open configured views when the pointer reaches their edge.", glifo: 0xF05B1 })
-                            }
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true

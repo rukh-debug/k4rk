@@ -206,59 +206,22 @@ commands that come next. The rest of this page explains what it wrote.
 The plugin is the state: it lives always, island or no island. The view
 only paints, and only exists while the plugin holds the island.
 
-Where that room is depends on the user's **How views open** setting
-(Settings → Island → Summoned views). In **island** mode — the default,
-and the classic behavior — one summoned view at a time deploys from the
-bar, and the one just opened is the one on it: the host retires the
-previous summoned view through its `close()` — whatever that verb must
-do on the way out still happens — while its view fades out under the
-arriving one and the island glides to the newcomer. `priority` still
-arbitrates everything else: the pill, the hover views, the
-transients. In **window** mode every open
-`colocable` view comes out of the screen's frame as a drawer of its
-own, on the edge and at the point its placement says — the same
-placement the island would deploy it at — and several may be open at
-once. The ends of an edge are corners: a placement flush at either end
-attaches the view to two walls — flush along its edge and the side
-wall — and the drawer grows out of the corner, sliding in along the
-diagonal. It does not sit beside the frame: at each wall the frame
-swells into the card — a long, shallow pour of the same material — so
-card, pour and rim read as one body. The bar can live in a corner
-itself (Settings → Island → alignment), where the rim carries its
-material into the turn. The island keeps the pill, the hover views and
-the transitions
-between them, and stays alive above the dim the host paints behind any
-summoned view that is out — in either mode; hover views dim nothing.
-Your contract is the same in both — `view`,
-`islandWidth`/`islandHeight` and the keyboard flags mean what they
-always meant — and there is nothing to detect or serve: the host
-mounts the same Component in the drawer. What a window does not get is
-the island's hover-exit timeout (`closeOnHoverExit` is island
-business). Its dismissal is otherwise richer, not
-poorer: the dim's click dismisses every drawer at once, Escape closes
-the focused one, and the view's own cross and verbs work as always.
-And a drawer leaves the way it arrived — drawn back into its corner,
-the same travel in reverse.
-
-One more door, the user's and not yours: any placement can be
-**hover-armed** from its card in Settings → Placement (plus a master
-switch there). Touching the armed stretch of wall — an interval around
-the placement, the ends of both walls for a corner — summons the view
-in whichever mode is live, and the stretch follows the pointer as it
-rides the wall: each stretch crossed gets its summons, and the
-previous one hands over. A hover-summoned view leaves when the pointer
-stops hovering it (its card, its wings or its own wall), after the
-hover-exit grace. A view opened any other way is not touched by
-this: it stays until closed — or superseded, as any summoned view is
-when the next one opens. The host carries the whole
-thing; a plugin neither knows nor does anything about it.
-
-Not every placement can be armed, though: a surface that only exists
-while something outside the user's hands is on — the Hyprland submap
-island, alive only while a compositor mode is — has nothing to show a
-wall touch would summon. Those declare `hoverArmable: false`, and their
-card shows no arm at all instead of a switch that promises an empty
-room.
+One summoned view at a time deploys from the bar, and the one just
+opened is the one on it: the host retires the previous summoned view
+through its `close()` — whatever that verb must do on the way out
+still happens — while its view fades out under the arriving one and
+the island glides to the newcomer. `priority` still arbitrates
+everything else: the pill, the hover views, the transients. The view
+deploys on the edge and at the point its placement says (Settings →
+Placement). The ends of an edge are corners: a placement flush at
+either end attaches the view to two walls — flush along its edge and
+the side wall. The bar can live in a corner itself (Settings → Island
+→ alignment), where the rim carries its material into the turn. The
+island keeps the pill, the hover views and the transitions between
+them, and stays alive above the dim the host paints behind any
+summoned view that is out; hover views dim nothing. A deployed view
+closes through its own `close()` — Escape, the outside-click, its own
+cross and verbs work as always.
 
 The card also carries a copy button — the IPC command that opens the
 surface, ready to paste in a terminal or hang on a key. It reads

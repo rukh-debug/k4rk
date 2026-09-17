@@ -23,3 +23,6 @@ AGENTS.md
 # Personal planning notes, not part of the project
 /TODO.md
 /PLAN.md
+
+# nix build output symlink
+/result
