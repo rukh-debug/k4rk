@@ -37,7 +37,7 @@ no permission. Plugins do not read procfs or launch hardware tools themselves.
 | `view` | Host-owned detailed monitor `Component`, or null without a host; use as a Loader's `sourceComponent` |
 | `sample(owner, active, detailed)` | Acquire/update a sampling lease. `detailed` also enables the cheap sampler. Release with both flags false |
 | `rate(bytes)` | B/s, KiB/s or MiB/s text; `—` for unavailable |
-| `compactRate(bytes)` | Compact B/K/M text, with binary factors; `—` for unavailable |
+| `compactRate(bytes)` | At most four characters with binary B/K/M/G/T/P scaling. Promotes when rounding would reach 1000; uses one decimal below 10 for M and larger units, whole numbers otherwise. Caps at `≥1P` (one PiB/s). `—` for negative or non-finite readings |
 | `temperature(value)` | Celsius text or `—` |
 
 Use a unique owner string per concurrent consumer. Release leases when disabled
@@ -399,10 +399,47 @@ Connections {
 }
 ```
 
-Available operations are `registrar(id, text, glyph, color, order, visible)`,
+Available operations are `registrar(id, text, glyph, color, order, visible, slots)`,
 `actualizar(id, fields)`, `quitar(id)` and `quitarDe(owner)`. IDs must start with
 the plugin ID (`hello.`). The host removes a plugin's indicators when it is
 disabled.
+
+The host sizes all indicator glyphs using **Settings → Island → Indicator icon
+size** (8–20 px, default 14 px). The setting applies to the folded pill and the
+clock/player hover views; label and numeric-slot text keep their existing size.
+
+The optional seventh argument, `slots`, is an array of numeric text slots:
+
+```qml
+K4.Pildora.registrar("hello.load", "9%", 0xF061A, "#30d158", 80, true,
+    [{ text: "9%", samples: ["100%"] }])
+K4.Pildora.actualizar("hello.load", {
+    texto: "10%", slots: [{ text: "10%", samples: ["100%"] }]
+})
+```
+
+Each slot has `text` (the live string), `samples` (an array describing the
+widest possible strings), and an optional stationary `prefix` such as `↓` or
+`↑`. A nonempty array replaces the ordinary text visually; keep `texto` as its
+plain-text equivalent. Omitted or empty `slots` retain ordinary auto-sizing.
+Updates replace the whole slots array, so retain samples and prefixes when
+changing text.
+
+Slots with a prefix are left-aligned so the value sits directly beside its
+stationary prefix; slots without a prefix are right-aligned. Both use tabular
+digits in the current shell font and reserve the widest sample independently
+of the live reading. Measurements allow for
+fonts without tabular digits and always fit the unavailable marker `—`.
+Samples and prefixes should stay constant across value updates; changing them
+or the shell font intentionally recalculates the reservation. Values exceeding
+the declared samples are elided rather than growing the island. Multiple slots
+have a fixed 3 px gap, and the same measurements size all three pill views and
+their host estimates.
+
+For a compact network rate, samples covering all formatter outputs are
+`["999B", "999K", "999M", "999G", "999T", "9.9M", "9.9G", "9.9T", "1.0P", "≥1P"]`.
+Use separate slots with `prefix: "↓"` and `prefix: "↑"` so download changes
+cannot move the upload arrow or value.
 
 ## Your settings, in Settings
 

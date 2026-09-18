@@ -118,6 +118,57 @@ ColumnLayout {
 
     // ── the blocks: order and eye ──────────────────────────
     IslandLabel {
+        text: "Indicator icons · " + Settings.pillIndicatorIconSize + " px"
+        font.pixelSize: 12
+        font.weight: Font.DemiBold
+        color: Theme.muted
+    }
+
+    Rectangle {
+        objectName: "indicator-icon-preview"
+        Layout.fillWidth: true
+        Layout.preferredHeight: iconPreview.implicitHeight + 20
+        radius: 10
+        color: Theme.islandBg
+        border.width: 1
+        border.color: Theme.surfaceHi
+
+        Flow {
+            id: iconPreview
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 10
+            spacing: 16
+            Repeater {
+                model: [
+                    { glyph: 0xF061A, label: "CPU", color: Theme.blue },
+                    { glyph: 0xF05A9, label: "Network", color: "#ff9f0a" },
+                    { glyph: 0xF035B, label: "RAM", color: Theme.muted },
+                    { glyph: 0xF06A9, label: "Agents", color: Theme.muted }
+                ]
+                delegate: Row {
+                    required property var modelData
+                    spacing: 4
+                    IconGlyph {
+                        objectName: "indicator-preview-" + modelData.label
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: String.fromCodePoint(modelData.glyph)
+                        font: Indicadores.iconFont
+                        color: modelData.color
+                    }
+                    IslandLabel {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.label
+                        font: Indicadores.textFont
+                        color: Theme.ink
+                    }
+                }
+            }
+        }
+    }
+
+    IslandLabel {
         text: "Blocks and order"
         font.pixelSize: 12
         font.weight: Font.DemiBold

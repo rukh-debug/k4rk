@@ -448,6 +448,19 @@ bar's directory, not yours.
 | `K4.Paths` | paths: `estadoDe(id)` is your state directory |
 | `K4.IconoPlugin` | a plugin's icon: its image if it brings one, its glyph if not |
 
+For live numeric pill indicators, pass an optional seventh `slots` argument to
+`K4.Pildora.registrar`. Each slot supplies `{ text, samples, prefix }`, with
+`prefix` optional: a percentage can reserve `samples: ["100%"]`, while network
+download and upload use separate slots with stationary arrows and left-aligned
+values directly beside them and a compact 3 px gap between slots. Reserve the
+four-character outputs of `K4.SystemMonitor.compactRate` for network values.
+The host's **Island → Indicator icon size** setting scales every status glyph
+together (8–20 px, default 14 px), including agent indicators, without resizing text.
+Slots without a prefix stay right-aligned. Update `texto`
+and the complete `slots` array through `actualizar`, retaining the same samples
+and prefixes. This keeps the folded, clock, and player views steady while values
+change. See [pill indicators](API.md#pill-indicators) for sizing and rate samples.
+
 Use the shared controls for consistent keyboard focus and disabled states.
 Give icon buttons, cards and switches an `Accessible.name`. Switches and choice
 buttons report activation; keep the displayed value bound to its owner.

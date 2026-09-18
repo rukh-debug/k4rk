@@ -70,10 +70,19 @@ Singleton {
         return Math.round(bytes) + " B/s"
     }
     function tasaCorta(bytes) {
-        if (bytes < 0) return "—"
-        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + "M"
-        if (bytes >= 1024) return Math.round(bytes / 1024) + "K"
-        return Math.round(bytes) + "B"
+        if (bytes < 0 || !isFinite(bytes)) return "—"
+        // Four characters at most: keep the fixed network slots compact.
+        if (bytes >= Math.pow(1024, 5)) return "≥1P"
+        const units = ["B", "K", "M", "G", "T", "P"]
+        let value = bytes
+        let unit = 0
+        while (unit < units.length - 1) {
+            if (Math.round(value) < 1000) break
+            value /= 1024
+            unit++
+        }
+        const decimal = unit >= 2 && Number(value.toFixed(1)) < 10
+        return (decimal ? value.toFixed(1) : String(Math.round(value))) + units[unit]
     }
     function grados(value) { return value > 0 ? Math.round(value) + " °C" : "—" }
     function duration(seconds) {

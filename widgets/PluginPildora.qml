@@ -20,20 +20,26 @@ RowLayout {
     Repeater {
         model: Indicadores.reparto.muestra
         delegate: Item {
+            id: chip
             required property var modelData
+            readonly property bool fixedSlots: Indicadores.hasSlots(modelData)
+            objectName: "pill-" + modelData.id
             visible: modelData.visible !== false
-            implicitWidth: contenido.implicitWidth + 6
+            implicitWidth: Indicadores.anchoDe(modelData)
             implicitHeight: contenido.implicitHeight + 4
 
-            RowLayout {
+            Row {
                 id: contenido
-                anchors.fill: parent
+                anchors.centerIn: parent
                 spacing: 4
 
                 IconGlyph {
+                    objectName: chip.objectName + "-icon"
+                    anchors.verticalCenter: parent.verticalCenter
                     text: String.fromCodePoint(modelData.glifo)
                     color: modelData.color || Theme.muted
-                    font.pixelSize: 11
+                    font: Indicadores.iconFont
+                    width: Indicadores.iconWidth(modelData)
                 }
                 //  Capped and elided at the end. The service owns the
                 //  cap, not this file, because it is the same number it
@@ -44,12 +50,39 @@ RowLayout {
                 //  paint the ones it sends. Text stays bright white while
                 //  the glyph keeps the semantic color.
                 IslandLabel {
+                    visible: !chip.fixedSlots
+                    anchors.verticalCenter: parent.verticalCenter
                     text: modelData.texto
                     color: Theme.ink
-                    font.pixelSize: 11
-                    font.weight: Font.Medium
+                    font: Indicadores.textFont
                     elide: Text.ElideRight
-                    Layout.maximumWidth: Indicadores.topeTexto
+                    width: Indicadores.textWidth(text)
+                }
+                Row {
+                    visible: chip.fixedSlots
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Indicadores.slotGap
+                    Repeater {
+                        model: chip.fixedSlots ? chip.modelData.slots : []
+                        delegate: Row {
+                            required property var modelData
+                            required property int index
+                            IslandLabel {
+                                objectName: chip.objectName + "-prefix-" + index
+                                text: modelData.prefix || ""
+                                font: Indicadores.numericFont
+                                width: Indicadores.prefixWidth(modelData)
+                            }
+                            IslandLabel {
+                                objectName: chip.objectName + "-value-" + index
+                                text: modelData.text
+                                font: Indicadores.numericFont
+                                width: Indicadores.slotWidth(modelData)
+                                horizontalAlignment: modelData.prefix ? Text.AlignLeft : Text.AlignRight
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
                 }
             }
 

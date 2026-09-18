@@ -78,16 +78,28 @@ K4.Plugin {
     //  changes — rebuilding the indicator list every second would
     //  redraw the pill for nothing. Past 90 % the CPU/memory glyph
     //  goes red: a glance only needs to say "now". Network stays
-    //  orange and shows a compact "down up" pair so it fits the
-    //  shared 300px row next to the Agents quota.
+    //  orange and shows a compact "down up" pair. Reserved numeric slots
+    //  keep every chip and both direction arrows stationary between samples.
 
-    property int _cpuPct: -1
-    property int _ramPct: -1
+    property int _cpuPct: -2
+    property int _ramPct: -2
     property string _redTexto: "@@none@@"
 
     function textoRed() {
         return "↓" + K4.SystemMonitor.compactRate(K4.SystemMonitor.download)
             + " ↑" + K4.SystemMonitor.compactRate(K4.SystemMonitor.upload)
+    }
+
+    function percentSlots(text) {
+        return [{ text: text, samples: ["100%"] }]
+    }
+
+    function networkSlots() {
+        const samples = ["999B", "999K", "999M", "999G", "999T", "9.9M", "9.9G", "9.9T", "1.0P", "≥1P"]
+        return [
+            { prefix: "↓", text: K4.SystemMonitor.compactRate(K4.SystemMonitor.download), samples: samples },
+            { prefix: "↑", text: K4.SystemMonitor.compactRate(K4.SystemMonitor.upload), samples: samples }
+        ]
     }
 
     function pintarChips() {
@@ -97,47 +109,49 @@ K4.Plugin {
     }
 
     function pintarCpu() {
-        if (!habilitado || !enPildoraCpu || !K4.SystemMonitor.ready) {
-            if (_cpuPct >= 0) {
+        if (!habilitado || !enPildoraCpu) {
+            if (_cpuPct !== -2) {
                 K4.Pildora.quitar("system.cpu")
-                _cpuPct = -1
+                _cpuPct = -2
             }
             return
         }
-        const cpu = Math.round(K4.SystemMonitor.cpuPercent)
+        const cpu = K4.SystemMonitor.ready ? Math.round(K4.SystemMonitor.cpuPercent) : -1
         if (cpu !== _cpuPct) {
+            const text = cpu < 0 ? "—" : cpu + "%"
             const color = cpu >= 90 ? K4.Tema.rojo : K4.Tema.azul
-            if (_cpuPct < 0)
-                K4.Pildora.registrar("system.cpu", cpu + "%", 0xF061A,
-                                     color, 20, true)
+            if (_cpuPct === -2)
+                K4.Pildora.registrar("system.cpu", text, 0xF061A,
+                                     color, 20, true, percentSlots(text))
             else
-                K4.Pildora.actualizar("system.cpu", { texto: cpu + "%", color: color })
+                K4.Pildora.actualizar("system.cpu", { texto: text, color: color, slots: percentSlots(text) })
             _cpuPct = cpu
         }
     }
 
     function pintarRam() {
-        if (!habilitado || !enPildoraRam || !K4.SystemMonitor.ready) {
-            if (_ramPct >= 0) {
+        if (!habilitado || !enPildoraRam) {
+            if (_ramPct !== -2) {
                 K4.Pildora.quitar("system.ram")
-                _ramPct = -1
+                _ramPct = -2
             }
             return
         }
-        const ram = Math.round(K4.SystemMonitor.memoryPercent)
+        const ram = K4.SystemMonitor.ready ? Math.round(K4.SystemMonitor.memoryPercent) : -1
         if (ram !== _ramPct) {
+            const text = ram < 0 ? "—" : ram + "%"
             const color = ram >= 90 ? K4.Tema.rojo : K4.Tema.apagado
-            if (_ramPct < 0)
-                K4.Pildora.registrar("system.ram", ram + "%", 0xF035B,
-                                     color, 21, true)
+            if (_ramPct === -2)
+                K4.Pildora.registrar("system.ram", text, 0xF035B,
+                                     color, 21, true, percentSlots(text))
             else
-                K4.Pildora.actualizar("system.ram", { texto: ram + "%", color: color })
+                K4.Pildora.actualizar("system.ram", { texto: text, color: color, slots: percentSlots(text) })
             _ramPct = ram
         }
     }
 
     function pintarRed() {
-        if (!habilitado || !enPildoraRed || K4.SystemMonitor.download < 0) {
+        if (!habilitado || !enPildoraRed) {
             if (_redTexto !== "@@none@@") {
                 K4.Pildora.quitar("system.net")
                 _redTexto = "@@none@@"
@@ -148,9 +162,9 @@ K4.Plugin {
         if (texto !== _redTexto) {
             if (_redTexto === "@@none@@")
                 K4.Pildora.registrar("system.net", texto, 0xF05A9,
-                                     "#ff9f0a", 22, true)
+                                     "#ff9f0a", 22, true, networkSlots())
             else
-                K4.Pildora.actualizar("system.net", { texto: texto })
+                K4.Pildora.actualizar("system.net", { texto: texto, slots: networkSlots() })
             _redTexto = texto
         }
     }

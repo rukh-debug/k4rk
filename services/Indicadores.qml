@@ -9,17 +9,93 @@ import "../core"
 Singleton {
     id: indicadores
 
-    // [{ id, texto, glifo, color, orden, visible }]
+    // [{ id, texto, glifo, color, orden, visible, slots }]
     property var lista: []
     signal invocado(string id)
 
     //  How wide a name may grow before it is clipped.
     readonly property int topeTexto: 160
 
-    //  What one takes, roughly: the glyph and its gap, the text at 11 px —
-    //  hence the ~7 per letter — and the 6 of padding.
+    // The renderer uses these exact fonts and measurements. Slot widths depend
+    // on declared samples, never on the live value, including before views load.
+    FontMetrics {
+        id: numericMetrics
+        font.family: Theme.uiFont
+        font.pixelSize: 11
+        font.weight: Font.Medium
+        font.features: ({ "tnum": 1 })
+    }
+    FontMetrics {
+        id: iconMetrics
+        font.family: Theme.iconFont
+        font.pixelSize: Settings.pillIndicatorIconSize
+    }
+    FontMetrics {
+        id: textMetrics
+        font.family: Theme.uiFont
+        font.pixelSize: 11
+        font.weight: Font.Medium
+    }
+    readonly property font iconFont: iconMetrics.font
+    readonly property font textFont: textMetrics.font
+    readonly property font numericFont: numericMetrics.font
+    readonly property int slotGap: 3
+    property var _iconWidths: Object.create(null)
+    property var _textWidths: Object.create(null)
+    property var _numericWidths: Object.create(null)
+    onIconFontChanged: _iconWidths = Object.create(null)
+    onTextFontChanged: _textWidths = Object.create(null)
+    onNumericFontChanged: _numericWidths = Object.create(null)
+
+    function numericWidth(text) {
+        // FontMetrics method calls alone do not track font changes in QML
+        // bindings. Replacing this cache invalidates every dependent width.
+        if (_numericWidths[text] === undefined)
+            _numericWidths[text] = numericMetrics.advanceWidth(text)
+        return _numericWidths[text]
+    }
+
+    function hasSlots(ind) {
+        // Repeater exposes nested arrays as QML sequences, not JS Arrays.
+        return !!ind.slots && ind.slots.length > 0
+    }
+    function slotWidth(slot) {
+        let width = numericWidth("—")
+        const samples = slot.samples || []
+        for (const sample of samples) {
+            // Some user-selected fonts lack tabular figures. Reserve their
+            // widest digit too, rather than assuming that '0' is widest.
+            for (let digit = 0; digit <= 9; ++digit)
+                width = Math.max(width, numericWidth(
+                    String(sample).replace(/[0-9]/g, String(digit))))
+        }
+        return Math.ceil(width)
+    }
+    function prefixWidth(slot) {
+        return Math.ceil(numericWidth(String(slot.prefix || "")))
+    }
+    function slotsWidth(ind) {
+        let width = Math.max(0, ind.slots.length - 1) * slotGap
+        for (const slot of ind.slots)
+            width += prefixWidth(slot) + slotWidth(slot)
+        return width
+    }
+    function iconWidth(ind) {
+        if (_iconWidths[ind.glifo] === undefined)
+            _iconWidths[ind.glifo] = Math.ceil(iconMetrics.advanceWidth(String.fromCodePoint(ind.glifo)))
+        return _iconWidths[ind.glifo]
+    }
+    function textWidth(text) {
+        if (_textWidths[text] === undefined)
+            _textWidths[text] = Math.min(topeTexto, Math.ceil(textMetrics.advanceWidth(text)))
+        return _textWidths[text]
+    }
+
+    // Shared with the renderer, including ordinary indicators such as agents.
+    // Only the glyph changes size; text keeps its own measured reservation.
     function anchoDe(ind) {
-        return Math.min(topeTexto, String(ind.texto || "").length * 7) + 37
+        return iconWidth(ind) + 4
+            + (hasSlots(ind) ? slotsWidth(ind) : textWidth(String(ind.texto || ""))) + 6
     }
 
     // And what the summary capsule takes, with its two digits.
@@ -47,12 +123,7 @@ Singleton {
         return { muestra: vistos, ocultos: 0 }
     }
 
-    //  What they will take more or less, for whoever must reserve room BEFORE
-    //  they exist. It is a floor, not a measure: the true width depends on
-    //  the font and only whoever paints them knows —widgets/PluginPildora.qml—,
-    //  so whoever can measure wins over this. It is here because the reserver
-    //  is the clock plugin, and with the island closed there is no pill ready
-    //  to ask.
+    // Reserve the same measured width even before a view has been created.
     readonly property int anchoAproximado: {
         const muestra = reparto.muestra
         let ancho = 0
@@ -63,13 +134,14 @@ Singleton {
         return ancho
     }
 
-    function registrar(id, texto, glifo, color, orden, visible) {
+    function registrar(id, texto, glifo, color, orden, visible, slots) {
         if (!id || String(id).length === 0)
             return
         const nuevo = { id: String(id), texto: String(texto || ""),
                         glifo: Number(glifo) || 0, color: color || Theme.muted,
                         orden: Number(orden) || 0,
-                        visible: visible !== false }
+                        visible: visible !== false,
+                        slots: Array.isArray(slots) ? slots : [] }
         lista = lista.filter(function (x) { return x.id !== nuevo.id })
             .concat([nuevo]).sort(function (a, b) { return a.orden - b.orden })
     }

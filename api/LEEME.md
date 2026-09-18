@@ -66,7 +66,7 @@ not be declared inside the view.
 | `K4.Fichero` | Read/write a small text or JSON file |
 | `K4.Paths` | Installation, tools and state paths |
 | `K4.Sistema` | Launch, open, notify, copy and read environment |
-| `K4.SystemMonitor` | Read-only CPU/memory/network telemetry and host detail `view`; acquire `sample(owner, active, detailed)`, release both flags on disable/destruction. Capacities use GiB; unavailable rates/percentages are `-1`. See [System telemetry](../docs/API.md#system-telemetry) |
+| `K4.SystemMonitor` | Read-only CPU/memory/network telemetry and host detail `view`; acquire `sample(owner, active, detailed)`, release both flags on disable/destruction. Capacities use GiB; unavailable rates/percentages are `-1`. `compactRate` fits four characters with adaptive precision and binary unit scaling. See [System telemetry](../docs/API.md#system-telemetry) |
 | `K4.Apps` | Installed applications and icons |
 | `K4.Icono` | Theme-aware application icon |
 | `K4.Miniatura` | Live thumbnail of an open window, given its address |
@@ -77,7 +77,7 @@ not be declared inside the view.
 | `K4.BloqueoSesion` | Real session lock |
 | `K4.SuperficieBloqueo` | What is drawn while locked, one per monitor |
 | `K4.MenuBandeja` | Tray application menu |
-| `K4.Pildora` | Small indicators in the folded pill |
+| `K4.Pildora` | Small indicators in the folded pill; host **Island → Indicator icon size** controls all status glyphs (8–20 px, default 14 px). Optional seventh `registrar` argument `slots: [{ text, samples, prefix }]` reserves stable numeric widths. Prefixed values align left beside the prefix; other values align right. Update the whole array via `actualizar`; keep samples/prefixes fixed. See [pill indicators](../docs/API.md#pill-indicators) |
 | `K4.Capsule` | Flank extensions: the capsule growing with your text |
 | `K4.Sonido` | Short sound effect (permission `sonido`) |
 | `K4.Tema` | Palette, fonts, island geometry — `tintar()` to tint the bar ambience, plus the current tint owner and colour |

@@ -1,18 +1,16 @@
 pragma Singleton
 
-//  API pública para que un plugin aporte un indicador pequeño a la píldora
-//  sin tocar IdleView ni shell.qml. Habla con la barra a través del Puente
-//  —un fichero de este módulo no puede importar services/ por ruta relativa,
-//  ver Puente.qml— y sin barra delante simplemente no hace nada.
+// Public pill indicators, forwarded through the host bridge. Optional slots
+// reserve space for changing numeric values without resizing the island.
 
 import QtQuick
 
 QtObject {
     id: api
 
-    function registrar(id, texto, glifo, color, orden, visible) {
+    function registrar(id, texto, glifo, color, orden, visible, slots) {
         if (Puente.indicadores)
-            Puente.indicadores.registrar(id, texto, glifo, color, orden, visible)
+            Puente.indicadores.registrar(id, texto, glifo, color, orden, visible, slots)
     }
     function actualizar(id, campos) {
         if (Puente.indicadores)

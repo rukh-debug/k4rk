@@ -77,6 +77,12 @@ Singleton {
     property int pillTrayMax: 0
     property int pillMinimizedMax: 0
     property int pillIndicatorsMax: 0
+    // Shared status glyph size: live pill views, width estimates and preview.
+    property int pillIndicatorIconSize: 14
+    onPillIndicatorIconSizeChanged: {
+        const size = Math.max(8, Math.min(20, pillIndicatorIconSize))
+        if (pillIndicatorIconSize !== size) pillIndicatorIconSize = size
+    }
 
     readonly property var pillItemIds: ["media", "clock-workspaces",
         "minimized", "plugin-indicators", "tray"]
@@ -360,7 +366,7 @@ Singleton {
             grupo: "Island",
             claves: ["pill", "at rest", "clock", "media", "workspace",
                      "minimized", "indicator", "tray", "order", "visibility",
-                     "peek", "track", "notifications", "popup"],
+                     "peek", "track", "notifications", "popup", "icon size", "agents"],
             glifo: 0xF1513,
             desc: "How much room the bar keeps, and when it gets out of the way.",
             //  Position, alignment and space usage are hard to explain in
@@ -400,6 +406,11 @@ Singleton {
                   desc: "How round the rim turns at the screen's corners",
                   glifo: 0xF0607 },   // md-rounded_corner
                 { tipo: "titulo", nombre: "The pill" },
+                { id: "pillIndicatorIconSize", tipo: "numero", min: 8, max: 20,
+                  paso: 1, unidad: "px",
+                  nombre: "Indicator icon size",
+                  desc: "Size of CPU, network, RAM, agent and other status icons. Applies immediately; default 14 px.",
+                  glifo: 0xF0431 },
                 { id: "pillTrayMax", tipo: "numero", min: 0, max: 32,
                   paso: 1, unidad: "items",
                   nombre: "Tray icons limit",
@@ -673,6 +684,7 @@ Singleton {
         "playerPeekOnChange",
         "pillOrder", "pillHiddenItems", "pillMigrated",
         "pillTrayMax", "pillMinimizedMax", "pillIndicatorsMax",
+        "pillIndicatorIconSize",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont", "wallpaperPalette",
         "panelWidth", "panelShowToggles", "panelTileWifi",

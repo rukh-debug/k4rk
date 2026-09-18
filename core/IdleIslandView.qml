@@ -237,7 +237,7 @@ FadeIn {
             readonly property bool tieneContenido: Indicadores.anchoAproximado > 0
             visible: tieneContenido
             implicitWidth: pildora.implicitWidth
-            implicitHeight: 20
+            implicitHeight: Math.max(20, pildora.implicitHeight)
             PluginPildora {
                 id: pildora
                 anchors.centerIn: parent
