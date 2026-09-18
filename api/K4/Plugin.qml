@@ -246,8 +246,7 @@ QtObject {
     //  HUD): nobody clicks to dismiss something they did not open, and
     //  swallowing a click that was going somewhere else is worse than
     //  staying open a second longer. Truly transient views (`transitorio`)
-    //  are already excluded by the host; this flag is for the rest. The user
-    //  can also turn the whole behavior off in Settings.
+    //  are already excluded by the host; this flag is for the rest.
     property bool closeOnClickOutside: true
 
     // Módulos que se abren con el ratón y deben irse al sacarlo. El host emite

@@ -44,11 +44,6 @@ Singleton {
     //  a fourth state: reserve as usual, but hide ONLY while a window fills
     //  the screen. shell.qml implements these choices.
     property string islandSpace: "reserve"    // reserve · auto · onTop · hidden
-    // Click outside the bar closes whatever view is deployed, like Escape.
-    // shell.qml grows its surface to the whole screen while a view is open
-    // and spends the outside tap on closing it. Off is the old behavior:
-    // the click passes through to the desktop and the view stays.
-    property bool cerrarConClicFuera: true
     //  Where the summoned views — control centre, settings, launcher… —
     //  open: deployed from the island, one at a time. shell.qml reads
     //  each view's placement for the island deployment.
@@ -327,10 +322,6 @@ Singleton {
                   desc: "Recent ones, under the clock and player", glifo: 0xF009A },
                 { id: "notificationsOnFocus", nombre: "Dismiss when you switch to the app",
                   desc: "Switching to its window already counts as having attended to them", glifo: 0xF039F },
-                { tipo: "titulo", nombre: "Clicks" },
-                { id: "cerrarConClicFuera", nombre: "Click outside closes what's open",
-                  desc: "Same as Escape: a deployed view closes when you click outside the bar",
-                  glifo: 0xF037D },   // md-cursor_default
                 { tipo: "titulo", nombre: "This window" },
                 { id: "settingsIslandWidth", tipo: "numero",
                   min: 720, max: 1400, paso: 20, unidad: "px",
@@ -554,7 +545,7 @@ Singleton {
     //  forget one. Use a list rather than walking the entire object because
     //  a singleton has dozens of internal properties that are not settings.
     readonly property var claves: [
-        "barPosition", "barAlignment", "islandSpace", "cerrarConClicFuera",
+        "barPosition", "barAlignment", "islandSpace",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont", "wallpaperPalette",

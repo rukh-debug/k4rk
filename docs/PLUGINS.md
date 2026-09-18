@@ -658,12 +658,17 @@ K4.Card {
     glifo: 0xF01EE
     alto: 64                    // px the card occupies
     component: Component { MiFila {} }
+    detailTitle: "Mail"
+    detail: Component { MailDetails {} }
 }
 ```
 
 `alto` is the height the card OCCUPIES — fixed, like the native blocks'
 own heights — and the centre hands you exactly that room: fill it, don't
 fight it (`width: parent.width`, `height: parent.height` on the root).
+An optional `detail` stays plugin-owned but renders inside the centre. Call
+`openDetail()` from the card; `detailTitle` labels the shared header, Back and
+Escape return to the card list, and unloading the plugin closes the detail.
 The centre knows the card as `"<plugin>.<name>"`. A card-only plugin has
 no `view` and never asks for the island's stage — it exists to put one
 block in the centre and that is all. `ejemplos/worldclock/` ships a

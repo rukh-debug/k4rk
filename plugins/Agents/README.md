@@ -16,14 +16,19 @@ their usage switch is disabled.
 | Catalog entry | Usage adapter | Default | Credential/data discovery |
 | --- | --- | --- | --- |
 | `anthropic` | `claude` — Claude Code subscription quotas | On | Claude Code login, OAuth credential file and local usage cache; honors `CLAUDE_CONFIG_DIR` |
-| `openai` | `codex` — Codex session quotas | On | Recent local rollout logs; honors `CODEX_HOME` |
+| `openai` | `codex` — OpenAI Codex subscription quotas | On | Codex app-server account API with recent local rollout logs as the offline fallback; honors `CODEX_HOME` |
 | `zai-coding-plan` | Global Z.AI Coding Plan | Off | `ZAI_API_KEY`, then the unambiguous `ZHIPU_API_KEY` alias |
 | `zhipuai-coding-plan` | China Zhipu AI Coding Plan | Off | `ZHIPUAI_API_KEY`, then the unambiguous `ZHIPU_API_KEY` alias |
 | `opencode-go` | OpenCode Go subscription | Off | `OPENCODE_API_KEY`, `ZEN_API_KEY`, then API-key entries in OpenCode's `auth.json` |
 
-Claude Code and Codex CLI installation is still detected. An enabled provider
+Claude Code and Codex CLI installation is detected. An enabled provider
 without credentials or data shows setup/status information rather than a
 fabricated zero. Claude credentials are never refreshed or rotated here.
+
+Codex live checks use the installed CLI's versioned `account/read` and
+`account/rateLimits/read` app-server methods. The CLI owns authentication; k4
+does not read, copy, store, or send its ChatGPT token. With live checks off, the
+adapter reads the newest recorded quota snapshot from Codex rollout logs.
 
 The catalog's general API credentials are distinct from the credentials a
 usage adapter needs. For example, `ANTHROPIC_API_KEY` is not a Claude Code
@@ -71,7 +76,8 @@ Zen credit tracking is not advertised as supported.
 - Settings load before any usage query. Disabled adapters perform no detection,
   credential reads, local-log scanning, or HTTP requests.
 - Usage refreshes every 20 seconds while the usage surface or provider page is
-  open, and every five minutes in the background when quota warnings are on.
+  open, and every five minutes in the background when quota warnings or a
+  pinned folded-pill quota are on.
 - Turning a provider off removes its card and warning immediately. In-flight
   work is cancelled, obsolete responses are discarded, and the latest selection
   is queried after the previous process exits.
@@ -83,6 +89,37 @@ Zen credit tracking is not advertised as supported.
 - HTTP usage is cached for one minute, with a longer retry delay for rejected
   credentials or rate limiting. New-provider caches are partitioned by account
   fingerprint and endpoint; no credential is stored in the cache or output.
+
+## Folded pill quota
+
+The expanded Agents island always shows every enabled provider and all of its
+available quota windows. The percentage shown on the main folded pill is
+configured separately under **Quota on folded pill**:
+
+- **Automatic warning** keeps the previous behavior: show the tightest quota
+  only after it crosses the warning threshold.
+- Every discovered provider/window pair is selectable independently, such as
+  Claude Code **5 hours**, OpenAI Codex **Weekly**, or OpenCode Go **Monthly**.
+  Selecting one pins that exact percentage on the folded pill even below the
+  warning threshold.
+
+Clicking a quota row in the expanded Agents view pins it directly; the selected
+row is marked, and clicking it again returns to automatic warnings. The same
+choice remains available in the plugin's **Quota on folded pill** setting.
+
+Unavailable pinned data remains selected and resumes when that provider reports
+the window again. Disabling the pinned provider returns to automatic warnings.
+The stable `provider:window` choice is stored as `pinnedQuota` beside provider,
+warning and live-check preferences.
+
+## Control Centre
+
+Agents contributes an **Agent usage** card to the Control Centre. Its compact
+row shows the tightest enabled quota and opens the full usage view inside the
+centre, where the standard Back button and Escape return to the card list. The
+Control Centre editor owns card visibility, ordering and its enable/disable eye
+like every other contributed card. Opening either the card or its detail page
+keeps usage polling active; hiding it stops that foreground polling.
 
 ## Catalog and logos
 

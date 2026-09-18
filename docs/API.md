@@ -445,6 +445,8 @@ K4.Card {
     desc: "One line for the editor row"
     alto: 64                  // px the card occupies
     component: Component { MiFila {} }
+    detailTitle: "Mail"       // optional drill-down header
+    detail: Component { MailDetails {} }
 }
 ```
 
@@ -454,6 +456,9 @@ K4.Card {
   fight it.
 - `component` is instantiated only while the centre is open on its
   controls tab, in your plugin's own context.
+- `detail` is optional. Call `openDetail()` from the card to host that
+  component inside the Control Centre. `detailTitle` labels the shared header;
+  the host supplies Back, Escape navigation and cleanup if the plugin unloads.
 - Visibility is the user's, not yours: the editor's eye hides the card
   (Settings owns a card's visibility; the native blocks' own switches
   are the same deal).

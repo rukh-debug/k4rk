@@ -16,7 +16,7 @@ K4Plugin {
     summonCommand: "k4.panel toggle"
     active: habilitado && open
 
-    // "controls" | "notifications" | "wifi" | "bluetooth" | "sound" | "system"
+    // Native tab id, or "card:<plugin>.<name>" for a contributed detail page.
     property string tab: "controls"
     property bool open: false
     property bool interactionActive: false
@@ -79,7 +79,9 @@ K4Plugin {
     }
 
     function openTab(wanted) {
-        if (["controls", "notifications", "wifi", "bluetooth", "sound", "system"].indexOf(wanted) < 0)
+        const nativeTab = ["controls", "notifications", "wifi", "bluetooth", "sound", "system"].indexOf(wanted) >= 0
+        const contributed = wanted.indexOf("card:") === 0 && Enganches.cardDetail(wanted.slice(5))
+        if (!nativeTab && !contributed)
             return
         if (wanted !== tab) Wifi.cancelPsk()
         tab = wanted
@@ -91,6 +93,26 @@ K4Plugin {
         //  at.
         if (wanted === "sound")
             Audio.mirarBases()
+    }
+
+    function tabTitle() {
+        if (tab.indexOf("card:") === 0)
+            return Enganches.cardDetailTitle(tab.slice(5)) || "Control centre"
+        if (tab === "notifications") return "Notifications"
+        if (tab === "wifi") return "Wi-Fi"
+        if (tab === "bluetooth") return "Bluetooth"
+        if (tab === "sound") return "Sound"
+        if (tab === "system") return "System"
+        return "Control centre"
+    }
+
+    Connections {
+        target: Enganches
+        function onCardDetailRequested(id) { self.openTab("card:" + id) }
+        function onCardsChanged() {
+            if (self.tab.indexOf("card:") === 0 && !Enganches.cardDetail(self.tab.slice(5)))
+                self.openTab("controls")
+        }
     }
 
     function close() {

@@ -34,7 +34,10 @@ K4.Plugin {
     property string usageError: ""
     property bool settingsReady: false
     property var enabledProviders: ["claude", "codex"]
+    property string pinnedQuota: ""
     property bool providersPageOpen: false
+    property bool controlCardOpen: false
+    property bool controlPageOpen: false
     readonly property bool usageBusy: lector.running
     property int _generation: 0
     property int _requestGeneration: -1
@@ -43,11 +46,9 @@ K4.Plugin {
 
     // ── the warning ───────────────────────────────────────────────
     //
-    //  The pill is not there to keep the count —for that one opens
-    //  the module— but for the moment the count matters: when little
-    //  is left and you can still decide what to spend it on. Hence
-    //  it appears past a threshold and leaves on its own, and hence
-    //  it can be turned off entirely.
+    //  By default the pill appears only when the tightest quota crosses
+    //  the warning threshold. A user can instead pin one exact provider
+    //  window, keeping that percentage visible while the island is folded.
     property bool avisar: true
     property int umbral: 85
 
@@ -65,8 +66,44 @@ K4.Plugin {
         return peor
     }
 
-    readonly property bool aprieta: habilitado && avisar && apurado !== null
-                                    && apurado.pct >= umbral
+    function quota(code) {
+        if (!code) return null
+        const separator = code.indexOf(":")
+        if (separator < 1) return null
+        const providerId = code.slice(0, separator)
+        const limitId = code.slice(separator + 1)
+        const agent = agentes.find(a => a.id === providerId)
+        if (!agent) return null
+        const limit = (agent.limites || []).find(l => l.id === limitId)
+        if (!limit) return null
+        return { pct: limit.pct || 0, nombre: limit.nombre || "",
+                 agente: agent.nombre || "", provider: providerId, limit: limitId }
+    }
+
+    readonly property var quotaChoices: {
+        const choices = [{ codigo: "", nombre: "Automatic warning" }]
+        for (let i = 0; i < agentes.length; ++i) {
+            const agent = agentes[i]
+            const limits = agent.limites || []
+            for (let j = 0; j < limits.length; ++j)
+                choices.push({ codigo: agent.id + ":" + limits[j].id,
+                               nombre: agent.nombre + " · " + limits[j].nombre })
+        }
+        if (pinnedQuota && !choices.some(choice => choice.codigo === pinnedQuota))
+            choices.push({ codigo: pinnedQuota, nombre: "Pinned quota · waiting for data" })
+        return choices
+    }
+
+    function setPinnedQuota(value) {
+        const code = String(value || "")
+        if (code && code.indexOf(":") < 1) return
+        pinnedQuota = code
+        apuntar()
+    }
+
+    readonly property var pillQuota: pinnedQuota ? quota(pinnedQuota)
+        : avisar && apurado !== null && apurado.pct >= umbral ? apurado : null
+    readonly property bool pillVisible: habilitado && pillQuota !== null
 
     // steps aside when it opens; the host injects it
     property var panel: null
@@ -167,6 +204,8 @@ K4.Plugin {
         let next = enabledProviders.filter(p => p !== id)
         if (enabled) next.push(id)
         enabledProviders = next
+        if (!enabled && pinnedQuota.indexOf(id + ":") === 0)
+            pinnedQuota = ""
         apuntar()
     }
 
@@ -194,6 +233,7 @@ K4.Plugin {
     function manageProviders() {
         if (settings) {
             close()
+            if (panel) panel.close()
             settings.abrirPagina("providers")
         }
     }
@@ -204,6 +244,7 @@ K4.Plugin {
         const result = agentes.find(a => a.id === id)
         if (!result) return usageError || (usageBusy ? "Checking usage…" : "Waiting for usage data")
         if (result.razon) return result.razon
+        if (result.status && result.status !== "ok") return "Usage unavailable"
         return result.fuente === "cache" ? "Available · cached CLI data" : "Usage available"
     }
 
@@ -246,19 +287,21 @@ K4.Plugin {
         interval: 20000
         repeat: true
         running: self.habilitado && self.settingsReady && self.enabledProviders.length > 0
-                 && (self.abierto || self.providersPageOpen)
+                 && (self.abierto || self.providersPageOpen
+                     || self.controlCardOpen || self.controlPageOpen)
         onTriggered: self.refrescar()
     }
 
-    //  And in the background, only when there is a warning to give
+    //  And in the background, only when there is a warning or pinned quota
     //  and only every five minutes. It is the only reason to read
-    //  with the island folded, so it turns off with the warning:
-    //  whoever does not want it pays not one process.
+    //  with the island folded. Whoever wants neither pays not one process.
     Timer {
         interval: 300000
         repeat: true
         running: self.habilitado && self.settingsReady && self.enabledProviders.length > 0
-                 && self.avisar && !self.abierto && !self.providersPageOpen
+                 && (self.avisar || !!self.pinnedQuota)
+                 && !self.abierto && !self.providersPageOpen
+                 && !self.controlCardOpen && !self.controlPageOpen
         triggeredOnStart: true
         onTriggered: self.refrescar()
     }
@@ -272,19 +315,20 @@ K4.Plugin {
     property bool _avisoPuesto: false
 
     function pintarAviso() {
-        if (!aprieta) {
+        if (!pillVisible) {
             if (_avisoPuesto) {
                 K4.Pildora.quitar("agents.limit")
                 _avisoPuesto = false
             }
             return
         }
-        //  Re-register only if something changed: `apurado` re-hooks
+        //  Re-register only if something changed: `pillQuota` re-hooks
         //  every round —the object is new though the number is not—
         //  and reordering the whole pill every twenty seconds is
         //  noise nobody asked for.
-        const pct = Math.round(apurado.pct)
-        const color = apurado.pct >= 95 ? K4.Tema.rojo : K4.Tema.amarillo
+        const pct = Math.round(pillQuota.pct)
+        const color = pillQuota.pct >= 95 ? K4.Tema.rojo
+            : pillQuota.pct >= umbral ? K4.Tema.amarillo : K4.Tema.verde
         if (_avisoPuesto && _avisoPct === pct && String(_avisoColor) === String(color))
             return
         K4.Pildora.registrar("agents.limit", pct + "%",
@@ -299,8 +343,8 @@ K4.Plugin {
     property int _avisoPct: -1
     property var _avisoColor: null
 
-    onAprietaChanged: pintarAviso()
-    onApuradoChanged: pintarAviso()
+    onPillVisibleChanged: pintarAviso()
+    onPillQuotaChanged: pintarAviso()
 
     Connections {
         target: K4.Pildora
@@ -340,6 +384,8 @@ K4.Plugin {
             if (Array.isArray(d.providers))
                 self.enabledProviders = d.providers.filter((p, i, all) => typeof p === "string"
                     && /^[a-z0-9][a-z0-9-]*$/.test(p) && all.indexOf(p) === i)
+            if (typeof d.pinnedQuota === "string" && (!d.pinnedQuota || d.pinnedQuota.indexOf(":") > 0))
+                self.pinnedQuota = d.pinnedQuota
             self.settingsReady = true
             self.cargado = !self.enabledProviders.length
             if (migrated) self.apuntar()
@@ -349,7 +395,8 @@ K4.Plugin {
 
     function apuntar() {
         if (settingsReady)
-            guardado.guardar({ warn: avisar, threshold: umbral, live: enVivo, providers: enabledProviders })
+            guardado.guardar({ warn: avisar, threshold: umbral, live: enVivo,
+                               providers: enabledProviders, pinnedQuota: pinnedQuota })
     }
 
     //  The one-shot move from the pre-rename home: the state lived under
@@ -377,10 +424,13 @@ K4.Plugin {
               glifo: 0xF029A,
               alternativas: [{ codigo: "70", nombre: "70%" },
                              { codigo: "85", nombre: "85%" },
-                             { codigo: "95", nombre: "95%" }] }
+                             { codigo: "95", nombre: "95%" }] },
+            { id: "pinnedQuota", tipo: "eleccion", nombre: "Quota on folded pill",
+              desc: "Automatically warn with the tightest quota, or pin one provider and time window",
+              glifo: 0xF06A9, alternativas: self.quotaChoices }
         ]
         valores: ({ live: self.enVivo, warn: self.avisar,
-                    threshold: String(self.umbral) })
+                    threshold: String(self.umbral), pinnedQuota: self.pinnedQuota })
         onCambiado: function (id, valor) {
             if (id === "live") {
                 self.enVivo = valor === true
@@ -388,6 +438,9 @@ K4.Plugin {
                 self.avisar = valor === true
             } else if (id === "threshold") {
                 self.umbral = Number(valor) || 85
+            } else if (id === "pinnedQuota") {
+                self.setPinnedQuota(String(valor))
+                return
             }
             self.apuntar()
         }
@@ -451,6 +504,19 @@ K4.Plugin {
         glifo: 0xF06A9
         claves: ["agents", "providers", "models.dev", "usage", "quota", "claude", "codex", "zai", "opencode"]
         componente: Component { ProvidersPage { plugin: self } }
+    }
+
+    K4.Card {
+        id: agentsCard
+        plugin: "agents"
+        name: "usage"
+        titulo: "Agent usage"
+        glifo: 0xF06A9
+        desc: "Coding subscription quotas at a glance"
+        alto: 58
+        component: Component { AgentsCard { plugin: self; card: agentsCard } }
+        detailTitle: "Agents"
+        detail: Component { AgentsView { plugin: self; embedded: true } }
     }
 
     K4.Ipc {

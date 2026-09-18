@@ -28,7 +28,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="k4-agents-ui-") as directory:
         root = Path(directory)
         home = root / "home"
-        for ident, state in (("agents", {"providers": [], "warn": False, "threshold": 95, "live": False}),
+        for ident, state in (("agents", {"providers": [], "warn": False, "threshold": 95,
+                                          "live": False, "pinnedQuota": "codex:weekly"}),
                              ("agentes", {"avisar": True, "umbral": 70, "enVivo": True})):
             path = home / ".local/state/k4/plugins" / ident / "estado.json"
             path.parent.mkdir(parents=True)

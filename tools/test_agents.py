@@ -185,9 +185,38 @@ class ProviderTests(IsolatedTest):
                 "primary": {"window_minutes": 300, "used_percent": 12}, "secondary": None}}}) + "\n")
         (sessions / "rollout-new.jsonl").write_text("{}\n")
         with patch.object(agents, "CODEX_SESIONES", [str(sessions)]):
-            result = agents.lee_codex()
+            result = agents.read_codex_rollout()
         self.assertEqual(len(result["limites"]), 1)
         self.assertEqual(result["limites"][0]["pct"], 12)
+
+    def test_codex_explicit_empty_limits_are_not_stale_usage(self):
+        sessions = self.home / "sessions"
+        sessions.mkdir()
+        (sessions / "rollout-new.jsonl").write_text(json.dumps({
+            "timestamp": "2026-09-16T12:00:00Z", "payload": {"rate_limits": {
+                "limit_id": "premium", "primary": None, "secondary": None}}}) + "\n")
+        with patch.object(agents, "CODEX_SESIONES", [str(sessions)]):
+            result = agents.read_codex_rollout()
+        self.assertEqual(result["status"], "unavailable")
+        self.assertIn("without quota windows", result["razon"])
+
+    def test_codex_month_window_is_not_weekly(self):
+        window = agents.ventana({"windowDurationMins": 43200, "usedPercent": 25,
+                                 "resetsAt": 123}, "primary")
+        self.assertEqual(window["nombre"], "30 days")
+        self.assertEqual(window["reinicia"], 123)
+
+    def test_codex_offline_never_starts_app_server(self):
+        with patch("agents.codex_app_server", side_effect=AssertionError("live query")), \
+                patch("agents.read_codex_rollout", return_value={"limites": [], "status": "unavailable"}):
+            result = agents.read_codex(False)
+        self.assertEqual(result["status"], "unavailable")
+
+    def test_codex_live_failure_falls_back_to_rollout(self):
+        cached = {"limites": [{"pct": 17}], "fuente": "cache"}
+        with patch("agents.codex_app_server", side_effect=OSError), \
+                patch("agents.read_codex_rollout", return_value=cached):
+            self.assertEqual(agents.read_codex(True), cached)
 
 
 class CatalogTests(IsolatedTest):

@@ -1,18 +1,16 @@
 pragma Singleton
 
-//  Dónde se apuntan los plugins que quieren aparecer en sitios de la barra
-//  que no son suyos: sus ajustes en Ajustes, sus resultados en el lanzador.
+//  Registry for plugins that appear in host-owned surfaces: their Settings
+//  options, pages, Control Centre cards and launcher results.
 //
-//  Un registro y no una lista de importaciones cruzadas, por lo de siempre:
-//  Ajustes no puede conocer a un plugin que todavía no existe, y menos a uno
-//  que vive en ~/.config/k4/plugins. Aquí cada uno se apunta al nacer y se
-//  borra al morir.
+//  This is a registry rather than a list of cross-imports because Settings
+//  cannot know a plugin that does not exist yet, especially one installed in
+//  ~/.config/k4/plugins. Each contribution registers at birth and leaves at
+//  destruction.
 //
-//  Lo de «al morir» no es un detalle: los plugins se destruyen de verdad
-//  —apagarlos, recargarlos en caliente, desinstalarlos— y un enganche
-//  huérfano sería una fila en Ajustes que al pulsarla llama a un cadáver. Por
-//  eso se limpia por partida doble: el propio enganche se da de baja al
-//  destruirse, y el gestor barre por id cuando tumba un plugin.
+//  Destruction matters: disabling, hot-reloading and uninstalling really
+//  destroy plugins. An orphan contribution would invoke a dead object, so
+//  both the contribution and PluginManager clean registrations up.
 
 import QtQuick
 import Quickshell
@@ -20,22 +18,21 @@ import Quickshell
 Singleton {
     id: registro
 
-    // ── ajustes aportados ─────────────────────────────────────────
+    // ── contributed settings ─────────────────────────────────────
     //
-    //  Cada entrada: { plugin, grupo, opciones: [...], fuente }
-    //  `fuente` es el objeto K4.Ajustes, que es quien sabe los valores.
+    //  Each entry: { plugin, grupo, opciones: [...], fuente }.
+    //  `fuente` is the K4.Ajustes object that owns the values.
     property var ajustes: []
 
-    //  El prefijo que hace que Ajustes sepa a quién preguntar. Va con el id
-    //  del plugin dentro para que dos plugins puedan usar el mismo nombre de
-    //  opción sin pisarse.
+    //  The prefix tells Settings which owner to ask. Including the plugin id
+    //  lets two plugins use the same option name without collisions.
     function idExterno(plugin, opcion) {
         return "ext_" + plugin + "_" + opcion
     }
 
     function _partes(id) {
-        //  "ext_<plugin>_<opcion>": el plugin no lleva guiones bajos porque
-        //  RE_ID no los admite, así que la primera partición es la buena.
+        //  "ext_<plugin>_<opcion>": plugin ids contain no underscores because
+        //  RE_ID forbids them, so the first separator is unambiguous.
         const resto = String(id).substring(4)
         const corte = resto.indexOf("_")
         if (corte < 0)
@@ -51,12 +48,8 @@ Singleton {
         return null
     }
 
-    //  Solo reemplaza SU entrada de ajustes. Antes barría con `quitarDe`, que
-    //  es la escoba de «este plugin ha muerto» y se lleva también su enganche
-    //  del lanzador — y como K4.Ajustes se vuelve a registrar cada vez que
-    //  cambian sus `opciones`, un plugin con las dos cosas perdía la del
-    //  lanzador al primer cambio, sin un solo error por ningún lado. No se
-    //  notó antes porque hasta ahora ningún plugin tenía las dos.
+    //  Replace only this settings entry. `quitarDe` means the whole plugin
+    //  died and also removes launcher, page and card contributions.
     function registrarAjustes(fuente) {
         if (!fuente || !fuente.plugin)
             return
@@ -84,7 +77,7 @@ Singleton {
             cards = quedanT
     }
 
-    //  Lo que Ajustes añade al final de su lista de grupos.
+    //  What Settings appends to its group list.
     readonly property var gruposAjustes: {
         const salida = []
         for (let i = 0; i < ajustes.length; ++i) {
@@ -93,22 +86,16 @@ Singleton {
                 continue
             salida.push({
                 grupo: a.grupo || a.plugin,
-                //  Para la barra lateral de la ventana de Ajustes: un icono y
-                //  una línea por sección. Si el plugin no dice nada, se coge
-                //  el icono que ya declara en su manifiesto — que es el que la
-                //  gente asocia con él en el centro de aplicaciones, así que
-                //  pedirle otro sería pedirle lo mismo dos veces.
+                //  Metadata for the Settings sidebar. A missing icon falls
+                //  back to the plugin manifest's familiar application icon.
                 glifo: a.fuente && a.fuente.glifo ? a.fuente.glifo : 0,
                 desc: a.fuente && a.fuente.desc ? a.fuente.desc : "",
                 dePlugin: a.plugin,
-                //  No salen como sección propia en la lateral: viven dentro de
-                //  la fila de SU plugin, al lado del interruptor que los
-                //  enciende. Tenerlos en dos cajones distintos obligaba a
-                //  cruzar la ventana para apagar lo que acabas de configurar.
+                //  These live inside their plugin row, beside its enable
+                //  switch, rather than becoming a separate sidebar section.
                 //
-                //  Pero siguen en `Settings.definicion`, y eso importa: el
-                //  buscador recorre la lista entera, así que escribir el nombre
-                //  de un ajuste de plugin lo sigue encontrando.
+                //  They remain in `Settings.definicion`, so search still finds
+                //  every contributed option.
                 enLateral: false,
                 opciones: a.opciones.map(function (o) {
                     return Object.assign({}, o, {
@@ -228,6 +215,27 @@ Singleton {
         return null
     }
 
+    function cardDetail(id) {
+        for (let i = 0; i < cards.length; ++i)
+            if (cards[i].plugin + "." + cards[i].name === id)
+                return cards[i].fuente.detail
+        return null
+    }
+
+    function cardDetailTitle(id) {
+        for (let i = 0; i < cards.length; ++i)
+            if (cards[i].plugin + "." + cards[i].name === id)
+                return cards[i].fuente.detailTitle || cards[i].fuente.titulo || cards[i].name
+        return ""
+    }
+
+    signal cardDetailRequested(string id)
+
+    function openCardDetail(id) {
+        if (cardDetail(id))
+            cardDetailRequested(id)
+    }
+
     //  The ids the cards add to the centre's block universe:
     //  "<plugin>.<name>", the form `panelOrder` stores them in. The
     //  dotted shape is what tells a card from a native block, so a
@@ -249,8 +257,8 @@ Singleton {
 
     // ── results in the launcher ───────────────────────────────────
     //
-    //  Cada entrada: { plugin, fuente }. El lanzador pregunta a todos al
-    //  escribir y cada uno contesta cuando puede: nadie bloquea a nadie.
+    //  Each entry: { plugin, fuente }. The launcher asks every source and each
+    //  answers when ready, so one slow plugin blocks nobody.
     property var lanzador: []
 
     signal buscando(string texto)
@@ -267,7 +275,7 @@ Singleton {
         buscando(texto)
     }
 
-    //  Lo que hay que pintar ahora mismo, de todos los que hayan contestado.
+    //  What should be rendered now from every source that has answered.
     readonly property var resultados: {
         const salida = []
         for (let i = 0; i < lanzador.length; ++i) {

@@ -17,6 +17,8 @@
 //          glifo: 0xF01EE
 //          alto: 64                  // px the card occupies
 //          component: Component { MiFila {} }
+//          detailTitle: "Mail"
+//          detail: Component { MailDetails {} }
 //      }
 //
 //  `alto` is the height the card OCCUPIES — fixed, like the native
@@ -32,6 +34,10 @@
 //  `componente` is instantiated only while the centre is open on its
 //  controls tab, in your plugin's own context: your ids, your
 //  imports, your sibling types.
+//
+//  A card may also own a detail page. Calling `openDetail()` opens that
+//  component inside the Control Centre; its standard header supplies Back,
+//  Escape returns to the cards, and unloading the plugin closes the page.
 
 import QtQuick
 
@@ -65,6 +71,15 @@ QtObject {
     //  same arrangement as `K4.Plugin.view`.
     property Component component: null
 
+    //  Optional drill-down content hosted inside the Control Centre.
+    property string detailTitle: titulo
+    property Component detail: null
+
+    function openDetail() {
+        if (detail && Puente.enganches)
+            Puente.enganches.openCardDetail(plugin + "." + name)
+    }
+
     function _registrar() {
         if (Puente.enganches)
             Puente.enganches.registrarCard(aporte)
@@ -81,6 +96,8 @@ QtObject {
     onDescChanged: _registrar()
     onAltoChanged: _registrar()
     onComponentChanged: _registrar()
+    onDetailTitleChanged: _registrar()
+    onDetailChanged: _registrar()
 
     Component.onDestruction: {
         if (Puente.enganches)

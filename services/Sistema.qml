@@ -92,6 +92,15 @@ Singleton {
         return Math.round(bytes) + " B/s"
     }
 
+    // Compact rate for the folded pill: "1.2M", "96K", "512B".
+    // The arrows around it already say down/up, so "/s" is noise
+    // the 300px shared row cannot afford.
+    function tasaCorta(bytes) {
+        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + "M"
+        if (bytes >= 1024) return Math.round(bytes / 1024) + "K"
+        return Math.round(bytes) + "B"
+    }
+
     function grados(t) { return t > 0 ? Math.round(t) + "°" : "—" }
 
     function matar(pid) {

@@ -32,13 +32,17 @@ K4Plugin {
 
     // ── what the user decides ──────────────────────────────
     //
-    //  Two chips with the live percentages ride the pill (and the
-    //  hover views — all three paint the same indicator row), and the
-    //  control centre carries a card with whatever meters are on.
-    //  All default ON because the hot path they feed is a /proc read
-    //  in-process: a live percentage costs microseconds per second.
+    //  Three chips can ride the pill (and the hover views — all three
+    //  paint the same indicator row): live CPU and memory percentages
+    //  plus a compact download/upload rate. The control centre carries
+    //  a card with whatever meters are on. CPU and memory default ON,
+    //  network defaults OFF so the folded row stays short until asked
+    //  for. The hot path they feed is a /proc read in-process: a live
+    //  figure costs microseconds per second.
 
-    property bool enPildora: true
+    property bool enPildoraCpu: true
+    property bool enPildoraRam: true
+    property bool enPildoraRed: false
     property bool tarjetaCpu: true
     property bool tarjetaRam: true
     property bool tarjetaRed: true
@@ -68,7 +72,8 @@ K4Plugin {
     Binding {
         target: Sistema
         property: "rapido"
-        value: self.habilitado && (self.enPildora || self.tarjetaCpu
+        value: self.habilitado && (self.enPildoraCpu || self.enPildoraRam
+                                   || self.enPildoraRed || self.tarjetaCpu
                                    || self.tarjetaRam || self.tarjetaRed
                                    || self.open || self.tabAbierta)
     }
@@ -81,27 +86,37 @@ K4Plugin {
 
     // ── the pill chips ─────────────────────────────────────
     //
-    //  Refreshed only when the rounded figure changes — rebuilding
-    //  the indicator list every second would redraw the pill for
-    //  nothing. Past 90 % the glyph goes red: a glance only needs to
-    //  say "now".
+    //  Each chip is independent: the user picks which of CPU, memory
+    //  and network ride the pill. Refreshed only when the shown text
+    //  changes — rebuilding the indicator list every second would
+    //  redraw the pill for nothing. Past 90 % the CPU/memory glyph
+    //  goes red: a glance only needs to say "now". Network stays
+    //  orange and shows a compact "down up" pair so it fits the
+    //  shared 300px row next to the Agents quota.
 
     property int _cpuPct: -1
     property int _ramPct: -1
+    property string _redTexto: "@@none@@"
+
+    function textoRed() {
+        return "↓" + Sistema.tasaCorta(Sistema.redRx)
+            + " ↑" + Sistema.tasaCorta(Sistema.redTx)
+    }
 
     function pintarChips() {
-        if (!habilitado || !enPildora || !Sistema.cargado) {
+        pintarCpu()
+        pintarRam()
+        pintarRed()
+    }
+
+    function pintarCpu() {
+        if (!habilitado || !enPildoraCpu || !Sistema.cargado) {
             if (_cpuPct >= 0) {
                 K4.Pildora.quitar("system.cpu")
                 _cpuPct = -1
             }
-            if (_ramPct >= 0) {
-                K4.Pildora.quitar("system.ram")
-                _ramPct = -1
-            }
             return
         }
-
         const cpu = Math.round(Sistema.cpuUso)
         if (cpu !== _cpuPct) {
             const color = cpu >= 90 ? Theme.red : Theme.blue
@@ -112,7 +127,16 @@ K4Plugin {
                 K4.Pildora.actualizar("system.cpu", { texto: cpu + "%", color: color })
             _cpuPct = cpu
         }
+    }
 
+    function pintarRam() {
+        if (!habilitado || !enPildoraRam || !Sistema.cargado) {
+            if (_ramPct >= 0) {
+                K4.Pildora.quitar("system.ram")
+                _ramPct = -1
+            }
+            return
+        }
         const ram = Math.round(Sistema.ramPct)
         if (ram !== _ramPct) {
             const color = ram >= 90 ? Theme.red : "#bf5af2"
@@ -125,21 +149,45 @@ K4Plugin {
         }
     }
 
+    function pintarRed() {
+        if (!habilitado || !enPildoraRed || !Sistema.cargado) {
+            if (_redTexto !== "@@none@@") {
+                K4.Pildora.quitar("system.net")
+                _redTexto = "@@none@@"
+            }
+            return
+        }
+        const texto = textoRed()
+        if (texto !== _redTexto) {
+            if (_redTexto === "@@none@@")
+                K4.Pildora.registrar("system.net", texto, 0xF05A9,
+                                     "#ff9f0a", 22, true)
+            else
+                K4.Pildora.actualizar("system.net", { texto: texto })
+            _redTexto = texto
+        }
+    }
+
     Component.onCompleted: pintarChips()
     onHabilitadoChanged: pintarChips()
-    onEnPildoraChanged: pintarChips()
+    onEnPildoraCpuChanged: pintarChips()
+    onEnPildoraRamChanged: pintarChips()
+    onEnPildoraRedChanged: pintarChips()
 
     Connections {
         target: Sistema
-        function onCpuUsoChanged() { self.pintarChips() }
-        function onRamPctChanged() { self.pintarChips() }
+        function onCpuUsoChanged() { self.pintarCpu() }
+        function onRamPctChanged() { self.pintarRam() }
+        function onRedRxChanged() { self.pintarRed() }
+        function onRedTxChanged() { self.pintarRed() }
         function onCargadoChanged() { self.pintarChips() }
     }
 
     Connections {
         target: K4.Pildora
         function onInvocado(id) {
-            if ((id === "system.cpu" || id === "system.ram") && !self.open)
+            if ((id === "system.cpu" || id === "system.ram"
+                 || id === "system.net") && !self.open)
                 self.toggle()
         }
     }
@@ -149,7 +197,11 @@ K4Plugin {
     property var guardado: K4.Guardado {
         plugin: "system"
         onCargado: function (d) {
-            if (d.chip !== undefined) self.enPildora = d.chip === true
+            if (d.chipCpu !== undefined) self.enPildoraCpu = d.chipCpu === true
+            else if (d.chip !== undefined) self.enPildoraCpu = d.chip === true
+            if (d.chipRam !== undefined) self.enPildoraRam = d.chipRam === true
+            else if (d.chip !== undefined) self.enPildoraRam = d.chip === true
+            if (d.chipNet !== undefined) self.enPildoraRed = d.chipNet === true
             if (d.cardCpu !== undefined) self.tarjetaCpu = d.cardCpu === true
             if (d.cardRam !== undefined) self.tarjetaRam = d.cardRam === true
             if (d.cardNet !== undefined) self.tarjetaRed = d.cardNet === true
@@ -157,7 +209,9 @@ K4Plugin {
     }
 
     function apuntar() {
-        guardado.guardar({ chip: enPildora, cardCpu: tarjetaCpu,
+        guardado.guardar({ chip: (enPildoraCpu || enPildoraRam),
+                           chipCpu: enPildoraCpu, chipRam: enPildoraRam,
+                           chipNet: enPildoraRed, cardCpu: tarjetaCpu,
                            cardRam: tarjetaRam, cardNet: tarjetaRed })
     }
 
@@ -165,12 +219,18 @@ K4Plugin {
         plugin: "system"
         grupo: "System"
         glifo: 0xF061A   // chip
-        desc: "Live CPU and memory percentages on the pill and the control centre."
+        desc: "Live CPU, memory and network on the pill and the control centre."
 
         opciones: [
-            { id: "chip", nombre: "CPU & memory on the pill",
-              desc: "Two chips with the live percentages, on the pill and the hover views",
+            { id: "chipCpu", nombre: "CPU on the pill",
+              desc: "Live processor percentage on the pill and the hover views",
+              glifo: 0xF061A },
+            { id: "chipRam", nombre: "Memory on the pill",
+              desc: "Live memory percentage on the pill and the hover views",
               glifo: 0xF035B },
+            { id: "chipNet", nombre: "Network on the pill",
+              desc: "Live download and upload rates on the pill and the hover views",
+              glifo: 0xF05A9 },
             { id: "cardCpu", nombre: "CPU on the card",
               desc: "The control centre shows the processor",
               glifo: 0xF061A },
@@ -181,11 +241,16 @@ K4Plugin {
               desc: "Download and upload rates on the control centre",
               glifo: 0xF05A9 }
         ]
-        valores: ({ chip: self.enPildora, cardCpu: self.tarjetaCpu,
+        valores: ({ chipCpu: self.enPildoraCpu, chipRam: self.enPildoraRam,
+                    chipNet: self.enPildoraRed, cardCpu: self.tarjetaCpu,
                     cardRam: self.tarjetaRam, cardNet: self.tarjetaRed })
         onCambiado: function (id, valor) {
-            if (id === "chip")
-                self.enPildora = valor === true
+            if (id === "chipCpu")
+                self.enPildoraCpu = valor === true
+            else if (id === "chipRam")
+                self.enPildoraRam = valor === true
+            else if (id === "chipNet")
+                self.enPildoraRed = valor === true
             else if (id === "cardCpu")
                 self.tarjetaCpu = valor === true
             else if (id === "cardRam")

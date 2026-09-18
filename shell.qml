@@ -582,15 +582,13 @@ Scope {
             //  The click is SPENT on closing — it does not reach what is
             //  underneath. That is the trade, and the right one: the user
             //  asked for the view to go away, not for the link behind it.
-            //  Anyone who prefers pass-through turns it off in Ajustes.
             //
             //  Only the screen showing the view, only views that want it
             //  (`closeOnClickOutside`) and that somebody opened — the ones
             //  nobody asked for (`transitorio`) would eat clicks meant for
             //  other things. And never while the island is stood aside:
             //  a system dialog deserves every click it gets.
-            readonly property bool cerrarConClicFuera: Settings.cerrarConClicFuera
-                && esPantallaActiva
+            readonly property bool cerrarConClicFuera: esPantallaActiva
                 && !Island.apartada
                 && root.activePlugin.closeOnClickOutside
                 && !root.activePlugin.transitorio

@@ -20,6 +20,15 @@ K4.Aparicion {
     id: view
 
     required property var plugin
+    property bool embedded: false
+
+    Component.onCompleted: {
+        if (embedded) {
+            plugin.controlPageOpen = true
+            plugin.refrescar()
+        }
+    }
+    Component.onDestruction: if (embedded && plugin) plugin.controlPageOpen = false
 
     //  The house clock, to the minute. Passed as an argument to the
     //  functions that need it so the binding learns it depends on it:
@@ -156,6 +165,7 @@ K4.Aparicion {
                 onPulsado: view.plugin.refrescar()
             }
             K4.Boton {
+                visible: !view.embedded
                 glifo: String.fromCodePoint(0xF0156)
                 tamano: 14
                 Accessible.name: "Close Agents"
@@ -247,8 +257,24 @@ K4.Aparicion {
                                 id: row
                                 required property var modelData
                                 readonly property real pct: Math.max(0, Math.min(100, modelData.pct || 0))
+                                readonly property string quotaCode: card.modelData.id + ":" + modelData.id
+                                readonly property bool selected: view.plugin.pinnedQuota === quotaCode
+                                objectName: "quota-" + quotaCode
                                 width: parent.width
                                 height: 24
+                                activeFocusOnTab: true
+                                Accessible.role: Accessible.Button
+                                Accessible.name: (selected ? "Unpin " : "Pin ") + card.modelData.nombre
+                                    + " " + modelData.nombre + " quota on the folded pill"
+                                Keys.onReturnPressed: view.plugin.setPinnedQuota(selected ? "" : quotaCode)
+                                Keys.onSpacePressed: view.plugin.setPinnedQuota(selected ? "" : quotaCode)
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: -3
+                                    radius: 7
+                                    color: row.selected ? K4.Tema.carril : "transparent"
+                                    z: -1
+                                }
                                 K4.Etiqueta {
                                     id: label
                                     width: 84
@@ -303,6 +329,14 @@ K4.Aparicion {
                                         horizontalAlignment: Text.AlignRight
                                         color: K4.Tema.apagado
                                         font.pixelSize: 9
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        row.forceActiveFocus()
+                                        view.plugin.setPinnedQuota(row.selected ? "" : row.quotaCode)
                                     }
                                 }
                             }

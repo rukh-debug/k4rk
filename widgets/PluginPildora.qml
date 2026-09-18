@@ -1,10 +1,10 @@
-//  Los indicadores que aportan los plugins por K4.Pildora.
+//  Indicators contributed by plugins through K4.Pildora.
 //
-//  Va en las tres vistas de la píldora, con el mismo trato que la bandeja:
-//  en reposo solo se mira —al acercar el ratón la island ya ha
-//  cambiado a reloj o reproductor— y es en esas donde se pincha. Sin
-//  `interactive` no hay ratón, y así no se traga un clic que la vista de
-//  reposo no puede atender.
+//  It rides in the three pill views, treated like the tray: at rest it
+//  is look-only — by the time the pointer gets close the island has
+//  already switched to clock or player — and those are the ones that
+//  take clicks. Without `interactive` there is no mouse, so it never
+//  swallows a click the resting view could not answer.
 
 import QtQuick
 import QtQuick.Layouts
@@ -35,16 +35,17 @@ RowLayout {
                     color: modelData.color || Theme.muted
                     font.pixelSize: 11
                 }
-                //  Con tope y recortado por el final. El tope lo pone el
-                //  servicio y no este fichero, porque es el mismo número con el
-                //  que estima el hueco a reservar: separarlos es reservar para
-                //  un texto que no se dibuja.
+                //  Capped and elided at the end. The service owns the
+                //  cap, not this file, because it is the same number it
+                //  uses to estimate the reserved space: splitting them
+                //  would reserve room for text that never paints.
                 //
-                //  Cuántos indicadores caben también lo decide él; aquí solo se
-                //  pintan los que manda.
+                //  It also decides how many indicators fit; here we only
+                //  paint the ones it sends. Text stays bright white while
+                //  the glyph keeps the semantic color.
                 IslandLabel {
                     text: modelData.texto
-                    color: Theme.muted
+                    color: Theme.ink
                     font.pixelSize: 11
                     font.weight: Font.Medium
                     elide: Text.ElideRight
@@ -62,11 +63,11 @@ RowLayout {
         }
     }
 
-    //  Los que no caben, en una cápsula.
+    //  Whatever does not fit goes into a capsule.
     //
-    //  No se pincha: no llevaría a ningún sitio concreto —son varios— y la
-    //  píldora en reposo no atiende el ratón de todas formas. Está para que la
-    //  fila no mienta cuando se queda corta.
+    //  It takes no clicks: it would lead nowhere concrete — there are
+    //  several — and the resting pill ignores the mouse anyway. It is
+    //  there so the row never lies when it runs short.
     Rectangle {
         visible: Indicadores.reparto.ocultos > 0
         Layout.preferredWidth: Indicadores.anchoResumen
@@ -78,7 +79,7 @@ RowLayout {
         IslandLabel {
             anchors.centerIn: parent
             text: "+" + Indicadores.reparto.ocultos
-            color: Theme.muted
+            color: Theme.ink
             font.pixelSize: 10
             font.weight: Font.Medium
         }

@@ -8,6 +8,19 @@ Item {
     property var owner: null
     readonly property var page: pageLoader.item
 
+    QtObject {
+        id: hooks
+        property var cardSource: null
+        property string openedCard: ""
+        signal buscando(string text)
+        function registrarAjustes(source) {}
+        function registrarPagina(source) {}
+        function registrarCard(source) { cardSource = source }
+        function registrarLanzador(source) {}
+        function quitarDe(plugin) {}
+        function openCardDetail(id) { openedCard = id }
+    }
+
     Component { id: pluginFactory; Agents.AgentsPlugin {} }
     Loader {
         id: pageLoader
@@ -28,6 +41,7 @@ Item {
         when: fixture.Window.window !== null && fixture.Window.window.visible
 
         function initTestCase() {
+            K4.Puente.enganches = hooks
             fixture.owner = pluginFactory.createObject(fixture, {
                 carpeta: Qt.resolvedUrl("../plugins/Agents").toString().replace("file://", "")
             })
@@ -39,6 +53,7 @@ Item {
             compare(fixture.owner.avisar, false)
             compare(fixture.owner.umbral, 95)
             compare(fixture.owner.enVivo, false)
+            compare(fixture.owner.pinnedQuota, "codex:weekly")
             compare(fixture.owner.usageBusy, false)
             fixture.owner.providersPageOpen = true
             fixture.owner.loadCatalog(false, "")
@@ -50,6 +65,7 @@ Item {
             findChild(page, "providerSearch").text = ""
             page.selected = ""
             fixture.owner.enabledProviders = []
+            fixture.owner.pinnedQuota = ""
             tryCompare(fixture.owner, "usageBusy", false)
         }
 
@@ -84,7 +100,7 @@ Item {
             compare(fixture.owner.agentes.length, 0)
             tryCompare(fixture.owner, "usageBusy", false)
             compare(fixture.owner.agentes.length, 0)
-            compare(fixture.owner.aprieta, false)
+            compare(fixture.owner.pillVisible, false)
         }
 
         function test_latestSelectionWinsAndPersists() {
@@ -103,6 +119,7 @@ Item {
             tryCompare(restored, "settingsReady", true)
             compare(restored.enabledProviders.join(","), "zai-coding-plan")
             compare(restored.avisar, false)
+            compare(restored.pinnedQuota, "")
             restored.destroy()
         }
 
@@ -119,6 +136,61 @@ Item {
             compare(page.selected, "")
             tryVerify(function () { return !fixture.owner.usageBusy && fixture.owner.agentes.length === 1 })
             compare(fixture.owner.agentes[0].id, "opencode-go")
+        }
+
+        function test_foldedPillPinsExactProviderWindow() {
+            fixture.owner.habilitado = false
+            fixture.owner.enabledProviders = ["claude", "codex"]
+            fixture.owner.agentes = [
+                { id: "claude", nombre: "Claude Code", actualizado: 100, limites: [
+                    { id: "session", nombre: "5 hours", pct: 20, activo: true },
+                    { id: "weekly", nombre: "Weekly", pct: 80, activo: true }
+                ] },
+                { id: "codex", nombre: "OpenAI Codex", actualizado: 200, limites: [
+                    { id: "weekly", nombre: "Weekly", pct: 40, activo: true }
+                ] }
+            ]
+
+            compare(fixture.owner.quotaChoices.length, 4)
+            compare(fixture.owner.quotaChoices[1].nombre, "Claude Code · 5 hours")
+            fixture.owner.setPinnedQuota("codex:weekly")
+            compare(fixture.owner.pillQuota.pct, 40)
+            compare(fixture.owner.pillQuota.agente, "OpenAI Codex")
+
+            fixture.owner.pinnedQuota = ""
+            fixture.owner.avisar = true
+            fixture.owner.umbral = 70
+            compare(fixture.owner.pillQuota.pct, 80)
+            fixture.owner.avisar = false
+            compare(fixture.owner.pillQuota, null)
+
+            fixture.owner.setPinnedQuota("codex:weekly")
+            fixture.owner.setProviderEnabled("codex", false)
+            compare(fixture.owner.pinnedQuota, "")
+            compare(fixture.owner.providerStatus("codex"), "Not checked · disabled")
+            fixture.owner.enabledProviders = []
+            fixture.owner.agentes = []
+            fixture.owner.habilitado = true
+        }
+
+        function test_controlCentreCardAndDetailLifecycle() {
+            verify(hooks.cardSource !== null)
+            compare(hooks.cardSource.detailTitle, "Agents")
+            hooks.openedCard = ""
+            hooks.cardSource.openDetail()
+            compare(hooks.openedCard, "agents.usage")
+
+            const card = hooks.cardSource.component.createObject(fixture, { width: 600, height: 58 })
+            verify(card !== null)
+            compare(fixture.owner.controlCardOpen, true)
+            card.destroy()
+            tryCompare(fixture.owner, "controlCardOpen", false)
+
+            const detail = hooks.cardSource.detail.createObject(fixture, { width: 600, height: 360 })
+            verify(detail !== null)
+            compare(fixture.owner.controlPageOpen, true)
+            detail.destroy()
+            tryCompare(fixture.owner, "controlPageOpen", false)
         }
     }
 }

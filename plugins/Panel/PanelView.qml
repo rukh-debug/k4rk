@@ -65,11 +65,7 @@ FadeIn {
             }
             IslandLabel {
                 Layout.fillWidth: true
-                text: view.plugin.tab === "notifications" ? "Notifications"
-                    : view.plugin.tab === "wifi" ? "Wi-Fi"
-                    : view.plugin.tab === "bluetooth" ? "Bluetooth"
-                    : view.plugin.tab === "sound" ? "Sound"
-                    : view.plugin.tab === "system" ? "System" : "Control centre"
+                text: view.plugin.tabTitle()
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
@@ -316,6 +312,13 @@ FadeIn {
         DetalleBluetooth { view: view }
         DetalleSonido { view: view }
         DetalleSistema { view: view }
+        Loader {
+            visible: active
+            active: view.plugin.tab.indexOf("card:") === 0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            sourceComponent: active ? Enganches.cardDetail(view.plugin.tab.slice(5)) : null
+        }
     }
 
     component RadioTile: IslandTile {

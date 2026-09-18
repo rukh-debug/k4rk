@@ -8,8 +8,8 @@ stores them in its own corner of the disk. Normalize them for the bar.
 Sources:
   · Claude: ask the server with Claude Code's existing token. This reads the
     user's own account without spending quota, just like its /usage command.
-  · Codex: the latest token_count in ~/.codex/sessions rollouts carries the
-    API's rate_limits. Each turn updates it, so it is fresh while in use.
+  · Codex: its app-server account API supplies live subscription limits;
+    ~/.codex/sessions rollouts remain the offline fallback.
   · Coding-plan providers: read-only HTTPS quota endpoints.
 
 Claude needed the live query: cachedUsageUtilization in ~/.claude.json is
@@ -32,7 +32,9 @@ import hashlib
 import json
 import math
 import os
+import selectors
 import shutil
+import subprocess
 import sys
 import time
 import urllib.error
@@ -89,6 +91,8 @@ CODEX_ROLLOUTS = 8
 # The tail suffices: the last rate_limits is the useful one, and a long
 # rollout contains megabytes that need not be parsed in full.
 CODEX_COLA = 256 * 1024
+CODEX_WAIT = 10
+CODEX_CACHE_SECONDS = 60
 
 
 def epoca(iso):
@@ -312,36 +316,42 @@ def ultimo_limite(ruta):
     return None
 
 
+def codex_window_name(minutes):
+    if minutes == 10080:
+        return "Weekly"
+    if minutes >= 1440:
+        return "%d days" % round(minutes / 1440)
+    if minutes >= 60:
+        return "%d hours" % round(minutes / 60)
+    return "%d min" % minutes
+
+
 def ventana(datos, ident):
     """A Codex primary or secondary window in the view's format.
 
     Its duration supplies the name: Codex says 10080 minutes where people
     think a week. Not every plan exposes both; secondary can be empty.
     """
-    if not isinstance(datos, dict) or percentage(datos.get("used_percent")) is None:
+    if not isinstance(datos, dict):
         return None
 
-    minutos = datos.get("window_minutes") or 0
-    if minutos >= 10080:
-        nombre = "Weekly"
-    elif minutos >= 1440:
-        nombre = "%d days" % round(minutos / 1440)
-    elif minutos >= 60:
-        nombre = "%d hours" % round(minutos / 60)
-    else:
-        nombre = "%d min" % minutos
+    used = datos.get("usedPercent", datos.get("used_percent"))
+    pct = percentage(used)
+    if pct is None:
+        return None
+    minutos = datos.get("windowDurationMins", datos.get("window_minutes")) or 0
 
     return {
         "id": ident,
-        "nombre": nombre,
-        "pct": percentage(datos["used_percent"]),
-        "reinicia": datos.get("resets_at"),
+        "nombre": codex_window_name(minutos),
+        "pct": pct,
+        "reinicia": datos.get("resetsAt", datos.get("resets_at")),
         # Codex does not identify the active window; count the tightest.
         "activo": True,
     }
 
 
-def lee_codex():
+def read_codex_rollout():
     """The rate_limits Codex saved on its last turn."""
     carpeta = primero(CODEX_SESIONES, os.path.isdir)
     if not carpeta:
@@ -366,6 +376,7 @@ def lee_codex():
     agente = {
         "plan": plan.title(),
         "actualizado": cuando,
+        "fuente": "cache",
         "limites": limites,
     }
     # Only show credits when present: a perpetual zero takes space and
@@ -374,7 +385,133 @@ def lee_codex():
         agente["creditos"] = "unlimited"
     elif creditos.get("has_credits"):
         agente["creditos"] = str(creditos.get("balance") or "")
+    if not limites:
+        agente.update(status="unavailable",
+                       razon="Codex recorded this session without quota windows")
     return agente
+
+
+def codex_plan(value):
+    if not isinstance(value, str):
+        return ""
+    if value == "prolite":
+        return "Pro Lite"
+    return value.replace("_", " ").replace("-", " ").title()
+
+
+def codex_rpc_request(proc, selector, ident, method, params=None):
+    message = {"method": method, "id": ident}
+    if params is not None:
+        message["params"] = params
+    proc.stdin.write(json.dumps(message, separators=(",", ":")) + "\n")
+    proc.stdin.flush()
+    deadline = time.monotonic() + CODEX_WAIT
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not selector.select(remaining):
+            raise TimeoutError("Codex app-server timed out")
+        line = proc.stdout.readline()
+        if not line:
+            raise OSError("Codex app-server closed")
+        response = json.loads(line)
+        if response.get("id") != ident:
+            continue
+        if "error" in response or not isinstance(response.get("result"), dict):
+            raise ValueError("Codex app-server request failed")
+        return response["result"]
+
+
+def codex_app_server():
+    """Read account and live quotas through Codex's versioned local API."""
+    proc = subprocess.Popen(
+        ["codex", "app-server", "--listen", "stdio://"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        text=True, bufsize=1, start_new_session=True)
+    selector = selectors.DefaultSelector()
+    selector.register(proc.stdout, selectors.EVENT_READ)
+    try:
+        codex_rpc_request(proc, selector, 0, "initialize", {"clientInfo": {
+            "name": "k4_agents", "title": "k4 Agents", "version": "1.0.0"}})
+        proc.stdin.write('{"method":"initialized"}\n')
+        proc.stdin.flush()
+        account = codex_rpc_request(proc, selector, 1, "account/read", {"refreshToken": False})
+        current = account.get("account")
+        if not isinstance(current, dict):
+            return no_data("auth", "Sign in to Codex with ChatGPT to read subscription quotas")
+
+        identity_text = str(current.get("type", "")) + "\0" + str(current.get("email", ""))
+        identity = hashlib.sha256(identity_text.encode()).hexdigest()
+        path = cache_directory() / "codex-usage.json"
+        now = time.time()
+        cached = read_json(path) or {}
+        if (cached.get("identity") == identity
+                and 0 <= now - cached.get("time", 0) < CODEX_CACHE_SECONDS
+                and isinstance(cached.get("result"), dict)):
+            return cached["result"]
+
+        response = codex_rpc_request(proc, selector, 2, "account/rateLimits/read")
+        snapshot = response.get("rateLimits")
+        alternatives = response.get("rateLimitsByLimitId") or {}
+        if not isinstance(snapshot, dict):
+            snapshot = {}
+        if not any(ventana(snapshot.get(key), key) for key in ("primary", "secondary")):
+            for key in sorted(alternatives):
+                candidate = alternatives[key]
+                if isinstance(candidate, dict) and any(ventana(candidate.get(window), window)
+                                                       for window in ("primary", "secondary")):
+                    snapshot = candidate
+                    break
+
+        limits = [window for window in
+                  (ventana(snapshot.get("primary"), "primaria"),
+                   ventana(snapshot.get("secondary"), "secundaria")) if window]
+        plan = codex_plan(snapshot.get("planType") or current.get("planType"))
+        result = {"plan": plan, "actualizado": now, "fuente": "vivo", "limites": limits}
+        credits = snapshot.get("credits") or {}
+        if credits.get("unlimited"):
+            result["creditos"] = "unlimited"
+        elif credits.get("hasCredits"):
+            result["creditos"] = str(credits.get("balance") or "")
+        if not limits:
+            result.update(status="unavailable",
+                          razon="Codex is signed in, but OpenAI returned no quota windows")
+        else:
+            result["status"] = "ok"
+        try:
+            atomic_json(path, {"identity": identity, "time": now, "result": result})
+        except OSError:
+            pass
+        return result
+    finally:
+        selector.close()
+        try:
+            proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+            try:
+                proc.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+
+def read_codex(online=True):
+    """Prefer Codex's live account API and retain local logs for offline use."""
+    if online:
+        try:
+            return codex_app_server()
+        except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+            pass
+    local = read_codex_rollout()
+    if local is not None:
+        return local
+    if online:
+        return no_data("error", "Could not query Codex usage or find local quota data")
+    return no_data("offline", "Offline — no Codex quota data has been recorded locally")
 
 
 # ── HTTP coding-plan adapters ─────────────────────────────────────────
@@ -549,9 +686,9 @@ PROVIDERS = {
         "reader": lambda online, selected: lee_claude(online), "binary": "claude",
     },
     "codex": {
-        "name": "Codex", "catalog": "openai", "scope": "Codex session quotas",
-        "setup": "Sign in to Codex and use it once. Reads rate limits from local session logs, including CODEX_HOME. OPENAI_API_KEY does not supply these session quotas.",
-        "reader": lambda online, selected: lee_codex(), "binary": "codex",
+        "name": "OpenAI Codex", "catalog": "openai", "scope": "Codex subscription quotas",
+        "setup": "Sign in to Codex with ChatGPT. Live checks use Codex's account API; offline checks read local session logs, including CODEX_HOME. OPENAI_API_KEY does not supply these subscription quotas.",
+        "reader": lambda online, selected: read_codex(online), "binary": "codex",
     },
     "zai-coding-plan": {
         "name": "Z.AI Coding Plan", "catalog": "zai-coding-plan", "scope": "Global Coding Plan quotas",
