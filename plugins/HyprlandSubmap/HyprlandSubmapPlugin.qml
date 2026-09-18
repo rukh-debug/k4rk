@@ -262,6 +262,10 @@ K4Plugin {
         resetear.running = true
     }
 
+    //  The host's universal exit door. Cross-monitor dismissal is fixed
+    //  behavior for every summoned view, including a live compositor mode.
+    function close() { salir() }
+
     onMapaChanged: {
         if (mapa.length === 0) {
             cerrando = true

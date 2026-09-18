@@ -9,6 +9,7 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import K4 as K4
@@ -39,6 +40,28 @@ Scope {
     //  host order so equal-priority ties resolve the way the catalog did.
     //  Every arbitration below reads this list and nowhere else.
     readonly property var surfaces: SurfaceRegistry.surfaces
+
+    //  A summoned view belongs to one monitor. Once compositor focus moves
+    //  to another, keeping that distant popup open is never useful: close it
+    //  before the next interaction. This is fixed host behavior, not a plugin
+    //  preference. The click catcher below remains as a fallback for setups
+    //  where monitor focus changes only on press.
+    readonly property string focusedMonitorName: {
+        const monitor = Hyprland.focusedMonitor
+        return monitor && monitor.name ? monitor.name : ""
+    }
+
+    onFocusedMonitorNameChanged: {
+        const p = activePlugin
+        if (!p || !p.colocable || p.transitorio
+                || p.name === SurfaceRegistry.pillId)
+            return
+        if (focusedMonitorName.length === 0
+                || focusedMonitorName === Island.pantallaActiva)
+            return
+        if (typeof p.close === "function")
+            p.close()
+    }
 
     // ── quién se queda la island ──────────────────────────────────
     // Gana el activo de mayor prioridad. El binding se recalcula solo cuando
@@ -613,11 +636,12 @@ Scope {
             //  underneath. That is the trade, and the right one: the user
             //  asked for the view to go away, not for the link behind it.
             //
-            //  Only the screen showing the view, only views that want it
-            //  (`closeOnClickOutside`) and that somebody opened — the ones
-            //  nobody asked for (`transitorio`) would eat clicks meant for
-            //  other things. And never while the island is stood aside:
-            //  a system dialog deserves every click it gets.
+            //  On the view's own screen, only views that request it
+            //  (`closeOnClickOutside`) get the catcher. Views nobody asked
+            //  for (`transitorio`) never eat clicks meant for other things.
+            //  And never while the island is stood aside: a system dialog
+            //  deserves every click it gets.
+            //
             readonly property bool cerrarConClicFuera: esPantallaActiva
                 && !Island.apartada
                 && root.activePlugin.closeOnClickOutside
@@ -1848,6 +1872,65 @@ Scope {
 
 
 
+        }
+    }
+
+    //  ── a click on another monitor closes the summoned view ─────
+    //
+    //  The bar window on an idle output remains deliberately click-through
+    //  outside its pill. Growing that window's dynamic input mask did not
+    //  reliably update the compositor's input region, so cross-monitor taps
+    //  still reached the window below and left the distant popup open.
+    //
+    //  Use a dedicated surface instead. It is mapped only on outputs other
+    //  than the one showing a summoned view, covers that output completely,
+    //  and closes through the same door as Escape. This rule is fixed host
+    //  behavior: plugins cannot opt out of it.
+    Variants {
+        model: Quickshell.screens
+
+        delegate: PanelWindow {
+            id: crossMonitorCatcher
+            required property var modelData
+
+            readonly property var owner: root.activePlugin
+            readonly property bool shouldCatch: !Island.apartada
+                && owner
+                && owner.name !== SurfaceRegistry.pillId
+                && owner.colocable
+                && !owner.transitorio
+                && modelData.name !== Island.pantallaActiva
+
+            screen: modelData
+            visible: shouldCatch
+            anchors.top: true
+            anchors.bottom: true
+            anchors.left: true
+            anchors.right: true
+            color: "transparent"
+            focusable: false
+            exclusiveZone: 0
+
+            WlrLayershell.namespace: "k4-cross-monitor-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+
+            mask: Region { item: crossMonitorTapTarget }
+
+            Item {
+                id: crossMonitorTapTarget
+                anchors.fill: parent
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    onPressed: function (mouse) {
+                        const p = crossMonitorCatcher.owner
+                        if (p && typeof p.close === "function")
+                            p.close()
+                        mouse.accepted = true
+                    }
+                }
+            }
         }
     }
 

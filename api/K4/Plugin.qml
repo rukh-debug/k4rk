@@ -241,7 +241,9 @@ QtObject {
     //  cover the screen, and a tap that lands outside the island closes the
     //  view instead of reaching the desktop. The click is SPENT on closing —
     //  it does not fall through — which is the point: it is the pointer's
-    //  way of pressing Escape.
+    //  way of pressing Escape. This flag only controls taps around the view
+    //  on its own monitor. Every summoned view closes when another monitor
+    //  is clicked, regardless of this flag: that behavior is always on.
     //
     //  Mark it FALSE for a view that appears without being asked (the volume
     //  HUD): nobody clicks to dismiss something they did not open, and
