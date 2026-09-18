@@ -5,21 +5,25 @@ import K4 as K4
 import "../core"
 import "../services"
 
-IslandTile {
+Item {
     id: detail
     required property var view
     Layout.fillWidth: true
     Layout.fillHeight: true
-    pulsable: false
     visible: view.plugin.tab === "wifi"
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
         spacing: 12
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 28
+            Layout.preferredHeight: 32
+            spacing: 12
+            IconGlyph {
+                text: Wifi.activada ? Theme.ico.wifi : Theme.ico.wifiOff
+                color: Wifi.activada ? Theme.blue : Theme.muted
+                font.pixelSize: 18
+            }
             IslandLabel {
                 Layout.fillWidth: true
                 text: !Wifi.device ? "No Wi-Fi adapter" : !Wifi.activada ? "Wi-Fi off" : "Available networks"
@@ -33,13 +37,14 @@ IslandTile {
                 onAlternado: Wifi.activada = !Wifi.activada
             }
         }
+        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Theme.surface }
         K4.Rodillo {
             id: networks
             Layout.fillWidth: true
             Layout.fillHeight: true
             Column {
                 width: parent.width
-                spacing: 4
+                spacing: 6
                 Repeater {
                     model: Wifi.activada ? Wifi.networks : []
                     delegate: ConnectionRow {

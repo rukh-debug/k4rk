@@ -20,6 +20,34 @@ Qt (`QtQuick`, `QtMultimedia`, `Timer`, animations, and so on) is the portable
 layer. Quickshell and Wayland should stay behind a `K4` API type whenever an
 equivalent exists.
 
+## System telemetry
+
+`K4.SystemMonitor` is a read-only singleton backed by the host sampler. It needs
+no permission. Plugins do not read procfs or launch hardware tools themselves.
+
+| Member | Meaning |
+|---|---|
+| `available` | The host telemetry bridge is installed |
+| `ready` | CPU has two valid samples and memory is available |
+| `cpuPercent`, `memoryPercent` | 0–100; `-1` when unavailable or warming up |
+| `cpuTemperature` | Celsius; `0` means unavailable |
+| `memoryUsed`, `memoryTotal` | GiB; total `0` means unavailable; used is total minus available |
+| `download`, `upload` | Bytes/second; `-1` means no valid interval |
+| `interfaceName` | The measured default-route interface, or empty; not an internet-speed estimate |
+| `view` | Host-owned detailed monitor `Component`, or null without a host; use as a Loader's `sourceComponent` |
+| `sample(owner, active, detailed)` | Acquire/update a sampling lease. `detailed` also enables the cheap sampler. Release with both flags false |
+| `rate(bytes)` | B/s, KiB/s or MiB/s text; `—` for unavailable |
+| `compactRate(bytes)` | Compact B/K/M text, with binary factors; `—` for unavailable |
+| `temperature(value)` | Celsius text or `—` |
+
+Use a unique owner string per concurrent consumer. Release leases when disabled
+or destroyed and reacquire when `available` becomes true. Cheap samples refresh
+every second; histories and process/GPU readings approximately every two seconds;
+filesystem capacity every thirty seconds while detailed sampling is active.
+The host view includes CPU/Memory process sorting and identity-checked SIGTERM
+actions, with the result displayed in the view. Process CPU uses 100% per logical
+CPU; the summary CPU percentage is normalized across all logical CPUs.
+
 ## Plugin contract
 
 `K4Plugin` is the root object of a module:

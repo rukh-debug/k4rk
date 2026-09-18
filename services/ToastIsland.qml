@@ -1,10 +1,10 @@
 pragma Singleton
 
-// Native notification toast: transient island view plus separate band.
+// Native notification: shared content in the idle island or a separate popup.
 //
 // Priority 59 sits above resting views (pill, clock, player, volume) and
 // below everything summoned. When a real view already owns the island the
-// notice appears as a capsule band instead of stealing the stage. History
+// notice appears independently instead of stealing the stage. History
 // lives in the control centre; hover strips live in clock and player.
 
 import QtQuick
@@ -27,23 +27,17 @@ Singleton {
     readonly property var enReposo: ["", "toast", "idle", "clock", "player",
                                      "volume"]
 
-    property bool enBanda: false
-    property string _dueñoReal: ""
-
-    property var _memoria: Connections {
-        target: Island
-        function onOcupanteChanged() {
-            if (Island.ocupante !== "toast")
-                self._dueñoReal = Island.ocupante
+    // Read requests rather than the arbitration result: the notification's
+    // own active state must not form a feedback loop with the winning view.
+    readonly property bool enBanda: {
+        const surfaces = SurfaceRegistry.surfaces
+        for (let i = 0; i < surfaces.length; ++i) {
+            const surface = surfaces[i]
+            if (self.enReposo.indexOf(surface.name) < 0
+                    && surface.habilitado && surface.active)
+                return true
         }
-    }
-
-    property var _latch: Connections {
-        target: Notifs
-        function onToastOpenChanged() {
-            if (Notifs.toastOpen)
-                self.enBanda = self.enReposo.indexOf(self._dueñoReal) < 0
-        }
+        return false
     }
 
     readonly property bool active: Notifs.toastOpen && !enBanda

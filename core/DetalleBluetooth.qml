@@ -5,19 +5,23 @@ import K4 as K4
 import "../core"
 import "../services"
 
-IslandTile {
+Item {
     required property var view
     Layout.fillWidth: true
     Layout.fillHeight: true
-    pulsable: false
     visible: view.plugin.tab === "bluetooth"
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
         spacing: 12
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 28
+            Layout.preferredHeight: 32
+            spacing: 12
+            IconGlyph {
+                text: Bt.adapter && Bt.adapter.enabled ? Theme.ico.bluetooth : Theme.ico.bluetoothOff
+                color: Bt.adapter && Bt.adapter.enabled ? Theme.blue : Theme.muted
+                font.pixelSize: 18
+            }
             IslandLabel {
                 Layout.fillWidth: true
                 text: !Bt.adapter ? "No Bluetooth adapter"
@@ -32,12 +36,13 @@ IslandTile {
                 onAlternado: if (Bt.adapter) Bt.adapter.enabled = !Bt.adapter.enabled
             }
         }
+        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Theme.surface }
         K4.Rodillo {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Column {
                 width: parent.width
-                spacing: 4
+                spacing: 6
                 Repeater {
                     model: Bt.adapter && Bt.adapter.enabled ? Bt.devices : []
                     delegate: ConnectionRow {

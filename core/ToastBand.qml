@@ -1,125 +1,113 @@
-//  The toast in band mode: when another plugin truly holds the
-//  island —the game open, the half-done edit— the notification no
-//  longer steals it. It comes out as a capsule of its own glued to
-//  the island's edge (below if the bar lives on top, above if it
-//  lives below) and coexists with whatever is there.
-//
-//  Same life as the usual toast: it expires on its own, the mouse
-//  on it sustains it, click goes to the application and the ✕
-//  dismisses it.
-
+// Independent notification island while a summoned view owns the main one.
+// Content and actions are shared with the idle-island presentation.
 import QtQuick
 import K4 as K4
 import "../services"
 
 K4.Ventana {
-    id: ventana
+    id: window
 
-    nombre: "k4-toast-banda"
-    zonaActiva: capsula
+    nombre: "k4-notification-popup"
+    pantalla: Island.pantallaActiva || Island.pantallaConFoco()
+    zonaActiva: card
+    reserva: -1
 
-    readonly property bool abajo: K4.Isla.posicion === "abajo"
-    readonly property var aviso: Notifs.latest
+    readonly property var islandRect: K4.Isla.rectEn(pantalla)
+    readonly property string corner: Settings.notificationPopupPosition
+    readonly property int clearance: Theme.wing * 2
 
-    Rectangle {
-        id: capsula
-
-        readonly property int alto: 56
-
-        x: K4.Isla.rect.x + (K4.Isla.rect.ancho - width) / 2
-        y: ventana.abajo ? K4.Isla.rect.y - alto - 8
-                         : K4.Isla.rect.y + K4.Isla.rect.alto + 8
-        width: Math.min(420, contenido.implicitWidth + 84)
-        height: alto
-        radius: 16
-        color: Theme.islandBg
-        border.width: 1
-        border.color: Theme.surfaceHi
-
-        //  It slides in from the island, as if peeking out of it.
-        opacity: 0
-        Component.onCompleted: entrada.start()
-
-        ParallelAnimation {
-            id: entrada
-            NumberAnimation { target: capsula; property: "opacity"; to: 1; duration: 180 }
-            NumberAnimation {
-                target: capsula; property: "y"
-                from: ventana.abajo ? K4.Isla.rect.y - 20
-                                    : K4.Isla.rect.y + K4.Isla.rect.alto - 20
-                to: ventana.abajo ? K4.Isla.rect.y - capsula.alto - 8
-                                  : K4.Isla.rect.y + K4.Isla.rect.alto + 8
-                duration: 260
-                easing.type: Easing.OutBack
-                easing.overshoot: 0.6
+    // Prefer the configured corner. If the open island covers it, use the
+    // nearest free corner; on a crowded screen choose the least overlap.
+    readonly property point popupPosition: {
+        const right = corner !== "top-left" && corner !== "bottom-left"
+        const bottom = corner !== "top-left" && corner !== "top-right"
+        const leftX = 0
+        const topY = 0
+        const rightX = Math.max(0, width - card.width)
+        const bottomY = Math.max(0, height - card.height)
+        const candidates = [
+            Qt.point(right ? rightX : leftX, bottom ? bottomY : topY),
+            Qt.point(right ? leftX : rightX, bottom ? bottomY : topY),
+            Qt.point(right ? rightX : leftX, bottom ? topY : bottomY),
+            Qt.point(right ? leftX : rightX, bottom ? topY : bottomY)
+        ]
+        let best = candidates[0]
+        let least = Infinity
+        const r = islandRect
+        for (let i = 0; i < candidates.length; ++i) {
+            const p = candidates[i]
+            const overlap = Math.max(0, Math.min(p.x + card.width, r.x + r.ancho + clearance)
+                                      - Math.max(p.x, r.x - clearance))
+                          * Math.max(0, Math.min(p.y + card.height, r.y + r.alto + clearance)
+                                      - Math.max(p.y, r.y - clearance))
+            if (overlap < least) {
+                least = overlap
+                best = p
             }
         }
+        return best
+    }
 
-        //  The mouse on it sustains it, as with the usual toast.
+    Item {
+        id: card
+        x: window.popupPosition.x
+        y: window.popupPosition.y
+        width: Math.min(ToastIsland.islandWidth, window.width)
+        height: Math.min(ToastIsland.islandHeight, window.height)
+        readonly property bool atBottom: y + height / 2 > window.height / 2
+        readonly property bool atRight: x + width / 2 > window.width / 2
+        readonly property real bodyRadius: Math.min(32, height / 2)
+
+        // Use the same silhouette and adjoining-wall treatment as shell.qml.
+        // The wings extend beyond the body, so only the content is clipped.
+        SiluetaIsla {
+            anchors.fill: parent
+            ala: Theme.wing
+            cuerpoRadio: card.bodyRadius
+            relleno: Theme.islandBg
+            lado: card.atBottom ? "bottom" : "top"
+        }
+        EdgeAttachedShape {
+            anchors.fill: parent
+            attachTop: !card.atBottom
+            attachBottom: card.atBottom
+            attachLeft: !card.atRight
+            attachRight: card.atRight
+            cornerRadius: card.bodyRadius
+            rimThickness: Settings.edgeZoneEnabled ? Settings.edgeZoneSize : 0
+            blendReach: Theme.wing * 2
+            blendDepth: Theme.wing
+            fillColor: Theme.islandBg
+        }
+
+        opacity: 0
+        NumberAnimation on opacity { from: 0; to: 1; duration: 180 }
+
         HoverHandler {
+            id: hover
             onHoveredChanged: hovered ? Notifs.holdToast() : Notifs.resumeToast()
         }
-
-        Row {
-            id: contenido
-            anchors.left: parent.left
-            anchors.leftMargin: 16
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 10
-
-            Image {
-                anchors.verticalCenter: parent.verticalCenter
-                source: Notifs.iconFor(ventana.aviso)
-                width: 26; height: 26
-                fillMode: Image.PreserveAspectFit
-                sourceSize.width: 52
-                sourceSize.height: 52
-            }
-
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 1
-
-                IslandLabel {
-                    text: ventana.aviso ? ventana.aviso.summary
-                                        : "Notification"
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                    width: Math.min(290, implicitWidth)
-                }
-
-                IslandLabel {
-                    visible: text.length > 0
-                    text: ventana.aviso ? ventana.aviso.body : ""
-                    color: Theme.muted
-                    font.pixelSize: 10
-                    elide: Text.ElideRight
-                    width: Math.min(290, implicitWidth)
-                }
-            }
+        Component.onDestruction: {
+            if (hover.hovered)
+                Notifs.resumeToast()
         }
 
-        //  Click on the body: to the application, like the big
-        //  toast.
+        // Behind the content so action buttons and dismiss retain priority.
         MouseArea {
             anchors.fill: parent
-            anchors.rightMargin: 40
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-                Notifs.activate(ventana.aviso)
+                Notifs.activate(Notifs.latest)
                 Notifs.dismissToast()
             }
         }
 
-        MediaButton {
-            anchors.right: parent.right
-            anchors.rightMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            glyph: Theme.ico.close
-            glyphSize: 13
-            glyphColor: Theme.muted
-            onActivated: Notifs.dismissToast()
+        Item {
+            anchors.fill: parent
+            anchors.leftMargin: Theme.wing
+            anchors.rightMargin: Theme.wing
+            clip: true
+            ToastIslandView { anchors.fill: parent }
         }
     }
 }

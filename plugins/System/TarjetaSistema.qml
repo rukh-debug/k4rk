@@ -1,129 +1,92 @@
-//  The control centre's System card: the live figures the hot path
-//  already computes. Instantiated by the centre while its controls
-//  tab is open; the room is what the card's `alto` declared, so this
-//  fills it and nothing more. It paints, it does not measure.
-//
-//  Which meters ride along is the user's call — the toggles live in
-//  the plugin's own settings rows — and a click opens the centre's
-//  System tab, with a back button like the other details.
-
+// A glanceable summary; the detailed monitor owns histories and process actions.
 import QtQuick
-import QtQuick.Layouts
 import K4 as K4
-import "../../services"
 
 K4.Baldosa {
-    id: tarjeta
-
+    id: card
     required property var plugin
-
-    readonly property bool verCpu: plugin && plugin.tarjetaCpu
-    readonly property bool verRam: plugin && plugin.tarjetaRam
-    readonly property bool verRed: plugin && plugin.tarjetaRed
-
-    radius: 12
-    color: K4.Tema.superficie
+    readonly property string samplingOwner: "system.card." + Math.random().toString(36).slice(2)
+    objectName: "tile-system"
+    radius: 14
+    readonly property var metrics: ["cpu", "memory", "network"].filter(id =>
+        id === "cpu" ? plugin.tarjetaCpu : id === "memory" ? plugin.tarjetaRam : plugin.tarjetaRed)
+    readonly property bool wantsSamples: metrics.length > 0 && plugin.panel && plugin.panel.open && plugin.panel.tab === "controls"
+    function reading(id) {
+        if (id === "cpu") return { label: "CPU", value: K4.SystemMonitor.cpuPercent < 0 ? "—" : Math.round(K4.SystemMonitor.cpuPercent) + "%",
+          detail: K4.SystemMonitor.cpuTemperature > 0 ? K4.SystemMonitor.temperature(K4.SystemMonitor.cpuTemperature) : "All logical CPUs",
+          percent: K4.SystemMonitor.cpuPercent }
+        if (id === "memory") return { label: "Memory", value: K4.SystemMonitor.memoryTotal > 0 ? K4.SystemMonitor.memoryUsed.toFixed(1) + " GiB" : "—",
+          detail: K4.SystemMonitor.memoryTotal > 0 ? "of " + K4.SystemMonitor.memoryTotal.toFixed(1) + " GiB" : "Measuring…",
+          percent: K4.SystemMonitor.memoryPercent }
+        return { label: "Network", value: "↓ " + K4.SystemMonitor.rate(K4.SystemMonitor.download),
+          detail: K4.SystemMonitor.interfaceName ? "↑ " + K4.SystemMonitor.rate(K4.SystemMonitor.upload) + " · " + K4.SystemMonitor.interfaceName : "No default route",
+          percent: -1 }
+    }
     Accessible.name: "Open system information"
-    //  In place like the other details; without a centre (panel off)
-    //  fall back to the standalone island.
+    Accessible.description: metrics.map(id => { const m = reading(id); return m.label + " " + m.value + ", " + m.detail }).join(". ")
     onPulsada: {
-        if (plugin && plugin.panel) plugin.panel.openTab("system")
-        else if (plugin) plugin.abrir()
+        if (plugin.panel) plugin.panel.openTab("system")
+        else plugin.toggle()
     }
-
+    onWantsSamplesChanged: K4.SystemMonitor.sample(samplingOwner, wantsSamples, false)
+    Component.onCompleted: K4.SystemMonitor.sample(samplingOwner, wantsSamples, false)
+    Component.onDestruction: K4.SystemMonitor.sample(samplingOwner, false, false)
+    Connections {
+        target: K4.SystemMonitor
+        function onAvailableChanged() { K4.SystemMonitor.sample(card.samplingOwner, card.wantsSamples, false) }
+    }
     K4.Etiqueta {
-        anchors.centerIn: parent
-        visible: !tarjeta.verCpu && !tarjeta.verRam && !tarjeta.verRed
-        text: "System metrics are hidden · Configure them in Settings → Plugins"
-        color: K4.Tema.apagado
-        font.pixelSize: 11
+        x: 16; y: 12
+        text: "System"
+        font.pixelSize: 12
+        font.weight: Font.DemiBold
     }
-
-    RowLayout {
-        anchors.fill: parent
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
-        anchors.topMargin: 7
-        anchors.bottomMargin: 7
-        spacing: 16
-
-        // CPU
-        ColumnLayout {
-            visible: tarjeta.verCpu
-            Layout.fillWidth: true
-            spacing: 2
-
-            K4.Etiqueta {
-                text: "CPU"
-                color: K4.Tema.apagado
-                font.pixelSize: 9
-                font.weight: Font.DemiBold
+    K4.Glifo {
+        anchors.right: parent.right; anchors.rightMargin: 14
+        y: 12; text: String.fromCodePoint(0xF0142)
+        color: K4.Tema.apagado; font.pixelSize: 14
+    }
+    Row {
+        x: 16; y: 36; width: parent.width - 32; height: 62
+        spacing: 24
+        Repeater {
+            model: card.metrics
+            delegate: Item {
+                id: metric
+                required property var modelData
+                readonly property var reading: card.reading(modelData)
+                width: (parent.width - 24 * (card.metrics.length - 1)) / card.metrics.length
+                height: 62
+                K4.Etiqueta {
+                    width: parent.width; text: metric.reading.label
+                    color: K4.Tema.apagado; font.pixelSize: 11
+                }
+                K4.Etiqueta {
+                    y: 17; width: parent.width; text: metric.reading.value
+                    font.pixelSize: 20; font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+                K4.Etiqueta {
+                    y: 43; width: parent.width; text: metric.reading.detail
+                    color: K4.Tema.apagado; font.pixelSize: 11; elide: Text.ElideRight
+                }
+                Rectangle {
+                    y: 61; width: parent.width; height: 2; radius: 1
+                    visible: metric.reading.percent >= 0
+                    color: K4.Tema.carril
+                    Rectangle {
+                        width: parent.width * Math.max(0, Math.min(100, metric.reading.percent)) / 100
+                        height: 2; radius: 1; color: K4.Tema.azul; opacity: 0.8
+                        Behavior on width { NumberAnimation { duration: 180 } }
+                    }
+                }
             }
-            K4.Etiqueta {
-                text: Sistema.cargado ? Math.round(Sistema.cpuUso) + "%" : "—"
-                color: K4.Tema.tinta
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-            }
-            K4.Medidor {
-                valor: Sistema.cpuUso
-                maximo: 100
-                grosor: 3
-                tono: K4.Tema.azul
-                Layout.fillWidth: true
-            }
-        }
-
-        // Memory
-        ColumnLayout {
-            visible: tarjeta.verRam
-            Layout.fillWidth: true
-            spacing: 2
-
-            K4.Etiqueta {
-                text: "Memory"
-                color: K4.Tema.apagado
-                font.pixelSize: 9
-                font.weight: Font.DemiBold
-            }
-            K4.Etiqueta {
-                text: Sistema.cargado ? Math.round(Sistema.ramPct) + "%" : "—"
-                color: K4.Tema.tinta
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-            }
-            K4.Medidor {
-                valor: Sistema.ramPct
-                maximo: 100
-                grosor: 3
-                tono: "#bf5af2"
-                Layout.fillWidth: true
-            }
-        }
-
-        // Network: no meter, it has no ceiling
-        ColumnLayout {
-            visible: tarjeta.verRed
-            Layout.fillWidth: true
-            spacing: 2
-
-            K4.Etiqueta {
-                text: "Network"
-                color: K4.Tema.apagado
-                font.pixelSize: 9
-                font.weight: Font.DemiBold
-            }
-            K4.Etiqueta {
-                text: Sistema.cargado
-                    ? "↓ " + Sistema.tasa(Sistema.redRx) + "  ↑ " + Sistema.tasa(Sistema.redTx) : "—"
-                color: K4.Tema.tinta
-                font.pixelSize: 11
-                font.weight: Font.DemiBold
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
-            Item { Layout.fillHeight: true }
         }
     }
-
+    K4.Etiqueta {
+        anchors.centerIn: parent; width: parent.width - 32
+        visible: card.metrics.length === 0
+        text: "Metrics hidden · Configure in Settings → Plugins"
+        color: K4.Tema.apagado; font.pixelSize: 12; elide: Text.ElideRight
+    }
 }

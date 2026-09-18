@@ -38,6 +38,7 @@ singleton Red 1.0 Red.qml
 singleton Escritorios 1.0 Escritorios.qml
 singleton Portapapeles 1.0 Portapapeles.qml
 singleton Reloj 1.0 Reloj.qml
+singleton SystemMonitor 1.0 SystemMonitor.qml
 
 # Contribution points for host surfaces.
 Ajustes 1.0 Ajustes.qml

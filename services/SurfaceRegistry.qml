@@ -10,9 +10,12 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import K4 as K4
 
 Singleton {
     id: registry
+
+    Component.onCompleted: K4.Puente.systemMonitor = Sistema
 
     // The fallback pill id, said once. Every "is this the pill?" check
     // reads this instead of a mistypable string literal.

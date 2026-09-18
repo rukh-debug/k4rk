@@ -20,6 +20,19 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 > legitimate way to get one — this guide is here for when you want to know
 > what it is doing, or when you are doing it yourself.
 
+## System telemetry
+
+Use `K4.SystemMonitor` for CPU, memory, temperatures and network rates. It shares
+the host sampler with the built-in System card. Acquire a uniquely named lease
+with `K4.SystemMonitor.sample("my-plugin.summary", true, false)` while visible;
+release it with both flags false on disable/destruction. Handle `available`
+changing to true if your component is created before the host bridge is ready.
+Use `true` for the third argument while showing its `view` Component in a Loader.
+Detailed sampling adds supported GPU readings, filesystem capacity and process
+activity. Missing or warming-up percentages/rates are `-1`, not zero; memory
+capacities are GiB, and rate formatters use binary units. See
+[System telemetry](API.md#system-telemetry) for the complete contract.
+
 ## 0 · Installing one that already exists
 
 To see what is published in the public registry:
@@ -881,6 +894,15 @@ by `features/catalog.json`. Their ids (`idle`, `volume`, `sound`, `clock`,
 `player`, `toast`, `panel`, `session`, `tray`) and IPC targets (`k4`,
 `k4.panel`, `k4.sound`, `k4.session`, `k4.tray`) are reserved — an outside
 plugin claiming one fails validation.
+
+Native notifications use the island while it is idle and a separate surface
+while another view is active. The separate surface uses the main island's
+edge-attached silhouette, curved wings and corner treatment, with the same
+content and action buttons. **Settings → Island → Notification popups** selects the
+separate surface's preferred corner (bottom-right by default). It appears on
+the open island's monitor, stays within the screen, and uses another corner
+when necessary to avoid the island where space allows. This native transient
+setting is separate from summoned surfaces' `colocable` Placement cards.
 
 Contributing any other module to the bar itself follows the plugin
 contract, with three differences: the directory goes in `plugins/`, it is

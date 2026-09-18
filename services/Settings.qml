@@ -58,6 +58,8 @@ Singleton {
     property bool notificationsOnHover: true
     // services/Notifs.qml: dismiss an app's notifications when switching to it.
     property bool notificationsOnFocus: true
+    // Busy-island popup placement, shared by the native surface and Settings.
+    property string notificationPopupPosition: "bottom-right"
     // Native player peek preference. Migrated once from the old per-plugin
     // player estado.json; afterwards this is the single owner.
     property bool playerPeekOnChange: true
@@ -358,7 +360,7 @@ Singleton {
             grupo: "Island",
             claves: ["pill", "at rest", "clock", "media", "workspace",
                      "minimized", "indicator", "tray", "order", "visibility",
-                     "peek", "track"],
+                     "peek", "track", "notifications", "popup"],
             glifo: 0xF1513,
             desc: "How much room the bar keeps, and when it gets out of the way.",
             //  Position, alignment and space usage are hard to explain in
@@ -418,6 +420,16 @@ Singleton {
                   desc: "A few seconds with the new track, then it leaves on its own",
                   glifo: 0xF075A },
                 { tipo: "titulo", nombre: "Notifications" },
+                { id: "notificationPopupPosition", tipo: "eleccion",
+                  nombre: "Notification popups",
+                  desc: "Notifications appear at the island. When it is open and busy, show them in this screen corner:",
+                  glifo: 0xF009A,
+                  alternativas: [
+                      { codigo: "top-left", nombre: "Top left" },
+                      { codigo: "top-right", nombre: "Top right" },
+                      { codigo: "bottom-left", nombre: "Bottom left" },
+                      { codigo: "bottom-right", nombre: "Bottom right" }
+                  ] },
                 { id: "notificationsOnHover", nombre: "Notifications on hover",
                   desc: "Recent ones, under the clock and player", glifo: 0xF009A },
                 { id: "notificationsOnFocus", nombre: "Dismiss when you switch to the app",
@@ -657,6 +669,7 @@ Singleton {
     readonly property var claves: [
         "barPosition", "barAlignment", "islandSpace",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
+        "notificationPopupPosition",
         "playerPeekOnChange",
         "pillOrder", "pillHiddenItems", "pillMigrated",
         "pillTrayMax", "pillMinimizedMax", "pillIndicatorsMax",

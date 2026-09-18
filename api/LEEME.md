@@ -66,6 +66,7 @@ not be declared inside the view.
 | `K4.Fichero` | Read/write a small text or JSON file |
 | `K4.Paths` | Installation, tools and state paths |
 | `K4.Sistema` | Launch, open, notify, copy and read environment |
+| `K4.SystemMonitor` | Read-only CPU/memory/network telemetry and host detail `view`; acquire `sample(owner, active, detailed)`, release both flags on disable/destruction. Capacities use GiB; unavailable rates/percentages are `-1`. See [System telemetry](../docs/API.md#system-telemetry) |
 | `K4.Apps` | Installed applications and icons |
 | `K4.Icono` | Theme-aware application icon |
 | `K4.Miniatura` | Live thumbnail of an open window, given its address |

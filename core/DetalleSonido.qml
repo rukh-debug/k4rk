@@ -14,18 +14,16 @@ import K4 as K4
 import "../core"
 import "../services"
 
-IslandTile {
+Item {
     required property var view
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    pulsable: false
     visible: view.plugin.tab === "sound"
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 8
+        spacing: 12
 
         K4.Rodillo {
             Layout.fillWidth: true

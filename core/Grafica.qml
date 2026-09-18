@@ -20,7 +20,7 @@ Item {
     readonly property real limite: {
         if (techo > 0)
             return techo
-        let m = 1
+        let m = 1024
         for (let i = 0; i < valores.length; ++i)
             m = Math.max(m, valores[i])
         return m

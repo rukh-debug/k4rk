@@ -10,16 +10,14 @@ import QtQuick
 import QtQuick.Layouts
 import "../core"
 
-IslandTile {
+Item {
     required property var view
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    pulsable: false
     visible: view.plugin.tab === "system"
 
     VistaSistema {
         anchors.fill: parent
-        anchors.margins: 12
     }
 }

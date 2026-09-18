@@ -1,288 +1,280 @@
-//  The System monitor's body: the four live meters with their history
-//  plus the top-consumers list. Shared by the System island and the
-//  control centre's System tab — one component, so both show the same
-//  thing (the AparatosDeSonido arrangement for sound).
-//
-//  Sizing is the caller's: set anchors or Layout.fillWidth/fillHeight
-//  at the usage site. The process list takes whatever height is left
-//  and scrolls inside it.
-
+// Shared by the control centre and the standalone System surface.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import K4 as K4
 import "../services"
 
 ColumnLayout {
-    id: vista
-
-    spacing: 7
-
-    // ── the four measurements ──────────────────────────────────
-    GridLayout {
-        Layout.fillWidth: true
-        Layout.fillHeight: false
-        columns: 2
-        columnSpacing: 8
-        rowSpacing: 7
-
-        Repeater {
-            model: [
-                { id: "cpu", nombre: "CPU", tono: "#0a84ff" },
-                { id: "ram", nombre: "Memory", tono: "#bf5af2" },
-                { id: "gpu", nombre: "GPU", tono: "#30d158" },
-                { id: "red", nombre: "Network", tono: "#ff9f0a" }
-            ]
-
-            delegate: Rectangle {
-                id: tarjeta
-                required property var modelData
-
-                readonly property bool esRed: modelData.id === "red"
-                readonly property bool esGpu: modelData.id === "gpu"
-
-                visible: !esGpu || Sistema.hayGpu
-
-                Layout.fillWidth: true
-                Layout.preferredHeight: 74
-                radius: 11
-                color: Theme.surface
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 4
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        IslandLabel {
-                            text: tarjeta.modelData.nombre
-                            color: Theme.muted
-                            font.pixelSize: 10
-                            font.weight: Font.DemiBold
-                        }
-
-                        // each one's detail: which model, which
-                        // interface
-                        IslandLabel {
-                            text: tarjeta.esGpu ? Sistema.gpuNombre
-                                : tarjeta.esRed ? Sistema.redIface : ""
-                            color: Theme.dim
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-
-                        IslandLabel {
-                            text: {
-                                if (tarjeta.modelData.id === "cpu")
-                                    return Sistema.grados(Sistema.cpuTemp)
-                                if (tarjeta.esGpu)
-                                    return Sistema.grados(Sistema.gpuTemp)
-                                return ""
-                            }
-                            color: Theme.dim
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        IslandLabel {
-                            text: {
-                                if (tarjeta.modelData.id === "cpu")
-                                    return Math.round(Sistema.cpuUso) + "%"
-                                if (tarjeta.modelData.id === "ram")
-                                    return Math.round(Sistema.ramPct) + "%"
-                                if (tarjeta.esGpu)
-                                    return Math.round(Sistema.gpuUso) + "%"
-                                return "↓ " + Sistema.tasa(Sistema.redRx)
-                            }
-                            font.pixelSize: 17
-                            font.weight: Font.DemiBold
-                        }
-
-                        IslandLabel {
-                            text: {
-                                if (tarjeta.modelData.id === "ram")
-                                    return Sistema.ramUsada.toFixed(1) + " / "
-                                        + Sistema.ramTotal.toFixed(1) + " GB"
-                                if (tarjeta.esGpu)
-                                    return Math.round(Sistema.gpuMemUsada) + " / "
-                                        + Math.round(Sistema.gpuMemTotal) + " MB"
-                                if (tarjeta.esRed)
-                                    return "↑ " + Sistema.tasa(Sistema.redTx)
-                                if (Sistema.swapTotal > 0 && Sistema.swapUsada > 0.05)
-                                    return "swap " + Sistema.swapUsada.toFixed(1) + " GB"
-                                return ""
-                            }
-                            color: Theme.dim
-                            font.pixelSize: 9
-                            Layout.alignment: Qt.AlignBottom
-                            Layout.bottomMargin: 3
-                        }
-
-                        Item { Layout.fillWidth: true }
-                    }
-
-                    Grafica {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 20
-                        tono: tarjeta.modelData.tono
-                        // network has no cap: it scales with
-                        // whatever there is
-                        techo: tarjeta.esRed ? 0 : 100
-                        valores: {
-                            if (tarjeta.modelData.id === "cpu") return Sistema.cpuHist
-                            if (tarjeta.modelData.id === "ram") return Sistema.ramHist
-                            if (tarjeta.esGpu) return Sistema.gpuHist
-                            return Sistema.redHist
-                        }
-                    }
-                }
-            }
+    id: view
+    spacing: 10
+    property string sortKey: "cpu"
+    readonly property bool narrow: width < 760
+    readonly property var sortedProcesses: Sistema.procesos.slice().sort((a, b) =>
+        b[sortKey] - a[sortKey] || a.pid - b.pid)
+    function percent(value) { return value >= 0 ? Math.round(value) + "%" : "—" }
+    function metric(id) {
+        if (id === "cpu") return {
+            label: "CPU", value: percent(Sistema.cpuUso),
+            detail: Sistema.cpuTemp > 0 ? Sistema.grados(Sistema.cpuTemp) + " · " + Sistema.cpuHilos + " threads" : Sistema.cpuHilos + " logical CPUs",
+            history: Sistema.cpuHist, note: "Busy time across all logical CPUs. I/O wait is excluded."
+        }
+        if (id === "memory") return {
+            label: "Memory", value: percent(Sistema.ramPct),
+            detail: Sistema.ramTotal > 0 ? Sistema.ramUsada.toFixed(1) + " / " + Sistema.ramTotal.toFixed(1) + " GiB" : "Measuring…",
+            history: Sistema.ramHist, note: "Uses the kernel's available-memory estimate, including reclaimable cache.\nSwap: " + Sistema.swapUsada.toFixed(2) + " / " + Sistema.swapTotal.toFixed(1) + " GiB."
+        }
+        if (id === "gpu") return {
+            label: "GPU", value: percent(Sistema.gpuUso),
+            detail: (Sistema.gpuTemp > 0 ? Sistema.grados(Sistema.gpuTemp) + " · " : "")
+                + (Sistema.gpuMemUsada >= 0 ? Math.round(Sistema.gpuMemUsada) + " MiB graphics memory" : Sistema.gpuNombre || "Telemetry unavailable"),
+            history: Sistema.gpuHist, note: Sistema.gpuNombre ? Sistema.gpuNombre + "\n" + Sistema.gpuMemoryLabel + ": "
+                + (Sistema.gpuMemUsada >= 0 ? Math.round(Sistema.gpuMemUsada) + " / "
+                    + (Sistema.gpuMemTotal > 0 ? Math.round(Sistema.gpuMemTotal) : "—") + " MiB" : "unavailable")
+                + "\nIntegrated graphics may also use shared system memory." : "No supported GPU counters were found."
+        }
+        return {
+            label: "Network", value: "↓ " + Sistema.tasa(Sistema.redRx),
+            detail: "↑ " + Sistema.tasa(Sistema.redTx), history: Sistema.redHist,
+            note: Sistema.redIface ? "Interface: " + Sistema.redIface + "\nDefault-route interface traffic, not internet speed.\nGraph: combined download and upload; automatic scale."
+                : "No default-route interface is available."
         }
     }
 
-    // ── who eats it ────────────────────────────────────────────
-    //  Margins and widths are the same as the rows': if they do
-    //  not match to the pixel, a misaligned column label
-    //  confuses more than not putting one.
     RowLayout {
         Layout.fillWidth: true
-        Layout.leftMargin: 9
-        Layout.rightMargin: 6
-        Layout.topMargin: 2
-        spacing: 8
-
+        spacing: 12
         IslandLabel {
-            text: "Top consumers"
-            color: Theme.muted
-            font.pixelSize: 10
-            font.weight: Font.DemiBold
+            Layout.fillWidth: true
+            text: Sistema.cpuName
+            font.pixelSize: 11; color: Theme.muted; elide: Text.ElideRight
+        }
+        IslandLabel {
+            text: "Up " + Sistema.duration(Sistema.uptime)
+            font.pixelSize: 11; color: Theme.muted
+        }
+    }
+
+    GridLayout {
+        objectName: "system-metrics"
+        Layout.fillWidth: true
+        columns: view.narrow ? 2 : 4
+        columnSpacing: 10; rowSpacing: 10
+        Repeater {
+            model: ["cpu", "memory", "gpu", "network"]
+            delegate: Rectangle {
+                id: tile
+                required property string modelData
+                readonly property var reading: view.metric(modelData)
+                objectName: "system-" + modelData
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 108
+                Layout.minimumHeight: 108
+                radius: 12; color: Theme.surface
+                activeFocusOnTab: true
+                Accessible.role: Accessible.StaticText
+                Accessible.name: reading.label + ": " + reading.value + ". " + reading.detail
+                Accessible.description: reading.note
+                border.width: activeFocus ? 1 : 0
+                border.color: Theme.blue
+                HoverHandler { id: metricHover }
+                ToolTip.visible: metricHover.hovered || tile.activeFocus
+                ToolTip.delay: 500
+                ToolTip.text: reading.note
+                ColumnLayout {
+                    anchors.fill: parent; anchors.margins: 12
+                    spacing: 3
+                    IslandLabel {
+                        text: tile.reading.label; color: Theme.muted; font.pixelSize: 11
+                    }
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: tile.reading.value
+                        font.pixelSize: tile.modelData === "network" ? 20 : 24
+                        font.weight: Font.DemiBold; elide: Text.ElideRight
+                    }
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: tile.reading.detail; font.pixelSize: 11
+                        color: Theme.muted; elide: Text.ElideRight
+                    }
+                    Grafica {
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        Layout.minimumHeight: 12
+                        valores: tile.reading.history
+                        tono: Theme.blue
+                        techo: tile.modelData === "network" ? 0 : 100
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        Layout.fillWidth: true; Layout.preferredHeight: 48
+        color: "transparent"
+        HoverHandler { id: storageHover }
+        ToolTip.visible: storageHover.hovered
+        ToolTip.delay: 500
+        ToolTip.text: Sistema.diskDevice + " · " + Sistema.diskFilesystem + " · mounted at " + Sistema.diskMount
+            + "\nFilesystem containing " + Sistema.diskPath
+            + "\n" + Sistema.discoTotal.toFixed(1) + " GiB total · " + Sistema.diskReserved.toFixed(1)
+            + " GiB reserved / unavailable to this user.\nUsage percentage excludes reserved space, matching df."
+        RowLayout {
+            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+            spacing: 12
+            IslandLabel {
+                text: "Storage"; font.pixelSize: 12; font.weight: Font.Medium
+            }
+            IslandLabel {
+                Layout.fillWidth: true
+                text: Sistema.discoPct >= 0 ? Sistema.diskMount + " · " + Sistema.discoUsado.toFixed(1) + " GiB used" : "Measuring…"
+                color: Theme.muted; font.pixelSize: 11; elide: Text.ElideRight
+            }
+            IslandLabel {
+                text: Sistema.discoPct >= 0 ? Sistema.diskAvailable.toFixed(1) + " GiB available · " + Math.ceil(Sistema.discoPct) + "%" : "—"
+                color: Theme.muted; font.pixelSize: 11
+            }
+        }
+        Rectangle {
+            anchors.left: parent.left; anchors.right: parent.right; y: 28
+            height: 3; radius: 2; color: Theme.surfaceHi
+            Rectangle {
+                width: parent.width * Math.max(0, Math.min(100, Sistema.discoPct)) / 100
+                height: parent.height; radius: 2
+                color: Sistema.discoPct >= 95 ? Theme.yellow : Theme.muted
+            }
+        }
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 6
+        IslandLabel {
+            text: "Processes"; font.pixelSize: 13; font.weight: Font.DemiBold
             Layout.fillWidth: true
         }
-
         IslandLabel {
-            text: "PID"
-            color: Theme.dim
-            font.pixelSize: 9
-            Layout.preferredWidth: 54
-            horizontalAlignment: Text.AlignRight
+            visible: processList.activeFocus || processHover.hovered
+            text: "Order held"; color: Theme.muted; font.pixelSize: 10
         }
-
-        IslandLabel {
-            text: "CPU"
-            color: Theme.dim
-            font.pixelSize: 9
-            Layout.preferredWidth: 44
-            horizontalAlignment: Text.AlignRight
+        K4.ActionButton {
+            text: "CPU"; selected: view.sortKey === "cpu"
+            Accessible.name: "Sort processes by CPU usage"
+            onClicked: view.sortKey = "cpu"
         }
-
-        IslandLabel {
-            text: "Memory"
-            color: Theme.dim
-            font.pixelSize: 9
-            Layout.preferredWidth: 58
-            horizontalAlignment: Text.AlignRight
+        K4.ActionButton {
+            text: "Memory"; selected: view.sortKey === "ram"
+            Accessible.name: "Sort processes by resident memory"
+            onClicked: view.sortKey = "ram"
         }
-
-        // the kill button's slot, which in the rows always
-        // takes space
-        Item { Layout.preferredWidth: 28 }
     }
+
+    RowLayout {
+        Layout.fillWidth: true; Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 12
+        IslandLabel { text: "Name"; color: Theme.muted; font.pixelSize: 10; Layout.fillWidth: true }
+        IslandLabel { text: "PID"; color: Theme.muted; font.pixelSize: 10; Layout.preferredWidth: 64; horizontalAlignment: Text.AlignRight }
+        IslandLabel { text: "CPU"; color: Theme.muted; font.pixelSize: 10; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignRight }
+        IslandLabel { text: "Resident"; color: Theme.muted; font.pixelSize: 10; Layout.preferredWidth: 85; horizontalAlignment: Text.AlignRight }
+        Item { Layout.preferredWidth: 52 }
+    }
+
+    ListModel { id: processes }
+    // Update by process identity: a sample should not destroy a focused action.
+    function updateProcesses() {
+        if (!processList || !processHover || !processes) return
+        let rows = sortedProcesses
+        // Keep targets still while a pointer or keyboard is inside the list.
+        // Values remain live; sorting resumes as soon as the interaction ends.
+        if (processList.activeFocus || processHover.hovered) {
+            const previous = []
+            for (let i = 0; i < processes.count; ++i) previous.push(processes.get(i).identity)
+            rows = rows.slice().sort((a, b) => {
+                const ai = previous.indexOf(a.pid + ":" + a.start)
+                const bi = previous.indexOf(b.pid + ":" + b.start)
+                return (ai < 0 ? 1000 : ai) - (bi < 0 ? 1000 : bi)
+            })
+        }
+        rows = rows.slice(0, 40)
+        const identities = rows.map(p => p.pid + ":" + p.start)
+        for (let i = processes.count - 1; i >= 0; --i)
+            if (identities.indexOf(processes.get(i).identity) < 0) processes.remove(i)
+        for (let i = 0; i < rows.length; ++i) {
+            const row = Object.assign({ identity: identities[i] }, rows[i])
+            let previous = -1
+            for (let j = i; j < processes.count; ++j)
+                if (processes.get(j).identity === row.identity) { previous = j; break }
+            if (previous < 0) processes.insert(i, row)
+            else {
+                if (previous !== i) processes.move(previous, i, 1)
+                processes.set(i, row)
+            }
+        }
+    }
+    onSortedProcessesChanged: updateProcesses()
+    Component.onCompleted: updateProcesses()
 
     ListView {
-        //  The house scrollbar: comes out on its own when there
-        //  is more than fits.
-        ScrollBar.vertical: IslandScrollBar {}
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        clip: true
-        spacing: 2
-        model: Sistema.procesos
+        id: processList
+        objectName: "system-processes"
+        Layout.fillWidth: true; Layout.fillHeight: true
+        Layout.minimumHeight: 80
+        clip: true; spacing: 2
+        model: processes
         boundsBehavior: Flickable.StopAtBounds
-
+        ScrollBar.vertical: IslandScrollBar {}
+        onActiveFocusChanged: Qt.callLater(view.updateProcesses)
+        HoverHandler {
+            id: processHover
+            onHoveredChanged: Qt.callLater(view.updateProcesses)
+        }
         delegate: Rectangle {
-            id: fila
-            required property var modelData
-
-            width: ListView.view.width
-            height: 26
-            radius: 7
-            color: filaMouse.containsMouse ? Theme.surface : "transparent"
-
-            Behavior on color { ColorAnimation { duration: 110 } }
-
+            id: row
+            required property int pid
+            required property string start
+            required property string nombre
+            required property real cpu
+            required property real ram
+            required property int index
+            onIndexChanged: if (endAction && endAction.activeFocus)
+                Qt.callLater(processList.positionViewAtIndex, index, ListView.Contain)
+            width: processList.width; height: 36
+            radius: 8; color: rowHover.hovered || endAction.activeFocus ? Theme.surface : "transparent"
+            HoverHandler { id: rowHover }
             RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 9
-                anchors.rightMargin: 6
-                spacing: 8
-
+                anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                spacing: 12
                 IslandLabel {
-                    text: fila.modelData.nombre
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
+                    text: row.nombre; font.pixelSize: 12
+                    Layout.fillWidth: true; elide: Text.ElideRight
                 }
-
+                IslandLabel { text: row.pid; color: Theme.muted; font.pixelSize: 11; Layout.preferredWidth: 64; horizontalAlignment: Text.AlignRight }
+                IslandLabel { text: row.cpu.toFixed(1) + "%"; font.pixelSize: 12; Layout.preferredWidth: 65; horizontalAlignment: Text.AlignRight }
                 IslandLabel {
-                    text: fila.modelData.pid
-                    color: Theme.dim
-                    font.pixelSize: 9
-                    Layout.preferredWidth: 54
-                    horizontalAlignment: Text.AlignRight
+                    text: row.ram >= 1024 ? (row.ram / 1024).toFixed(1) + " GiB" : Math.round(row.ram) + " MiB"
+                    color: Theme.muted; font.pixelSize: 11; Layout.preferredWidth: 85; horizontalAlignment: Text.AlignRight
                 }
-
-                IslandLabel {
-                    text: fila.modelData.cpu.toFixed(1) + "%"
-                    color: fila.modelData.cpu > 50 ? Theme.red : Theme.ink
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
-                    Layout.preferredWidth: 44
-                    horizontalAlignment: Text.AlignRight
+                K4.ActionButton {
+                    id: endAction
+                    text: "End"; Layout.preferredWidth: 52
+                    Accessible.name: "End " + row.nombre + ", process " + row.pid
+                    onActiveFocusChanged: if (activeFocus) processList.positionViewAtIndex(row.index, ListView.Contain)
+                    onClicked: Sistema.matar(row.pid, row.start)
                 }
-
-                IslandLabel {
-                    text: fila.modelData.ram >= 1024
-                        ? (fila.modelData.ram / 1024).toFixed(1) + " GB"
-                        : fila.modelData.ram + " MB"
-                    color: Theme.muted
-                    font.pixelSize: 10
-                    Layout.preferredWidth: 58
-                    horizontalAlignment: Text.AlignRight
-                }
-
-                MediaButton {
-                    glyph: Theme.ico.close
-                    glyphSize: 12
-                    glyphColor: Theme.red
-                    opacity: filaMouse.containsMouse ? 1 : 0
-                    onActivated: Sistema.matar(fila.modelData.pid)
-
-                    Behavior on opacity { NumberAnimation { duration: 120 } }
-                }
-            }
-
-            MouseArea {
-                id: filaMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                z: -1
             }
         }
+        IslandLabel {
+            anchors.centerIn: parent
+            visible: processList.count === 0
+            text: Sistema.processesReady ? "No process readings available" : "Measuring process activity…"
+            color: Theme.muted; font.pixelSize: 12
+        }
     }
-
     IslandLabel {
         Layout.fillWidth: true
-        visible: !Sistema.cargado
-        text: "Measuring…"
-        color: Theme.dim
-        font.pixelSize: 11
-        horizontalAlignment: Text.AlignHCenter
+        text: Sistema.processNotice || "Process CPU: 100% = one logical CPU · History: up to 90s · Charts / processes: 2s"
+        color: Theme.muted; font.pixelSize: 10; elide: Text.ElideRight
     }
 }

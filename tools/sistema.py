@@ -1,143 +1,221 @@
 #!/usr/bin/env python3
-"""Top-consumer walker for services/Sistema.qml.
+"""On-demand hardware discovery and interval process telemetry for k4.
 
-The QML side reads /proc directly for everything instantaneous; what
-it cannot do is list directories, and two things need that: finding
-the hwmon temperature files and walking /proc/<pid> for the top
-consumers. This helper does both, and only while the System view is
-open.
-
-Its first line names the temperature files and whether nvidia-smi
-exists (starting a binary that is not there logs a warning every
-time, so the QML side refuses to even try):
-
-    {"chips": {"cpu": "/sys/class/hwmon/...", "nvme": "/sys/class/hwmon/...", "gpu": true}}
-
-then one JSON line every few seconds with the per-process deltas:
-
-    {"procesos": [{"pid": 1, "nombre": "...", "cpu": 12.3, "ram": 45}]}
-
-A process's CPU percentage is a rhythm — `ps` reports a lifetime
-average, which says nothing about a browser open since yesterday — so
-each pass is compared against the previous sample. The first pass
-arms the delta and publishes nothing.
+The QML hot path reads procfs directly. This helper handles directory walks,
+GPU providers and filesystem capacity only while the detailed monitor is open.
+All sizes are bytes at the boundary; process RSS is MiB for the existing model.
 """
 
 import json
+import math
 import os
+from pathlib import Path
+import re
 import shutil
+import signal
+import subprocess
 import sys
 import time
 
 INTERVALO = 2.0
-HILOS = os.cpu_count() or 1
 RELOJ = os.sysconf("SC_CLK_TCK")
+PAGE_SIZE = os.sysconf("SC_PAGE_SIZE")
 
 
-# ── temperature files ───────────────────────────────────────────────
-#
-#  Sought by chip name: k10temp is the Ryzen, coretemp the Intel. The
-#  board (gigabyte_wmi, nct6…) publishes half a dozen unlabeled probes
-#  that say nothing, so they are ignored. Empty string means "not
-#  found", and the view keeps its dash.
-
-CHIPS_CPU = ("k10temp", "coretemp", "zenpower", "cpu_thermal")
-ETIQUETAS_CPU = ("Tctl", "Tdie", "Package id 0")
+def read(path, default=""):
+    try:
+        return Path(path).read_text().strip()
+    except (OSError, UnicodeError):
+        return default
 
 
-def rutas_temperatura():
-    cpu = ""
+def number(path):
+    try:
+        return int(read(path))
+    except ValueError:
+        return None
+
+
+def rutas_temperatura(root=Path("/sys/class/hwmon")):
+    candidates = []
     nvme = ""
+    for base in sorted(root.glob("hwmon*")):
+        chip = read(base / "name")
+        for sensor in sorted(base.glob("temp*_input")):
+            label = read(sensor.with_name(sensor.name.replace("_input", "_label")))
+            if chip in ("k10temp", "coretemp", "zenpower", "cpu_thermal"):
+                priority = {"Tdie": 0, "Package id 0": 1, "Tctl": 2}.get(label, 3)
+                candidates.append((priority, str(sensor)))
+            elif chip == "nvme" and not nvme:
+                nvme = str(sensor)
+    return {"cpu": min(candidates)[1] if candidates else "", "nvme": nvme}
 
-    for base in sorted(os.listdir("/sys/class/hwmon")):
-        ruta = os.path.join("/sys/class/hwmon", base)
-        try:
-            with open(os.path.join(ruta, "name")) as f:
-                chip = f.read().strip()
-        except OSError:
-            continue
 
-        for fichero in sorted(os.listdir(ruta)):
-            if not fichero.endswith("_input") or not fichero.startswith("temp"):
-                continue
+def discover_gpu(root=Path("/sys/class/drm")):
+    # Prefer a readable kernel counter; do not infer zero from unsupported hardware.
+    cards = sorted(p for p in root.glob("card*") if p.name[4:].isdigit())
+    for card in cards:
+        device = card / "device"
+        if (device / "gpu_busy_percent").exists():
+            name = read(device / "product_name") or "AMD graphics"
+            return {"provider": "sysfs", "path": str(device), "name": name}
+    if shutil.which("nvidia-smi"):
+        return {"provider": "nvidia", "name": "NVIDIA graphics"}
+    return None
 
-            etiqueta = ""
+
+def gpu_reading(device):
+    if not device:
+        return None
+    if device["provider"] == "sysfs":
+        path = Path(device["path"])
+        temp = None
+        for hwmon in sorted((path / "hwmon").glob("hwmon*")):
+            raw = number(hwmon / "temp1_input")
+            if raw is not None:
+                temp = raw / 1000
+                break
+        return {"name": device["name"], "usage": number(path / "gpu_busy_percent"),
+                "temperature": temp, "used": number(path / "mem_info_vram_used"),
+                "total": number(path / "mem_info_vram_total"),
+                "memoryLabel": "VRAM / reserved graphics memory"}
+    try:
+        result = subprocess.run([
+            "nvidia-smi", "--id=0",
+            "--query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total",
+            "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=1.5)
+        if result.returncode:
+            return None
+        fields = result.stdout.strip().splitlines()[0].split(",")
+        def value(index, scale=1):
             try:
-                with open(os.path.join(ruta, fichero.replace("_input", "_label"))) as f:
-                    etiqueta = f.read().strip()
-            except OSError:
-                pass
-
-            if chip in CHIPS_CPU and (cpu == "" or etiqueta in ETIQUETAS_CPU):
-                cpu = os.path.join(ruta, fichero)
-            elif chip == "nvme" and nvme == "":
-                nvme = os.path.join(ruta, fichero)
-
-    return {"cpu": cpu, "nvme": nvme}
+                value = float(fields[index].strip()) * scale
+                return value if math.isfinite(value) else None
+            except (ValueError, IndexError):
+                return None
+        return {"name": fields[0].strip(), "usage": value(1), "temperature": value(2),
+                "used": value(3, 1048576), "total": value(4, 1048576), "memoryLabel": "VRAM"}
+    except (OSError, subprocess.TimeoutExpired, IndexError):
+        return None
 
 
-# ── processes ───────────────────────────────────────────────────────
+def storage(path=None):
+    path = path or str(Path.home())
+    try:
+        data = os.statvfs(path)
+        total = data.f_blocks * data.f_frsize
+        used = (data.f_blocks - data.f_bfree) * data.f_frsize
+        available = data.f_bavail * data.f_frsize
+        # Like df, use the space accessible to this user as the denominator.
+        percent = used / (used + available) * 100 if used + available else 0
+        identity = filesystem_identity(path)
+        return dict(identity, path=path, total=total, used=used, available=available,
+                    reserved=max(0, total - used - available), percent=percent)
+    except OSError:
+        return None
+
+
+def filesystem_identity(path, mountinfo=None):
+    path = os.path.realpath(path)
+    matches = []
+    for line in (mountinfo if mountinfo is not None else read("/proc/self/mountinfo")).splitlines():
+        parts = line.split(" - ")
+        if len(parts) != 2:
+            continue
+        left, right = parts[0].split(), parts[1].split()
+        if len(left) < 5 or len(right) < 2:
+            continue
+        mount = re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), left[4])
+        if path == mount or path.startswith(mount.rstrip("/") + "/"):
+            matches.append({"mount": mount, "filesystem": right[0], "device": right[1]})
+    return max(matches, key=lambda m: len(m["mount"])) if matches else {"mount": path, "filesystem": "", "device": ""}
+
+
+def metadata():
+    cpu_name = next((line.split(":", 1)[1].strip() for line in read("/proc/cpuinfo").splitlines()
+                     if line.startswith("model name")), "Processor")
+    return {"chips": rutas_temperatura(), "cpuName": cpu_name, "gpu": discover_gpu()}
+
+
+def parse_process(raw):
+    end = raw.rfind(")")
+    fields = raw[end + 2:].split()
+    return (raw[raw.find("(") + 1:end], int(fields[11]) + int(fields[12]),
+            max(0, int(fields[21])) * PAGE_SIZE / 1048576, int(fields[19]))
+
 
 def lee_procesos():
-    salida = {}
-    for pid in os.listdir("/proc"):
-        if not pid.isdigit():
+    result = {}
+    for entry in Path("/proc").iterdir():
+        if entry.name.isdigit():
+            try:
+                result[entry.name] = parse_process((entry / "stat").read_text())
+            except (OSError, ValueError, IndexError):
+                pass
+    return result
+
+
+def top(before, current, dt, cuantos=80):
+    if dt <= 0 or dt > 10:
+        return []
+    rows = []
+    for pid, (name, ticks, rss, start) in current.items():
+        previous = before.get(pid)
+        if not previous or start != previous[3] or ticks < previous[1]:
             continue
-        try:
-            with open(f"/proc/{pid}/stat") as f:
-                bruto = f.read()
-            # the name sits between parentheses and may hold spaces
-            cierre = bruto.rfind(")")
-            nombre = bruto[bruto.find("(") + 1:cierre]
-            campos = bruto[cierre + 2:].split()
-            tiempo = int(campos[11]) + int(campos[12])      # utime + stime
-            rss = int(campos[21]) * 4096 / 1048576.0        # pages -> MiB
-        except (OSError, ValueError, IndexError):
-            continue
-        salida[pid] = (nombre, tiempo, rss)
-    return salida
+        cpu = (ticks - previous[1]) / RELOJ / dt * 100
+        rows.append({"pid": int(pid), "nombre": name, "cpu": round(cpu, 1),
+                     "ram": round(rss, 1), "start": str(start)})
+    # Preserve top memory consumers as well as CPU consumers for either sort order.
+    by_cpu = sorted(rows, key=lambda p: (-p["cpu"], -p["ram"], p["pid"]))[:cuantos]
+    by_ram = sorted(rows, key=lambda p: (-p["ram"], -p["cpu"], p["pid"]))[:cuantos]
+    return list({p["pid"]: p for p in by_cpu + by_ram}.values())
 
 
-def top(antes, ahora, dt, cuantos=6):
-    lista = []
-    for pid, (nombre, tiempo, rss) in ahora.items():
-        if pid not in antes:
-            continue
-        dcpu = (tiempo - antes[pid][1]) / RELOJ / dt * 100
-        if dcpu <= 0.1 and rss < 50:
-            continue
-        lista.append({"pid": int(pid), "nombre": nombre,
-                      "cpu": round(min(dcpu, 100 * HILOS), 1), "ram": round(rss)})
+def terminate(pid, start):
+    # Bind the signal to the process identity, including PID reuse during the action.
+    fd = os.pidfd_open(pid)
+    try:
+        current = parse_process(Path(f"/proc/{pid}/stat").read_text())
+        if str(current[3]) != start:
+            raise ProcessLookupError("The process has already exited")
+        signal.pidfd_send_signal(fd, signal.SIGTERM)
+    finally:
+        os.close(fd)
 
-    lista.sort(key=lambda p: (-p["cpu"], -p["ram"]))
-    return lista[:cuantos]
-
-
-# ── loop ────────────────────────────────────────────────────────────
 
 def main():
-    chips = rutas_temperatura()
-    chips["gpu"] = shutil.which("nvidia-smi") is not None
-    print(json.dumps({"chips": chips}), flush=True)
-
-    antes = lee_procesos()
-    t_previo = time.monotonic()
-
+    if len(sys.argv) == 4 and sys.argv[1] == "--terminate":
+        try:
+            terminate(int(sys.argv[2]), sys.argv[3])
+            print("Termination requested")
+        except (OSError, ValueError) as error:
+            print(f"Unable to end process: {error}")
+        return
+    info = metadata()
+    print(json.dumps(info), flush=True)
+    if "--discover" in sys.argv:
+        return
+    before = lee_procesos()
+    previous_time = time.monotonic()
+    last_storage = 0
     while True:
-        time.sleep(INTERVALO)
-        ahora = lee_procesos()
-        t = time.monotonic()
-        dt = max(0.001, t - t_previo)
-
-        print(json.dumps({"procesos": top(antes, ahora, dt)}), flush=True)
-
-        antes = ahora
-        t_previo = t
+        now = time.monotonic()
+        payload = {"sampleTime": time.clock_gettime(time.CLOCK_BOOTTIME), "gpuReading": gpu_reading(info["gpu"])}
+        if now - last_storage >= 30:
+            payload["storage"] = storage()
+            last_storage = now
+        current = lee_procesos()
+        sample_time = time.monotonic()
+        if sample_time - previous_time >= 0.5:
+            payload["procesos"] = top(before, current, sample_time - previous_time)
+            before, previous_time = current, sample_time
+        print(json.dumps(payload), flush=True)
+        time.sleep(max(0.1, INTERVALO - (time.monotonic() - now)))
 
 
 if __name__ == "__main__":
     try:
         main()
     except (KeyboardInterrupt, BrokenPipeError):
-        # whoever reads closing is not a failure: it is the end
         sys.exit(0)

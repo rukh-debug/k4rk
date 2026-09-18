@@ -16,11 +16,12 @@ Rectangle {
     signal activated()
     signal forgotten()
 
-    height: 56
-    radius: 10
-    color: active ? Theme.surfaceHi : pointer.containsMouse ? Theme.surface : "transparent"
-    border.width: activeFocus ? 1 : 0
-    border.color: Theme.blue
+    height: 60
+    radius: 12
+    color: pointer.containsMouse ? Theme.surfaceHi : active ? Theme.surface : "transparent"
+    border.width: activeFocus || active ? 1 : 0
+    border.color: activeFocus ? Theme.blue : Theme.surfaceHi
+    Behavior on color { ColorAnimation { duration: 140 } }
     activeFocusOnTab: enabled && !busy
     Accessible.role: Accessible.Button
     Accessible.name: (active ? "Disconnect " : failed ? "Retry " : "Connect ") + title
@@ -61,10 +62,16 @@ Rectangle {
             IslandLabel {
                 Layout.fillWidth: true
                 text: row.subtitle
-                color: row.failed ? Theme.red : row.active ? Theme.green : Theme.muted
+                color: row.failed ? Theme.red : Theme.muted
                 font.pixelSize: 11
                 elide: Text.ElideRight
             }
+        }
+        IconGlyph {
+            visible: row.active && !row.busy
+            text: Theme.ico.check
+            color: Theme.blue
+            font.pixelSize: 14
         }
         IconGlyph {
             visible: row.secure && !row.busy

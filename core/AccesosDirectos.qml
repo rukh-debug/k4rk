@@ -94,12 +94,15 @@ Item {
                 width: strip.cellWidth
                 height: strip.altura
                 radius: 10
+                colorBase: "transparent"
+                colorActiva: Theme.surface
                 pulsable: false
                 activa: pointer.containsMouse || strip.dragIndex === index
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: modelData.nombre
                 Accessible.description: "Open application. Use Control and Left or Right to reorder."
+                Accessible.onPressAction: strip.abrir(modelData.id)
                 Keys.onReturnPressed: strip.abrir(modelData.id)
                 Keys.onSpacePressed: strip.abrir(modelData.id)
                 Keys.onPressed: function (event) {

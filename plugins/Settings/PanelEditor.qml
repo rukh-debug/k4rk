@@ -27,11 +27,11 @@ ColumnLayout {
     //  which is the sketch's own scale.
     readonly property var bloques: {
         const nativos = [
-            { id: "toggles", nombre: "Quick controls", altura: 40, desc: "Wi-Fi, Bluetooth and sound",
+            { id: "toggles", nombre: "Quick controls", altura: PanelIsland.altoDe("toggles") / 2, desc: "Wi-Fi, Bluetooth and sound",
               glifo: 0xF056E },     // md-view_dashboard
-            { id: "media", nombre: "Media", altura: 32, desc: "Now playing and playback controls",
+            { id: "media", nombre: "Media", altura: PanelIsland.altoDe("media") / 2, desc: "Now playing and playback controls",
               glifo: 0xF0387 },     // md-music_note
-            { id: "shortcuts", nombre: "Shortcuts", altura: 22, desc: "Pinned applications",
+            { id: "shortcuts", nombre: "Shortcuts", altura: PanelIsland.altoDe("shortcuts") / 2, desc: "Pinned applications",
               glifo: 0xF003B }      // md-apps
         ]
         const cards = Enganches.cards
@@ -275,24 +275,43 @@ ColumnLayout {
 
                         Item { Layout.fillWidth: true }
 
-                        //  The shape hints.
-                        Row {
+                        // The quick-control sketch follows the live wrapping rule.
+                        GridLayout {
                             visible: hueco.modelData === "toggles"
-                            spacing: 5
+                            columns: PanelIsland.stackedControls ? 2 : 3
+                            columnSpacing: 4
+                            rowSpacing: 4
                             Layout.alignment: Qt.AlignVCenter
-
-                            Repeater {
-                                model: [ Settings.panelTileWifi,
-                                         Settings.panelTileBluetooth,
-                                         Settings.panelTileSound ]
-
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    visible: modelData
-                                    width: 34
-                                    height: 12
-                                    radius: 4
-                                    color: Theme.surfaceHi
+                            Rectangle {
+                                visible: Settings.panelTileWifi
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 26
+                                Layout.preferredHeight: 24
+                                radius: 5
+                                color: Theme.surface
+                            }
+                            Rectangle {
+                                visible: Settings.panelTileBluetooth
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 26
+                                Layout.preferredHeight: 24
+                                radius: 5
+                                color: Theme.surface
+                            }
+                            Rectangle {
+                                visible: Settings.panelTileSound
+                                Layout.columnSpan: PanelIsland.stackedControls ? 2 : 1
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 24
+                                radius: 5
+                                color: Theme.surface
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: parent.width - 12
+                                    height: 2
+                                    radius: 1
+                                    color: Theme.muted
                                 }
                             }
                         }
@@ -308,7 +327,7 @@ ColumnLayout {
                             }
                             Rectangle {
                                 width: 8; height: 12; radius: 4
-                                color: Theme.blue
+                                color: Theme.ink
                             }
                         }
 

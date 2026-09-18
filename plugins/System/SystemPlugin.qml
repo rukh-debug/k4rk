@@ -1,15 +1,12 @@
 //  System monitor.
 //
-//  The sampler only runs while the view is open: a monitor probing
-//  /proc and calling nvidia-smi twenty-four hours a day for nobody
-//  is what earns a bar its reputation for heaviness.
+//  Visible indicators share the host's cheap sampler. Hardware and process
+//  details are collected only while a detailed System surface is open.
 
 import QtQuick
 import K4 as K4
-import "../../core"
-import "../../services"
 
-K4Plugin {
+K4.Plugin {
     id: self
 
     name: "system"
@@ -47,8 +44,8 @@ K4Plugin {
     property bool tarjetaRam: true
     property bool tarjetaRed: true
 
-    islandWidth: 700
-    islandHeight: 430
+    islandWidth: 860
+    islandHeight: 600
 
     view: Component {
         SystemView { plugin: self }
@@ -57,31 +54,21 @@ K4Plugin {
     // Turns sampling on and off with whoever is looking: the island,
     // or the control centre's System tab. The tab reads through the
     // injected panel reference, so this stays the single writer of
-    // both flags.
+    // its sampling lease. Each visible card owns a separate lightweight lease.
     readonly property bool tabAbierta: !!self.panel && self.panel.open
         && self.panel.tab === "system"
 
-    Binding {
-        target: Sistema
-        property: "mirando"
-        value: self.open || self.tabAbierta
-    }
-
-    // The hot path runs while anything wants a number: a chip, a
-    // meter on the card, the view, or the centre's tab.
-    Binding {
-        target: Sistema
-        property: "rapido"
-        value: self.habilitado && (self.enPildoraCpu || self.enPildoraRam
-                                   || self.enPildoraRed || self.tarjetaCpu
-                                   || self.tarjetaRam || self.tarjetaRed
-                                   || self.open || self.tabAbierta)
+    readonly property bool sampling: habilitado && (enPildoraCpu || enPildoraRam || enPildoraRed)
+    readonly property bool detailedSampling: habilitado && (open || tabAbierta)
+    onSamplingChanged: updateSampling()
+    onDetailedSamplingChanged: updateSampling()
+    function updateSampling() {
+        K4.SystemMonitor.sample("system", sampling, detailedSampling)
     }
 
     // A disabled or reloaded plugin must not leave the sampler on.
     Component.onDestruction: {
-        Sistema.mirando = false
-        Sistema.rapido = false
+        K4.SystemMonitor.sample("system", false, false)
     }
 
     // ── the pill chips ─────────────────────────────────────
@@ -99,8 +86,8 @@ K4Plugin {
     property string _redTexto: "@@none@@"
 
     function textoRed() {
-        return "↓" + Sistema.tasaCorta(Sistema.redRx)
-            + " ↑" + Sistema.tasaCorta(Sistema.redTx)
+        return "↓" + K4.SystemMonitor.compactRate(K4.SystemMonitor.download)
+            + " ↑" + K4.SystemMonitor.compactRate(K4.SystemMonitor.upload)
     }
 
     function pintarChips() {
@@ -110,16 +97,16 @@ K4Plugin {
     }
 
     function pintarCpu() {
-        if (!habilitado || !enPildoraCpu || !Sistema.cargado) {
+        if (!habilitado || !enPildoraCpu || !K4.SystemMonitor.ready) {
             if (_cpuPct >= 0) {
                 K4.Pildora.quitar("system.cpu")
                 _cpuPct = -1
             }
             return
         }
-        const cpu = Math.round(Sistema.cpuUso)
+        const cpu = Math.round(K4.SystemMonitor.cpuPercent)
         if (cpu !== _cpuPct) {
-            const color = cpu >= 90 ? Theme.red : Theme.blue
+            const color = cpu >= 90 ? K4.Tema.rojo : K4.Tema.azul
             if (_cpuPct < 0)
                 K4.Pildora.registrar("system.cpu", cpu + "%", 0xF061A,
                                      color, 20, true)
@@ -130,16 +117,16 @@ K4Plugin {
     }
 
     function pintarRam() {
-        if (!habilitado || !enPildoraRam || !Sistema.cargado) {
+        if (!habilitado || !enPildoraRam || !K4.SystemMonitor.ready) {
             if (_ramPct >= 0) {
                 K4.Pildora.quitar("system.ram")
                 _ramPct = -1
             }
             return
         }
-        const ram = Math.round(Sistema.ramPct)
+        const ram = Math.round(K4.SystemMonitor.memoryPercent)
         if (ram !== _ramPct) {
-            const color = ram >= 90 ? Theme.red : "#bf5af2"
+            const color = ram >= 90 ? K4.Tema.rojo : K4.Tema.apagado
             if (_ramPct < 0)
                 K4.Pildora.registrar("system.ram", ram + "%", 0xF035B,
                                      color, 21, true)
@@ -150,7 +137,7 @@ K4Plugin {
     }
 
     function pintarRed() {
-        if (!habilitado || !enPildoraRed || !Sistema.cargado) {
+        if (!habilitado || !enPildoraRed || K4.SystemMonitor.download < 0) {
             if (_redTexto !== "@@none@@") {
                 K4.Pildora.quitar("system.net")
                 _redTexto = "@@none@@"
@@ -168,19 +155,20 @@ K4Plugin {
         }
     }
 
-    Component.onCompleted: pintarChips()
+    Component.onCompleted: { updateSampling(); pintarChips() }
     onHabilitadoChanged: pintarChips()
     onEnPildoraCpuChanged: pintarChips()
     onEnPildoraRamChanged: pintarChips()
     onEnPildoraRedChanged: pintarChips()
 
     Connections {
-        target: Sistema
-        function onCpuUsoChanged() { self.pintarCpu() }
-        function onRamPctChanged() { self.pintarRam() }
-        function onRedRxChanged() { self.pintarRed() }
-        function onRedTxChanged() { self.pintarRed() }
-        function onCargadoChanged() { self.pintarChips() }
+        target: K4.SystemMonitor
+        function onAvailableChanged() { self.updateSampling() }
+        function onCpuPercentChanged() { self.pintarCpu() }
+        function onMemoryPercentChanged() { self.pintarRam() }
+        function onDownloadChanged() { self.pintarRed() }
+        function onUploadChanged() { self.pintarRed() }
+        function onReadyChanged() { self.pintarChips() }
     }
 
     Connections {
@@ -271,7 +259,7 @@ K4Plugin {
         titulo: "System"
         glifo: 0xF061A
         desc: "CPU, memory and network at a glance"
-        alto: 48
+        alto: 112
         component: Component { TarjetaSistema { plugin: self } }
     }
 

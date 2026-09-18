@@ -33,13 +33,16 @@ Singleton {
     property var launcher: null
 
     readonly property int islandWidth: Math.max(640, Math.min(1100, Settings.panelWidth))
-    readonly property int islandHeight: tab === "controls" ? alturaControles() : 404
+    readonly property int islandHeight: tab === "controls" ? alturaControles()
+        : tab === "system" ? (islandWidth < 800 ? 720 : 600) : 404
+    readonly property bool stackedControls: islandWidth < 780
+        && Settings.panelTileWifi && Settings.panelTileBluetooth && Settings.panelTileSound
 
     function altoDe(id) {
         if (id === "toggles")
-            return 78
+            return stackedControls ? 204 : 96
         if (id === "media")
-            return 62
+            return 72
         if (id === "shortcuts")
             return 40
         return Enganches.altoDeCard(id)
@@ -54,7 +57,7 @@ Singleton {
             bloques += 1
             alto += altoDe(ids[i])
         }
-        return 14 + 30 + 12 * bloques + alto + 20
+        return 16 + 32 + 16 * bloques + alto + 20
     }
 
     property bool grabKeyboard: open
@@ -83,8 +86,10 @@ Singleton {
         if (wanted !== tab) Wifi.cancelPsk()
         tab = wanted
         open = true
-        Notifs.dismissToast()
-        if (wanted === "notifications") Notifs.markRead()
+        if (wanted === "notifications") {
+            Notifs.dismissToast()
+            Notifs.markRead()
+        }
         if (wanted === "sound")
             Audio.mirarBases()
     }
