@@ -58,6 +58,15 @@ Singleton {
     //  process still fires its collector with half its output; the
     //  flag is how a stale finish learns to keep quiet.
     property string pipeline: ""
+    //  A scheme switch while its own pipeline is still running cannot
+    //  restart the process (`command` only applies to the next launch),
+    //  so the request waits here the way `apply()` queues behind
+    //  `applicator`. `runningScheme`/`runningSource` mark what the live
+    //  run is working on, so its late output cannot paint over the
+    //  newly wanted variant.
+    property bool extractPending: false
+    property string runningScheme: ""
+    property string runningSource: ""
 
     function schemeIdValido(id) {
         for (let i = 0; i < schemes.length; ++i)
@@ -217,27 +226,42 @@ Singleton {
             Theme.tintar("wallpaper", base, 0.22, 0)
     }
 
-    //  The bar's ambient tint under a matugen scheme: the wallpaper's
-    //  seed color — the same intent as the sampled pick — and, under
-    //  monochrome, the gray of it, so the scheme means what it says.
-    function tintFromSeed(seed) {
-        const r = parseInt(seed.substring(1, 3), 16) / 255
-        const g = parseInt(seed.substring(3, 5), 16) / 255
-        const b = parseInt(seed.substring(5, 7), 16) / 255
-        let base
-        if (activeScheme === "monochrome") {
-            const gray = 0.299 * r + 0.587 * g + 0.114 * b
-            base = Qt.rgba(gray, gray, gray, 1)
-        } else {
-            base = Qt.rgba(r, g, b, 1)
-        }
+    //  Tint from the generated scheme rather than its source seed. The seed
+    //  is identical across variants, while the dark primary container is the
+    //  variant-specific accent intended for dark surfaces.
+    function tintFromScheme(color) {
         if (Settings.wallpaperPalette)
-            Theme.tintar("wallpaper", base, 0.22, 0)
+            Theme.tintar("wallpaper", color, 0.22, 0)
     }
 
     function extract() {
         if (!Settings.wallpaperPalette || source.length === 0)
             return
+        const wantMatugen = activeScheme !== "sampled" && matugenOk
+        const wantPipeline = wantMatugen ? "matugen" : "magick"
+        //  One pipeline owns the palette at a time: park the other.
+        //  Its dying collector still fires, and `pipeline` keeps it quiet.
+        if (wantMatugen)
+            sampler.running = false
+        else
+            esquemador.running = false
+        if ((wantMatugen ? esquemador.running : sampler.running)) {
+            //  Same-pipeline switch while the old run owns the process:
+            //  assigning `command` now would only change the NEXT launch,
+            //  leaving the old variant to finish and paint over the new
+            //  selection. Queue instead; `onExited` drains it.
+            pipeline = wantPipeline
+            extractPending = true
+            return
+        }
+        startExtraction(wantPipeline)
+    }
+
+    function startExtraction(wantPipeline) {
+        extractPending = false
+        pipeline = wantPipeline
+        runningScheme = activeScheme
+        runningSource = source
         //  The poster decision is made HERE and not in a shell `case`:
         //  the glob `*.mp4` is case-sensitive, and an uppercase `.MP4`
         //  slipped past it straight into magick, which forked its own
@@ -248,8 +272,7 @@ Singleton {
         //  sampled classic, or a scheme with no matugen to run it —
         //  goes to the histogram. Whichever runs, the other is
         //  stopped: one pipeline owns the palette at a time.
-        if (activeScheme !== "sampled" && matugenOk) {
-            pipeline = "matugen"
+        if (wantPipeline === "matugen") {
             sampler.running = false
             //  Same frame contract as the histogram pipeline: a video
             //  or an animation is sampled from its cached poster, and
@@ -271,7 +294,6 @@ Singleton {
             esquemador.running = true
             return
         }
-        pipeline = "magick"
         esquemador.running = false
         //  `timeout` on both levels so no sampler run can outlive its
         //  welcome: the outer one bounds the whole pipeline, the inner
@@ -289,6 +311,30 @@ Singleton {
             + " -format %c histogram:info:-",
             "sh", source, Fondos.posterDe(source), needsPoster ? "1" : "0"]
         sampler.running = true
+    }
+
+    //  A collector result is fresh only when nothing newer was asked
+    //  for while it ran: same pipeline, same variant, same wallpaper.
+    function extractionFresh(wantPipeline) {
+        return pipeline === wantPipeline
+            && !extractPending
+            && runningScheme === activeScheme
+            && runningSource === source
+    }
+
+    //  Drain a queued variant switch once the superseded run lands.
+    //  Called from `onExited`, so the wanted process is free by now.
+    function drainExtraction(wantPipeline) {
+        if (pipeline !== wantPipeline)
+            return
+        if (!extractPending && runningScheme === activeScheme
+                && runningSource === source)
+            return
+        if (!Settings.wallpaperPalette || source.length === 0) {
+            extractPending = false
+            return
+        }
+        Qt.callLater(root.extract)
     }
 
     onSourceChanged: {
@@ -385,7 +431,9 @@ Singleton {
                 //  A run stopped mid-flight by the other pipeline still
                 //  finishes here with half a histogram; stale colors
                 //  would overwrite the palette the winner is building.
-                if (root.pipeline !== "magick")
+                //  Same-pipeline supersedes count as stale too: the late
+                //  variant must not paint over the newly picked one.
+                if (!root.extractionFresh("magick"))
                     return
                 const rows = String(this.text).split("\n")
                 const colors = []
@@ -401,6 +449,7 @@ Singleton {
                 }
             }
         }
+        onExited: root.drainExtraction("magick")
     }
 
     //  The matugen pipeline: same contract as `sampler` — stdout in,
@@ -412,7 +461,7 @@ Singleton {
         environment: ({ "LC_ALL": "C" })
         stdout: StdioCollector {
             onStreamFinished: {
-                if (root.pipeline !== "matugen")
+                if (!root.extractionFresh("matugen"))
                     return
                 try {
                     const c = JSON.parse(String(this.text)).colors || {}
@@ -431,13 +480,12 @@ Singleton {
                     const sec = hex("secondary")
                     if (sec.length > 0)
                         root.inactive = sec
-                    const seed = hex("source_color")
-                    if (seed.length === 7)
-                        root.tintFromSeed(seed)
+                    root.tintFromScheme(to)
                 } catch (error) {
                 }
             }
         }
+        onExited: root.drainExtraction("matugen")
     }
 
     //  Whether the scheme styles can run at all. A nix install ships
