@@ -35,3 +35,5 @@ SessionIslandView 1.0 SessionIslandView.qml
 BloqueoSurface 1.0 BloqueoSurface.qml
 Grafica 1.0 Grafica.qml
 VistaSistema 1.0 VistaSistema.qml
+MonitorPage 1.0 MonitorPage.qml
+MonitorChoice 1.0 MonitorChoice.qml

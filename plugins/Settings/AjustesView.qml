@@ -941,6 +941,17 @@ FadeIn {
                                 }
                             }
 
+                            // Host-owned monitor controls share the native page loader.
+                            Loader {
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: active && item ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "monitor"
+                                        && !vista.searching
+                                        && bloque.modelData.atajo === undefined
+                                sourceComponent: Component { MonitorPage {} }
+                            }
+
                             //  The shell's typeface, from the families the
                             //  system has. It lives under Display with the
                             //  rest of the screen's look.

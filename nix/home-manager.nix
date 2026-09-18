@@ -54,6 +54,20 @@ let
 
   mirror = "${dataHome}/k4/code";
 
+  stateHome = lib.replaceStrings [ "$HOME" ] [ config.home.homeDirectory ] config.xdg.stateHome;
+  monitorInclude = ''
+    -- Confirmed k4 monitor overrides load after the declarative defaults.
+    do
+      local path = ${builtins.toJSON "${stateHome}/k4/monitors/confirmed.lua"}
+      local file = io.open(path, "r")
+      if file then
+        file:close()
+        local ok, message = pcall(dofile, path)
+        if not ok then print("k4 monitor override: " .. tostring(message)) end
+      end
+    end
+  '';
+
   hypr = config.wayland.windowManager.hyprland;
 
   #  Home Manager 26.05 can generate Lua Hyprland configs; older versions
@@ -110,6 +124,8 @@ in
       description = "The k4 package to use.";
     };
 
+    monitors.enable = lib.mkEnableOption "persistent, confirmed k4 monitor overrides (Lua Hyprland only)";
+
     hyprland = {
       writeConfig = lib.mkOption {
         type = lib.types.bool;
@@ -156,12 +172,18 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [{
+      assertion = !cfg.monitors.enable || (hypr.enable && hyprIsLua);
+      message = "programs.k4.monitors.enable requires Home Manager-managed Lua Hyprland.";
+    }];
     home.packages = [ cfg.package ];
 
     #  Only the matching flavor gets a file when Home Manager manages
     #  Hyprland; a stray k4.conf next to a Lua configuration is confusion
     #  waiting for someone to source it.
-    xdg.configFile = lib.mkIf cfg.hyprland.writeConfig (
+    xdg.configFile = (lib.optionalAttrs cfg.monitors.enable {
+      "k4/monitors.json".text = builtins.toJSON { managed = true; };
+    }) // (lib.optionalAttrs cfg.hyprland.writeConfig (
       if hypr.enable && hyprIsLua then
         {
           "hypr/config/k4.lua".text = substituteTemplate fuente;
@@ -175,20 +197,12 @@ in
           "hypr/k4.conf".text = substituteTemplate fuenteConf;
           "hypr/config/k4.lua".text = substituteTemplate fuente;
         }
-    );
+    ));
 
-    wayland.windowManager.hyprland =
-      lib.mkIf (cfg.hyprland.writeConfig && cfg.hyprland.hookIntoConfig && hypr.enable)
-        {
-          #  Sourced last, matching what ./instalar does: k4's binds are
-          #  declared after yours, and the template documents that whoever
-          #  rebinds later wins. Raw lines in hyprland.conf, raw Lua in
-          #  hyprland.lua — `extraConfig` is verbatim either way.
-          extraConfig =
-            if hyprIsLua then
-              ''require("config.k4")''
-            else
-              "source = ${configHome}/hypr/k4.conf";
-        };
+    wayland.windowManager.hyprland.extraConfig = lib.mkMerge [
+      (lib.mkIf (cfg.hyprland.writeConfig && cfg.hyprland.hookIntoConfig && hypr.enable)
+        (if hyprIsLua then ''require("config.k4")'' else "source = ${configHome}/hypr/k4.conf"))
+      (lib.mkIf cfg.monitors.enable (lib.mkOrder 1500 monitorInclude))
+    ];
   };
 }

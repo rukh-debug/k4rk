@@ -529,6 +529,16 @@ Singleton {
             opciones: []
         },
         {
+            grupo: "Monitor",
+            padre: "Display",
+            claves: ["monitor", "resolution", "refresh rate", "scale", "rotation",
+                     "orientation", "display", "arrangement", "mirror", "output"],
+            glifo: 0xF0379,
+            desc: "Arrange monitors, choose modes and safely save your layout.",
+            vista: "monitor",
+            opciones: []
+        },
+        {
             grupo: "Wallpaper",
             //  A child of Display (`padre`): it renders as a sub-tab under it
             //  in the sidebar, one level deep.

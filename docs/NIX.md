@@ -74,6 +74,18 @@ imports = [ inputs.k4.homeManagerModules.k4 ];
 programs.k4.enable = true;
 ```
 
+For persistent settings in **Settings → Display → Monitor**, enable:
+
+```nix
+programs.k4.monitors.enable = true;
+```
+
+This requires Home Manager-managed Lua Hyprland. It appends a monitor-only hook
+after the normal output defaults, independently of `hyprland.hookIntoConfig`.
+Only confirmed changes are saved, under `$XDG_STATE_HOME/k4/monitors/`; without
+this option the page applies session-only changes. See [Monitor settings](MONITORS.md)
+for the apply/revert contract, supported controls, and recovery behavior.
+
 That gives you the package on PATH and the Hyprland integration written
 from the repo's own templates (`hypr/k4.conf` and `hypr/config/k4.lua`),
 with three changes — autostart calls the store wrapper (on a cold start
