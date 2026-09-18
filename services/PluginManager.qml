@@ -48,20 +48,12 @@ Singleton {
     // copia mínima evita que la barra se quede sin defaults si el fichero se
     // está actualizando o si se arranca con una versión antigua instalada.
     property var catalogo: [
-        { id: "idle", title: "Pill", version: "1.0.0", enabled: true, configurable: false },
-        { id: "volume", title: "Volume", version: "1.0.0", enabled: true },
-        { id: "sound", title: "Sound", version: "1.0.0", enabled: true },
-        { id: "clock", title: "Clock", version: "1.0.0", enabled: true },
-        { id: "player", title: "Player", version: "1.0.0", enabled: true },
-        { id: "toast", title: "Notifications", version: "1.0.0", enabled: true },
-        { id: "panel", title: "Control centre", version: "1.0.0", enabled: true },
         { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
         { id: "openwebui", title: "OpenWebUI", version: "1.0.0", enabled: true },
         { id: "settings", title: "Settings", version: "1.0.0", enabled: true, configurable: false },
         { id: "clipboard", title: "Clipboard", version: "1.0.0", enabled: true },
         { id: "system", title: "System", version: "1.0.0", enabled: true },
         { id: "keys", title: "Shortcuts", version: "1.0.0", enabled: true },
-        { id: "session", title: "Session", version: "1.0.0", enabled: true },
         { id: "apps", title: "Applications", version: "1.0.0", enabled: true },
         { id: "terminal", title: "Terminal", version: "1.0.0", enabled: true },
         { id: "packages", title: "Packages", version: "1.0.0", enabled: true },
@@ -337,6 +329,30 @@ Singleton {
                 if (obj[otro] !== destino)
                     obj[otro] = destino
             }
+            //  Native features satisfy the same property-name contract.
+            //  During migration a plugin may request a native id before
+            //  its catalog entry is gone; the native singleton wins.
+            const nativas = ["idle", "volume", "sound", "clock", "player",
+                             "toast", "panel", "session", "tray"]
+            for (let n = 0; n < nativas.length; ++n) {
+                const nid = nativas[n]
+                if (nid === id || !(nid in obj))
+                    continue
+                let destinoNativo = null
+                try {
+                    destinoNativo = SurfaceRegistry.nativeInstance(nid)
+                } catch (e) {
+                    destinoNativo = null
+                }
+                if (destinoNativo && obj[nid] !== destinoNativo)
+                    obj[nid] = destinoNativo
+            }
+        }
+        //  The unified registry hands out the reverse direction
+        //  (native requesting a plugin, or native-to-native).
+        try {
+            SurfaceRegistry.repartir()
+        } catch (e) {
         }
     }
 
@@ -889,10 +905,22 @@ Singleton {
         }
     }
 
+    // Native ids are always on; legacy keys linger in old plugins.json
+    // files but must never be written back out.
+    readonly property var idsNativos: ["idle", "volume", "sound", "clock",
+        "player", "toast", "panel", "session", "tray"]
+
     function guardar() {
         if (!cargado)
             return
-        const texto = JSON.stringify({ habilitados: habilitados }, null, 1)
+        const limpio = {}
+        for (const k in habilitados) {
+            if (idsNativos.indexOf(k) < 0)
+                limpio[k] = habilitados[k]
+        }
+        if (Object.keys(limpio).length !== Object.keys(habilitados).length)
+            habilitados = limpio
+        const texto = JSON.stringify({ habilitados: limpio }, null, 1)
         estado.setText(texto)
         //  Y el duplicado. Cuesta un fichero de dos líneas y es lo que
         //  convierte «se me han apagado todos los plugins» en un aviso en el

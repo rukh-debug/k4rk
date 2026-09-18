@@ -3,70 +3,6 @@
  "host": ">=1.0.0",
  "plugins": [
   {
-   "id": "idle",
-   "entry": "Idle/IdlePlugin.qml",
-   "version": "1.0.0",
-   "title": "Pill",
-   "description": "The island that hosts every view: the pill itself",
-   "enabledByDefault": true,
-   "configurable": false,
-   "icon": "0xF0765"
-  },
-  {
-   "id": "volume",
-   "entry": "Volume/VolumePlugin.qml",
-   "version": "1.0.0",
-   "title": "Volume",
-   "description": "The transient volume HUD that surfaces over the pill",
-   "enabledByDefault": true,
-   "icon": "0xF057E"
-  },
-  {
-   "id": "sound",
-   "entry": "Sonido/SonidoPlugin.qml",
-   "version": "1.1.0",
-   "title": "Sound",
-   "description": "Output devices and per-stream volume control",
-   "enabledByDefault": true,
-   "icon": "0xF02CB"
-  },
-  {
-   "id": "clock",
-   "entry": "Clock/ClockPlugin.qml",
-   "version": "1.0.0",
-   "title": "Clock",
-   "description": "The clock view: time, notifications on hover",
-   "enabledByDefault": true,
-   "icon": "0xF0954"
-  },
-  {
-   "id": "player",
-   "entry": "Player/PlayerPlugin.qml",
-   "version": "1.1.0",
-   "title": "Player",
-   "description": "Media controls for whatever MPRIS is playing",
-   "enabledByDefault": true,
-   "icon": "0xF0387"
-  },
-  {
-   "id": "toast",
-   "entry": "Toast/ToastPlugin.qml",
-   "version": "1.1.0",
-   "title": "Notifications",
-   "description": "The notification band and its toasts",
-   "enabledByDefault": true,
-   "icon": "0xF0369"
-  },
-  {
-   "id": "panel",
-   "entry": "Panel/PanelPlugin.qml",
-   "version": "1.1.0",
-   "title": "Control centre",
-   "description": "The control centre: toggles, media and quick settings",
-   "enabledByDefault": true,
-   "icon": "0xF0492"
-  },
-  {
    "id": "launcher",
    "entry": "Launcher/LauncherPlugin.qml",
    "version": "1.1.0",
@@ -78,24 +14,24 @@
    ],
    "icon": "0xF0349"
   },
-   {
-    "id": "openwebui",
-    "entry": "OpenWebUI/OpenWebUIPlugin.qml",
-    "version": "1.0.0",
-    "title": "OpenWebUI",
-    "description": "Chat with an OpenWebUI server: streaming answers, models and saved chats",
-    "enabledByDefault": true,
-    "permissions": [
-     "procesos",
-     "red",
-     "paginas",
-     "portapapeles",
-     "ficheros"
-    ],
-    "icon": "0xF0674"
-   },
-    {
-     "id": "settings",
+  {
+   "id": "openwebui",
+   "entry": "OpenWebUI/OpenWebUIPlugin.qml",
+   "version": "1.0.0",
+   "title": "OpenWebUI",
+   "description": "Chat with an OpenWebUI server: streaming answers, models and saved chats",
+   "enabledByDefault": true,
+   "permissions": [
+    "procesos",
+    "red",
+    "paginas",
+    "portapapeles",
+    "ficheros"
+   ],
+   "icon": "0xF0674"
+  },
+  {
+   "id": "settings",
    "entry": "Settings/SettingsPlugin.qml",
    "version": "1.1.0",
    "title": "Settings",
@@ -136,16 +72,6 @@
    "description": "The Hyprland keybind reference, straight from the config",
    "enabledByDefault": true,
    "icon": "0xF030C",
-   "application": true
-  },
-  {
-   "id": "session",
-   "entry": "Session/SessionPlugin.qml",
-   "version": "1.0.0",
-   "title": "Session",
-   "description": "Lock, sleep, reboot and leave, with a real lock screen",
-   "enabledByDefault": true,
-   "icon": "0xF0425",
    "application": true
   },
   {
@@ -219,10 +145,12 @@
    "entry": "HyprlandSubmap/HyprlandSubmapPlugin.qml",
    "version": "2.0.0",
    "title": "Hyprland Submap",
-   "description": "Submap island. The submap name carries everything: 'Title: (r)egion (command)' — a paren group of single glyphs lists the keys, the label follows, a longer paren group is the command a chip press runs. Names that do not parse show as plain text",
+   "description": "Submap island. The submap name carries everything: 'Title: (r)egion (command)' \u2014 a paren group of single glyphs lists the keys, the label follows, a longer paren group is the command a chip press runs. Names that do not parse show as plain text",
    "enabledByDefault": true,
    "icon": "0xF030E",
-   "permissions": ["procesos"]
+   "permissions": [
+    "procesos"
+   ]
   }
  ],
  "version": "1.1.0"

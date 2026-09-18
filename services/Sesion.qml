@@ -1,37 +1,71 @@
 pragma Singleton
 
-//  Cerrar, apagar, reiniciar, dormir… y el estado del bloqueo.
+//  Session identity, power actions and the real screen lock.
 //
-//  Aquí solo vive el «qué»: quién eres, qué acciones puede hacer esta máquina y
-//  si la sesión está bloqueada. El «cómo se ve» —el menú y la pantalla de
-//  bloqueo— es cosa de plugins/Session, porque son superficies.
+//  The lock lives here — not in the island menu — so `k4 lock` works even
+//  when the menu surface fails to load, and so the compositor's real lock
+//  state stays authoritative across reloads. The menu itself is the native
+//  SessionIsland surface; it only asks this service to act.
 //
-//  Sobre hibernar: no basta con que el núcleo diga que sabe («disk» en
-//  /sys/power/state). Hace falta un swap de verdad al que volcar la memoria y
-//  un `resume=` en la línea de arranque que le diga al núcleo dónde buscarlo al
-//  encender. Con solo zram —que vive en la RAM que precisamente se va a
-//  apagar— hibernar no lleva a ninguna parte, así que la opción ni se ofrece.
+//  On hibernate: the kernel saying it knows ("disk" in /sys/power/state) is
+//  not enough. A real swap to dump memory into and a `resume=` boot entry
+//  are both required; with only zram — which lives in the very RAM being
+//  powered off — hibernation goes nowhere, so the option is not offered.
 
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import K4 as K4
+import "../core"
 
 Singleton {
     id: sesion
 
-    // ── quién eres ────────────────────────────────────────────────
+    // ── who you are ─────────────────────────────────────────────
     readonly property string usuario: Quickshell.env("USER") || ""
-    property string nombre: ""              // el del GECOS, si lo hay
+    property string nombre: ""
     readonly property string visible: nombre.length > 0 ? nombre : usuario
     readonly property string inicial:
         visible.length > 0 ? visible.charAt(0).toUpperCase() : "?"
 
-    // ── bloqueo ───────────────────────────────────────────────────
+    // ── the real lock ───────────────────────────────────────────
+    //  WlSessionLock's default property is `surface`, so the surface must
+    //  stay OUTSIDE the lock block: inside, it would be assigned as the
+    //  surface silently and the lock would never engage. It opens and
+    //  closes by writing `locked`; the C++ unlock() is not exposed to QML.
     property bool bloqueado: false
 
     function bloquear() { bloqueado = true }
     function desbloquear() { bloqueado = false }
+
+    property var cerradura: K4.BloqueoSesion {
+        surface: BloqueoSurface {}
+    }
+
+    Connections {
+        target: sesion
+        function onBloqueadoChanged() {
+            // The island menu closes itself through SurfaceRegistry.
+            try {
+                const menu = SurfaceRegistry.instance("session")
+                if (menu && sesion.bloqueado && typeof menu.close === "function")
+                    menu.close()
+            } catch (e) {
+            }
+            if (sesion.cerradura.locked !== sesion.bloqueado)
+                sesion.cerradura.locked = sesion.bloqueado
+        }
+    }
+
+    //  On reload the lock object keeps the real state and the service
+    //  starts from zero. The compositor rules, always: the reverse would
+    //  release a half lock, orphan Hyprland state, and turn every later
+    //  lock request into a protocol error that takes the bar down.
+    Component.onCompleted: {
+        if (sesion.cerradura && sesion.cerradura.locked !== sesion.bloqueado)
+            sesion.bloqueado = sesion.cerradura.locked
+    }
 
     // ── qué puede hacer esta máquina ──────────────────────────────
     property bool swapReal: false

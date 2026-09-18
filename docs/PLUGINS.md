@@ -269,11 +269,12 @@ Item {
 }
 ```
 
-### Pick a priority above 50, or the clock eats your panel
+### Pick a priority above 50, or the native clock eats your panel
 
-`priority` decides who gets the island when more than one plugin wants it,
-and the number is not decoration. The bar's **resting views sit at 50 and
-55** — the clock and the player — and they activate on `Island.hovered`.
+`priority` decides who gets the island when more than one surface wants it,
+and the number is not decoration. The bar's **native resting views sit at
+50 and 55** — the clock and the player — and they activate on
+`Island.hovered`.
 
 So a panel below 50 cannot be closed. To reach your close button the user
 puts the pointer on the island; that turns the clock on; the clock outranks
@@ -286,12 +287,12 @@ The map, so you can place yourself:
 
 | | |
 |---|---|
-| 0 | the pill at rest |
-| 40 | volume |
-| 50 · 55 | **clock · player** — the hover views. Be above these. |
-| 59 | notification toast |
-| 60 · 64 · 66 | control center · settings |
-| 80 · 83 | launcher · app center |
+| 0 | native pill at rest |
+| 40 | native volume HUD |
+| 50 · 55 | **native clock · player** — the hover views. Be above these. |
+| 59 | native notification toast |
+| 60 · 61 · 63 · 66 | native control center · native sound · tray · settings |
+| 72 · 80 | app center · launcher |
 
 Above the resting views so you survive being touched; below the things the
 user opens on purpose if yours can open **itself**. A module that appears
@@ -871,15 +872,21 @@ An honest warning: reloading destroys your object. Whatever holds state in
 memory and was not saved with `K4.Guardado` is lost — which for development
 is usually exactly what you want.
 
-## Repository plugins
+## Native features and repository plugins
 
-Contributing a plugin to the bar itself follows the same contract, with
-three differences: the directory goes in `plugins/`, it is registered in
-`plugins/catalog.json`, and the directory carries a `qmldir` with all its
-types (Quickshell's URL scheme does not resolve siblings without it —
-`tools/plugins.py` warns if it is missing). Repo plugins CAN use the
-internal services via `"../../services"`, because they update together with
-the bar.
+The pill, volume HUD, sound mixer, clock, player, notifications, control
+centre and session are native host features, not plugins: they are always
+on, live in `services/*Island.qml` with views in `core/`, and are described
+by `features/catalog.json`. Their ids (`idle`, `volume`, `sound`, `clock`,
+`player`, `toast`, `panel`, `session`, `tray`) and IPC targets (`k4`,
+`k4.panel`, `k4.sound`, `k4.session`, `k4.tray`) are reserved — an outside
+plugin claiming one fails validation.
+
+Contributing any other module to the bar itself follows the plugin
+contract, with three differences: the directory goes in `plugins/`, it is
+registered in `plugins/catalog.json`, and the directory carries a `qmldir`
+with all its types (Quickshell's URL scheme does not resolve siblings
+without it — `tools/plugins.py` warns if it is missing).
 
 ## Keeping this guide true
 

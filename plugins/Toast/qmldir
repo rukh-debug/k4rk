@@ -1,9 +1,0 @@
-#  Generated: the types in this folder, so they also resolve
-#  when the plugin is loaded by URL (the qs: scheme), where the
-#  implicit resolution of siblings does not exist.
-#  `python3 tools/plugins.py` checks that it stays complete.
-
-
-BandaToast 1.0 BandaToast.qml
-ToastPlugin 1.0 ToastPlugin.qml
-ToastView 1.0 ToastView.qml

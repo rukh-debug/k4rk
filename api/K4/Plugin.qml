@@ -50,9 +50,10 @@ QtObject {
     // el módulo participe en la barra.
     property bool habilitado: true
 
-    // Quién se queda la island cuando varios plugins la piden a la vez.
-    // Referencia de los actuales: idle 0 · volume 40 · clock 50 · player 55 ·
-    // toast 59 · panel 60 · launcher 80 · openwebui 90.
+    // Quién se queda la island cuando varias superficies la piden a la vez.
+    // Referencia de las actuales: pill 0 · volume 40 · clock 50 · player 55 ·
+    // toast 59 · panel 60 · launcher 80 · openwebui 90. Las ocho primeras son
+    // nativas y siempre están; el resto son plugins.
     //
     //  THE HOVER BAND — offering a view while the mouse rests on the
     //  pill is not a separate API: it is this ladder plus one readable

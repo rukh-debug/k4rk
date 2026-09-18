@@ -1,6 +1,7 @@
 singleton Theme 1.0 Theme.qml
 
 K4Plugin 1.0 K4Plugin.qml
+NativeFeature 1.0 NativeFeature.qml
 SiluetaIsla 1.0 SiluetaIsla.qml
 EdgeAttachedShape 1.0 EdgeAttachedShape.qml
 IslandLabel 1.0 IslandLabel.qml
@@ -17,5 +18,20 @@ MediaButton 1.0 MediaButton.qml
 IslandScrollBar 1.0 IslandScrollBar.qml
 AparatosDeSonido 1.0 AparatosDeSonido.qml
 TrayIslandView 1.0 TrayIslandView.qml
+IdleIslandView 1.0 IdleIslandView.qml
+VolumeIslandView 1.0 VolumeIslandView.qml
+ClockIslandView 1.0 ClockIslandView.qml
+PlayerIslandView 1.0 PlayerIslandView.qml
+ToastIslandView 1.0 ToastIslandView.qml
+ToastBand 1.0 ToastBand.qml
+SoundIslandView 1.0 SoundIslandView.qml
+PanelIslandView 1.0 PanelIslandView.qml
+AccesosDirectos 1.0 AccesosDirectos.qml
+DetalleWifi 1.0 DetalleWifi.qml
+DetalleBluetooth 1.0 DetalleBluetooth.qml
+DetalleSonido 1.0 DetalleSonido.qml
+DetalleSistema 1.0 DetalleSistema.qml
+SessionIslandView 1.0 SessionIslandView.qml
+BloqueoSurface 1.0 BloqueoSurface.qml
 Grafica 1.0 Grafica.qml
 VistaSistema 1.0 VistaSistema.qml

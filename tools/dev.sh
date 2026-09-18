@@ -102,7 +102,7 @@ rm -rf "$RUNTIME/quickshell/by-id"
 nohup setsid "$BIN" --no-duplicate </dev/null >>"$LOG" 2>&1 &
 disown
 
-# ── health: plugins up, none in error ───────────────────────────────
+# ── health: natives and plugins up, none in error ───────────────
 echo "==> waiting for IPC (log: $LOG)"
 OUT=""
 for _ in $(seq 1 50); do
@@ -129,3 +129,20 @@ errs = [p for p in d if p.get("error")]
 print("plugins: %d  errors: %d" % (len(d), len(errs)))
 for e in errs:
     print("  %s: %s" % (e["id"], e["error"]))'
+HOST="$(quickshell ipc -p "$MIRROR/shell.qml" call k4 hostStatus 2>/dev/null || true)"
+case "$HOST" in \{*\}*) : ;; *) HOST="" ;; esac
+if [ -n "$HOST" ]; then
+    echo "$HOST" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception as exc:
+    print("hostStatus unreadable: %s" % exc)
+    sys.exit(1)
+natives = d.get("native", [])
+errs = [n for n in natives if n.get("error")]
+print("native: %d  errors: %d" % (len(natives), len(errs)))
+for e in errs:
+    print("  %s: %s" % (e.get("id"), e.get("error")))
+sys.exit(1 if errs else 0)'
+fi

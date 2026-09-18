@@ -27,7 +27,21 @@ import time
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 CATALOGO = RAIZ / "plugins" / "catalog.json"
+CATALOGO_NATIVO = RAIZ / "features" / "catalog.json"
 DE_USUARIO = pathlib.Path.home() / ".config" / "k4" / "plugins"
+
+# Native host features: always-on bar chrome, not plugins. External plugins
+# may not claim these ids or IPC targets.
+def leer_catalogo_nativo():
+    try:
+        datos = json.loads(CATALOGO_NATIVO.read_text())
+        return [m.get("id") for m in datos.get("features") or [] if m.get("id")]
+    except OSError:
+        return []
+
+IDS_NATIVOS = {"idle", "volume", "sound", "clock", "player", "toast",
+               "panel", "session", "tray"}
+IPC_NATIVOS = {"k4", "k4.panel", "k4.sound", "k4.session", "k4.tray"}
 
 RE_ID = re.compile(r"[a-z0-9][a-z0-9-]*")
 
@@ -252,7 +266,7 @@ def marcar_choques(combinado):
     segundo MUERTO y lo cuenta en el log y en ningún sitio más. El plugin
     figura cargado y sin error, y sus comandos sencillamente no contestan.
     """
-    dueno = {}
+    dueno = {t: "nativo" for t in IPC_NATIVOS}
     for item in combinado:
         if not item.get("cargable", True):
             continue
@@ -317,8 +331,67 @@ def normalizar(m):
     return n
 
 
+def validar_nativo(fallos):
+    """Native host features: fixed ids, existing entries, complete qmldir."""
+    try:
+        datos = json.loads(CATALOGO_NATIVO.read_text())
+    except Exception as exc:
+        fallos.append(f"features/catalog.json ilegible: {exc}")
+        return set()
+    feats = datos.get("features") or []
+    ids: set[str] = set()
+    ordenes: set[int] = set()
+    for item in feats:
+        ident = item.get("id")
+        entrada = item.get("entry")
+        if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
+            fallos.append(f"nativo id inválido: {ident!r}")
+            continue
+        if ident in ids:
+            fallos.append(f"nativo id duplicado: {ident}")
+        ids.add(ident)
+        if ident not in IDS_NATIVOS:
+            fallos.append(f"nativo {ident}: id no reservado")
+        orden = item.get("order")
+        if not isinstance(orden, int) or orden in ordenes:
+            fallos.append(f"nativo {ident}: order duplicado o inválido")
+        else:
+            ordenes.add(orden)
+        if not isinstance(entrada, str):
+            fallos.append(f"nativo {ident}: falta entry")
+            continue
+        ruta = (CATALOGO_NATIVO.parent / str(entrada)).resolve()
+        try:
+            ruta.relative_to(RAIZ)
+        except ValueError:
+            fallos.append(f"nativo {ident}: entry fuera del repo")
+            continue
+        if not ruta.is_file():
+            fallos.append(f"nativo {ident}: no existe {entrada}")
+            continue
+        texto = ruta.read_text()
+        if "pragma Singleton" not in texto or "Singleton {" not in texto:
+            fallos.append(f"nativo {ident}: la raíz debe ser un Singleton")
+        if "Quickshell" not in texto:
+            fallos.append(f"nativo {ident}: falta import Quickshell "
+                          "(Singleton no es un tipo sin él)")
+        if ("IpcHandler" in texto or "Process" in texto
+                or "FileView" in texto or "StdioCollector" in texto
+                or "SplitParser" in texto) and "Quickshell.Io" not in texto:
+            fallos.append(f"nativo {ident}: falta import Quickshell.Io")
+    if ids != IDS_NATIVOS - {"tray"}:
+        fallos.append(f"nativo: ids {sorted(ids)} != esperados {sorted(IDS_NATIVOS - {'tray'})}")
+    # services/ and core/ qmldir stay complete for native singletons/views.
+    for qmldir_rel in ["services/qmldir", "core/qmldir"]:
+        qmldir = RAIZ / qmldir_rel
+        if not qmldir.is_file():
+            fallos.append(f"falta {qmldir_rel}")
+    return ids
+
+
 def validar_repo(plugins, fallos):
     """Los de casa: catálogo, name, carpeta y qmldir al día."""
+    nativos = validar_nativo(fallos)
     ids: set[str] = set()
     for item in plugins:
         ident = item.get("id")
@@ -372,6 +445,9 @@ def validar_repo(plugins, fallos):
         if sin_declarar:
             fallos.append(f"{ident}: usa sin declarar: "
                           + ", ".join(sorted(sin_declarar)))
+
+    for duplicado in sorted(ids & nativos):
+        fallos.append(f"id {duplicado}: nativo y plugin a la vez")
 
     carpetas = {p.name for p in (RAIZ / "plugins").iterdir()
                 if p.is_dir() and (p / (p.name + "Plugin.qml")).is_file()}
@@ -510,6 +586,9 @@ def validar_carpeta(d, ids_repo, version_host):
         return mal("id-no-coincide",
                    f"el id {ident!r} no coincide con la carpeta {d.name!r}",
                    f"{ident} / {d.name}")
+    if ident in IDS_NATIVOS:
+        return mal("id-nativo", f"el id {ident!r} es una función nativa de la barra",
+                   ident)
     if ident in ids_repo:
         return mal("id-ocupado", "el id ya lo usa un plugin de la barra")
     entrada = m.get("entry")
@@ -588,8 +667,14 @@ def validar_carpeta(d, ids_repo, version_host):
                        ", ".join(sorted(faltan)))
 
     #  Los comandos que registra, para que la barra los enseñe y para que
-    #  `marcar_choques` pueda cruzarlos con los del resto.
+    #  `marcar_choques` pueda cruzarlos con los del resto. Native targets
+    #  belong to the host and cannot be claimed.
     item["comandos"] = comandos_de_carpeta(d)
+    nativos = set(item["comandos"].get("ipc") or []) & IPC_NATIVOS
+    if nativos:
+        return mal("comando-nativo",
+                   "el comando " + sorted(nativos)[0] + " es de la barra",
+                   sorted(nativos)[0])
 
     #  El qmldir, generado si falta o si envejeció: con el esquema de URLs de
     #  Quickshell los tipos hermanos no se resuelven solos, y pedirle a cada

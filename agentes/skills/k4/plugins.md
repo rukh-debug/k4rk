@@ -99,13 +99,16 @@ Nine things that are easy to get wrong and cost an hour each:
   visible ✕, ship all three — the first two have to be known, and a cross does
   not.
 
-- **Choose `priority` above 50, or the clock eats your panel.** The bar's
-  resting views — clock at 50, player at 55 — activate on `Island.hovered`, so
-  a panel below them turns into the clock the moment the user puts the pointer
-  on the island *to reach your close button*. Measured map: 40 volume, 50
-  clock, 55 player, 59 toast, 60 control center, 64 dungeon, 66 settings, 80
-  launcher. Above the resting views so you survive being touched; below what
-  the user opens on purpose if yours can open itself.
+- **Choose `priority` above 50, or the native clock eats your panel.** The
+  bar's native resting views — clock at 50, player at 55 — activate on
+  `Island.hovered`, so a panel below them turns into the clock the moment
+  the user puts the pointer on the island *to reach your close button*.
+  Measured map: 0 pill, 40 volume, 50 clock, 55 player, 59 toast, 60 control
+  center, 61 sound, 63 tray, 66 settings, 72 apps, 80 launcher, 86 session.
+  Native ids (`idle`, `volume`, `sound`, `clock`, `player`, `toast`,
+  `panel`, `session`, `tray`) are reserved — do not use them. Above the
+  resting views so you survive being touched; below what the user opens on
+  purpose if yours can open itself.
 
 - **`"aplicacion": true` in the manifest, or nobody finds you.** The app centre
   filters on exactly that key, so without it your plugin is installed, enabled,
@@ -146,7 +149,9 @@ And one that is worse than an hour: **never run a probe that can block.** A `Pro
 `superficies` are the two lists that matter and both are checked; see below.
 
 The entry QML is a `K4.Plugin`. From there you get the whole API under the
-`K4` namespace — the same one the built-in plugins use.
+`K4` namespace. Native host features are not templates: do not copy
+`services/*Island.qml` — they use private host services outside the public
+API.
 
 ## Permissions
 

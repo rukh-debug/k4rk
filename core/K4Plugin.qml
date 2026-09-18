@@ -3,9 +3,9 @@
 //
 //  El tipo de verdad es `K4.Plugin` (api/K4/Plugin.qml): un plugin externo no
 //  puede llegar a core/ por ruta relativa, así que el contrato tiene que estar
-//  donde llega cualquiera — el módulo K4. Los 20 de casa siguen escribiendo
-//  `K4Plugin {}` y les llega por aquí, sin tocar veinte ficheros para un
-//  renombrado.
+//  donde llega cualquiera — el módulo K4. Los plugins del repo siguen
+//  escribiendo `K4Plugin {}` y les llega por aquí, sin tocar cada fichero
+//  para un renombrado. Native host features use core/NativeFeature instead.
 
 import K4 as K4
 

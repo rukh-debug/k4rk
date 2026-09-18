@@ -34,22 +34,10 @@ ColumnLayout {
     //  plugin's `summonCommand` — what the copy button hands out, empty
     //  when the surface cannot be opened from outside.
     //
-    //  Plus the native tray: bar chrome, not a plugin, but a summoned
-    //  surface all the same, so it gets the same card. Its placement id
-    //  stays "tray", and entries users already saved keep working.
-    readonly property var vistas: {
-        const salida = []
-        const lista = PluginManager.instancias
-        for (let i = 0; i < lista.length; ++i) {
-            const p = lista[i]
-            if (p.colocable)
-                salida.push({ id: p.name, nombre: p.title || p.name,
-                              ipc: p.summonCommand || "" })
-        }
-        salida.push({ id: TrayIsland.name, nombre: TrayIsland.title,
-                      ipc: TrayIsland.summonCommand })
-        return salida
-    }
+    //  Every summoned surface, native or plugin: native bar chrome gets
+    //  the same card as a summoned plugin view. Placement ids are stable
+    //  across the migration, so entries users already saved keep working.
+    readonly property var vistas: SurfaceRegistry.placeableSurfaces
 
     //  «» is Follow bar: no entry of its own, the bar's edge and alignment.
     //  It is stored as an ABSENT key and not as a copy of the bar's

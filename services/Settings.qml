@@ -51,11 +51,86 @@ Singleton {
     // Off by default: tray icons in the pill are usually noise, and hovering
     // already opens the island where they are visible — and clickable,
     // unlike in the pill.
+    // Kept for one-time migration into pillHiddenItems; new code reads
+    // pillItemEnabled("tray") instead.
     property bool trayInPill: false
     // widgets/NotifStrip.qml: recent notifications on hover.
     property bool notificationsOnHover: true
     // services/Notifs.qml: dismiss an app's notifications when switching to it.
     property bool notificationsOnFocus: true
+    // Native player peek preference. Migrated once from the old per-plugin
+    // player estado.json; afterwards this is the single owner.
+    property bool playerPeekOnChange: true
+
+    // ── the at-rest pill ──────────────────────────────────────
+    // The folded pill is one ordered row of coherent native blocks. The
+    // preference says whether a block may appear; runtime data says whether
+    // it currently has anything to show. Capsule extensions keep their own
+    // declared left/right flank outside this order.
+    property var pillOrder: ["media", "clock-workspaces", "minimized",
+                             "plugin-indicators", "tray"]
+    property var pillHiddenItems: ["tray"]
+
+    readonly property var pillItemIds: ["media", "clock-workspaces",
+        "minimized", "plugin-indicators", "tray"]
+
+    // pillOrder made honest: unknown ids dropped, forgotten ids appended.
+    // Disabled items stay in the saved order so re-enabling restores place.
+    readonly property var pillEffectiveOrder: {
+        const guardados = pillOrder || []
+        const fuera = []
+        for (let i = 0; i < guardados.length; ++i) {
+            if (typeof guardados[i] === "string"
+                    && pillItemIds.indexOf(guardados[i]) >= 0
+                    && fuera.indexOf(guardados[i]) < 0)
+                fuera.push(guardados[i])
+        }
+        for (let j = 0; j < pillItemIds.length; ++j) {
+            if (fuera.indexOf(pillItemIds[j]) < 0)
+                fuera.push(pillItemIds[j])
+        }
+        return fuera
+    }
+
+    function pillItemEnabled(id) {
+        const ocultos = pillHiddenItems || []
+        // Legacy switch still wins until migration runs once.
+        if (id === "tray" && !pillMigrated && !trayInPill)
+            return false
+        return ocultos.indexOf(id) < 0
+    }
+
+    function setPillItemEnabled(id, enabled) {
+        if (pillItemIds.indexOf(id) < 0)
+            return
+        const ocultos = (pillHiddenItems || []).slice()
+        const at = ocultos.indexOf(id)
+        if (enabled && at >= 0)
+            ocultos.splice(at, 1)
+        else if (!enabled && at < 0)
+            ocultos.push(id)
+        pillHiddenItems = ocultos
+        guardar()
+    }
+
+    function movePillItem(id, delta) {
+        const lista = pillEffectiveOrder.slice()
+        const de = lista.indexOf(id)
+        const a = de + delta
+        if (de < 0 || a < 0 || a >= lista.length)
+            return
+        lista.splice(de, 1)
+        lista.splice(a, 0, id)
+        const missing = (pillOrder || []).filter(function (saved) {
+            return lista.indexOf(saved) < 0
+        })
+        pillOrder = lista.concat(missing)
+        guardar()
+    }
+
+    // One-shot migration marker: true once trayInPill has been folded into
+    // pillHiddenItems. Persisted so the fold runs exactly once.
+    property bool pillMigrated: false
 
     //  ── the Settings island ────────────────────
     //  plugins/Settings/SettingsPlugin.qml sizes its island with these. They
@@ -72,7 +147,7 @@ Singleton {
     property bool wallpaperPalette: true
 
     //  ── the control centre ──────────────────
-    //  plugins/Panel dresses itself with these. The WIDTH is a number you
+    //  The native control centre dresses itself with these. The WIDTH is a number you
     //  turn; the height is not, and on purpose: it is derived from what is
     //  on show (each block brings its own height), so hiding the media row
     //  makes the centre shorter instead of leaving a hole. Blocks can be
@@ -240,7 +315,7 @@ Singleton {
 
     // ── shortcuts ─────────────────────────────────────────────────
     //  Which applications appear in the control center strip, by plugin
-    //  ID. plugins/Panel/PanelView.qml draws it, and the application center
+    //  ID. core/PanelIslandView.qml draws it, and the application center
     //  edits it through each card's pin.
     //
     //  IDs rather than copies of names and icons: renaming a plugin or
@@ -276,6 +351,9 @@ Singleton {
     readonly property var definicion: [
         {
             grupo: "Island",
+            claves: ["pill", "at rest", "clock", "media", "workspace",
+                     "minimized", "indicator", "tray", "order", "visibility",
+                     "peek", "track"],
             glifo: 0xF1513,
             desc: "How much room the bar keeps, and when it gets out of the way.",
             //  Position, alignment and space usage are hard to explain in
@@ -315,8 +393,10 @@ Singleton {
                   desc: "How round the rim turns at the screen's corners",
                   glifo: 0xF0607 },   // md-rounded_corner
                 { tipo: "titulo", nombre: "The pill" },
-                { id: "trayInPill", nombre: "Tray in the pill",
-                  desc: "Icons of background apps", glifo: 0xF0FB0 },
+                { tipo: "titulo", nombre: "Automatic views" },
+                { id: "playerPeekOnChange", nombre: "Peek when the track changes",
+                  desc: "A few seconds with the new track, then it leaves on its own",
+                  glifo: 0xF075A },
                 { tipo: "titulo", nombre: "Notifications" },
                 { id: "notificationsOnHover", nombre: "Notifications on hover",
                   desc: "Recent ones, under the clock and player", glifo: 0xF009A },
@@ -547,6 +627,8 @@ Singleton {
     readonly property var claves: [
         "barPosition", "barAlignment", "islandSpace",
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
+        "playerPeekOnChange",
+        "pillOrder", "pillHiddenItems", "pillMigrated",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont", "wallpaperPalette",
         "panelWidth", "panelShowToggles", "panelTileWifi",
@@ -599,6 +681,56 @@ Singleton {
         sonido: "sound", agentes: "agents"
     })
 
+    function migrarPildora() {
+        if (pillMigrated)
+            return
+        // Fold the legacy tray switch into the new hidden-items list once.
+        // An explicit new-model value wins; otherwise the old switch decides.
+        const ocultos = (pillHiddenItems || []).slice()
+        const at = ocultos.indexOf("tray")
+        if (trayInPill && at >= 0)
+            ocultos.splice(at, 1)
+        else if (!trayInPill && at < 0)
+            ocultos.push("tray")
+        pillHiddenItems = ocultos
+        pillMigrated = true
+        guardar()
+    }
+
+    function migrarPlayerPeek() {
+        // The host setting wins when already present. Otherwise read the
+        // legacy per-plugin file; the migrated value is then persisted.
+        if (_peekDesdeHost)
+            return
+        lectorPlayerPeek.cargar()
+        guardar()
+    }
+
+    property var lectorPlayerPeek: FileView {
+        path: (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins/player/estado.json"
+        blockLoading: true
+        function cargar() {
+            if (ajustes.playerPeekOnChange !== undefined && ajustes._peekDesdeHost)
+                return
+            try {
+                const bruto = text()
+                if (!bruto || bruto.length === 0)
+                    return
+                const d = JSON.parse(bruto)
+                if (!ajustes._peekDesdeHost) {
+                    if (d && d.peekOnChange !== undefined)
+                        ajustes.playerPeekOnChange = d.peekOnChange === true
+                    else if (d && d.asomarAlCambiar !== undefined)
+                        ajustes.playerPeekOnChange = d.asomarAlCambiar === true
+                }
+            } catch (e) {
+            }
+        }
+    }
+    // Tracks whether playerPeekOnChange came from ajustes.json this boot,
+    // so the legacy file cannot overwrite an explicit host value.
+    property bool _peekDesdeHost: false
+
     function cargar() {
         const bruto = vista.text()
 
@@ -616,6 +748,8 @@ Singleton {
                     s.quickAccess = s.quickAccess.map(function (id) {
                         return idsViejos[id] !== undefined ? idsViejos[id] : id
                     })
+                if (s.playerPeekOnChange !== undefined)
+                    _peekDesdeHost = true
                 for (let i = 0; i < claves.length; ++i)
                     if (s[claves[i]] !== undefined)
                         ajustes[claves[i]] = s[claves[i]]
@@ -650,5 +784,7 @@ Singleton {
         }
 
         cargado = true
+        migrarPildora()
+        migrarPlayerPeek()
     }
 }

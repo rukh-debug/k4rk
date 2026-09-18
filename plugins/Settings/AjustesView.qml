@@ -1080,7 +1080,8 @@ FadeIn {
                             //  And a section can bring something of its own on
                             //  top of its options. The Island one carries a
                             //  sketch of the screen: it turns three similar
-                            //  words into a difference you can see.
+                            //  words into a difference you can see. Below it,
+                            //  the at-rest pill editor edits composition.
                             Loader {
                                 visible: active
                                 Layout.fillWidth: true
@@ -1093,6 +1094,17 @@ FadeIn {
                                         && bloque.modelData.atajo === undefined
                                         && !vista.searching
                                 sourceComponent: Component { PrevioIsland {} }
+                            }
+
+                            Loader {
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: active && item
+                                    ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "island"
+                                        && bloque.modelData.atajo === undefined
+                                        && !vista.searching
+                                sourceComponent: Component { PillEditor {} }
                             }
 
                             //  Each group chooses how it paints. Today only

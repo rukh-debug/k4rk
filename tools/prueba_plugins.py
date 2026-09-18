@@ -133,6 +133,25 @@ def prueba_id_del_repo_gana():
     igual("no se puede suplantar a uno de la barra", v["cargable"], False)
 
 
+def prueba_id_nativo_reservado():
+    for ident in ["idle", "volume", "sound", "clock", "player", "toast",
+                  "panel", "session", "tray"]:
+        d = carpeta(ident, manifiesto_base(ident),
+                    {"Plugin.qml": "Item {}\n"})
+        v = plugins.validar_carpeta(d, set(), HOST)
+        igual("el id nativo %s no se puede reclamar" % ident,
+              v["cargable"], False)
+        igual("con su código", v["motivo"], "id-nativo")
+
+
+def prueba_comando_nativo_reservado():
+    d = carpeta("mezclador", manifiesto_base("mezclador"),
+                {"Plugin.qml": 'Item { K4.Ipc { target: "k4.sound" } }\n'})
+    v = plugins.validar_carpeta(d, set(), HOST)
+    igual("el comando nativo no se puede reclamar", v["cargable"], False)
+    igual("con su código", v["motivo"], "comando-nativo")
+
+
 def prueba_entry_con_ruta():
     d = carpeta("listillo", dict(manifiesto_base("listillo"),
                                  entry="../fuera.qml"))

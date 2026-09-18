@@ -10,6 +10,14 @@ singleton Bt 1.0 Bt.qml
 singleton Notifs 1.0 Notifs.qml
 singleton Tray 1.0 Tray.qml
 singleton TrayIsland 1.0 TrayIsland.qml
+singleton IdleIsland 1.0 IdleIsland.qml
+singleton VolumeIsland 1.0 VolumeIsland.qml
+singleton ClockIsland 1.0 ClockIsland.qml
+singleton PlayerIsland 1.0 PlayerIsland.qml
+singleton ToastIsland 1.0 ToastIsland.qml
+singleton SoundIsland 1.0 SoundIsland.qml
+singleton PanelIsland 1.0 PanelIsland.qml
+singleton SessionIsland 1.0 SessionIsland.qml
 singleton Settings 1.0 Settings.qml
 singleton Enganches 1.0 Enganches.qml
 singleton Clipboard 1.0 Clipboard.qml
@@ -22,6 +30,7 @@ singleton Ventanas 1.0 Ventanas.qml
 singleton Sesion 1.0 Sesion.qml
 singleton Modulos 1.0 Modulos.qml
 singleton PluginManager 1.0 PluginManager.qml
+singleton SurfaceRegistry 1.0 SurfaceRegistry.qml
 singleton Indicadores 1.0 Indicadores.qml
 singleton Ambiente 1.0 Ambiente.qml
 singleton Consola 1.0 Consola.qml

@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "features": [
+    {
+      "id": "idle",
+      "entry": "../services/IdleIsland.qml",
+      "title": "Pill",
+      "description": "The island that hosts every view: the pill itself",
+      "icon": "0xF0765",
+      "order": 0
+    },
+    {
+      "id": "volume",
+      "entry": "../services/VolumeIsland.qml",
+      "title": "Volume",
+      "description": "The transient volume HUD that surfaces over the pill",
+      "icon": "0xF057E",
+      "order": 10
+    },
+    {
+      "id": "sound",
+      "entry": "../services/SoundIsland.qml",
+      "title": "Sound",
+      "description": "Output devices and per-stream volume control",
+      "icon": "0xF02CB",
+      "order": 20
+    },
+    {
+      "id": "clock",
+      "entry": "../services/ClockIsland.qml",
+      "title": "Clock",
+      "description": "The clock view: time, notifications on hover",
+      "icon": "0xF0954",
+      "order": 30
+    },
+    {
+      "id": "player",
+      "entry": "../services/PlayerIsland.qml",
+      "title": "Player",
+      "description": "Media controls for whatever MPRIS is playing",
+      "icon": "0xF0387",
+      "order": 40
+    },
+    {
+      "id": "toast",
+      "entry": "../services/ToastIsland.qml",
+      "title": "Notifications",
+      "description": "The notification band and its toasts",
+      "icon": "0xF0369",
+      "order": 50
+    },
+    {
+      "id": "panel",
+      "entry": "../services/PanelIsland.qml",
+      "title": "Control centre",
+      "description": "The control centre: toggles, media and quick settings",
+      "icon": "0xF0492",
+      "order": 60
+    },
+    {
+      "id": "session",
+      "entry": "../services/SessionIsland.qml",
+      "title": "Session",
+      "description": "Lock, sleep, reboot and leave, with a real lock screen",
+      "icon": "0xF0425",
+      "application": true,
+      "order": 130
+    }
+  ],
+  "version": "1.0.0"
+}

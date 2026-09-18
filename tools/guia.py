@@ -133,8 +133,10 @@ def ordenes_ipc():
     """Todas las funciones que publica algún IpcHandler, por objetivo."""
     salida = {}
     #  Los ejemplos cuentan: la guía enseña `k4.hola toggle` y eso tiene que
-    #  seguir existiendo, que es justo lo que se copia y se pega.
+    #  seguir existiendo, que es justo lo que se copia y se pega. Native
+    #  surfaces publish from services/ now, not plugins/.
     for f in (list((RAIZ / "plugins").rglob("*.qml"))
+              + list((RAIZ / "services").rglob("*.qml"))
               + list((RAIZ / "ejemplos").rglob("*.qml"))
               + [RAIZ / "shell.qml"]):
         texto = f.read_text()

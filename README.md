@@ -74,12 +74,14 @@ a chip in the wallpaper tab.
 
 ---
 
-## Plugins
+## Native features and plugins
 
-The clock is a plugin. So is the launcher, the control center. There is no
-privileged inner circle — **the API a stranger's plugin gets
-is the API the launcher uses.** Plugins load in isolation, and a broken one is
-recorded with its error while the bar starts without it.
+The pill, volume HUD, sound mixer, clock, player, notifications, control
+centre and session are native host features: always on, owned by k4 itself.
+Everything else — launcher, settings, clipboard, applications and anything
+you install — is a plugin. Plugins load in isolation, and a broken one is
+recorded with its error while the bar starts without it. Native failures
+report through `k4 hostStatus` instead.
 
 ### Write one in a minute
 
@@ -103,7 +105,7 @@ That works, and it is the point. k4 installs a skill for coding agents —
 `./instalar` links it into `~/.claude/skills/` and `~/.config/agents/skills/`
 — so Claude Code, Codex and anything else that reads those already know:
 
-- that this machine runs k4, and that everything in the bar is a plugin;
+- that this machine runs k4, with native host features plus installable plugins;
 - the shape of a plugin, with the whole starter file in front of them;
 - which permissions exist, and that using an undeclared one makes it refuse to load;
 - to test with `--test` instead of restarting your bar;
@@ -275,11 +277,12 @@ running keep running.
 
 ```text
 shell.qml       host, arbitration and layer surface
-core/           theme tokens, the K4Plugin contract, stateless widgets
+core/           theme tokens, contracts, native views, stateless widgets
 api/K4/         public plugin API
-services/       persistent domain services and singletons
+services/       persistent domain services, native islands, SurfaceRegistry
+features/       native feature catalog (ids, order, metadata)
 widgets/        data-driven reusable widgets
-plugins/        one directory per built-in plugin
+plugins/        one directory per installable plugin
 agentes/        the skill coding agents read
 docs/           API and plugin guides
 tools/          helper scripts and validators
@@ -287,7 +290,7 @@ hypr/           generated Hyprland integration
 ```
 
 Dependencies flow `core → services → widgets → plugins`. Plugins never import
-each other; references are injected by `shell.qml`.
+each other; references are injected by `SurfaceRegistry`.
 
 Before opening a pull request:
 

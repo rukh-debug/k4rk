@@ -41,7 +41,7 @@ ColumnLayout {
                 id: cards[i].plugin + "." + cards[i].name,
                 nombre: f.titulo || cards[i].name,
                 altura: Math.max(8, Math.round((f.alto || 0) / 2)),
-                glifo: f.glifo || (PluginManager.metadata(cards[i].plugin) || {}).glifo || 0xF0431,
+                glifo: f.glifo || SurfaceRegistry.iconFor(cards[i].plugin).glifo || 0xF0431,
                 desc: f.desc || "Plugin card"
             })
         }

@@ -73,7 +73,7 @@ K4.Plugin {
     //  guess where it went; in gray one sees it is there and why it
     //  does not open.
     readonly property var lista: {
-        const todas = PluginManager.aplicaciones
+        const todas = SurfaceRegistry.aplicaciones
         const q = busqueda.trim().toLowerCase()
         if (q.length === 0)
             return todas
@@ -124,7 +124,7 @@ K4.Plugin {
     //  one— and it looks like nothing happened.
     function lanzar(id) {
         cerrar()
-        PluginManager.abrirAplicacion(id)
+        SurfaceRegistry.abrirAplicacion(id)
     }
 
     function lanzarSeleccion() {
@@ -167,7 +167,7 @@ K4.Plugin {
                 resultados = []
                 return
             }
-            resultados = PluginManager.aplicaciones
+            resultados = SurfaceRegistry.aplicaciones
                 .filter(function (a) {
                     return a.habilitado
                         && a.nombre.toLowerCase().indexOf(q) >= 0
@@ -184,7 +184,7 @@ K4.Plugin {
                 })
         }
 
-        onElegido: function (id) { PluginManager.abrirAplicacion(id) }
+        onElegido: function (id) { SurfaceRegistry.abrirAplicacion(id) }
     }
 
     K4.Ipc {

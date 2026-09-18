@@ -148,9 +148,11 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     description = "A Dynamic Island for Hyprland, built with Quickshell";
     longDescription = ''
       k4 sits collapsed at the edge of the screen and expands only when it
-      has something to say. Everything it does — the clock included — is a
-      plugin. This package runs it from a writable mirror of the store path
-      so user plugins and hot reload keep working under Nix.
+      has something to say. Core surfaces — pill, clock, player,
+      notifications, control centre, sound, session — are native host
+      features; the rest are installable plugins. This package runs it
+      from a writable mirror of the store path so user plugins and hot
+      reload keep working under Nix.
     '';
     homepage = "https://github.com/rukh-debug/k4rk";
     license = lib.licenses.mit;

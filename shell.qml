@@ -1,8 +1,10 @@
-//  k4 — host de la island.
+//  k4 — host of the island.
 //
-//  Aquí no hay lógica de ningún módulo: esto monta la superficie, dibuja la
-//  silueta y decide qué plugin se queda la island. Añadir un módulo es crear
-//  una carpeta en plugins/ y darla de alta en plugins/catalog.json.
+//  No module logic lives here: this mounts the surface, draws the silhouette
+//  and decides which surface keeps the island. A new plugin is a folder in
+//  plugins/ registered in plugins/catalog.json; a new native feature is a
+//  services/*Island.qml singleton with its view in core/, metadata in
+//  features/catalog.json, and an entry in SurfaceRegistry.nativeInstances.
 
 import QtQuick
 import QtQuick.Shapes
@@ -31,12 +33,12 @@ Scope {
 
     // ── the native surfaces ─────────────────────────────────────
     //
-    //  The tray is bar chrome, not a plugin: always on and owned by
-    //  the host (services/TrayIsland.qml). It still quacks like a
-    //  surface — name, priority, active, view, close() — so every
-    //  arbitration below runs over plugins plus natives, in one list.
-    //  A second native surface joins by appending here and nowhere else.
-    readonly property var surfaces: PluginManager.instancias.concat([TrayIsland])
+    //  Bar chrome and extensions arbitrate as one ordered list. Native
+    //  features (services/*Island.qml, always on) and dynamically loaded
+    //  plugins meet in services/SurfaceRegistry.qml, which keeps stable
+    //  host order so equal-priority ties resolve the way the catalog did.
+    //  Every arbitration below reads this list and nowhere else.
+    readonly property var surfaces: SurfaceRegistry.surfaces
 
     // ── quién se queda la island ──────────────────────────────────
     // Gana el activo de mayor prioridad. El binding se recalcula solo cuando
@@ -142,7 +144,7 @@ Scope {
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (p.habilitado && p.active && p.viewLoaded && p.colocable
-                    && !p.transitorio && p.name !== PluginManager.pillId)
+                    && !p.transitorio && p.name !== SurfaceRegistry.pillId)
                 salida.push(p.name)
         }
         return salida
@@ -179,7 +181,7 @@ Scope {
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (!p.habilitado || !p.active || !p.viewLoaded || !p.colocable
-                    || p.transitorio || p.name === PluginManager.pillId)
+                    || p.transitorio || p.name === SurfaceRegistry.pillId)
                 continue
             if (llegaron.indexOf(p.name) >= 0)
                 continue
@@ -215,12 +217,12 @@ Scope {
     onActivePluginChanged: {
         apartarTransitorios()
         const anterior = Island.ocupante
-        if (activePlugin && activePlugin.name !== PluginManager.pillId) {
+        if (activePlugin && activePlugin.name !== SurfaceRegistry.pillId) {
             // Desde reposo, el origen explícito del clic; sin él, el monitor
             // con foco. Entre dos vistas abiertas se conserva la pantalla para
             // que navegar por el panel no haga saltar la island.
             if (Island.pantallaPedida.length > 0
-                    || anterior.length === 0 || anterior === PluginManager.pillId)
+                    || anterior.length === 0 || anterior === SurfaceRegistry.pillId)
                 Island.pantallaActiva = Island.tomarPantallaPedida()
         } else {
             Island.pantallaPedida = ""
@@ -239,13 +241,13 @@ Scope {
     function abrirPanelEn(pantalla) {
         Island.pedirPantalla(pantalla)
         Island.pantallaActiva = pantalla
-        const panel = PluginManager.instancia("panel")
+        const panel = SurfaceRegistry.instance("panel")
         if (panel)
             panel.openTab("controls")
     }
 
     function backgroundTap(pantalla, mostrado) {
-        if (mostrado && mostrado.name !== PluginManager.pillId && mostrado.handlesBackgroundTap)
+        if (mostrado && mostrado.name !== SurfaceRegistry.pillId && mostrado.handlesBackgroundTap)
             mostrado.backgroundTapped()
         else
             abrirPanelEn(pantalla)
@@ -282,6 +284,8 @@ Scope {
         void Clock.date
         void Workspaces.list
         void Tray.count
+        void Sesion.bloqueado
+        void SurfaceRegistry.pillId
         void Settings.cargado
         void PluginManager.cargado
         void Clipboard.cargado
@@ -289,6 +293,7 @@ Scope {
         void Modulos.count
         void WallpaperPalette.ready
         void Fondos.lista
+        try { SurfaceRegistry.repartir() } catch (e) {}
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -299,7 +304,7 @@ Scope {
     //  Atajo del registro: el plugin vivo con ese id, o null si está
     //  deshabilitado o roto. Con `?.` detrás, llamar a uno apagado no hace
     //  nada, que es exactamente lo que debe hacer.
-    function _p(id) { return PluginManager.instancia(id) }
+    function _p(id) { return SurfaceRegistry.instance(id) }
 
     IpcHandler {
         target: "k4"
@@ -313,11 +318,35 @@ Scope {
         }
         function togglePanel(): void { _p("panel")?.toggle("controls") }
         function toggleNotifications(): void { _p("panel")?.toggle("notifications") }
-        function pluginEnable(id: string): void { PluginManager.habilitar(id) }
-        function pluginDisable(id: string): void { PluginManager.deshabilitar(id) }
-        function pluginToggle(id: string): void { PluginManager.alternar(id) }
+        function pluginEnable(id: string): void {
+            if (SurfaceRegistry.nativeIds.indexOf(id) >= 0) {
+                console.warn("k4: '" + id + "' is native and always on")
+                return
+            }
+            PluginManager.habilitar(id)
+        }
+        function pluginDisable(id: string): void {
+            if (SurfaceRegistry.nativeIds.indexOf(id) >= 0) {
+                console.warn("k4: '" + id + "' is native and always on")
+                return
+            }
+            PluginManager.deshabilitar(id)
+        }
+        function pluginToggle(id: string): void {
+            if (SurfaceRegistry.nativeIds.indexOf(id) >= 0) {
+                console.warn("k4: '" + id + "' is native and always on")
+                return
+            }
+            PluginManager.alternar(id)
+        }
         function pluginRetry(id: string): void { PluginManager.reintentar(id) }
-        function pluginReload(id: string): void { PluginManager.recargar(id) }
+        function pluginReload(id: string): void {
+            if (SurfaceRegistry.nativeIds.indexOf(id) >= 0) {
+                console.warn("k4: '" + id + "' is native; restart the bar to reload it")
+                return
+            }
+            PluginManager.recargar(id)
+        }
         function pluginRefresh(): void { PluginManager.releerCatalogo() }
         //  Devuelve, no imprime. Lo de antes hacía `console.log`, así que el
         //  JSON acababa en el log de Quickshell y quien lo había pedido por
@@ -330,6 +359,7 @@ Scope {
                          error: PluginManager.errores[m.id] || "" }
             }))
         }
+        function hostStatus(): string { return SurfaceRegistry.hostStatus() }
 
         //  Pregunta al registro qué hay más nuevo. Contesta al momento y el
         //  resultado llega después a `PluginManager.novedades`: la respuesta
@@ -434,7 +464,7 @@ Scope {
             //  nothing jumps after the update.
             readonly property var lugar: {
                 const p = pluginVisible
-                return p && p.name !== PluginManager.pillId
+                return p && p.name !== SurfaceRegistry.pillId
                     ? Settings.placementDe(p.name)
                     : { side: Settings.barPosition === "bottom"
                               ? "bottom" : "top",
@@ -457,12 +487,12 @@ Scope {
 
             // Solo la pantalla propietaria enseña la acción global. Las demás
             // siguen con su píldora, que sí pertenece a todos los monitores.
-            readonly property var idlePlugin: PluginManager.instancia(PluginManager.pillId)
+            readonly property var idlePlugin: SurfaceRegistry.instance(SurfaceRegistry.pillId)
             readonly property bool esPantallaActiva: root.activePlugin
-                && root.activePlugin.name !== PluginManager.pillId
+                && root.activePlugin.name !== SurfaceRegistry.pillId
                 && panelWindow.screen.name === Island.pantallaActiva
             readonly property var pluginVisible: root.activePlugin
-                && (root.activePlugin.name === PluginManager.pillId || esPantallaActiva)
+                && (root.activePlugin.name === SurfaceRegistry.pillId || esPantallaActiva)
                 ? root.activePlugin : idlePlugin
 
             //  ── the stage hand-off ────────────────────────────────
@@ -479,7 +509,7 @@ Scope {
             property Loader stageCurrent: null
 
             function isSummoned(p) {
-                return !!p && p.name !== PluginManager.pillId
+                return !!p && p.name !== SurfaceRegistry.pillId
                         && p.colocable && !p.transitorio
             }
 
@@ -682,7 +712,7 @@ Scope {
             readonly property bool ratonEncima: sobreIsla.hovered
                 || sobreFilo.hovered || zonaToque
             readonly property bool hayQueEnsenar: ratonEncima
-                || (!!pluginVisible && pluginVisible.name !== PluginManager.pillId)
+                || (!!pluginVisible && pluginVisible.name !== SurfaceRegistry.pillId)
 
             //  Vuelve al instante y se va con retraso. Al revés —irse en cuanto
             //  se cierra lo que había— la barra parpadea cada vez que cruzas el
@@ -824,7 +854,7 @@ Scope {
                 if (Island.apartada)
                     return WlrKeyboardFocus.None
                 const p = panelWindow.pluginVisible
-                if (!p || p !== root.activePlugin || p.name === PluginManager.pillId)
+                if (!p || p !== root.activePlugin || p.name === SurfaceRegistry.pillId)
                     return WlrKeyboardFocus.None
                 if (p.grabKeyboard)
                     return WlrKeyboardFocus.Exclusive
@@ -1214,10 +1244,10 @@ Scope {
                 //  directo, sin animación propia, para que el cuerpo no vaya
                 //  a remolque del ancho mientras este crece con su Behavior.
                 readonly property int extDerecha: pluginVisible
-                    && pluginVisible.name === PluginManager.pillId
+                    && pluginVisible.name === SurfaceRegistry.pillId
                     ? Extensions.rightWidth : 0
                 readonly property int extIzquierda: pluginVisible
-                    && pluginVisible.name === PluginManager.pillId
+                    && pluginVisible.name === SurfaceRegistry.pillId
                     ? Extensions.leftWidth : 0
 
                 //  La x que dejaría la píldora clavada, y la de verdad con
@@ -1437,7 +1467,7 @@ Scope {
                 //  reloj se activa con `Island.hovered`. Se separa del gesto
                 //  para poder retrasarlo, que es lo único que cambia aquí.
                 function abrirPorRaton() {
-                    if (!root.activePlugin || root.activePlugin.name === PluginManager.pillId)
+                    if (!root.activePlugin || root.activePlugin.name === SurfaceRegistry.pillId)
                         Island.pedirPantalla(panelWindow.screen.name)
                     else if (root.activePlugin.name === "clock"
                              || root.activePlugin.name === "player")
@@ -1470,7 +1500,7 @@ Scope {
                             //  segundos, ese medio segundo era la diferencia
                             //  entre alcanzarlo y verlo desaparecer.
                             const enReposo = !panelWindow.pluginVisible
-                                || panelWindow.pluginVisible.name === PluginManager.pillId
+                                || panelWindow.pluginVisible.name === SurfaceRegistry.pillId
                             if (!panelWindow.seEsconde || !enReposo)
                                 island.abrirPorRaton()
                         } else {
@@ -1722,11 +1752,16 @@ Scope {
                                 const p = stageOwner
                                 if (!p)
                                     return
-                                //  Natives have no catalog row to hang an
-                                //  error on; a load failure still lands in
-                                //  the bar log from the Loader itself.
-                                if (p.nativo === true)
+                                //  Natives report through host health; plugins
+                                //  keep their catalog error row.
+                                if (p.nativo === true) {
+                                    if (status === Loader.Error)
+                                        SurfaceRegistry.reportarErrorNativo(
+                                            p.name, "The view could not be loaded")
+                                    else if (status === Loader.Ready)
+                                        SurfaceRegistry.reportarErrorNativo(p.name, "")
                                     return
+                                }
                                 if (status === Loader.Error)
                                     PluginManager.registrarError(
                                         p.name, "The view could not be loaded")
@@ -1776,11 +1811,14 @@ Scope {
                                 const p = stageOwner
                                 if (!p)
                                     return
-                                //  Natives have no catalog row to hang an
-                                //  error on; a load failure still lands in
-                                //  the bar log from the Loader itself.
-                                if (p.nativo === true)
+                                if (p.nativo === true) {
+                                    if (status === Loader.Error)
+                                        SurfaceRegistry.reportarErrorNativo(
+                                            p.name, "The view could not be loaded")
+                                    else if (status === Loader.Ready)
+                                        SurfaceRegistry.reportarErrorNativo(p.name, "")
                                     return
+                                }
                                 if (status === Loader.Error)
                                     PluginManager.registrarError(
                                         p.name, "The view could not be loaded")
@@ -1818,7 +1856,7 @@ Scope {
     //  glances, not openings.
     readonly property bool hayVistaInvocada: {
         const p = activePlugin
-        return !!p && p.name !== PluginManager.pillId
+        return !!p && p.name !== SurfaceRegistry.pillId
                && p.colocable && !p.transitorio
     }
 

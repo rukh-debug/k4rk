@@ -120,9 +120,14 @@ and password drafts transient; see [control details](../docs/API.md#controls-key
 
 ## Catalog and registration
 
+Native host features (pill, volume, sound, clock, player, notifications,
+control centre, session) are always on and live outside the plugin system;
+their ids and IPC targets are reserved. Everything else is a plugin.
+
 Plugins are loaded **dynamically**, one by one, each in its own try: a plugin
 that fails to compile is recorded with its error and the bar starts without
-it. Disabled means not instantiated.
+it. Disabled means not instantiated. Native failures report through
+`k4 hostStatus`.
 
 A plugin of your own goes in `~/.config/k4/plugins/<id>/` with a `plugin.json`
 manifest — nothing in this repository is touched. See `docs/PLUGINS.md`;

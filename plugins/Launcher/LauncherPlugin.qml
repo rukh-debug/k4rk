@@ -99,7 +99,7 @@ K4Plugin {
             let imagen = r.imagen || ""
             let glifo = r.glifo || 0
             if (!imagen && !glifo && !r.icono) {
-                const suyo = PluginManager.iconoDe(r._plugin || "")
+                const suyo = SurfaceRegistry.iconFor(r._plugin || "")
                 imagen = suyo.imagen
                 glifo = suyo.glifo
             }
