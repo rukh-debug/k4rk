@@ -27,10 +27,15 @@ Singleton {
     property int anchoCentroMedido: 0
     property int anchoDerechoMedido: 0
 
-    readonly property int ladoEstimado: (Tray.count > 0
-        ? Math.min(Tray.count, 5) * 24 + 8 : 0) + 48
-        + Modulos.count * 180
-        + Indicadores.anchoAproximado
+    readonly property int ladoEstimado: {
+        const trayShown = Settings.pillTrayMax > 0
+            ? Math.min(Tray.count, Settings.pillTrayMax) : Tray.count
+        const minisShown = Settings.pillMinimizedMax > 0
+            ? Math.min(Modulos.count, Settings.pillMinimizedMax) : Modulos.count
+        return (Tray.count > 0 ? trayShown * 24 + 8 : 0) + 48
+            + minisShown * 180
+            + Indicadores.anchoAproximado
+    }
 
     readonly property int izqAncho: anchoIzqMedido > 0 ? anchoIzqMedido : 96
     readonly property int centroAncho: anchoCentroMedido > 0

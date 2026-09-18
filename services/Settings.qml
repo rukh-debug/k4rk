@@ -70,6 +70,11 @@ Singleton {
     property var pillOrder: ["media", "clock-workspaces", "minimized",
                              "plugin-indicators", "tray"]
     property var pillHiddenItems: ["tray"]
+    // How many items each pill block shows before summarizing the rest as
+    // "+N". Zero shows everything: no "+N" by default. Set a number to cap it.
+    property int pillTrayMax: 0
+    property int pillMinimizedMax: 0
+    property int pillIndicatorsMax: 0
 
     readonly property var pillItemIds: ["media", "clock-workspaces",
         "minimized", "plugin-indicators", "tray"]
@@ -393,6 +398,21 @@ Singleton {
                   desc: "How round the rim turns at the screen's corners",
                   glifo: 0xF0607 },   // md-rounded_corner
                 { tipo: "titulo", nombre: "The pill" },
+                { id: "pillTrayMax", tipo: "numero", min: 0, max: 32,
+                  paso: 1, unidad: "items",
+                  nombre: "Tray icons limit",
+                  desc: "How many tray icons the pill shows before summarizing the rest as +N. 0 shows all.",
+                  glifo: 0xF0FB0 },
+                { id: "pillMinimizedMax", tipo: "numero", min: 0, max: 32,
+                  paso: 1, unidad: "items",
+                  nombre: "Minimized items limit",
+                  desc: "How many minimized items the pill shows before summarizing the rest as +N. 0 shows all.",
+                  glifo: 0xF0047 },
+                { id: "pillIndicatorsMax", tipo: "numero", min: 0, max: 32,
+                  paso: 1, unidad: "items",
+                  nombre: "Plugin indicators limit",
+                  desc: "How many plugin indicators the pill shows before summarizing the rest as +N. 0 shows all.",
+                  glifo: 0xF0431 },
                 { tipo: "titulo", nombre: "Automatic views" },
                 { id: "playerPeekOnChange", nombre: "Peek when the track changes",
                   desc: "A few seconds with the new track, then it leaves on its own",
@@ -629,6 +649,7 @@ Singleton {
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "playerPeekOnChange",
         "pillOrder", "pillHiddenItems", "pillMigrated",
+        "pillTrayMax", "pillMinimizedMax", "pillIndicatorsMax",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont", "wallpaperPalette",
         "panelWidth", "panelShowToggles", "panelTileWifi",

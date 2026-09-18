@@ -76,7 +76,6 @@ FadeIn {
                 }
 
                 TrayRow {
-                    max: 5
                     iconSize: 16
                     interactive: true
                     Layout.alignment: Qt.AlignVCenter

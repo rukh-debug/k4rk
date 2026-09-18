@@ -156,7 +156,6 @@ FadeIn {
             // Same as in the clock: it is here, with the island
             // already unfolded, where tray icons can be clicked.
             TrayRow {
-                max: 4
                 iconSize: 16
                 interactive: true
                 Layout.leftMargin: 4

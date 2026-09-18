@@ -1,11 +1,11 @@
-//  Fila de iconos de bandeja.
+//  Tray icon row.
 //
-//  Va en la píldora y también en las vistas de hover (reloj y reproductor), y
-//  ese doble sitio no es capricho: al acercar el ratón la island cambia de
-//  vista, así que unos iconos que solo estuvieran en la píldora desaparecen
-//  justo antes de que puedas pulsarlos. En la píldora son indicadores; donde
-//  se puede pinchar de verdad es en la vista ya desplegada, que no se mueve
-//  mientras mantengas el ratón encima.
+//  It rides in the pill and also in the hover views (clock and player), and
+//  that double seat is no whim: hovering swaps the island to another view,
+//  so icons living only in the pill would vanish just before you could press
+//  them. In the pill they are indicators; where they can really be pressed
+//  is in the already unfolded view, which does not move while the pointer
+//  stays over it.
 
 import QtQuick
 import QtQuick.Layouts
@@ -15,17 +15,19 @@ import "../services"
 RowLayout {
     id: row
 
-    // cuántos iconos se enseñan antes de resumir el resto como "+n"
-    property int max: 4
+    // How many icons to show before summarizing the rest as "+n".
+    // Zero shows everything: no "+N" by default. Follows the user's
+    // pill setting unless a view overrides it.
+    property int max: Settings.pillTrayMax
     property int iconSize: 14
-    // en la píldora no: los objetivos son diminutos y un fallo lanzaría una
-    // aplicación cuando lo que querías era el centro de control
+    // Not in the pill: targets are tiny and a miss would launch an
+    // application when what you wanted was the control centre.
     property bool interactive: false
 
-    // se emite al pedir la bandeja entera (clic derecho)
+    // Emitted when the whole tray is requested (right click).
     signal menuRequested()
 
-    readonly property int shown: Math.min(Tray.count, max)
+    readonly property int shown: max > 0 ? Math.min(Tray.count, max) : Tray.count
 
     visible: Tray.count > 0 && (interactive || Settings.trayInPill)
     spacing: 4
@@ -58,7 +60,7 @@ RowLayout {
                 fillMode: Image.PreserveAspectFit
                 opacity: cell.modelData.status === 2 ? 1 : 0.85
 
-                // NeedsAttention: late, que para eso lo pide
+                // NeedsAttention: blink, that is what it asks for
                 SequentialAnimation on opacity {
                     running: cell.modelData.status === 2
                     loops: Animation.Infinite
@@ -77,11 +79,11 @@ RowLayout {
 
                 onClicked: function (mouse) {
                     if (mouse.button === Qt.RightButton)
-                        row.menuRequested()          // el menú vive en el módulo
+                        row.menuRequested()          // the menu lives in the module
                     else if (mouse.button === Qt.MiddleButton)
                         Tray.secondary(cell.modelData)
                     else if (!Tray.primary(cell.modelData))
-                        row.menuRequested()          // solo tiene menú: enséñalo
+                        row.menuRequested()          // menu-only: show it
                 }
 
                 onWheel: function (wheel) {

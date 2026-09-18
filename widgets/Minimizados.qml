@@ -1,8 +1,8 @@
-//  Los módulos apartados, en la píldora.
+//  Set-aside modules, in the pill.
 //
-//  Una cápsula por cada cosa que dejaste a medias. En la píldora es solo aviso
-//  —al acercar el ratón la island ya ha cambiado de vista—; en las vistas de
-//  hover se pulsa y vuelve donde estaba.
+//  One capsule per thing left half-done. In the pill it is notice-only
+//  —hovering already swaps the island to another view—; in the hover
+//  views it is pressed and goes back to where it was.
 
 import QtQuick
 import QtQuick.Layouts
@@ -14,19 +14,26 @@ RowLayout {
 
     property bool interactive: false
 
+    // How many items to show before summarizing the rest as "+n".
+    // Zero shows everything: no "+N" by default. Follows the user's
+    // pill setting unless a view overrides it.
+    property int max: Settings.pillMinimizedMax
+
+    readonly property int shown: max > 0 ? Math.min(Modulos.count, max) : Modulos.count
+
     visible: Modulos.count > 0
     spacing: 5
 
     Repeater {
-        model: Modulos.lista
+        model: Modulos.lista.slice(0, fila.shown)
 
         delegate: Rectangle {
             id: capsula
             required property var modelData
 
-            // El hueco de la aspa se reserva siempre, aunque solo se dibuje al
-            // pasar por encima: si no, la cápsula pega un salto de ancho justo
-            // cuando vas a pulsarla y el aspa se te escapa.
+            // The close-button gap is always reserved, even though it only
+            // paints on hover: without it the capsule jumps in width just
+            // as you go to press it and the button escapes you.
             Layout.preferredWidth: contenido.implicitWidth + (fila.interactive ? 38 : 10)
             Layout.preferredHeight: fila.interactive ? 22 : 17
             Layout.alignment: Qt.AlignVCenter
@@ -51,9 +58,9 @@ RowLayout {
                     font.pixelSize: fila.interactive ? 12 : 10
                 }
 
-                // En la píldora solo el icono y el detalle corto: el título
-                // completo se lee al abrir, y aquí lo que importa es que algo
-                // te está esperando.
+                // In the pill only the icon and the short detail: the full
+                // title reads on open, and what matters here is that
+                // something is waiting for you.
                 IslandLabel {
                     visible: capsula.modelData.detalle.length > 0
                     text: capsula.modelData.detalle
@@ -79,11 +86,11 @@ RowLayout {
                 }
             }
 
-            //  La aspa para descartar, al pasar por encima.
+            //  The close button to discard, on hover.
             //
-            //  El botón de en medio también vale, pero eso no lo adivina nadie:
-            //  sin algo que se vea, lo que dejaste a medias se queda ahí para
-            //  siempre y no hay forma obvia de quitarlo.
+            //  The middle button works too, but nobody guesses that:
+            //  without something visible, what you set aside stays there
+            //  forever with no obvious way to remove it.
             Rectangle {
                 visible: fila.interactive && (raton.containsMouse || aspaRaton.containsMouse)
                 anchors.verticalCenter: parent.verticalCenter
@@ -109,6 +116,28 @@ RowLayout {
                     onClicked: Modulos.quitar(capsula.modelData.id)
                 }
             }
+        }
+    }
+
+    // Whatever does not fit goes into a capsule. It takes no clicks:
+    // it would lead nowhere concrete — there are several — it is there
+    // so the row never lies when a limit is set. With no limit (the
+    // default) it never shows.
+    Rectangle {
+        visible: Modulos.count > fila.shown
+        Layout.preferredWidth: resto.implicitWidth + (fila.interactive ? 16 : 10)
+        Layout.preferredHeight: fila.interactive ? 22 : 17
+        Layout.alignment: Qt.AlignVCenter
+        radius: height / 2
+        color: Theme.surface
+
+        IslandLabel {
+            id: resto
+            anchors.centerIn: parent
+            text: "+" + (Modulos.count - fila.shown)
+            color: Theme.muted
+            font.pixelSize: fila.interactive ? 10 : 9
+            font.weight: Font.Medium
         }
     }
 }

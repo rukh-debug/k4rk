@@ -63,9 +63,14 @@ Singleton {
     // The control centre; SurfaceRegistry injects it like PluginManager did.
     property var panel: null
 
-    readonly property int islandWidth: asomando ? 300
-        : 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
-        + Indicadores.anchoAproximado
+    readonly property int islandWidth: {
+        if (asomando)
+            return 300
+        const trayShown = Settings.pillTrayMax > 0
+            ? Math.min(Tray.count, Settings.pillTrayMax) : Tray.count
+        return 340 + (Tray.count > 0 ? trayShown * 24 + 8 : 0)
+            + Indicadores.anchoAproximado
+    }
     readonly property int alturaTira: Settings.notificationsOnHover
         ? Notifs.stripHeight(3) : 0
     readonly property int islandHeight: asomando ? Theme.baseHeight

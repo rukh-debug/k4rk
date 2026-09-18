@@ -15,7 +15,6 @@ FadeIn {
     id: view
 
     property var plugin: null
-    property int shown: 0
 
     property bool mostrandoEscritorios: false
     readonly property var escritoriosVisibles: Workspaces.shownList
@@ -257,7 +256,6 @@ FadeIn {
                 id: fila
                 anchors.centerIn: parent
                 visible: true
-                max: view.shown
                 iconSize: 14
                 interactive: false
             }

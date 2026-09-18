@@ -32,8 +32,11 @@ Singleton {
     readonly property string summonCommand: ""
     readonly property bool transitorio: false
 
-    // How many tray icons fit before the pill runs wild; the rest summarize.
-    readonly property int trayShown: Math.min(Tray.count, 4)
+    // How many tray icons the pill shows. Zero (the default) shows
+    // everything with no "+N"; a number caps it. Kept for the view's
+    // first frame; the live TrayRow default follows the same setting.
+    readonly property int trayShown: Settings.pillTrayMax > 0
+        ? Math.min(Tray.count, Settings.pillTrayMax) : Tray.count
 
     // Settings-aware first-frame estimate. Count only blocks that currently
     // render, including only the gaps between them. The view's exact natural
@@ -54,7 +57,10 @@ Singleton {
             count++
         }
         if (Settings.pillItemEnabled("minimized") && Modulos.count > 0) {
-            w += Modulos.count * 116
+            const shownMinis = Settings.pillMinimizedMax > 0
+                ? Math.min(Modulos.count, Settings.pillMinimizedMax)
+                : Modulos.count
+            w += shownMinis * 116 + (Modulos.count > shownMinis ? 30 : 0)
             count++
         }
         if (Settings.pillItemEnabled("plugin-indicators")
@@ -63,8 +69,7 @@ Singleton {
             count++
         }
         if (Settings.pillItemEnabled("tray") && Tray.count > 0) {
-            w += Math.min(Tray.count, 4) * 18
-                + (Tray.count > 4 ? 18 : 0)
+            w += trayShown * 18 + (Tray.count > trayShown ? 18 : 0)
             count++
         }
         if (Extensions.rightWidth > 28) {
@@ -99,7 +104,7 @@ Singleton {
     property var reservaBarra
 
     property Component view: Component {
-        IdleIslandView { plugin: self; shown: self.trayShown }
+        IdleIslandView { plugin: self }
     }
 
     function close() {}
