@@ -217,7 +217,7 @@ commands that come next. The rest of this page explains what it wrote.
 ## 2 · The plugin and the view
 
 The plugin is the state: it lives always, island or no island. The view
-only paints, and only exists while the plugin holds the island.
+only paints, and only exists while the host presents the plugin.
 
 One summoned view at a time deploys from the bar, and the one just
 opened is the one on it: the host retires the previous summoned view
@@ -243,6 +243,35 @@ convention is `k4.<id>` + `toggle`, and the exceptions (the terminal's
 `k4.term island`) are exactly why it is declared and not guessed. A
 colocable surface with no `summonCommand` shows no button.
 
+### Open independently without replacing the main island
+
+Set `independentIsland: true` on `K4.Plugin` to have the host present your
+existing `view` in its own island. Keep your usual `active`, `viewLoaded`, size,
+keyboard flags and `close()` implementation; no custom window is required.
+The main island stays in place and existing views remain open. This property
+defaults to false; Hyprland Submap enables it by default.
+
+For a `colocable` surface, **Settings → Placement → Open as a separate island**
+lets the user enable or disable this behavior regardless of your default. The
+override survives restarts and position changes, including **Follow bar**.
+Transients may opt in through the API without receiving a Placement card.
+
+The configured edge and alignment are the preferred position. If occupied, the
+host tries corners clockwise (top-left → top-right → bottom-right → bottom-left),
+starting at the next corner along a non-corner edge. It avoids both the main
+island and other independent islands, including notification popups, on that
+monitor. With all corners occupied, it chooses the least overlap. Existing
+independent windows get first choice; free allocated positions stay stable until
+obstructed or their placement/size changes. Repositioning keeps the view alive.
+
+Independent views are excluded from the main island's priority and replacement
+rules. They open on the requested or focused monitor, do not dim the desktop,
+and retain hover-exit, keyboard and cross-monitor dismissal behavior. Only the
+newest eligible independent view grabs exclusive keyboard focus. Outside-click
+catchers leave other islands clickable. `K4.Isla` still reports the main island:
+use your view item's own dimensions, hover and focus for independent content.
+See [the presentation contract](API.md#independent-island-presentation) for details.
+
 ```qml
 // HolaPlugin.qml
 import QtQuick
@@ -250,9 +279,9 @@ import K4 as K4
 
 K4.Plugin {
     id: self
-    name: "hola"                 // el mismo id del manifiesto
+    name: "hola"                 // The same ID as the manifest.
     priority: 65
-    active: abierto              // ¿quiero la island ahora?
+    active: abierto              // Request presentation right now.
     islandWidth: 360
     islandHeight: 100
 
@@ -622,7 +651,7 @@ whether a program is installed or whether there is network. It has to be a
 binding for that, not a value computed once:
 
 ```qml
-//  Sin el programa detrás, la sección entera no sale.
+// Without the required program, the entire section stays hidden.
 opciones: !Consola.esNuestra ? [] : [ /* … */ ]
 ```
 
@@ -742,7 +771,7 @@ names whoever holds it and `K4.Tema.tinteColor` is its colour — the
 wallpaper palette uses exactly this to dress the bar from your image.
 
 ```qml
-K4.Tema.tintar("mi-juego", "#26324f", 0.35, 4000)   // abismo, 4 segundos
+K4.Tema.tintar("mi-juego", "#26324f", 0.35, 4000)   // Abyss tint, 4 seconds.
 ```
 
 **Asking for gestures.** `K4.Isla.efecto(tuId, nombre, fuerza)` moves the

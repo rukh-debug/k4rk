@@ -24,6 +24,8 @@ ClockIslandView 1.0 ClockIslandView.qml
 PlayerIslandView 1.0 PlayerIslandView.qml
 ToastIslandView 1.0 ToastIslandView.qml
 ToastBand 1.0 ToastBand.qml
+IndependentIsland 1.0 IndependentIsland.qml
+PopupExclusionRegion 1.0 PopupExclusionRegion.qml
 SoundIslandView 1.0 SoundIslandView.qml
 PanelIslandView 1.0 PanelIslandView.qml
 AccesosDirectos 1.0 AccesosDirectos.qml

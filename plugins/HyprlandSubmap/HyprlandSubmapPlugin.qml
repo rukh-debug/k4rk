@@ -21,11 +21,9 @@
 //  parsable, and the island shows it as plain text instead — an id
 //  nobody formatted still deserves to be read.
 //
-//  While a submap is on, this plugin takes the island at a priority
-//  over everything the user may have opened: a mode is the keyboard
-//  speaking another language, and nothing on screen matters more than
-//  which language. The island is a Placement citizen like any summoned
-//  surface.
+//  A submap opens independently by default, leaving existing views intact.
+//  Settings → Placement can restore main-island mode, where its priority
+//  keeps the current keyboard mode above every summoned view.
 //
 //  Pressing a chip runs the command and resets the submap, exactly
 //  what the key itself does; the island then folds on the `submap`
@@ -33,9 +31,8 @@
 
 import QtQuick
 import K4 as K4
-import "../../core"
 
-K4Plugin {
+K4.Plugin {
     id: self
 
     name: "hyprland-submap"
@@ -44,6 +41,7 @@ K4Plugin {
     //  outranks whatever the user had open.
     priority: 95
     colocable: true
+    independentIsland: true
     //  Nobody clicks away a mode they did not open — a tap outside
     //  spends itself on the desktop, not on hiding the announcement.
     closeOnClickOutside: false

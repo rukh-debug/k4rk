@@ -34,6 +34,25 @@ Scope {
     //  Every arbitration below reads this list and nowhere else.
     readonly property var surfaces: SurfaceRegistry.surfaces
 
+    // Stable delegates follow each surface's lifetime; toggling active only
+    // loads its window, rather than rebuilding all independent views.
+    Variants {
+        model: root.surfaces
+        delegate: Scope {
+            id: independentSurface
+            required property var modelData
+            LazyLoader {
+                active: independentSurface.modelData.habilitado
+                    && independentSurface.modelData.active
+                    && Settings.independentIslandFor(independentSurface.modelData)
+                IndependentIsland {
+                    owner: independentSurface.modelData
+                    Component.onCompleted: pantalla = Island.tomarPantallaPedida()
+                }
+            }
+        }
+    }
+
     //  A summoned view belongs to one monitor. Once compositor focus moves
     //  to another, keeping that distant popup open is never useful: close it
     //  before the next interaction. This is fixed host behavior, not a plugin
@@ -83,7 +102,7 @@ Scope {
         const lista = root.surfaces
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
-            if (!p.habilitado || !p.active)
+            if (!p.habilitado || !p.active || Settings.independentIslandFor(p))
                 continue
             if (best === null || p.priority > best.priority)
                 best = p
@@ -106,7 +125,7 @@ Scope {
         const lista = root.surfaces
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
-            if (p !== gana && p.transitorio && p.active
+            if (p !== gana && p.transitorio && p.active && !Settings.independentIslandFor(p)
                     && typeof p.close === "function")
                 p.close()
         }
@@ -145,7 +164,8 @@ Scope {
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (p.habilitado && p.active && p.viewLoaded && p.colocable
-                    && !p.transitorio && p.name !== SurfaceRegistry.pillId)
+                    && !p.transitorio && p.name !== SurfaceRegistry.pillId
+                    && !Settings.independentIslandFor(p))
                 salida.push(p.name)
         }
         return salida
@@ -182,7 +202,8 @@ Scope {
         for (let i = 0; i < lista.length; ++i) {
             const p = lista[i]
             if (!p.habilitado || !p.active || !p.viewLoaded || !p.colocable
-                    || p.transitorio || p.name === SurfaceRegistry.pillId)
+                    || p.transitorio || p.name === SurfaceRegistry.pillId
+                    || Settings.independentIslandFor(p))
                 continue
             if (llegaron.indexOf(p.name) >= 0)
                 continue
@@ -204,7 +225,8 @@ Scope {
                 //  Re-checked at departure time: a victim may have
                 //  begun leaving on its own while the deferral was
                 //  queued — view gone, nothing left to supersede.
-                if (!p || !p.habilitado || !p.active || !p.viewLoaded)
+                if (!p || !p.habilitado || !p.active || !p.viewLoaded
+                        || Settings.independentIslandFor(p))
                     continue
                 viewSuperseded(p.name)
                 if (typeof p.close === "function")
@@ -743,7 +765,7 @@ Scope {
             // Only typing-oriented views grab exclusive focus; others opt in.
             WlrLayershell.keyboardFocus: {
                 // System dialogs need the keyboard as well as an unobstructed view.
-                if (Island.apartada)
+                if (Island.apartada || PopupLayout.keyboardOwner)
                     return WlrKeyboardFocus.None
                 const p = panelWindow.pluginVisible
                 if (!p || p !== root.activePlugin || p.name === SurfaceRegistry.pillId)
@@ -840,10 +862,12 @@ Scope {
 
                 Region {
                     item: (!Island.apartada
-                           && panelWindow.zonasVivas)
+                            && panelWindow.zonasVivas)
                         ? zonaDerecha : null
                     intersection: Intersection.Combine
                 }
+
+                PopupExclusionRegion { screenName: panelWindow.screen.name }
             }
 
             //  ── the catcher: what the outside tap falls on ─────────────
@@ -1607,12 +1631,16 @@ Scope {
             required property var modelData
 
             readonly property var owner: root.activePlugin
-            readonly property bool shouldCatch: !Island.apartada
-                && owner
+            readonly property var distantOwners: PopupLayout.distantOwners(modelData.name)
+            readonly property bool mainIsDistant: !!owner
                 && owner.name !== SurfaceRegistry.pillId
                 && owner.colocable
                 && !owner.transitorio
                 && modelData.name !== Island.pantallaActiva
+            readonly property bool shouldCatch: !Island.apartada
+                && (mainIsDistant || distantOwners.length > 0)
+            readonly property var localRect: Island.rects[modelData.name]
+                || ({ x: 0, y: 0, ancho: 0, alto: 0 })
 
             screen: modelData
             visible: shouldCatch
@@ -1627,7 +1655,17 @@ Scope {
             WlrLayershell.namespace: "k4-cross-monitor-dismiss"
             WlrLayershell.layer: WlrLayer.Overlay
 
-            mask: Region { item: crossMonitorTapTarget }
+            mask: Region {
+                item: crossMonitorTapTarget
+                PopupExclusionRegion { screenName: crossMonitorCatcher.modelData.name }
+                Region {
+                    x: crossMonitorCatcher.localRect.x
+                    y: crossMonitorCatcher.localRect.y
+                    width: crossMonitorCatcher.localRect.ancho
+                    height: crossMonitorCatcher.localRect.alto
+                    intersection: Intersection.Subtract
+                }
+            }
 
             Item {
                 id: crossMonitorTapTarget
@@ -1638,8 +1676,13 @@ Scope {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                     onPressed: function (mouse) {
                         const p = crossMonitorCatcher.owner
-                        if (p && typeof p.close === "function")
+                        if (crossMonitorCatcher.mainIsDistant && p
+                                && typeof p.close === "function")
                             p.close()
+                        const distant = crossMonitorCatcher.distantOwners
+                        for (let i = 0; i < distant.length; ++i)
+                            if (typeof distant[i].close === "function")
+                                distant[i].close()
                         mouse.accepted = true
                     }
                 }

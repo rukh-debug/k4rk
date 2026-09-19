@@ -276,6 +276,25 @@ Singleton {
     //  the views you summon.
     property var islandPlacements: {}
 
+    // Cross-cutting host presentation overrides. An absent key follows the
+    // plugin's default; explicit false must survive a restart as well as true.
+    property var independentIslands: {}
+
+    function independentIslandFor(surface) {
+        if (!surface)
+            return false
+        const overrides = independentIslands || {}
+        const value = overrides[surface.name]
+        return typeof value === "boolean" ? value : surface.independentIsland === true
+    }
+
+    function setIndependentIsland(id, enabled) {
+        const overrides = Object.assign({}, independentIslands || {})
+        overrides[id] = !!enabled
+        independentIslands = overrides
+        guardar()
+    }
+
     //  The placement a plugin opens with, resolved: its own if it has one,
     //  the bar's if it does not. Always a { side, align } with side
     //  one of top/bottom/left/right and align 0–100 — a map hand-edited
@@ -726,7 +745,7 @@ Singleton {
         "panelOrder", "panelHiddenBlocks",
         "panelShowPowerDisplay", "nightLightEnabled", "nightLightTemperature",
         "nightLightMode", "nightLightLocation", "nightLightOverride",
-        "islandPlacements",
+        "islandPlacements", "independentIslands",
         "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
         "quickAccess"
     ]
@@ -849,6 +868,14 @@ Singleton {
                 for (let i = 0; i < claves.length; ++i)
                     if (s[claves[i]] !== undefined)
                         ajustes[claves[i]] = s[claves[i]]
+                const independent = {}
+                if (s.independentIslands && typeof s.independentIslands === "object"
+                        && !Array.isArray(s.independentIslands)) {
+                    for (const id in s.independentIslands)
+                        if (typeof s.independentIslands[id] === "boolean")
+                            independent[id] = s.independentIslands[id]
+                }
+                ajustes.independentIslands = independent
                 //  Retired keys are simply not copied: an old file's
                 //  `popupMode` and `openOnHoverEnabled` stay on the disk
                 //  it came from and never reach memory. The hover flag

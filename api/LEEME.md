@@ -48,12 +48,24 @@ K4.Process { running: self.habilitado && self.abierto }
 Timer { running: self.habilitado && self.abierto }
 ```
 
-Where the view renders is the island: deployed from the bar, one at a
-time, on the edge and at the point the user drew for it in Settings →
-Placement. The contract does not change with placement.
+By default, the view deploys from the bar, one at a time, at its position in
+Settings → Placement. Set `K4.Plugin.independentIsland` to `true` to open the
+same `view` independently, leaving the main island and existing views open.
+The default is `false`; Hyprland Submap enables it. Every `colocable` surface
+gets an **Open as a separate island** switch in Placement, whose persisted
+override takes precedence over the plugin's default.
+
+Independent islands try their configured position, then corners clockwise
+(top-left → top-right → bottom-right → bottom-left), avoiding the main island,
+notifications and other independent views on their monitor. If all corners are
+occupied, they choose the least overlap. Existing allocations stay stable while
+free; placement/size changes reallocate without recreating content. The host
+keeps the usual lifecycle, close and keyboard contracts, coordinating exclusive
+focus and leaving other islands clickable. `K4.Isla` continues to describe only
+the main island. See the [full contract](../docs/API.md#independent-island-presentation).
 
 Processes, timers and IPC handlers are direct children of the plugin. A view is
-mounted only while the host gives the plugin the island, so long-lived work must
+mounted only while the host presents the plugin, so long-lived work must
 not be declared inside the view.
 
 ## Exported types

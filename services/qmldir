@@ -33,6 +33,7 @@ singleton Sesion 1.0 Sesion.qml
 singleton Modulos 1.0 Modulos.qml
 singleton PluginManager 1.0 PluginManager.qml
 singleton SurfaceRegistry 1.0 SurfaceRegistry.qml
+singleton PopupLayout 1.0 PopupLayout.qml
 singleton Indicadores 1.0 Indicadores.qml
 singleton Ambiente 1.0 Ambiente.qml
 singleton Consola 1.0 Consola.qml

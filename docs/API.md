@@ -57,9 +57,9 @@ CPU; the summary CPU percentage is normalized across all logical CPUs.
 | `name` | Stable, unique plugin ID |
 | `title` | Human-readable name |
 | `habilitado` | Persistent user permission |
-| `active` | Requests the island right now |
-| `priority` | Arbitration priority — against the resting views and the transients; among summoned views the one just opened supersedes the previous (the host closes it) |
-| `transitorio` | View that appears unasked and expires on its own; it closes the moment another plugin takes the island |
+| `active` | Requests presentation right now, in the main island or an independent island |
+| `priority` | Main-island arbitration priority — against the resting views and the transients; among main-island summoned views the one just opened supersedes the previous (the host closes it). Independent islands do not compete in this arbitration |
+| `transitorio` | View that appears unasked and expires on its own; in the main island it closes when another plugin takes over. Independent transients keep their own lifetime |
 | `islandWidth`, `islandHeight` | Requested island size |
 | `view` | Component rendered by the host |
 | `viewLoaded` | Keep the size while the view closes |
@@ -68,7 +68,44 @@ CPU; the summary CPU percentage is normalized across all logical CPUs.
 | `tecladoAlPasar` | Exclusive keyboard focus only while the pointer is over the island (for games) |
 | `closeOnHoverExit` | Enable hover-exit timeout |
 | `colocable` | Your surface is a summoned view: it gets a card in Settings → Placement, where the user draws the edge and point it deploys from. Only what OPENS gets placed — the pill's wings, transients and indicators do not |
+| `independentIsland` | Boolean, default `false`. Present `view` in a separate host-managed island while leaving the main island and other views open. Settings → Placement can override this default for any placeable surface. Applies to the plugin's `view`, not its own `K4.Ventana` windows; no extra manifest surface or permission is needed |
 | `summonCommand` | The IPC call that opens the surface — everything after `call` (`"k4.launcher toggle"`), which the copy button on the Placement card hands out as a full command line. Only the plugin can say it for sure: the `k4.<id>` target and the `toggle` verb are conventions, and conventions break (the terminal lives at `k4.term`, and its toggle is `island`). Empty (default) hides the button |
+
+### Independent island presentation
+
+`K4.Plugin.independentIsland` is the plugin's default. The host persists the
+user's explicit true/false override in `independentIslands`, independently of
+`islandPlacements`. Choosing **Follow bar** changes the preferred position,
+not the presentation mode. Disabling the switch restores main-island arbitration
+and replacement behavior. Hyprland Submap defaults to independent presentation.
+
+An independent island always opens separately. It tries its configured position
+first, then corners clockwise: top-left, top-right, bottom-right, bottom-left.
+From a non-corner position, the first corner is the next one along that edge
+(top → top-right, right → bottom-right, bottom → bottom-left, left → top-left).
+Allocation avoids the main island and other independent islands on the same
+monitor, including notification popups, with clearance for the wings. If no
+corner is free, the least-overlapping corner wins; equal overlaps keep clockwise
+order. Existing independent windows allocate before newer ones. A free allocated
+position stays stable until it is obstructed, the requested placement/size changes,
+or the window closes. Moving between positions does not recreate the view.
+
+The host uses the requested monitor or the focused monitor at opening. Summoned
+independent views retain cross-monitor dismissal. `active`, `viewLoaded`, size,
+background-tap handling, `closeOnHoverExit`/`hoverTimedOut`, and keyboard flags
+still apply. The newest eligible independent view receives exclusive keyboard
+focus; the main island yields while it holds it. The newest independent view
+requesting outside-click dismissal on a monitor catches outside taps, with holes
+for other islands so they remain interactive. Independent islands do not dim the
+desktop. `close()` remains the plugin's responsibility.
+
+`K4.Isla` describes the **main** island, not an independent view's geometry or
+occupancy. Independent views should use their own item's dimensions, focus and
+hover state. Native notifications retain their existing main-island-when-idle,
+separate-when-busy policy and notification corner setting, but share allocation
+with independent plugin islands.
+
+### Host verbs
 
 The host also knows a few optional verbs. They exist as no-op stubs on
 the contract, so a plugin overrides the ones it serves and the host can

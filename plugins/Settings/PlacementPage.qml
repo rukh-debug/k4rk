@@ -272,6 +272,36 @@ ColumnLayout {
                         Layout.fillWidth: true
                     }
 
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 3
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: "Open as a separate island"
+                                font.pixelSize: 12
+                                wrapMode: Text.WordWrap
+                            }
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: "Keep other islands open. If this position is occupied, try corners clockwise."
+                                color: Theme.muted
+                                font.pixelSize: 10
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        K4.Interruptor {
+                            marcado: Settings.independentIslandFor(
+                                SurfaceRegistry.instance(tarjeta.idVista))
+                            Accessible.name: tarjeta.modelData.nombre + ": open as a separate island"
+                            onAlternado: Settings.setIndependentIsland(tarjeta.idVista, !marcado)
+                        }
+                    }
+
                     //  ── the side chips ────────────────────
                     //
                     // Coarse choice; the larger monitor is the precise one.
