@@ -20,6 +20,17 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 > legitimate way to get one — this guide is here for when you want to know
 > what it is doing, or when you are doing it yourself.
 
+## Native markdown
+
+Use `K4.MarkdownView` for rich, selectable text instead of implementing a markdown
+parser in a plugin. It sizes vertically to its content, so give it a width and
+place it in your scrolling surface. Enable `streaming` for a live reply. Connect
+`copyRequested(text)` to your clipboard action and `linkActivated(url)` to your
+link handler. `selectionStarted()` lets a conversation suspend automatic scroll.
+The native renderer includes code highlighting/copy controls, horizontal code
+and table scrolling, task lists, nested lists, quotes and standard inline markup.
+See [Native markdown](API.md#native-markdown) for defaults and limitations.
+
 ## System telemetry
 
 Use `K4.SystemMonitor` for CPU, memory, temperatures and network rates. It shares

@@ -12,6 +12,21 @@ FadeIn {
 
     property int focusAttempts: 0
     property bool selectorVisible: false
+    property var expandedThinking: ({})
+
+    function setThinkingExpanded(id, expanded) {
+        const next = Object.assign({}, expandedThinking)
+        next[id] = expanded
+        expandedThinking = next
+    }
+
+    function submit() {
+        if (plugin.send()) {
+            charla.sigue = true
+            askInput.text = plugin.query
+            Qt.callLater(function () { conversationList.positionViewAtEnd() })
+        }
+    }
 
     //  What the selector's search box has narrowed the model list
     //  to. The list itself is the PIN LISTS — every one its own
@@ -110,7 +125,14 @@ FadeIn {
 
     Connections {
         target: plugin
-        function onChatLoadsChanged() { view.aterrizar() }
+        function onChatLoadsChanged() {
+            view.expandedThinking = ({})
+            view.aterrizar()
+        }
+        function onQueryChanged() {
+            if (askInput.text !== view.plugin.query)
+                askInput.text = view.plugin.query
+        }
     }
 
     // The layer surface takes a moment to receive keyboard focus:
@@ -513,6 +535,10 @@ FadeIn {
             //  the button says otherwise.
             MediaButton {
                 glyph: String.fromCodePoint(0xF06FD) // md-page_layout_sidebar_left
+                Accessible.name: "Toggle chat history"
+                HoverHandler { id: historyHover }
+                ToolTip.visible: historyHover.hovered
+                ToolTip.text: "Chat history"
                 glyphSize: 14
                 glyphColor: Theme.muted
                 onActivated: {
@@ -522,21 +548,16 @@ FadeIn {
                 }
             }
 
-            IconGlyph {
-                text: Theme.ico.ask
-                color: Theme.muted
-                font.pixelSize: 15
-                Layout.alignment: Qt.AlignVCenter
-            }
-
             IslandLabel {
                 text: view.plugin.chatTitle.length > 0
-                        ? view.corto(view.plugin.chatTitle, 24)
+                        ? view.plugin.chatTitle
                         : "OpenWebUI"
                 color: Theme.muted
                 font.pixelSize: 11
                 elide: Text.ElideRight
                 Layout.maximumWidth: 190
+                Layout.minimumWidth: 0
+                Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
             }
 
@@ -594,6 +615,7 @@ FadeIn {
             }
 
             Repeater {
+                parent: attachmentsRow
                 model: [
                     { key: "image", on: view.plugin.image.length > 0,
                       attached: true, glyph: Theme.ico.shot,
@@ -675,30 +697,24 @@ FadeIn {
                 }
             }
 
-            Item { Layout.fillWidth: true }
-
             IslandLabel {
-                text: view.plugin.generating
-                        ? "thinking…"
-                        : view.plugin.editingId.length > 0
-                          ? "editing · esc cancels"
-                          : "esc"
+                text: view.plugin.editingId.length > 0
+                           ? "editing · esc cancels"
+                           : "esc"
                 color: view.plugin.editingId.length > 0
                         && !view.plugin.generating ? Theme.blue : Theme.dim
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
 
-                SequentialAnimation on opacity {
-                    running: view.plugin.generating
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.35; duration: 620; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 620; easing.type: Easing.InOutSine }
-                }
             }
 
             // actions on the conversation
             MediaButton {
                 glyph: String.fromCodePoint(0xF0415) // md-plus
+                Accessible.name: "New chat"
+                HoverHandler { id: newChatHover }
+                ToolTip.visible: newChatHover.hovered
+                ToolTip.text: "New chat"
                 glyphSize: 14
                 glyphColor: Theme.muted
                 onActivated: view.plugin.newChat()
@@ -708,6 +724,10 @@ FadeIn {
             MediaButton {
                 visible: view.plugin.messages.length > 0
                 glyph: Theme.ico.copy
+                Accessible.name: "Copy latest answer"
+                HoverHandler { id: copyAnswerHover }
+                ToolTip.visible: copyAnswerHover.hovered
+                ToolTip.text: "Copy latest answer"
                 glyphSize: 13
                 glyphColor: Theme.muted
                 onActivated: view.plugin.copyAnswer()
@@ -722,6 +742,10 @@ FadeIn {
             MediaButton {
                 visible: view.plugin.messages.length > 0
                 glyph: String.fromCodePoint(0xEABA)
+                Accessible.name: "Set chat aside"
+                HoverHandler { id: asideHover }
+                ToolTip.visible: asideHover.hovered
+                ToolTip.text: "Set aside · Escape"
                 glyphSize: 12
                 glyphColor: Theme.muted
                 onActivated: view.plugin.close()
@@ -731,6 +755,10 @@ FadeIn {
             MediaButton {
                 visible: view.plugin.messages.length > 0
                 glyph: Theme.ico.close
+                Accessible.name: "Close and clear local chat"
+                HoverHandler { id: clearChatHover }
+                ToolTip.visible: clearChatHover.hovered
+                ToolTip.text: "Close and clear local chat"
                 glyphSize: 14
                 glyphColor: Theme.muted
                 onActivated: view.plugin.cerrarYOlvidar()
@@ -942,16 +970,26 @@ FadeIn {
 
                 ListView {
                     id: conversationList
+                    objectName: "conversationList"
                     anchors.fill: parent
                     visible: view.plugin.messages.length > 0
                     clip: true
-                    spacing: 12
+                    spacing: 18
                     model: view.plugin.messages
                     boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.vertical: IslandScrollBar {}
+                    ScrollBar.vertical: IslandScrollBar {
+                        onPressedChanged: charla.sigue = pressed ? false : conversationList.alFinal
+                    }
+                    WheelHandler {
+                        target: null
+                        onWheel: function (event) {
+                            if (event.angleDelta.y > 0 || event.pixelDelta.y > 0) charla.sigue = false
+                            event.accepted = false
+                        }
+                    }
 
                     readonly property bool alFinal:
-                        contentY >= contentHeight - height - 40
+                        contentY >= originY + contentHeight - height - 40
 
                     onCountChanged: if (charla.sigue)
                         Qt.callLater(function () { positionViewAtEnd() })
@@ -972,212 +1010,61 @@ FadeIn {
                     }
                     onMovementEnded: charla.sigue = alFinal
 
-                    delegate: Item {
-                    id: messageRow
-                    required property var modelData
-                    readonly property bool mine: modelData.role === "user"
-                    width: ListView.view.width
-                    height: bubble.height
-
-                    readonly property string imagen: modelData.imagen || ""
-
-                    HoverHandler { id: vuelo }
-
-                    //  Take it back: hover a sent message and the
-                    //  pencil offers a rewrite. Sending the edit
-                    //  cuts the conversation at that point — the
-                    //  answer and what followed go with it.
-                    Rectangle {
-                        visible: messageRow.mine && vuelo.hovered
-                                 && view.plugin.editingId
-                                    !== messageRow.modelData.id
-                        anchors.right: bubble.left
-                        anchors.rightMargin: 6
-                        anchors.top: parent.top
-                        width: 20
-                        height: 20
-                        radius: 10
-                        color: editarMouse.containsMouse ? Theme.track
-                                                         : Theme.surfaceHi
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-
-                        IconGlyph {
-                            anchors.centerIn: parent
-                            text: String.fromCodePoint(0xF03EB) // md-pencil
-                            color: Theme.muted
-                            font.pixelSize: 10
+                    delegate: ChatMessage {
+                        required property var modelData
+                        required property int index
+                        width: conversationList.width - 12
+                        message: modelData
+                        editing: view.plugin.editingId === modelData.id
+                        expanded: view.expandedThinking[modelData.id] === true
+                        canRetry: !view.plugin.generating && index === view.plugin.messages.length - 1
+                            && (modelData.role === "error" || modelData.status === "failed" || modelData.status === "stopped")
+                        onExpansionChanged: function (expanded) { view.setThinkingExpanded(modelData.id, expanded) }
+                        onSelectionStarted: charla.sigue = false
+                        onCopyRequested: function (text) { view.plugin.copyText(text) }
+                        onEditRequested: {
+                            view.plugin.editar(modelData.id)
+                            askInput.forceActiveFocus()
+                            askInput.cursorPosition = askInput.text.length
                         }
-
-                        MouseArea {
-                            id: editarMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                view.plugin.editar(messageRow.modelData.id)
-                                //  The input's binding to the query is
-                                //  broken the moment one types; the old
-                                //  words are placed by hand.
-                                askInput.text = view.plugin.query
-                                askInput.forceActiveFocus()
-                                Qt.callLater(function () {
-                                    askInput.cursorPosition
-                                        = askInput.text.length
-                                })
-                            }
-                        }
+                        onRetryRequested: view.plugin.retryLast()
                     }
 
-                    Rectangle {
-                        id: bubble
-                        x: messageRow.mine ? messageRow.width - width : 0
-                        width: messageRow.mine
-                            ? Math.min(Math.max(messageText.implicitWidth + 28, miniatura.visible ? 190 : 0),
-                                       messageRow.width * 0.78)
-                            : messageRow.width
-                        height: messageText.implicitHeight + (miniatura.visible ? miniatura.height + 8 : 0)
-                            + (messageRow.mine ? 18 : 4)
-                        radius: 14
-                        color: messageRow.mine ? Theme.surfaceHi : "transparent"
-                        //  The turn under the pencil says so: its
-                        //  rewrite is in the input, one send away.
-                        border.width: messageRow.mine
-                                      && view.plugin.editingId
-                                         === messageRow.modelData.id ? 1 : 0
-                        border.color: Theme.blue
-
-                        //  True formatting: bold, italics, code and
-                        //  clickable links — the model answers in
-                        //  markdown and it is read as markdown.
-                        TextEdit {
-                            id: messageText
-                            x: messageRow.mine ? 14 : 0
-                            y: messageRow.mine ? 9 : 2
-                            width: bubble.width - (messageRow.mine ? 28 : 0)
-                            readOnly: true
-                            selectByMouse: true
-                            wrapMode: Text.WordWrap
-                            textFormat: TextEdit.MarkdownText
-                            color: messageRow.modelData.role === "error" ? Theme.red : Theme.ink
-                            selectionColor: Theme.blue
-                            font.family: Theme.uiFont
-                            font.pixelSize: 14
-                            text: messageRow.modelData.content
-
-                            onLinkActivated: function (enlace) {
-                                K4.Sistema.lanzar(["xdg-open", enlace])
-                            }
-
-                            // the cursor warns the link can be clicked
-                            MouseArea {
-                                anchors.fill: parent
-                                acceptedButtons: Qt.NoButton
-                                cursorShape: messageText.hoveredLink.length > 0
-                                    ? Qt.PointingHandCursor : Qt.IBeamCursor
-                            }
-                        }
-
-                        // ── the shot this question carried
-                        Rectangle {
-                            id: miniatura
-                            visible: messageRow.imagen.length > 0
-                            anchors.right: messageRow.mine ? parent.right : undefined
-                            anchors.left: messageRow.mine ? undefined : parent.left
-                            anchors.rightMargin: messageRow.mine ? 14 : 0
-                            anchors.top: messageText.bottom
-                            anchors.topMargin: 8
-                            width: 160
-                            height: 96
-                            radius: 10
-                            color: Theme.islandBg
-                            clip: true
-                            border.width: 1
-                            border.color: Theme.track
-
-                            Image {
-                                anchors.fill: parent
-                                source: messageRow.imagen.length > 0
-                                        ? "file://" + messageRow.imagen : ""
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                sourceSize.width: 320
-                            }
-                        }
+                    footer: ChatMessage {
+                        width: conversationList.width - 12
+                        visible: view.plugin.generating
+                        height: visible ? implicitHeight : 0
+                        message: ({ id: view.plugin.responseId, role: "assistant",
+                            content: view.plugin.currentResponse, reasoning: view.plugin.currentReasoning,
+                            model: view.plugin.responseModel })
+                        streaming: true
+                        phase: view.plugin.responsePhase
+                        elapsed: view.plugin.reasoningSeconds
+                        expanded: view.expandedThinking[view.plugin.responseId] === true
+                        onExpansionChanged: function (expanded) { view.setThinkingExpanded(view.plugin.responseId, expanded) }
+                        onCopyRequested: function (text) { view.plugin.copyText(text) }
+                        onSelectionStarted: charla.sigue = false
+                        onHeightChanged: if (visible && charla.sigue)
+                            Qt.callLater(function () { conversationList.positionViewAtEnd() })
                     }
-                }
                 }
 
                 //  The way back: once the reader has gone up, the
                 //  bottom is one click away instead of a scroll.
-                Rectangle {
+                K4.ActionButton {
                     anchors.right: parent.right
                     anchors.rightMargin: 4
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 4
                     visible: !charla.sigue && conversationList.visible
-                    width: 28
-                    height: 28
-                    radius: 14
-                    color: finMouse.containsMouse ? Theme.track
-                                                  : Theme.surfaceHi
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    IconGlyph {
-                        anchors.centerIn: parent
-                        text: Theme.ico.chevronDown
-                        color: Theme.muted
-                        font.pixelSize: 14
+                    text: "↓  Latest"
+                    Accessible.name: "Jump to latest message"
+                    onClicked: {
+                        charla.sigue = true
+                        Qt.callLater(function () {
+                            conversationList.positionViewAtEnd()
+                        })
                     }
-
-                    MouseArea {
-                        id: finMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            charla.sigue = true
-                            Qt.callLater(function () {
-                                conversationList.positionViewAtEnd()
-                            })
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── the answer as it lands, its own row so the list above
-        //    is not rebuilt token by token. Capped, so a long answer
-        //    grows this row only so far before the list keeps its
-        //    room.
-        Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: false
-            Layout.preferredHeight: Math.min(flujoTexto.implicitHeight + 6, 150)
-            visible: view.plugin.generating
-            clip: true
-
-            TextEdit {
-                id: flujoTexto
-                width: parent.width
-                readOnly: true
-                selectByMouse: true
-                wrapMode: Text.WordWrap
-                textFormat: TextEdit.MarkdownText
-                color: Theme.ink
-                font.family: Theme.uiFont
-                font.pixelSize: 14
-                opacity: view.plugin.currentResponse.length > 0 ? 1 : 0.45
-                text: view.plugin.currentResponse.length > 0
-                        ? view.plugin.currentResponse : "…"
-
-                //  Long streams land at their end, the same as the
-                //  list above: one reads the answer as it is written.
-                onImplicitHeightChanged: {
-                    if (implicitHeight <= 150 - 6)
-                        return
-                    flujoTexto.y = Math.min(0, 150 - 6 - implicitHeight)
                 }
             }
         }
@@ -1190,32 +1077,69 @@ FadeIn {
             visible: view.plugin.messages.length > 0
         }
 
-        // ── input, always at the bottom so the talk can go on
-        Item {
+        IslandLabel {
+            Layout.fillWidth: true
+            visible: view.plugin.errorMessage.length > 0 || view.plugin.syncError.length > 0
+            text: view.plugin.errorMessage || view.plugin.syncError
+            color: Theme.red
+            font.pixelSize: 11
+            wrapMode: Text.Wrap
+        }
+
+        RowLayout {
+            id: attachmentsRow
+            Layout.fillWidth: true
+            spacing: 6
+            visible: view.plugin.image.length > 0 || view.plugin.selection.length > 0
+                     || view.plugin.selectionCandidate.length > 0
+            Item { Layout.fillWidth: true }
+        }
+
+        // A bounded multiline composer keeps the conversation readable.
+        Rectangle {
+            id: composer
             Layout.fillWidth: true
             Layout.fillHeight: false
-            Layout.preferredHeight: 34
+            Layout.preferredHeight: Math.min(110, Math.max(42, askInput.contentHeight + 22))
+            onHeightChanged: view.plugin.composerHeight = height
+            radius: 12
+            color: Theme.surface
+            border.width: 1
+            border.color: askInput.activeFocus ? Theme.track : Theme.surfaceHi
 
             IslandLabel {
-                anchors.verticalCenter: parent.verticalCenter
+                x: 12
+                y: 12
                 visible: view.plugin.query.length === 0
                 text: view.plugin.editingId.length > 0
                         ? "Rewrite it — Enter resends from there…"
                         : view.plugin.messages.length > 0 ? "Keep asking…" : "Ask anything…"
-                color: Theme.dim
-                font.pixelSize: view.plugin.messages.length > 0 ? 15 : 19
+                color: Theme.muted
+                font.pixelSize: 14
             }
 
-            TextInput {
+            Flickable {
+                id: inputScroll
+                anchors.fill: parent
+                anchors.margins: 11
+                anchors.rightMargin: 46
+                contentHeight: askInput.height
+                contentWidth: width
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: IslandScrollBar {}
+
+            TextEdit {
                 id: askInput
+                objectName: "chatInput"
                 cursorDelegate: IslandCursor {}
-                anchors.left: parent.left
-                anchors.right: botonEnviar.left
-                anchors.rightMargin: 8
-                verticalAlignment: TextInput.AlignVCenter
+                width: inputScroll.width
+                height: Math.max(inputScroll.height, contentHeight)
+                wrapMode: TextEdit.Wrap
+                textFormat: TextEdit.PlainText
                 color: Theme.ink
                 font.family: Theme.uiFont
-                font.pixelSize: view.plugin.messages.length > 0 ? 15 : 19
+                font.pixelSize: 14
                 focus: true
                 activeFocusOnTab: true
                 clip: true
@@ -1223,9 +1147,16 @@ FadeIn {
                 cursorVisible: true
                 selectionColor: Theme.blue
                 text: view.plugin.query
-                onTextEdited: view.plugin.query = text
+                onTextChanged: if (view.plugin.query !== text) view.plugin.query = text
+                onCursorRectangleChanged: {
+                    if (cursorRectangle.y < inputScroll.contentY)
+                        inputScroll.contentY = cursorRectangle.y
+                    else if (cursorRectangle.y + cursorRectangle.height > inputScroll.contentY + inputScroll.height)
+                        inputScroll.contentY = cursorRectangle.y + cursorRectangle.height - inputScroll.height
+                }
 
                 Keys.onPressed: function (event) {
+                    if (inputMethodComposing) return
                     if (event.key === Qt.Key_Escape) {
                         if (view.selectorVisible)
                             view.selectorVisible = false
@@ -1237,31 +1168,54 @@ FadeIn {
                             view.plugin.close()
                         event.accepted = true
                     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        view.plugin.send()
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Tab) {
-                        view.plugin.attach()   // attaches the selected text
-                        event.accepted = true
+                        if (!(event.modifiers & Qt.ShiftModifier)) {
+                            view.submit()
+                            event.accepted = true
+                        }
                     }
                 }
+            }
             }
 
             // send, or stop what is being thought
             MediaButton {
                 id: botonEnviar
                 anchors.right: parent.right
+                anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 glyph: view.plugin.generating
                         ? String.fromCodePoint(0xF04DB) /* md-stop */
                         : String.fromCodePoint(0xF048A) /* md-send */
                 glyphSize: 15
                 glyphColor: view.plugin.generating ? Theme.red : Theme.muted
+                enabledAction: view.plugin.generating || view.plugin.query.trim().length > 0
+                Accessible.name: view.plugin.generating ? "Stop response" : "Send message"
+                HoverHandler { id: sendHover }
+                ToolTip.visible: sendHover.hovered
+                ToolTip.text: view.plugin.generating ? "Stop response" : "Send · Enter"
                 onActivated: {
                     if (view.plugin.generating)
                         view.plugin.stopGeneration()
                     else
-                        view.plugin.send()
+                        view.submit()
                 }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            IslandLabel {
+                Layout.fillWidth: true
+                text: view.plugin.editingId.length ? "Sending starts a new branch from this message."
+                      : "Enter to send · Shift+Enter for a new line"
+                color: Theme.muted
+                font.pixelSize: 10
+            }
+            K4.ActionButton {
+                visible: view.plugin.editingId.length > 0
+                text: "Cancel edit"
+                onClicked: view.plugin.cancelarEdicion()
             }
         }
     }

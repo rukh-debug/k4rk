@@ -61,6 +61,8 @@ mkShell {
         fonttools
         astral
         tzdata
+        mistune
+        pygments
       ]
     ))
     git

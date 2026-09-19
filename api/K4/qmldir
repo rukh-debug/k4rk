@@ -63,3 +63,4 @@ Cargador 1.0 Cargador.qml
 BloqueoSesion 1.0 BloqueoSesion.qml
 SuperficieBloqueo 1.0 SuperficieBloqueo.qml
 Autenticacion 1.0 Autenticacion.qml
+MarkdownView 1.0 MarkdownView.qml

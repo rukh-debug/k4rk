@@ -53,6 +53,9 @@ K4Plugin {
     onApiTokenChanged: invalidateConnection()
     function invalidateConnection() {
         connectionEpoch++
+        if (generating) stopGeneration(true)
+        savingChat = false
+        saveAgain = false
         connectionVerified = false
         fetchingModels = false
         fetchingChats = false
@@ -67,8 +70,24 @@ K4Plugin {
     property string chatTitle: ""
     property bool generating: false
     property string currentResponse: "" // the stream, as it lands
+    property string currentReasoning: ""
+    property string responseId: ""
+    property string responseModel: ""
+    property string responsePhase: "Waiting"
+    property double reasoningStarted: 0
+    property int reasoningSeconds: 0
+    property int generationSerial: 0
+    property var activeStream: null
+    property int chatEpoch: 0
+    property int chatRequest: 0
+    property var chatDocument: ({})
+    property string syncError: ""
+    property bool savingChat: false
+    property bool saveAgain: false
+    property bool titlingChat: false
+    property int composerHeight: 42
+    property var outgoingIds: []
     property string errorMessage: ""
-    property bool manuallyStopped: false
     property bool sidebarVisible: false
 
     // ── attachments, offered and taken ────────────────────────────
@@ -78,12 +97,8 @@ K4Plugin {
     property string selectionCandidate: ""  // what was selected, not yet attached
     property bool attachSelectionOnOpen: false
 
-    //  The message being taken back for a rewrite. Its old words
-    //  sit in the input; the next send cuts the conversation AT it
-    //  — the answer it got and everything said afterwards belonged
-    //  to a future that no longer is, and the chat continues from
-    //  the new wording. The server chat follows on the next sync:
-    //  the whole document is replaced, branch and all.
+    // Editing replaces the active branch from this turn. Already saved branches
+    // remain in the server document and the new leaf becomes currentId.
     property string editingId: ""
 
     // ── the lists the sidebar and the selector show ───────────────
@@ -92,6 +107,7 @@ K4Plugin {
     property string chatsError: ""
     property bool hasMoreChats: true
     property int chatPage: 0
+    property int chatListRequest: 0
     property var models: []
     property bool fetchingModels: false
     property string modelsError: ""
@@ -127,7 +143,7 @@ K4Plugin {
     //  30 px down plus up to 360 of list — is taller than the empty
     //  state, so while it is open the island stands up for it.
     readonly property int altoBase:
-        (messages.length > 0 || sidebarVisible) ? 470 : 128
+        (messages.length > 0 || sidebarVisible) ? 560 : 174 + Math.max(0, composerHeight - 42)
     islandHeight: !autenticado ? 340
                   : selectorOpen ? Math.max(altoBase, 410)
                   : altoBase
@@ -258,6 +274,7 @@ K4Plugin {
             self.currentChatId = d.currentChatId || ""
             self.chatTitle = d.chatTitle || ""
             self.sidebarVisible = d.sidebarVisible === true
+            self.chatDocument = d.chatDocument || {}
         }
     }
 
@@ -266,11 +283,11 @@ K4Plugin {
             estado.guardar({})
             return
         }
-        //  A cap, so the file stays small; the server keeps the whole
-        //  conversation anyway, and the sidebar can bring it back.
-        estado.guardar({ messages: messages.slice(-200),
+        // Keep the full active branch so a reopened chat retains its parent chain.
+        estado.guardar({ messages: messages,
                          currentChatId: currentChatId,
                          chatTitle: chatTitle,
+                         chatDocument: chatDocument,
                          sidebarVisible: sidebarVisible })
     }
 
@@ -343,11 +360,20 @@ K4Plugin {
     function newChat() {
         if (generating)
             stopGeneration()
+        chatEpoch++
+        chatRequest++
+        fetchingChatId = ""
+        chatDocument = ({})
+        savingChat = false
+        saveAgain = false
+        titlingChat = false
+        syncError = ""
         query = ""
         messages = []
         currentChatId = ""
         chatTitle = ""
         currentResponse = ""
+        currentReasoning = ""
         errorMessage = ""
         selection = ""
         selectionCandidate = ""
@@ -355,6 +381,7 @@ K4Plugin {
         image = ""
         editingId = ""
         guardarEstado()
+        chatLoads++
     }
 
     // ── sending ───────────────────────────────────────────────────
@@ -376,22 +403,19 @@ K4Plugin {
     function send() {
         const texto = query.trim()
         if (texto.length === 0 || generating)
-            return
+            return false
         if (baseUrl.trim().length === 0 || !autenticado) {
             openAsk(false)
-            return
+            return false
         }
         if (currentModel.length === 0) {
             errorMessage = "No model selected — pick one in Settings."
-            return
+            return false
         }
 
         errorMessage = ""
-        //  A rewrite continues from itself: the conversation is cut
-        //  at the message being edited — it and everything after it
-        //  go — and the new wording is sent as this turn. The image
-        //  of the old turn does not come back: what the rewrite
-        //  carries is what was just attached.
+        // Start a new active branch at the edited turn. Attachments belong to
+        // the composer, so only the currently attached context is sent.
         if (editingId.length > 0) {
             const idx = indiceDe(editingId)
             if (idx >= 0)
@@ -400,41 +424,64 @@ K4Plugin {
         }
 
         despachar(texto, image)
+        return true
     }
 
-    //  The turn leaves through a script of our own: the payload —
-    //  and a screenshot's data URL above all — cannot travel as a
-    //  command-line argument, where the kernel caps one word at
-    //  128 KB. The JSON goes to a file the script reads, the image
-    //  goes as a path it embeds, and what comes back is the same
-    //  line-by-line stream the parser below has always read.
+    // The immutable payload and credentials travel on stdin, avoiding argv's
+    // size limit and keeping overlapping generations independent.
     function despachar(texto, rutaImagen) {
-        appendMessage("user", texto, image)
+        appendMessage("user", texto, rutaImagen, { selection: selection })
+        startResponse()
+        query = ""
+        image = ""
+        selection = ""
+    }
+
+    function startResponse() {
+        generationSerial++
+        chatRequest++
+        fetchingChatId = ""
         generating = true
-        manuallyStopped = false
         currentResponse = ""
+        currentReasoning = ""
+        errorMessage = ""
+        responseId = Api.messageId()
+        responseModel = currentModel
+        responsePhase = "Waiting"
+        reasoningStarted = 0
+        reasoningSeconds = 0
         timeoutTimer.restart()
 
         const history = []
+        outgoingIds = []
         for (let i = 0; i < messages.length; ++i) {
             const m = messages[i]
             if (m.role === "error")
                 continue
-            history.push({ role: m.role, content: m.content })
+            let content = m.apiContent || m.content
+            if (m.role === "assistant") content = Api.presentation(m.content, m.reasoning).answer
+            if (m.role === "user" && m.selection && !Array.isArray(content))
+                content = m.content + "\n\nSelected text:\n" + m.selection
+            const turn = { role: m.role, content: content }
+            if (m.imagen && !Array.isArray(content)) turn.local_image = m.imagen
+            outgoingIds.push(m.id)
+            history.push(turn)
         }
+        activeStream = streamFactory.createObject(self, {
+            serial: generationSerial,
+            request: JSON.stringify({ url: Api.base(baseUrl), token: apiToken,
+                payload: Api.payload(responseModel, history, currentChatId) })
+        })
+        activeStream.running = true
+    }
 
-        carga.setText(JSON.stringify(
-            Api.payload(currentModel, history, currentChatId)))
-
-        flujo.command = ["python3", fichero("enviar.py"),
-                         Api.base(baseUrl), apiToken, carga.path,
-                         rutaImagen.length > 0 ? rutaImagen : ""]
-        flujo.running = true
-
-        // attachments belong to this turn, not the whole conversation
-        query = ""
-        image = ""
-        selection = ""
+    function retryLast() {
+        if (generating || !autenticado || !currentModel) return
+        let end = messages.length - 1
+        while (end >= 0 && messages[end].role !== "user") end--
+        if (end < 0) return
+        messages = messages.slice(0, end + 1)
+        startResponse()
     }
 
     // ── editing a sent turn ───────────────────────────────────────
@@ -468,82 +515,74 @@ K4Plugin {
         query = ""
     }
 
-    function appendMessage(role, content, imagen) {
-        const m = { id: String(Date.now()) + "-" + messages.length,
+    function appendMessage(role, content, imagen, metadata) {
+        const m = Object.assign({ id: Api.messageId(),
                     role: role, content: content,
                     imagen: imagen || "",
-                    timestamp: Api.ahora() }
+                    timestamp: Api.ahora() }, metadata || {})
         messages = messages.concat([m])
         return m
     }
 
-    function stopGeneration() {
+    function stopGeneration(skipSync) {
         if (!generating)
             return
-        manuallyStopped = true
-        if (flujo.running)
-            flujo.running = false
+        generationSerial++
+        if (activeStream) activeStream.running = false
+        activeStream = null
         generating = false
         timeoutTimer.stop()
-        // a partial answer is still an answer
-        if (currentResponse.trim().length > 0)
-            finalizeAssistant()
-        currentResponse = ""
+        finalizeAssistant(errorMessage ? "failed" : "stopped")
+        if (!skipSync) sincronizarServidor()
     }
 
-    // ── the stream, line by line ──────────────────────────────────
-    //
-    //  curl --no-buffer hands us the SSE as it happens: `data: {…}`
-    //  chunks with a delta each, a final `data: [DONE]`, and — when
-    //  things go wrong — a plain JSON error with no prefix at all,
-    //  which may arrive split across lines. Both shapes are read.
+    // The transport normalizes SSE and non-streaming JSON into the same events.
     function lineaFlujo(linea) {
-        const t = String(linea).trim()
-        if (t.length === 0)
-            return
-        if (t.indexOf("data: ") === 0) {
-            const json = t.substring(6).trim()
-            if (json === "[DONE]")
-                return
-            try {
-                const ev = JSON.parse(json)
-                if (ev.choices && ev.choices[0]) {
-                    const delta = ev.choices[0].delta
-                    if (delta && delta.content)
-                        currentResponse += delta.content
-                    else if (ev.choices[0].message
-                             && ev.choices[0].message.content)
-                        currentResponse = ev.choices[0].message.content
-                }
-            } catch (e) {
-                //  A chunk cut mid-line arrives whole on the next
-                //  one; parse errors here are noise, not failure.
-            }
-            return
-        }
-        flujo.buffer += t
         try {
-            const err = JSON.parse(flujo.buffer)
-            if (err.error)
-                errorMessage = err.error.message || "API error"
-            else if (err.detail)
-                errorMessage = String(err.detail)
-            flujo.buffer = ""
+            const event = JSON.parse(linea)
+            if (event.type === "attachments") {
+                const updated = messages.slice()
+                for (const attachment of event.messages) {
+                    const index = indiceDe(outgoingIds[attachment.index])
+                    if (index >= 0)
+                        updated[index] = Object.assign({}, updated[index], { apiContent: attachment.content })
+                }
+                messages = updated
+                return
+            }
+            if (event.type === "error") {
+                errorMessage = event.message || "The request failed."
+                return
+            }
+            if (event.type !== "delta" && event.type !== "message") return
+            currentResponse = event.type === "message" ? event.content : currentResponse + event.content
+            currentReasoning = event.type === "message" ? event.reasoning : currentReasoning + event.reasoning
+            const parts = Api.presentation(currentResponse, currentReasoning)
+            if ((event.reasoning || parts.thinking) && !reasoningStarted)
+                reasoningStarted = Date.now()
+            const previousPhase = responsePhase
+            responsePhase = parts.thinking || (event.reasoning && !event.content) ? "Thinking"
+                          : parts.answer.length > 0 ? "Responding" : currentReasoning.length > 0 ? "Thinking" : "Waiting"
+            if (previousPhase === "Thinking" && responsePhase !== "Thinking" && reasoningStarted)
+                reasoningSeconds = Math.max(1, Math.ceil((Date.now() - reasoningStarted) / 1000))
+            if (event.finish === "length") errorMessage = "The model reached its output limit."
+            else if (event.finish === "content_filter") errorMessage = "The provider stopped this response."
         } catch (e) {
-            // incomplete JSON, keep buffering
+            errorMessage = "The server returned an unreadable response."
         }
     }
 
     function flujoTerminado(code) {
-        if (manuallyStopped) {
-            manuallyStopped = false
-            return
-        }
         generating = false
+        activeStream = null
         timeoutTimer.stop()
-
-        if (currentResponse.trim().length > 0) {
-            finalizeAssistant()
+        if (code !== 0 && !errorMessage)
+            errorMessage = "The connection ended before the response completed."
+        const parts = Api.presentation(currentResponse, currentReasoning)
+        if (parts.reasoning && !parts.answer.trim() && !errorMessage)
+            errorMessage = "The model returned reasoning without an answer."
+        if (currentResponse.trim().length > 0 || currentReasoning.trim().length > 0) {
+            finalizeAssistant(errorMessage ? "failed" : "complete")
             sincronizarServidor()
             //  Set aside while it thought: say it is done, which is
             //  what setting it aside was for — or come back to the
@@ -557,20 +596,24 @@ K4Plugin {
             return
         }
 
-        if (errorMessage.length > 0)
-            appendMessage("error", errorMessage)
-        else if (code !== 0)
-            appendMessage("error", "The request failed (exit "
-                                   + code + "). Check the server and key.")
-        else
-            appendMessage("error", "The model returned an empty answer.")
+        appendMessage("error", errorMessage || "The model returned an empty answer.")
         currentResponse = ""
+        currentReasoning = ""
         errorMessage = ""
+        guardarEstado()
     }
 
-    function finalizeAssistant() {
-        appendMessage("assistant", currentResponse.trim())
+    function finalizeAssistant(status) {
+        const parts = Api.presentation(currentResponse, currentReasoning)
+        if (responsePhase === "Thinking" && reasoningStarted)
+            reasoningSeconds = Math.max(1, Math.ceil((Date.now() - reasoningStarted) / 1000))
+        appendMessage("assistant", parts.answer, "", {
+            id: responseId, model: responseModel, reasoning: parts.reasoning,
+            reasoningDuration: reasoningSeconds, status: status || "complete", error: errorMessage
+        })
         currentResponse = ""
+        currentReasoning = ""
+        errorMessage = ""
         guardarEstado()
     }
 
@@ -582,13 +625,21 @@ K4Plugin {
     function sincronizarServidor() {
         if (!autenticado || messages.length === 0)
             return
+        if (savingChat) { saveAgain = true; return }
+        savingChat = true
+        saveAgain = false
+        syncError = ""
         const datos = Api.exportChat(chatTitle.length > 0
                                      ? chatTitle : tituloProvisional(),
-                                     currentModel, messages)
+                                     currentModel, messages, chatDocument)
         const epoch = connectionEpoch
+        const conversation = chatEpoch
         Api.saveChat(baseUrl, apiToken, currentChatId, datos,
             function (resp) {
-                if (epoch !== connectionEpoch) return
+                if (epoch !== connectionEpoch || conversation !== chatEpoch) return
+                savingChat = false
+                chatDocument = datos.chat
+                guardarEstado()
                 if (resp && resp.id && resp.id !== currentChatId) {
                     currentChatId = resp.id
                     guardarEstado()
@@ -596,12 +647,13 @@ K4Plugin {
                 if (messages.length === 2)
                     ponerTitulo()
                 refreshChats()
+                if (saveAgain) sincronizarServidor()
             }, function (fallo) {
                 //  Not fatal: the conversation goes on, it just won't
                 //  be in the web UI's list. The next exchange retries.
-                if (epoch !== connectionEpoch) return
-                errorMessage = ""
-                console.warn("k4.openwebui: " + fallo)
+                if (epoch !== connectionEpoch || conversation !== chatEpoch) return
+                savingChat = false
+                syncError = (rememberHistory ? "Chat saved locally. " : "") + "Server sync failed: " + fallo
             })
     }
 
@@ -620,9 +672,10 @@ K4Plugin {
     //  has a name keeps it, which is also what stops the save→title
     //  →save cycle from chasing its own tail.
     function ponerTitulo() {
-        if (chatTitle.length > 0 || currentChatId.length === 0
+        if (titlingChat || chatTitle.length > 0 || currentChatId.length === 0
                 || messages.length < 2)
             return
+        titlingChat = true
         const primeros = []
         for (let i = 0; i < messages.length && primeros.length < 2; ++i)
             if (messages[i].role === "user"
@@ -630,9 +683,12 @@ K4Plugin {
                 primeros.push({ role: messages[i].role,
                                 content: messages[i].content })
         const epoch = connectionEpoch
+        const conversation = chatEpoch
+        const titleChat = currentChatId
         Api.generateTitle(baseUrl, apiToken, currentModel, primeros,
             function (titulo) {
-                if (epoch !== connectionEpoch) return
+                if (epoch !== connectionEpoch || conversation !== chatEpoch || titleChat !== currentChatId) return
+                titlingChat = false
                 chatTitle = titulo
                 guardarEstado()
                 // the title travels with the next save; a save with
@@ -640,7 +696,8 @@ K4Plugin {
                 sincronizarServidor()
                 refreshChats()
             }, function (fallo) {
-                if (epoch !== connectionEpoch) return
+                if (epoch !== connectionEpoch || conversation !== chatEpoch) return
+                titlingChat = false
                 console.warn("k4.openwebui: title: " + fallo)
             })
     }
@@ -648,6 +705,8 @@ K4Plugin {
     // ── the sidebar's list ────────────────────────────────────────
 
     function refreshChats() {
+        chatListRequest++
+        fetchingChats = false
         chatPage = 0
         hasMoreChats = true
         chatList = []
@@ -661,16 +720,17 @@ K4Plugin {
         chatsError = ""
         const pagina = chatPage + 1
         const epoch = connectionEpoch
+        const request = chatListRequest
         Api.fetchChats(baseUrl, apiToken, pagina,
             function (lista) {
-                if (epoch !== connectionEpoch) return
+                if (epoch !== connectionEpoch || request !== chatListRequest) return
                 fetchingChats = false
                 chatPage = pagina
                 hasMoreChats = lista.length > 0
                 const juntas = chatList.concat(lista)
                 chatList = pagina === 1 ? lista : juntas
             }, function (fallo) {
-                if (epoch !== connectionEpoch) return
+                if (epoch !== connectionEpoch || request !== chatListRequest) return
                 fetchingChats = false
                 chatsError = fallo
             })
@@ -683,17 +743,26 @@ K4Plugin {
             stopGeneration()
         fetchingChatId = id
         const epoch = connectionEpoch
+        const request = ++chatRequest
         Api.fetchChat(baseUrl, apiToken, id,
             function (remoto) {
-                if (epoch !== connectionEpoch) return
+                if (epoch !== connectionEpoch || request !== chatRequest) return
                 fetchingChatId = ""
                 const orden = Api.orderedMessages(remoto)
                 if (orden.length === 0)
                     return
                 messages = orden
+                chatEpoch++
+                chatDocument = remoto.chat || {}
+                savingChat = false
+                saveAgain = false
+                titlingChat = false
+                syncError = ""
                 currentChatId = remoto.id || id
                 chatTitle = remoto.title || ""
                 currentResponse = ""
+                currentReasoning = ""
+                query = ""
                 errorMessage = ""
                 image = ""
                 selection = ""
@@ -702,7 +771,7 @@ K4Plugin {
                 chatLoads++
                 guardarEstado()
             }, function (fallo) {
-                if (epoch !== connectionEpoch) return
+                if (epoch !== connectionEpoch || request !== chatRequest) return
                 fetchingChatId = ""
                 chatsError = fallo
             })
@@ -826,14 +895,16 @@ K4Plugin {
         // photo
         image = ""
         attachSelectionOnOpen = false
-        shotProcess.command = ["grim", dir + "/shot.png"]
+        shotProcess.capturedPath = dir + "/shot-" + Date.now() + ".png"
+        shotProcess.command = ["grim", shotProcess.capturedPath]
         shotProcess.running = true
     }
 
     function attachRegion() {
         image = ""
+        shotProcess.capturedPath = dir + "/shot-" + Date.now() + ".png"
         shotProcess.command = ["sh", "-c",
-            "grim -g \"$(slurp -d)\" " + dir + "/shot.png"]
+            "grim -g \"$(slurp -d)\" " + shotProcess.capturedPath]
         shotProcess.running = true
     }
 
@@ -841,9 +912,26 @@ K4Plugin {
         for (let i = messages.length - 1; i >= 0; --i) {
             if (messages[i].role === "assistant"
                     && messages[i].content.length > 0) {
-                K4.Sistema.lanzar(["wl-copy", "--", messages[i].content])
+                copyText(Api.presentation(messages[i].content, messages[i].reasoning).answer)
                 return
             }
+        }
+    }
+
+    // Send large code blocks through stdin, never a length-limited argv entry.
+    function copyText(text) {
+        const process = clipboardFactory.createObject(self, { value: text })
+        process.running = true
+    }
+
+    Component {
+        id: clipboardFactory
+        K4.Process {
+            property string value: ""
+            command: ["wl-copy"]
+            entradaAbierta: true
+            onArrancado: { escribir(value); entradaAbierta = false }
+            onTerminado: destroy()
         }
     }
 
@@ -868,55 +956,46 @@ K4Plugin {
 
     K4.Process {
         id: shotProcess
+        property string capturedPath: ""
 
         onTerminado: function (code) {
-            const shot = code === 0 ? self.dir + "/shot.png" : ""
+            const shot = code === 0 ? capturedPath : ""
             self.openAsk(false)
             self.image = shot
         }
     }
 
-    //  The payload file the sender script reads — text only, small;
-    //  the image it names is embedded inside the script, where a
-    //  megabyte is not a crime.
-    K4.Fichero {
-        id: carga
-        path: self.dir + "/payload.json"
-        blockLoading: true
+    Component {
+        id: streamFactory
+        K4.Process {
+            property int serial: 0
+            property string request: ""
+            command: ["python3", self.fichero("enviar.py")]
+            entradaAbierta: true
+            porLineas: true
+            onArrancado: { escribir(request + "\n"); request = "" }
+            onLinea: function (line) { if (serial === self.generationSerial) self.lineaFlujo(line) }
+            onTerminado: function (code) {
+                if (serial === self.generationSerial) self.flujoTerminado(code)
+                destroy()
+            }
+        }
     }
 
-    K4.Process {
-        id: flujo
-        porLineas: true
-        property string buffer: ""
-
-        onLinea: function (linea) { self.lineaFlujo(linea) }
-
-        onLineaError: function (linea) {
-            if (linea.indexOf("enviar.py") !== -1
-                    || linea.indexOf("python") !== -1)
-                console.warn("k4.openwebui: " + linea)
-        }
-
-        onTerminado: function (code) { self.flujoTerminado(code) }
+    Timer {
+        interval: 250
+        repeat: true
+        running: self.generating && self.responsePhase === "Thinking"
+        onTriggered: if (self.reasoningStarted)
+            self.reasoningSeconds = Math.max(1, Math.floor((Date.now() - self.reasoningStarted) / 1000))
     }
 
     Timer {
         id: timeoutTimer
         interval: 300000
         onTriggered: {
-            if (flujo.running) {
-                //  Marked as voluntary so `flujoTerminado` does not
-                // treat the corpse's last breath as an answer on top
-                // of the timeout error.
-                self.manuallyStopped = true
-                flujo.running = false
-                self.generating = false
-                self.appendMessage("error",
-                                   "The model didn't answer within "
-                                   + "5 minutes.")
-                self.currentResponse = ""
-            }
+            self.errorMessage = "The response timed out after 5 minutes."
+            self.stopGeneration()
         }
     }
 

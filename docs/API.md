@@ -20,6 +20,31 @@ Qt (`QtQuick`, `QtMultimedia`, `Timer`, animations, and so on) is the portable
 layer. Quickshell and Wayland should stay behind a `K4` API type whenever an
 equivalent exists.
 
+## Native markdown
+
+`K4.MarkdownView` renders selectable CommonMark/GFM prose, headings, lists,
+task lists, quotes, links, strikethrough, tables and highlighted fenced code.
+Set its `width`; its implicit height follows the document. Wide code and tables
+scroll horizontally. Code blocks expose a copy action; rendering never executes
+code or fetches remote images (images are explicit links).
+
+| Member | Meaning |
+|---|---|
+| `text` | Markdown source; default empty |
+| `streaming` | Batch render updates at 100ms while streaming; default false |
+| `color` | Prose color; defaults to `K4.Tema.tinta` |
+| `fontSize` | Prose size in pixels; default 14 |
+| `linkActivated(url)` | User activated an HTTP, HTTPS or mailto link; caller handles opening |
+| `copyRequested(text)` | User requested the original text of a code block; caller handles copying |
+| `selectionStarted()` | Nonempty text selection; a following chat should pause automatic scrolling |
+
+One internal JSON-lines worker uses Mistune 3 and Pygments, pinned through the
+Nix lockfile and declared in `dependencias.tsv`. Rendering runs outside the UI
+thread, uses a bounded cache, and preserves unchanged block delegates. If the
+worker fails, the view shows selectable plain source. Selection is per rendered
+block. Math and diagrams remain source text/code. Internal underscored members
+and `api/K4/markdown/` are implementation details.
+
 ## System telemetry
 
 `K4.SystemMonitor` is a read-only singleton backed by the host sampler. It needs

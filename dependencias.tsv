@@ -23,6 +23,8 @@ pkg:quickshell	quickshell	base	El motor sobre el que corre la barra
 pkg:hyprland	hyprland	base	Compositor: atajos, ventanas, espacios y tema
 git	git	base	Instalar y actualizar k4
 python	python	base	Todas las herramientas de tools/
+pkg:python-mistune	python-mistune	base	Native chat markdown parsing
+pkg:python-pygments	python-pygments	base	Native chat code highlighting
 
 #  Qt: quickshell already brings qt6-declarative and qt6-wayland, but not
 #  multimedia. Without these two packages the bar produces no sound.

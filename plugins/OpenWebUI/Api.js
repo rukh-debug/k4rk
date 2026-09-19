@@ -20,19 +20,24 @@ function ahora() {
 
 function pedir(metodo, url, token, cuerpo, alOk, alFallo) {
     const xhr = new XMLHttpRequest()
+    let settled = false
     xhr.open(metodo, url)
     xhr.setRequestHeader("Content-Type", "application/json")
     if (token && String(token).length > 0)
         xhr.setRequestHeader("Authorization", "Bearer " + token)
     xhr.onreadystatechange = function () {
-        if (xhr.readyState !== XMLHttpRequest.DONE)
+        if (settled || xhr.readyState !== XMLHttpRequest.DONE)
             return
+        settled = true
         if (xhr.status >= 200 && xhr.status < 300) {
+            let response
             try {
-                alOk(JSON.parse(xhr.responseText))
+                response = JSON.parse(xhr.responseText)
             } catch (e) {
                 alFallo("Bad JSON from the server: " + e)
+                return
             }
+            alOk(response)
             return
         }
         //  OpenWebUI speaks {detail: …} on errors and OpenAI-style
@@ -49,7 +54,9 @@ function pedir(metodo, url, token, cuerpo, alOk, alFallo) {
         alFallo("HTTP " + xhr.status
                 + (String(detalle).length > 0 ? ": " + detalle : ""))
     }
-    xhr.onerror = function () { alFallo("Network error") }
+    xhr.onerror = function () {
+        if (!settled) { settled = true; alFallo("Network error") }
+    }
     xhr.send(cuerpo === null ? null : JSON.stringify(cuerpo))
 }
 
@@ -83,7 +90,7 @@ function signin(url, correo, clave, alOk, alFallo) {
 //  bare array, and {models: […]} — and all three are honored so the
 //  list survives whatever the instance feels like answering.
 function fetchModels(url, token, alOk, alFallo) {
-    get(url, "/api/v1/models", token, function (resp) {
+    get(url, "/api/models", token, function (resp) {
         const bruto = (resp && resp.data) ? resp.data
                     : Array.isArray(resp) ? resp
                     : (resp && resp.models) ? resp.models : []
@@ -104,14 +111,14 @@ function fetchChats(url, token, pagina, alOk, alFallo) {
 }
 
 function fetchChat(url, token, id, alOk, alFallo) {
-    get(url, "/api/v1/chats/" + id, token, alOk, alFallo)
+    get(url, "/api/v1/chats/" + encodeURIComponent(id), token, alOk, alFallo)
 }
 
 //  Create or update the server-side chat. An empty `chatId` creates;
 //  anything else updates that one. The callback receives the saved
 //  chat — its `id` is what a follow-up turn needs.
 function saveChat(url, token, chatId, chatData, alOk, alFallo) {
-    post(url, chatId ? "/api/v1/chats/" + chatId : "/api/v1/chats/new",
+    post(url, chatId ? "/api/v1/chats/" + encodeURIComponent(chatId) : "/api/v1/chats/new",
          token, chatData, alOk, alFallo)
 }
 
@@ -119,8 +126,12 @@ function saveChat(url, token, chatId, chatData, alOk, alFallo) {
 //  parent/children links, mirrored in the map the web client walks
 //  and the array the API reads. Local-only messages (errors) stay
 //  out: the server never saw them.
-function exportChat(titulo, model, messages) {
-    const nodos = {}
+function exportChat(titulo, model, messages, existing) {
+    const document = existing ? JSON.parse(JSON.stringify(existing)) : {}
+    const usedModels = (document.models || []).slice()
+    if (usedModels.indexOf(model) < 0) usedModels.push(model)
+    const nodos = document.history && document.history.messages
+        ? document.history.messages : {}
     const orden = []
     let ultimo = null
     for (let i = 0; i < messages.length; ++i) {
@@ -128,23 +139,36 @@ function exportChat(titulo, model, messages) {
         if (m.role === "error")
             continue
         const id = m.id || ("msg-" + i)
-        nodos[id] = { id: id, role: m.role, content: m.content,
+        const previous = nodos[id] || {}
+        nodos[id] = Object.assign({}, previous, { id: id, role: m.role, content: m.apiContent || m.content,
                       timestamp: m.timestamp || ahora(),
-                      parentId: ultimo, childrenIds: [], models: [model] }
-        if (ultimo)
+                      parentId: ultimo, childrenIds: previous.childrenIds || [], models: [m.model || model] })
+        if (m.role === "assistant") {
+            Object.assign(nodos[id], { model: m.model || model, modelName: m.model || model,
+                modelIdx: 0, done: true, reasoning_content: m.reasoning || "",
+                reasoningDuration: m.reasoningDuration || 0, status: m.status || "complete",
+                error: m.error || "" })
+        }
+        if (m.selection) {
+            if (!Array.isArray(m.apiContent))
+                nodos[id].content = m.content + "\n\nSelected text:\n" + m.selection
+            nodos[id].k4Prompt = m.content
+            nodos[id].k4Selection = m.selection
+        }
+        if (m.files) nodos[id].files = m.files
+        if (ultimo && nodos[ultimo].childrenIds.indexOf(id) < 0)
             nodos[ultimo].childrenIds.push(id)
         orden.push(id)
         ultimo = id
     }
     return {
         title: titulo,
-        chat: {
-            id: "", title: titulo, models: [model], params: {},
+        chat: Object.assign(document, {
+            title: titulo, models: usedModels, params: document.params || {},
             history: { messages: nodos, currentId: ultimo },
             messages: orden.map(function (id) { return nodos[id] }),
-            tags: [], timestamp: Date.now()
-        },
-        folder_id: null
+            tags: document.tags || [], timestamp: document.timestamp || Date.now()
+        })
     }
 }
 
@@ -163,8 +187,12 @@ function orderedMessages(chat) {
         if (!m)
             break
         vistos[id] = true
-        out.unshift({ id: id, role: m.role, content: m.content,
-                      timestamp: m.timestamp })
+        out.unshift({ id: id, role: m.role, content: m.k4Prompt || plainContent(m.content),
+                      apiContent: m.content, files: m.files || [], model: m.model || "",
+                      selection: m.k4Selection || "", error: m.error || "",
+                      reasoning: m.reasoning_content || m.reasoning || "",
+                      reasoningDuration: m.reasoningDuration || 0,
+                      status: m.status || "complete", timestamp: m.timestamp })
         id = m.parentId
     }
     return out
@@ -173,10 +201,76 @@ function orderedMessages(chat) {
 // ── completions ──────────────────────────────────────────────────
 
 function payload(model, history, chatId) {
-    const p = { model: model, messages: history, stream: true }
-    if (chatId && chatId.length > 0)
-        p.chat_id = chatId
-    return p
+    // Direct HTTP streaming: persistence is handled separately. Supplying web
+    // client routing IDs can hand the stream to the server's WebSocket path.
+    return { model: model, messages: history, stream: true }
+}
+
+function plainContent(content) {
+    if (typeof content === "string") return content
+    if (!Array.isArray(content)) return ""
+    return content.filter(function (part) { return part.type === "text" })
+        .map(function (part) { return part.text || "" }).join("\n")
+}
+
+function messageId() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+        const r = Math.floor(Math.random() * 16)
+        return (c === "x" ? r : (r & 3) | 8).toString(16)
+    })
+}
+
+// Separate provider-supplied reasoning without interpreting literal examples in
+// fenced or inline code. Partial opening/closing markers stay out of the answer.
+function presentation(content, reasoning) {
+    const source = String(content || "")
+    if (source.indexOf("<") < 0)
+        return { answer: source, reasoning: String(reasoning || ""), thinking: false }
+    let answer = "", thought = "", mode = "", fence = "", inline = 0
+    const lines = source.split("\n")
+    for (let n = 0; n < lines.length; ++n) {
+        const line = lines[n] + (n < lines.length - 1 ? "\n" : "")
+        const marker = line.match(/^ {0,3}(`{3,}|~{3,})/)
+        if (marker) {
+            if (!fence) fence = marker[1]
+            else if (marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = ""
+            if (mode) thought += line; else answer += line
+            continue
+        }
+        if (fence) { if (mode) thought += line; else answer += line; continue }
+        for (let i = 0; i < line.length;) {
+            if (line[i] === "`") {
+                const ticks = line.substring(i).match(/^`+/)[0]
+                if (!inline) inline = ticks.length
+                else if (inline === ticks.length) inline = 0
+                if (mode) thought += ticks; else answer += ticks
+                i += ticks.length
+                continue
+            }
+            if (!inline && line[i] === "<") {
+                const rest = line.substring(i)
+                const open = rest.match(/^<(think|thinking|reasoning)>/i)
+                    || rest.match(/^<details\b[^>]*\btype=["']reasoning["'][^>]*>/i)
+                const close = mode && rest.match(new RegExp("^</" + mode + ">", "i"))
+                if (!mode && open) {
+                    mode = open[1] ? open[1].toLowerCase() : "details"
+                    i += open[0].length
+                    continue
+                }
+                if (close) { mode = ""; i += close[0].length; continue }
+                if (n === lines.length - 1) {
+                    const partial = rest.toLowerCase()
+                    const tags = mode ? ["</" + mode + ">"] : ["<think>", "<thinking>", "<reasoning>", "<details"]
+                    if (tags.some(function (tag) { return tag.indexOf(partial) === 0 })
+                            || (!mode && /^<details\b[^>]*$/i.test(rest))) break
+                }
+            }
+            if (mode) thought += line[i]; else answer += line[i]
+            i++
+        }
+    }
+    thought = thought.replace(/<summary>[\s\S]*?<\/summary>/gi, "").replace(/^> ?/gm, "").trim()
+    return { answer: answer.replace(/^\n+|\n+$/g, ""), reasoning: [String(reasoning || "").trim(), thought].filter(Boolean).join("\n\n"), thinking: mode.length > 0 }
 }
 
 //  Ask the server to name the conversation, using its own title task.

@@ -8,6 +8,15 @@ This is the quick reference. For complete guides see:
 
 > A plugin imports `QtQuick` and `K4`. Nothing else from the host.
 
+## Native markdown
+
+`K4.MarkdownView`: set `width`, `text`, and optionally `streaming`, `color`, or
+`fontSize` (14px default). Height follows the rendered content. Handle
+`copyRequested(text)`, `linkActivated(url)` and `selectionStarted()` in the caller.
+Includes selectable prose, highlighted code with copy actions, and horizontally
+scrollable tables/code. Uses the packaged Mistune/Pygments worker; falls back to
+plain source on worker failure. See [the reference](../docs/API.md#native-markdown).
+
 ## Minimal plugin
 
 ```qml

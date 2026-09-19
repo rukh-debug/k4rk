@@ -83,7 +83,7 @@ let
     coreutils # the launcher itself: cp, mkdir, mv…
     quickshell
     hyprland
-    (python3.withPackages (ps: [ ps.astral ps.tzdata ]))
+    (python3.withPackages (ps: [ ps.astral ps.tzdata ps.mistune ps.pygments ]))
     power-profiles-daemon
     brightnessctl
     ddcutil

@@ -78,6 +78,13 @@
           touch "$out"
         '';
 
+        openwebui = pkgs.runCommand "k4-openwebui-tests" {
+          nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ ps.mistune ps.pygments ])) ];
+        } ''
+          python3 -B ${self}/tools/test_openwebui.py
+          touch "$out"
+        '';
+
         monitors = pkgs.runCommand "k4-monitor-tests" {
           nativeBuildInputs = [ pkgs.python3 ];
         } ''
