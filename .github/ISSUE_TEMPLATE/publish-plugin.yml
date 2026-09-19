@@ -1,14 +1,13 @@
-#  El formulario por el que se publica un plugin en el registro de k4.
+#  The form used to publish a plugin in the k4 registry.
 #
-#  En inglés, aunque el proyecto hable español por dentro: esto lo rellena
-#  gente de fuera, y un ecosistema al que solo puede entrar quien sepa español
-#  no es un ecosistema. La regla del idioma es para los identificadores del
-#  código, no para lo que lee un desconocido.
+#  The form is in English so outside contributors do not need to know Spanish
+#  to participate. New project text and identifiers are English too; the
+#  existing label names remain a compatibility contract with the publisher.
 #
-#  Pide un COMMIT y no una rama a propósito: una rama se mueve después de que
-#  alguien la haya mirado, y entonces lo que se instala deja de ser lo que se
-#  revisó. Publicar una versión nueva es abrir otra incidencia con el SHA
-#  nuevo, que cuesta un minuto y hace que la revisión signifique algo.
+#  Ask for a COMMIT, not a branch: a branch can move after review, making what
+#  gets installed different from what was reviewed. Publishing a new version
+#  means opening another issue with its new SHA; that small step keeps the
+#  review tied to the actual code.
 
 name: Publish a plugin
 description: Add your plugin to the registry so it can be installed from k4

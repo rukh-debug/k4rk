@@ -1,9 +1,8 @@
-//  Una copia de lo que sea por cada pantalla.
+//  One instance per screen.
 //
-//  Con dos monitores casi nada quiere existir una sola vez: una superficie a
-//  pantalla completa tiene que estar en las dos, y cada copia sabe en cuál
-//  está. Reexporta `Variants` con el modelo ya puesto, que es el 100 % de los
-//  casos.
+//  Multi-monitor surfaces often need one instance per display: a fullscreen
+//  surface can cover both monitors, with each instance knowing its screen.
+//  Reexports `Variants` with the screen model already assigned for that use.
 //
 //      K4.PorPantalla {
 //          delegate: K4.Ventana { required property var modelData; screen: modelData }

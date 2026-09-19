@@ -1,14 +1,14 @@
-//  Comprobar que quien está delante es quien dice ser.
+//  Verify that the person at the keyboard is who they claim to be.
 //
-//  Por debajo es PAM, que no es «dame la contraseña y te digo sí o no»: abre
-//  una conversación en la que el sistema pregunta y tú contestas, y puede
-//  preguntar varias veces —o soltar un aviso sin preguntar nada, como cuando
-//  quedan dos intentos antes de que la cuenta se bloquee sola—. Aquí se recoge
-//  todo eso y se sirve como una máquina de tres estados.
+//  Underneath is PAM, which does more than accept a password and return yes
+//  or no: it opens a conversation in which the system asks and you answer.
+//  It may ask several times, or issue a notice without a question, such as
+//  when two attempts remain before the account locks itself. This collects
+//  that conversation and exposes it as a four-state machine.
 //
-//  Los motivos son CLAVES, no frases: esta capa no traduce. El mensaje del
-//  sistema sí viene ya en el idioma del equipo y se pasa tal cual, porque lo
-//  escribe PAM y suele decir algo útil.
+//  Reasons are KEYS, not sentences: this layer does not translate them. The
+//  system message already uses the machine's language and passes through
+//  unchanged, because PAM supplies it and it often contains useful details.
 
 import QtQuick
 import Quickshell.Services.Pam
@@ -19,11 +19,11 @@ QtObject {
     // "listo" · "verificando" · "correcto" · "fallo"
     property string estado: "listo"
 
-    // Clave del motivo del último fallo: "" · "sin-pam" · "incorrecta" ·
+    // Reason key for the last failure: "" · "sin-pam" · "incorrecta" ·
     // "demasiados-intentos" · "error"
     property string motivo: ""
 
-    // Lo que haya dicho el sistema, ya en su idioma. Puede venir vacío.
+    // The system's message, already in its language. May be empty.
     property string mensaje: ""
 
     property int fallos: 0
@@ -52,12 +52,12 @@ QtObject {
         mensaje = ""
     }
 
-    // La contraseña vive lo justo: desde que se pide hasta que PAM la reclama.
+    // Keep the password only from submission until PAM requests it.
     property string pendiente: ""
 
     property PamContext pam: PamContext {
-        // El mismo montón de reglas que usa iniciar sesión en la máquina, que
-        // es lo que uno espera de un bloqueo: la contraseña de tu usuario.
+        // Use the same rules as logging into the machine, as expected from
+        // a screen lock: authenticate with the user's login password.
         config: "login"
         configDirectory: "/etc/pam.d"
 
@@ -66,8 +66,8 @@ QtObject {
                 respond(auth.pendiente)
                 auth.pendiente = ""
             } else if (message.length > 0) {
-                // Avisos sin pregunta: casi siempre el contador de intentos que
-                // quedan. Interesa verlos.
+                // Notices without a question: usually the remaining attempt
+                // count. These are worth showing.
                 auth.mensaje = message
             }
         }

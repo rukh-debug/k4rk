@@ -1,12 +1,12 @@
-//  Un proceso externo.
+//  An external process.
 //
-//  Envuelve el de Quickshell y de paso resuelve la parte incómoda: elegir cómo
-//  se lee la salida. En k4 hay dos formas y solo dos —una línea JSON por
-//  muestra, o todo de golpe al terminar—, así que en vez de obligar a montar un
-//  SplitParser o un StdioCollector a mano, se dice `porLineas` y ya.
+//  Wraps Quickshell's process and handles the awkward part: choosing how to
+//  read output. k4 uses two modes, individual lines (such as one JSON sample
+//  per line) or the complete output on exit. Set `porLineas` instead of
+//  assembling a SplitParser or StdioCollector manually.
 //
 //      K4.Process {
-//          command: ["python3", K4.Paths.guion("sistema.py")]
+//          command: ["python3", K4.Paths.guion("system.py")]
 //          running: mirando
 //          porLineas: true
 //          onLinea: function (l) { ... }
@@ -22,19 +22,19 @@ QtObject {
     property bool running: false
     property string workingDirectory: ""
 
-    // Variables extra para el proceso. El caso típico es LC_ALL=C, para que la
-    // salida de un mandato venga en inglés y se pueda parsear igual en
-    // cualquier idioma.
+    // Extra environment variables. A typical example is LC_ALL=C, which
+    // keeps command output in English so parsing does not depend on the
+    // user's language.
     property var environment: ({})
 
-    // Una señal `linea` por cada línea, en vez de `salida` con todo al final.
-    // Para un proceso que va informando mientras trabaja es la diferencia entre
-    // ver el progreso y esperar a que acabe.
+    // Emit `linea` for each line instead of one final `salida` with everything.
+    // For a process reporting while it works, this lets callers show progress
+    // instead of waiting for completion.
     property bool porLineas: false
 
-    // Poder escribirle por la entrada estándar. Apagado por defecto: si nadie
-    // va a hablarle, dejarle la entrada abierta solo sirve para que no se
-    // entere de que ya no hay nada que leer.
+    // Allow writes to standard input. Off by default: when nobody will write,
+    // leaving input open only prevents the process from learning that there
+    // is nothing more to read.
     property bool entradaAbierta: false
 
     signal arrancado()
@@ -42,21 +42,21 @@ QtObject {
     signal salida(string texto)
     signal terminado(int codigo)
 
-    // La salida de error, siempre por líneas: es como sale y como se lee.
+    // Standard error is always delivered line by line.
     signal lineaError(string texto)
 
     function escribir(texto) { _proc.write(texto) }
 
-    //  Parar por las buenas. El 2 es SIGINT, que es lo que hay que mandarle a
-    //  cualquier cosa que esté escribiendo un fichero: matarlo a secas deja el
-    //  fichero a medias. Un grabador de vídeo sin su índice no lo abre nadie.
+    //  Request a graceful stop. Signal 2 is SIGINT, allowing file-writing
+    //  processes to finish their output. Abruptly killing a recorder can
+    //  leave a partial video without the index needed to open it.
     function parar(senal) { _proc.signal(senal === undefined ? 2 : senal) }
 
-    // Vale 0 cuando no está corriendo: `processId` es nulo entonces, y Qt se
-    // queja en cada evaluación de que no puede meter un nulo en un entero.
+    // Use 0 while stopped: `processId` is null then, and assigning null to an
+    // integer makes Qt warn on every evaluation.
     readonly property int pid: _proc.processId || 0
 
-    // ── por debajo ────────────────────────────────────────────────
+    // ── implementation ────────────────────────────────────────────
     property Qs.SplitParser _lineas: Qs.SplitParser {
         onRead: function (l) { self.linea(l) }
     }
@@ -80,8 +80,8 @@ QtObject {
 
         onStarted: self.arrancado()
         onExited: function (codigo) {
-            // Devolver la bandera es cosa nuestra: si no, quien nos usa cree
-            // que sigue corriendo y no vuelve a lanzarlo nunca.
+            // Reset our own flag; otherwise callers believe the process is
+            // still running and never launch it again.
             self.running = false
             self.terminado(codigo)
         }

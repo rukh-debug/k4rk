@@ -1,5 +1,5 @@
-//  Capa fina sobre K4.Interruptor — ver core/IconGlyph.qml. Solo traduce los
-//  nombres: `checked`/`toggled` es lo que escriben los veinte de casa.
+//  Thin wrapper around K4.Interruptor; see core/IconGlyph.qml. Only maps
+//  names: host views use `checked` and `toggled`.
 
 import K4 as K4
 

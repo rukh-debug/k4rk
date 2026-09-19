@@ -1,16 +1,17 @@
-//  La barra de desplazamiento de la casa, para plugins.
+//  The in-house scrollbar, available to plugins.
 //
-//  Fina, redondeada, del tono tenue de la island, sin surco pintado —sobre el
-//  fondo oscuro un carril permanente es una raya que no dice nada— y que se
-//  desvanece sola al medio segundo de soltar, aunque su zona de agarre sigue
-//  ahí para ir a por ella. Es LA MISMA barra que usa la barra entera: un
-//  plugin que la ponga queda vestido igual que el resto sin dibujar nada.
+//  Thin, rounded and muted like the island, without a painted track: a
+//  permanent line on the dark background adds no information. Position and
+//  size changes reveal it for 900 ms; once that timer expires and it is no
+//  longer active, hovered or pressed, it fades over 300 ms. Its grab area
+//  remains available. This is the SAME scrollbar used throughout the shell,
+//  so plugins match the rest without drawing their own.
 //
 //      ListView {
 //          ScrollBar.vertical: K4.Desplazador {}
 //      }
 //
-//  Con `K4.Rodillo` no hace falta ni eso: la trae puesta.
+//  With `K4.Rodillo`, even that is unnecessary: it already includes one.
 
 import QtQuick
 import QtQuick.Controls
@@ -21,15 +22,15 @@ ScrollBar {
     policy: ScrollBar.AsNeeded
     minimumSize: 0.08
 
-    //  Fina de fábrica y un pelo más ancha bajo el ratón, que agarrar tres
-    //  píxeles es pedir puntería.
+    //  Thin by default and slightly wider under the pointer: grabbing three
+    //  pixels should not require perfect aim.
     implicitWidth: 10
     implicitHeight: 10
 
-    //  El asomo: la barra se enseña cuando la POSICIÓN cambia, sea quien sea
-    //  quien la cambie. `active` no basta y se comprobó a base de no verla:
-    //  solo salta con arrastres de verdad, y la rueda de media casa mueve
-    //  `contentY` a mano —el truco del Rodillo—, que para Qt no es moverse.
+    //  Reveal on POSITION changes, whoever caused them. `active` alone
+    //  proved insufficient: it responds to actual dragging, while many wheel
+    //  handlers adjust `contentY` directly, as Rodillo does. Qt does not
+    //  treat those assignments as an active scroll interaction.
     property bool asomo: false
     property real _posVista: -1
 
@@ -41,8 +42,8 @@ ScrollBar {
         _posVista = position
     }
 
-    //  Y un saludo al aparecer con contenido de sobra: un panel que se
-    //  desplaza sin decirlo parece un panel al que le falta la mitad.
+    //  Also reveal when overflowing content appears: a scrollable panel
+    //  without a scrolling cue looks as though half of it is missing.
     onSizeChanged: if (size > 0 && size < 0.999) {
         asomo = true
         recogida.restart()
@@ -65,9 +66,9 @@ ScrollBar {
         Behavior on implicitWidth { NumberAnimation { duration: 100 } }
         Behavior on color { ColorAnimation { duration: 120 } }
 
-        //  Visible mientras hay movimiento o intención, y fuera después. La
-        //  opacidad va aquí y no en la barra entera: la zona de agarre sigue
-        //  existiendo aunque no se vea, que es lo que permite ir a por ella.
+        //  Visible during movement or interaction, hidden afterward. Apply
+        //  opacity here, not to the entire scrollbar: the grab area must
+        //  remain available even while its thumb is invisible.
         opacity: barra.asomo || barra.active || barra.hovered || barra.pressed
             ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 300 } }

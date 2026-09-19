@@ -1,4 +1,4 @@
-//  Capa fina sobre K4.Aparicion — ver core/IconGlyph.qml.
+//  Thin wrapper around K4.Aparicion; see core/IconGlyph.qml.
 
 import K4 as K4
 

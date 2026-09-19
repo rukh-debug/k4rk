@@ -1,9 +1,9 @@
-//  La mano que asoma por el lateral de la island.
+//  The hand peeking out beside the island.
 //
-//  La pareja que lo hace posible: K4.Ventana —una superficie transparente a
-//  pantalla completa por encima de todo— y K4.Isla.rect, la geometría real
-//  de la island para anclarse a su borde al píxel. Con estas dos piezas,
-//  cualquier cosa puede asomar, caerse o pasearse "fuera" de la barra.
+//  Two pieces make this possible: K4.Ventana, a transparent fullscreen
+//  surface above everything, and K4.Isla.rect, the island's actual geometry
+//  for anchoring precisely to its edge. Together they let anything peek
+//  out, fall, or move around outside the bar.
 
 import QtQuick
 import K4 as K4
@@ -13,8 +13,8 @@ K4.Ventana {
 
     nombre: "k4-efectos-mano"
 
-    //  Solo la mano captura el ratón; el resto de la pantalla sigue siendo
-    //  del escritorio. Sin esto, la ventana invisible se tragaría los clics.
+    //  Only the hand captures mouse input; the rest of the screen belongs
+    //  to the desktop. Otherwise, the invisible window would swallow clicks.
     zonaActiva: mano
 
     required property var plugin
@@ -22,15 +22,15 @@ K4.Ventana {
     Text {
         id: mano
 
-        //  Pegada al borde derecho de la island, medio palmo por debajo del
-        //  filo, mirando hacia fuera.
+        //  Attached to the island's right edge, slightly below the top,
+        //  facing outward.
         x: K4.Isla.rect.x + K4.Isla.rect.ancho - 4
         y: K4.Isla.rect.y + 6
         text: "👋"
         font.pixelSize: 30
         rotation: -35
 
-        //  Aparece con ganas y saluda sin parar.
+        //  Pops into view and keeps waving.
         scale: 0
         Component.onCompleted: aparecer.start()
 
@@ -54,7 +54,7 @@ K4.Ventana {
             PauseAnimation { duration: 900 }
         }
 
-        //  Chocarle los cinco la esconde.
+        //  A high five hides it.
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor

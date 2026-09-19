@@ -1,14 +1,14 @@
-//  Texto con los defaults de la barra: blanco, Adwaita, 12px.
+//  Text with the shell's defaults: white, Adwaita, 12px.
 //
-//  El equivalente público del IslandLabel de core/, escrito aparte y no
-//  reexportado: un fichero de este módulo no puede importar core/ por ruta
-//  relativa — ver Puente.qml para el porqué, que costó una tarde.
+//  The public equivalent of core/IslandLabel, implemented here rather than
+//  reexported: files in this module cannot import core/ by relative path.
+//  See Puente.qml for the singleton-graph issue behind that restriction.
 
 import QtQuick
 
 Text {
-    //  Literal, y aquí con más motivo: esto es lo que usan los plugins de
-    //  fuera, que pintan lo que les llegue. Ver core/IslandLabel.
+    //  Plain text is especially important here: external plugins render
+    //  whatever data they receive. See core/IslandLabel.
     textFormat: Text.PlainText
     color: Tema.tinta
     font.family: Tema.fuente

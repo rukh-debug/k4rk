@@ -14,7 +14,7 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 ```
 
 > **You may not need to read this.** k4 installs a skill for coding agents
-> (`agentes/skills/k4/`, linked by `./instalar`), so Claude Code, Codex and
+> (`agentes/skills/k4/`, linked by `./install`), so Claude Code, Codex and
 > anything else that reads `~/.claude/skills/` or `~/.config/agents/skills/`
 > already know everything on this page. Asking for the plugin you want is a
 > legitimate way to get one — this guide is here for when you want to know
@@ -177,8 +177,8 @@ commands that come next. The rest of this page explains what it wrote.
   "id": "hola",
   "entry": "HolaPlugin.qml",
   "version": "1.0.0",
-  "title": "Hola",
-  "description": "Qué hace, en una frase — sale en Ajustes",
+  "title": "Hello",
+  "description": "What it does, in one sentence — shown in Settings",
   "host": ">=1.1.0",
   "permissions": [],
   "surfaces": ["island"]
@@ -204,7 +204,7 @@ commands that come next. The rest of this page explains what it wrote.
 - `host`: the minimum bar version you need (`>=x.y.z`).
 - `icon`: your icon, of one of these two kinds:
   - **a Nerd Font codepoint** as text, `"0xF011A"` — find it with
-    `python3 tools/glifos.py <word>`. It inherits the theme's color, so it
+    `python3 tools/glyphs.py <word>`. It inherits the theme's color, so it
     looks like the rest of the bar and dims and tints along with it.
   - **your own image**, `"icono.png"`: a PNG or SVG file **from your
     directory** (no paths: your icon is yours). A PNG must be at least
@@ -468,7 +468,7 @@ bar's directory, not yours.
 | `K4.Plugin` | the contract: island, priority, keyboard, view |
 | `K4.Tema` | the palette (`tinta`, `superficie`, `apagado`…) and the fonts |
 | `K4.Etiqueta` | text with the bar's defaults |
-| `K4.Glifo` | a Nerd Font icon (find them with `tools/glifos.py`) |
+| `K4.Glifo` | a Nerd Font icon (find them with `tools/glyphs.py`) |
 | `K4.Icono` | a desktop-theme icon, by name |
 | `K4.Miniatura` | the live thumbnail of an open window, by its address |
 | `K4.Interruptor` | the bar's switch; it notifies, it does not flip itself |
@@ -618,10 +618,12 @@ missing:
   reloads your plugin directory only, so rule changes need the bar
   restarted.
 
-The repo's own examples (`ejemplos/`) are the proof it can go far.
-And what a game draws with is plain Qt: `AnimatedSprite`, `SpriteSequence`,
-`ParticleSystem`, `Shape`, `ShaderEffect` and `Canvas` are all importable —
-the rule is only that Quickshell stays hidden, not Qt.
+The repo's own examples (`ejemplos/`) demonstrate these capabilities.
+Use the drawing primitives available from QtQuick, such as `AnimatedSprite`,
+`SpriteSequence`, `ShaderEffect` and `Canvas`. Features requiring another module
+need a public K4 wrapper or a host service. Some existing examples and the current
+checker still allow broader imports; migrate those callers rather than treating
+the enforcement gap as permission for new private or platform imports.
 
 ## 3b · Showing up in places that are not yours
 
@@ -871,7 +873,7 @@ everything already installed. Whoever asks for a taken command is listed as
 not loadable, with the reason:
 
 ```
-  - notas: el comando k4.launcher ya lo registra «launcher»
+  - notas: command k4.launcher is already registered by «launcher»
 ```
 
 Repo plugins come first in the combined catalog, so an outside plugin never
@@ -987,7 +989,7 @@ it against the code on every change:
 
 ```sh
 python3 tools/api.py    # every public K4.* type must be mentioned in the quick-ref
-python3 tools/guia.py   # every K4.<Type>.<member> the docs cite must exist;
+python3 tools/docs_check.py   # every K4.<Type>.<member> the docs cite must exist;
                         # every permission and named rule must be in the table
 ```
 

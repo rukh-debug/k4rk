@@ -4,7 +4,7 @@
 #    · puts the k4 package on PATH (`k4` runs the bar, syncing the
 #      ~/.local/share/k4/code mirror first);
 #    · writes the Hyprland integration from the repo's own templates —
-#      hypr/k4.conf and hypr/config/k4.lua — with three substitutions:
+#      hypr/k4.conf and hypr/k4.lua — with three substitutions:
 #        - the exec hook launches the wrapper, not $mirror/launch,
 #          because on a cold start the mirror does not exist yet and the
 #          wrapper is what creates it;
@@ -20,7 +20,8 @@
 #
 #      source = ~/.config/hypr/k4.conf
 #
-#  (or `require("config.k4")` in hyprland.lua — both files are written.)
+#  (or `require("config.k4")` in hyprland.lua). Both files are written for
+#  hand-managed configurations; Home Manager gets only the matching flavor.
 {
   config,
   lib,

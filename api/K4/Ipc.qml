@@ -1,15 +1,13 @@
-//  Órdenes que llegan de fuera, normalmente de un atajo de teclado.
+//  Commands arriving from outside, usually through a keyboard shortcut.
 //
-//  Es una reexportación y no un envoltorio, y a propósito: las funciones se
-//  declaran dentro del propio objeto, así que no hay forma de reenviarlas una a
-//  una. Lo que aporta es esconder de qué plataforma viene, que es justo el
-//  motivo de que exista esta carpeta.
+//  Deliberately reexports rather than wraps IpcHandler: callers declare
+//  functions inside the object, so they cannot be forwarded individually.
+//  This hides the underlying platform, which is the purpose of this API.
 //
-//  Ojo si tocas esto: a un IpcHandler NO se le puede adjuntar
-//  `Component.onDestruction` —«Non-existent attached object»— y además la
-//  caché compilada esconde el error hasta la primera recompilación fresca.
-//  Quien desregistra los targets al destruir un plugin es el gestor, apagando
-//  `enabled` antes del destroy.
+//  IpcHandler does NOT support an attached `Component.onDestruction`:
+//  it reports "Non-existent attached object", and the compiled cache can
+//  hide that error until a fresh compilation. The plugin manager unregisters
+//  targets by disabling `enabled` before destroying the plugin.
 //
 //      K4.Ipc {
 //          target: "k4.mymodule"

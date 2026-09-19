@@ -1,28 +1,27 @@
-//  Una barra que mide: el carril y lo que va lleno.
+//  A meter: a track and its filled portion.
 //
-//  Existe porque ya se estaba copiando. El volumen, el avance de la canción,
-//  lo que llevas gastado de un cupo: los tres son el mismo rectángulo dentro
-//  de otro rectángulo, con la misma curva y la misma animación, y cada copia
-//  se inventaba su altura y su duración. Ahora un plugin de fuera pinta una
-//  igual sin dibujarla a mano —que es toda la razón de que esta carpeta
-//  exista— y las de casa dejan de divergir.
+//  This replaces repeated implementations. Volume, track progress and quota
+//  usage all need the same rounded rectangle inside another rectangle, with
+//  the same animation. Copies had begun choosing different heights and
+//  durations. External plugins can now use the same meter without drawing
+//  it manually, while the shell's own meters stop diverging.
 //
-//      K4.Medidor { valor: 0.4 }                        // de 0 a 1
-//      K4.Medidor { valor: 72; maximo: 100              // …o en porcentaje
+//      K4.Medidor { valor: 0.4 }                        // from 0 to 1
+//      K4.Medidor { valor: 72; maximo: 100              // or a percentage
 //                   tono: K4.Tema.verde; minimo: 3 }
 //
-//  No es un `K4.Deslizador`: aquello se toca y esto se mira. Un medidor no
-//  lleva ratón a propósito —quien quiera que se pueda arrastrar tiene el
-//  deslizador, y quien quiera un clic suyo le pone encima su MouseArea.
+//  Unlike `K4.Deslizador`, this displays a value rather than editing it.
+//  There is deliberately no mouse handling: use the slider for dragging,
+//  or add your own MouseArea above the meter for a custom click action.
 
 import QtQuick
 
 Item {
     id: control
 
-    //  Lo medido, entre 0 y `maximo`. Se recorta: un valor fuera de rango es
-    //  un error de quien mide, y una barra que se sale del carril lo convierte
-    //  en un error de pintado que cuesta más encontrar.
+    //  The measured value, between 0 and `maximo`. Clamp it: an invalid
+    //  measurement should not become an overflowing fill and a harder-to-find
+    //  rendering error.
     property real valor: 0
     property real maximo: 1
 
@@ -31,14 +30,13 @@ Item {
 
     property int grosor: 4
 
-    //  Anchura mínima de lo lleno cuando hay algo que enseñar. Con 0 —lo de
-    //  siempre— un valor diminuto no se ve, que para el volumen está bien
-    //  pero para un cupo recién tocado engaña: parece que no has gastado
-    //  nada. Ponle 3 y el hilito aparece.
+    //  Minimum fill width when the value is positive. With the default 0,
+    //  tiny values may be invisible. That suits volume, but can make a newly
+    //  used quota look untouched. Set 3 to keep a thin fill visible.
     property int minimo: 0
 
-    //  Cuánto tarda en llegar al sitio. 0 lo pone ahí de golpe, que es lo que
-    //  quiere quien pinta un medidor por frame.
+    //  Time to reach the new value. Set 0 for immediate updates, as needed
+    //  by callers driving the meter every frame.
     property int duracion: 260
 
     readonly property real fraccion: maximo > 0

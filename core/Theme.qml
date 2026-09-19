@@ -1,7 +1,7 @@
 pragma Singleton
 
-//  Tokens de diseño de la island (macOS Dynamic Island / Atoll).
-//  No depende de nada: es la base del grafo de imports.
+//  Island design tokens (macOS Dynamic Island / Atoll).
+//  No host dependencies: this is the base of the import graph.
 
 import QtQuick
 import Quickshell
@@ -17,17 +17,16 @@ Singleton {
     property string chosenFont: ""
     readonly property string uiFont: chosenFont.length > 0
         ? chosenFont : "Adwaita Sans"
-    //  La variante Mono, a propósito: en la Nerd Font 3.5 el build
-    //  proporcional trae varios iconos con la tinta más ancha que su caja
-    //  (el wifi se salía +2px por la derecha del círculo); en la Mono cada
-    //  glifo está clavado a su celda.
+    //  Deliberately use the Mono variant: Nerd Font 3.5's proportional build
+    //  has several glyphs wider than their boxes. The Wi-Fi icon extended
+    //  2px past the circle's right edge; Mono keeps each glyph in its cell.
     readonly property string iconFont: "MesloLGS Nerd Font Mono"
     readonly property var locale: Qt.locale("es_ES")
 
-    //  El andamio neutro sale de estas bases y del tinte de más abajo. La
-    //  tinta, los apagados y los colores con significado (verde, rojo, azul,
-    //  amarillo) no se tiñen: el texto tiene que leerse y un rojo de alerta
-    //  tiene que seguir siendo rojo bajo cualquier ambiente.
+    //  Neutral surfaces derive from these bases and the tint below. Text,
+    //  muted tones and semantic colors (green, red, blue, yellow) are not
+    //  tinted: text must stay readable and warning red must remain red
+    //  under every theme tint.
     readonly property color _islandBgBase: "#000000"
     readonly property color _surfaceBase: "#1c1c1e"
     readonly property color _surfaceHiBase: "#2c2c2e"
@@ -43,23 +42,22 @@ Singleton {
     readonly property color green: "#30d158"
     readonly property color red: "#ff453a"
     readonly property color blue: "#0a84ff"
-    // Para el audio añadido. Es el amarillo del sistema en su versión oscura,
-    // de la misma familia que el verde y el rojo de arriba.
+    // For amplified audio. The system's dark-mode yellow, in the same
+    // palette as the green and red above.
     readonly property color yellow: "#ffd60a"
 
-    // ── tinte ─────────────────────────────────────────────────────
+    // ── tint ──────────────────────────────────────────────────────
     //
-    //  El ambiente de la barra, prestado a los plugins: un juego puede teñir
-    //  el andamio entero —island, superficies, carriles— y todo lo que pinta
-    //  con el tema se recolorea solo, por reactividad. Los límites los pone
-    //  la casa: la fuerza se recorta para que la barra siga siendo la barra,
-    //  el tinte tiene dueño, y al deshabilitar al dueño se destiñe solo
-    //  (PluginManager llama a destintar al destruir).
+    //  Plugins may temporarily tint the shell: a game can recolor the island,
+    //  surfaces and tracks, and everything using the theme follows reactively.
+    //  The host sets limits: clamp the strength to retain the shell's visual
+    //  identity, track the tint's owner, and clear it when that owner is
+    //  disabled (PluginManager calls destintar during destruction).
     property string tinteDueno: ""
     property color tinteColor: "transparent"
     property real tinteFuerza: 0
 
-    //  Suave al entrar y al salir: un cambio de ambiente, no un fogonazo.
+    //  Ease in and out: a gradual change of atmosphere rather than a flash.
     Behavior on tinteFuerza { NumberAnimation { duration: 420 } }
     Behavior on tinteColor { ColorAnimation { duration: 420 } }
 
@@ -69,9 +67,9 @@ Singleton {
                                     tinteColor.b, tinteFuerza))
     }
 
-    //  `fuerza` 0..1 se recorta a 0.45; `duracionMs` 0 es «hasta destintar».
-    //  Última llamada gana: el arbitraje fino no compensa aquí, porque teñir
-    //  es cosmético y quien molesta se apaga en Ajustes.
+    //  Clamp `fuerza` from 0..1 to at most 0.45; `duracionMs` 0 lasts until
+    //  destintar is called. Last call wins: detailed arbitration is unnecessary
+    //  for a cosmetic effect whose provider can be disabled in Settings.
     function tintar(dueno, color, fuerza, duracionMs) {
         if (!dueno)
             return
@@ -97,22 +95,23 @@ Singleton {
         function armar(ms) { stop(); interval = ms; start() }
     }
 
-    // Geometría de la island
-    readonly property int wing: 16              // radio de la esquina invertida que funde con el borde
-    readonly property int baseHeight: 34        // alto plegado, y franja reservada a las ventanas
-    //  Techo de la superficie, ver PanelWindow.
+    // Island geometry
+    readonly property int wing: 16              // inverted corner radius joining the screen edge
+    readonly property int baseHeight: 34        // folded height and reserved desktop strip
+    //  Surface height ceiling; see PanelWindow.
     //
-    //  Subió a 640 por el editor, que lleva vídeo dentro y con 520 se quedaba en
-    //  una tira. Y a 880 cuando el editor empezó a crecer con las bandas de
-    //  capas: con dos pedía 668 y el pie —los botones de añadir y de
-    //  renderizar— quedaba cortado por debajo del borde de la island. El síntoma
-    //  no señalaba aquí en absoluto, que es lo que costó encontrarlo.
+    //  Raised to 640 for the video editor, which was cramped at 520. Later
+    //  raised to 880 when layer strips made the editor taller: two layers
+    //  requested 668, clipping the footer's add and render buttons below the
+    //  island edge. The symptom gave no indication that this limit caused it,
+    //  making the fault difficult to locate.
     //
-    //  880 en una pantalla de 1080 deja doscientos píxeles: sigue siendo una
-    //  barra y no una ventana. El segundo módulo más alto es el juego, con 470.
+    //  On a 1080px screen, 880 leaves 200px free, keeping this a bar rather
+    //  than a full window. At the time, the next tallest module was the game
+    //  at 470px.
     readonly property int maxIslandHeight: 880
 
-    // Iconos Material Design de la Nerd Font (plano suplementario → fromCodePoint)
+    // Nerd Font Material Design icons (supplementary plane → fromCodePoint)
     readonly property var ico: ({
         play: String.fromCodePoint(0xF040A),
         pause: String.fromCodePoint(0xF03E4),

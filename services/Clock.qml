@@ -1,6 +1,6 @@
 pragma Singleton
 
-// Un único reloj para toda la barra: dos SystemClock sondean dos veces.
+// One clock for the whole bar: two SystemClock instances would poll twice.
 
 import QtQuick
 import Quickshell

@@ -1,15 +1,14 @@
 pragma Singleton
 
-//  El historial del portapapeles.
+//  Clipboard history.
 //
-//  Aquí la lectura NO es libre: el portapapeles lleva contraseñas, tokens y
-//  lo último que copiaste de tu gestor de claves. Leerlo ya es el acto
-//  delicado, así que hasta mirar pide el permiso `portapapeles` — al revés
-//  que el audio o los medios, donde lo que se vigila es escribir.
+//  Reading is NOT unrestricted here: the clipboard can contain passwords,
+//  tokens and the last item copied from a password manager. Reading itself
+//  is sensitive, so even observation requires `portapapeles` permission,
+//  unlike audio or media where permissions govern changes.
 //
-//  Los textos llegan recortados por la propia barra; para el contenido entero
-//  de una entrada, `copiar(id)` la pone en el portapapeles y ya está en manos
-//  de quien la pegue.
+//  The shell truncates preview text. For an entry's full content, `copiar(id)`
+//  places it on the clipboard for whichever application receives the paste.
 
 import QtQuick
 
@@ -18,7 +17,7 @@ QtObject {
 
     readonly property var _p: Puente.portapapeles
 
-    //  ── todo esto requiere el permiso `portapapeles` ──────────────
+    //  ── all of this requires the `portapapeles` permission ────────
     readonly property var entradas: _p ? _p.entradas : []
     readonly property int cuantas: _p ? _p.count : 0
 

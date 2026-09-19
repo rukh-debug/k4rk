@@ -1,11 +1,11 @@
-//  Compatibilidad: el contrato vive en la API pública desde que existen los
-//  plugins de fuera.
+//  Compatibility wrapper: the contract lives in the public API so external
+//  plugins can use it.
 //
-//  El tipo de verdad es `K4.Plugin` (api/K4/Plugin.qml): un plugin externo no
-//  puede llegar a core/ por ruta relativa, así que el contrato tiene que estar
-//  donde llega cualquiera — el módulo K4. Los plugins del repo siguen
-//  escribiendo `K4Plugin {}` y les llega por aquí, sin tocar cada fichero
-//  para un renombrado. Native host features use core/NativeFeature instead.
+//  The actual type is `K4.Plugin` (api/K4/Plugin.qml). External plugins cannot
+//  reach core/ by relative path, so the shared contract belongs in the K4
+//  module. This preserves the old `K4Plugin {}` spelling for host-side
+//  callers; plugins import K4 and use `K4.Plugin {}`. Native host features
+//  use core/NativeFeature instead.
 
 import K4 as K4
 

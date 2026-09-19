@@ -1,39 +1,39 @@
-//  El cursor de la casa, con estela.
+//  The in-house text cursor, with a motion trail.
 //
-//  Va de `cursorDelegate` en cualquier campo de texto: quien lo coloca es el
-//  campo —le fija x, y y alto—, y aquí solo se decide cómo se pinta. El mismo
-//  efecto que deja el cursor de k4term al moverse, para que escribir en la
-//  island se sienta igual en la terminal y en el resto.
+//  Use as a text field's `cursorDelegate`. The field supplies x, y and
+//  height; this component only decides how to draw it. It matches k4term's
+//  moving cursor so typing feels consistent between the terminal and the
+//  rest of the island.
 //
 //      TextInput { cursorDelegate: K4.Estela {} }
 //
-//  Con `IslandCursor` de core no hace falta ni nombrar el color.
+//  With core's `IslandCursor`, even the color is supplied for you.
 //
-//  El rastro se APUNTA, no se interpola: lo que se quiere enseñar es por dónde
-//  ha pasado de verdad, con su aceleración, y eso una animación declarativa no
-//  lo sabe. De ahí el latido y de ahí que no haya un `Behavior on x`.
+//  The trail RECORDS positions rather than interpolating between endpoints:
+//  it must show the cursor's actual accelerated path, which a declarative
+//  animation does not know. Hence the sampling timer and no `Behavior on x`.
 
 import QtQuick
 
 Item {
     id: raiz
 
-    //  Cuántos fantasmas deja. 0 lo apaga y queda un cursor normal.
+    //  Number of trail segments. Set 0 for an ordinary cursor without a trail.
     property int largo: 8
     property color color: Tema.tinta
     property int grosor: 2
-    //  El parpadeo de siempre, pero solo cuando está parado: un cursor que se
-    //  apaga a media carrera corta la estela por el medio.
+    //  Standard blinking, but only while stationary: blinking in mid-motion
+    //  would break the trail.
     property bool parpadeo: true
 
     width: grosor
 
-    //  En coordenadas del campo, que es donde viven los fantasmas: el propio
-    //  cursor se mueve, así que apuntar posiciones relativas a él no valdría.
+    //  Positions use field coordinates, as the trail does. The cursor itself
+    //  moves, so recording positions relative to it would be incorrect.
     //
-    //  Se inicializan a mano y no con un enlace a x/y: con el enlace, el
-    //  cursor se plantaría en el destino antes del primer latido y el primer
-    //  movimiento saldría sin estela.
+    //  Initialize explicitly rather than binding to x/y: a binding would
+    //  place the cursor at its destination before the first timer tick,
+    //  leaving the first movement without a trail.
     property real pintadoX: 0
     property real pintadoY: 0
     property var fantasmas: []
@@ -57,9 +57,9 @@ Item {
             const dy = Math.abs(raiz.y - raiz.pintadoY)
             const anterior = { x: raiz.pintadoX, y: raiz.pintadoY }
 
-            //  Cuanto más lejos, más rápido: así saltar al final de la línea
-            //  no se arrastra y mover una letra sigue siendo suave. Un salto
-            //  enorme es otro sitio, no un movimiento: ahí se planta.
+            //  Greater distance means greater speed: jumping to the end of
+            //  a line stays quick, while moving one character remains smooth.
+            //  A very large jump is a new location; snap to it directly.
             const alto = Math.max(1, raiz.height)
             const lejos = (dx + dy) / alto
             const paso = Math.min(0.35 + lejos * 0.06, 0.75)
@@ -72,9 +72,9 @@ Item {
                 raiz.pintadoY += (raiz.y - raiz.pintadoY) * paso
             }
 
-            //  A menos de medio píxel ya está en su sitio. Parar aquí es lo
-            //  que evita dejar un temporizador de 60 por segundo encendido
-            //  para siempre en una barra que casi siempre está quieta.
+            //  Within half a pixel, consider it settled. Stopping here avoids
+            //  leaving a roughly 60 Hz timer running forever in a shell that
+            //  spends most of its time idle.
             const quieto = Math.abs(raiz.pintadoX - raiz.x) < 0.5
                         && Math.abs(raiz.pintadoY - raiz.y) < 0.5
             if (quieto) {
@@ -85,10 +85,10 @@ Item {
             let rastro = raiz.fantasmas.slice()
             if (raiz.largo > 0) {
                 if (quieto) {
-                    //  Parado, la estela se recoge sola: uno menos por latido
-                    //  hasta vaciarse. Nada de seguir apuntando la posición
-                    //  quieta, que eso deja el rastro pegado al cursor para
-                    //  siempre y el latido no para nunca.
+                    //  Once stationary, drain one trail segment per tick.
+                    //  Recording the stationary position instead would keep
+                    //  the trail attached forever and prevent the timer
+                    //  from ever stopping.
                     rastro.shift()
                 } else {
                     rastro.push(anterior)
@@ -106,9 +106,9 @@ Item {
         }
     }
 
-    //  Los fantasmas, del más viejo al más nuevo y cada vez más presentes.
-    //  Van antes que el cursor para que él quede encima. Se colocan restando
-    //  la posición del cursor porque son hijos suyos y él se mueve.
+    //  Trail segments, oldest to newest with increasing opacity. Declare
+    //  them before the cursor so it stays above them. Subtract the cursor's
+    //  position because these are its children and it moves independently.
     Repeater {
         model: raiz.fantasmas
 
@@ -132,9 +132,9 @@ Item {
         height: raiz.height
         color: raiz.color
 
-        //  Quieto parpadea; moviéndose, entero. Y al dejar de moverse vuelve a
-        //  entero antes de empezar: si no, el primer parpadeo puede pillarlo
-        //  apagado justo al parar de escribir.
+        //  Blink while stationary; stay fully visible while moving. Restore
+        //  full opacity before blinking resumes, or the first blink could
+        //  leave the cursor invisible just as typing stops.
         opacity: 1
         SequentialAnimation on opacity {
             running: raiz.parpadeo && !raiz.moviendose

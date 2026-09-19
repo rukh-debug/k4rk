@@ -1,4 +1,4 @@
-#  Los tipos de esta carpeta, para que se resuelvan bajo el esquema qs:.
+#  The types in this folder, so they resolve under the qs: scheme.
 
 AppsPlugin 1.0 AppsPlugin.qml
 AppsView 1.0 AppsView.qml

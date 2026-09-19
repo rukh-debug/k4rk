@@ -1,8 +1,8 @@
-//  El cursor de la casa, edición de dentro.
+//  The in-house text cursor, for host views.
 //
-//  Envoltorio de K4.Estela y nada más: la implementación vive UNA vez, en la
-//  API, porque los plugins de fuera también lo necesitan. Aquí solo se le da
-//  el color de core y el nombre de la familia.
+//  Only a wrapper around K4.Estela: the single implementation lives in the
+//  API because external plugins need it too. This supplies core's color and
+//  the host component name.
 //
 //      TextInput { cursorDelegate: IslandCursor {} }
 

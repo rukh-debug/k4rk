@@ -1,18 +1,15 @@
 pragma Singleton
 
-//  El tema de la casa, publicado en un fichero para quien vive fuera de la
-//  barra.
+//  The shell theme, published in a file for clients outside the bar.
 //
-//  Theme.qml es QML y no lo puede leer nadie más; k4term —la terminal de la
-//  casa— está escrita en Rust. El puente entre los dos es este fichero: la
-//  barra lo escribe al arrancar y cada vez que el ambiente cambia, y quien
-//  esté fuera lo vigila con inotify. Cero procesos por ambos lados.
+//  Theme.qml is QML and cannot be read directly by other clients; k4term,
+//  the shell's terminal, is written in Rust. This file bridges the two: the
+//  bar writes it at startup and whenever the theme changes, and external
+//  clients watch it with inotify. Neither side launches a process for this.
 //
-//  Se publican los colores YA TEÑIDOS, que es el objetivo entero: cuando la
-//  mazmorra tiñe la barra, la terminal se tiñe con ella. Los que tienen
-//  significado —verde, rojo, azul, amarillo— van sin teñir, igual que en
-//  Theme: un rojo de error tiene que seguir siendo rojo bajo cualquier
-//  ambiente.
+//  Colors are published ALREADY TINTED: when the dungeon tints the bar,
+//  the terminal follows it. Semantic colors — green, red, blue, yellow —
+//  stay untinted, as in Theme: error red must remain red under any theme.
 
 import QtQuick
 import Quickshell
@@ -25,8 +22,8 @@ Singleton {
     readonly property string carpeta: Quickshell.env("HOME") + "/.local/state/k4"
     readonly property string ruta: carpeta + "/tema.json"
 
-    //  Un solo centinela para todo el ambiente: los cuatro colores del andamio
-    //  salen del mismo tinte, así que con vigilar el fondo se enteran todos.
+    //  One watcher covers the whole theme: the four scaffold colors share
+    //  a tint, so watching the background catches changes to all of them.
     property color fondo: Theme.islandBg
     onFondoChanged: if (listo) retardo.restart()
 
@@ -63,9 +60,9 @@ Singleton {
 
     FileView { id: vista; path: ambiente.ruta }
 
-    //  El tinte se anima durante 420 ms: sin freno serían decenas de
-    //  escrituras por transición. Con este respiro salen dos o tres, que es
-    //  todo lo que una terminal necesita para acompañar el cambio.
+    //  The tint animates over 420 ms: without a delay, each transition would
+    //  produce dozens of writes. Two or three are enough for the terminal
+    //  to follow the change.
     Timer { id: retardo; interval: 180; onTriggered: ambiente.publicar() }
 
     Process {

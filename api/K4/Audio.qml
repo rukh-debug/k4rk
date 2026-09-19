@@ -1,11 +1,11 @@
 pragma Singleton
 
-//  El sonido del sistema: leerlo es libre, cambiarlo pide permiso.
+//  System audio: reading is unrestricted; changing it requires permission.
 //
-//  La lectura no hace daño a nadie —un visualizador o un indicador solo
-//  quieren saber por dónde va el volumen— así que no se pide nada. Subirlo o
-//  silenciarlo sí se nota, y por eso `ponerVolumen` y `alternarSilencio`
-//  exigen declarar el permiso `audio` en el manifiesto.
+//  Reading has no side effects: a visualizer or indicator only needs to know
+//  the current volume, so no permission is required. Raising or muting it is
+//  noticeable, which is why `ponerVolumen` and `alternarSilencio` require the
+//  `audio` permission in the manifest.
 //
 //      K4.Etiqueta { text: K4.Audio.volumen + "%" }
 
@@ -14,12 +14,12 @@ import QtQuick
 QtObject {
     readonly property var _a: Puente.audio
 
-    //  De 0 a 100.
+    //  From 0 to 100.
     readonly property int volumen: _a ? _a.volume : 0
     readonly property bool silenciado: _a ? _a.muted : false
     readonly property bool listo: _a ? _a.initialized : false
 
-    //  ── requieren el permiso `audio` ──────────────────────────────
+    //  ── require the `audio` permission ────────────────────────────
     function ponerVolumen(porciento) {
         if (_a)
             _a.setVolume(porciento)

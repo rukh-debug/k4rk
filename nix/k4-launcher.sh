@@ -18,7 +18,7 @@
 #  Updating: `nix flake update`. The next launch notices the store path
 #  changed and re-materializes the mirror. The bar's own git updater is not
 #  used — there is no .git in the mirror on purpose, and Settings reports
-#  «sin-git» instead of offering an update that would fight Nix.
+#  `no-git` instead of offering an update that would fight Nix.
 set -eu
 
 src="@out@/share/k4"
@@ -70,9 +70,10 @@ kill)
     ;;
 esac
 
-#  Every helper the bar shells out to, per dependencias.tsv. The user's own
-#  PATH stays last, so a locally installed tool still wins if they want one.
-#  It goes first because the sync below already needs mkdir, cp, mv.
+#  Every helper the bar shells out to, per dependencies.tsv. The user's own
+#  PATH stays last, making other locally installed tools available after the
+#  packaged versions. The packaged path goes first because the sync below
+#  already needs mkdir, cp and mv.
 export PATH="@binpath@${PATH:+:$PATH}"
 
 # ─── The writable mirror ─────────────────────────────────────────────────────
@@ -114,9 +115,9 @@ if [ ! -f "$mirror/.k4-origen" ] || [ "$(cat "$mirror/.k4-origen" 2>/dev/null)" 
 fi
 
 # ─── The Qt environment ──────────────────────────────────────────────────────
-#  quickshell from nixpkgs does not pull qtmultimedia, and k4 needs it (the
-#  editor, the video wallpapers). The engine finds the extra QML module and
-#  the ffmpeg backend through these paths.
+#  quickshell from nixpkgs does not pull qtmultimedia, and k4 needs it for
+#  media players and video wallpapers. The engine finds the extra QML module
+#  and the ffmpeg backend through these paths.
 export NIXPKGS_QT6_QML_IMPORT_PATH="@qtQml@${NIXPKGS_QT6_QML_IMPORT_PATH:+:$NIXPKGS_QT6_QML_IMPORT_PATH}"
 #  The K4 QML module goes FIRST, before Qt's own: `import K4` resolves
 #  through the import path and Quickshell offers no flag for it — the

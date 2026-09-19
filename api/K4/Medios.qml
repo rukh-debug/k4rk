@@ -1,14 +1,14 @@
 pragma Singleton
 
-//  Lo que está sonando, venga de donde venga (MPRIS).
+//  Current playback, regardless of its source (MPRIS).
 //
-//  Leer es libre: un plugin de letras, un scrobbler o un simple «ahora suena»
-//  solo miran. Los controles —pausar, saltar, buscar— piden el permiso
-//  `medios`, que parar la música de alguien sin avisar es de mala educación.
+//  Reading is unrestricted: lyrics, scrobblers and now-playing indicators
+//  only observe. Controls such as pausing, skipping and seeking require the
+//  `medios` permission: stopping someone's music without notice is intrusive.
 //
-//  `posicion` solo se actualiza si alguien la mira: llama a `seguirPosicion()`
-//  cuando montes tu vista y a `dejarPosicion()` al soltarla. Si no, el
-//  temporizador no corre y no gastas batería por una barra que nadie ve.
+//  `posicion` updates only while someone watches it: call `seguirPosicion()`
+//  when mounting the view and `dejarPosicion()` when releasing it. Otherwise
+//  the timer stays stopped, saving battery for a progress bar nobody sees.
 
 import QtQuick
 
@@ -24,14 +24,14 @@ QtObject {
     readonly property string album: _p ? (_p.trackAlbum || "") : ""
     readonly property string aplicacion: _p ? (_p.identity || "") : ""
 
-    //  La carátula, ya resuelta a algo que un Image sabe cargar.
+    //  Artwork, already resolved to a source that Image can load.
     readonly property string caratula: (_m && _p) ? (_m.coverFor(_p) || "") : ""
 
     readonly property real posicion: _p ? (_p.position || 0) : 0
     readonly property real duracion: _p ? (_p.length || 0) : 0
     readonly property bool hayLinea: _m ? _m.hasTimeline : false
 
-    //  «3:07» a partir de segundos, con el mismo formato que la barra.
+    //  Format seconds as "3:07", using the shell's own time format.
     function comoTiempo(segundos) {
         return _m ? _m.formatTime(segundos) : "0:00"
     }
@@ -39,7 +39,7 @@ QtObject {
     function seguirPosicion() { if (_m) _m.watchPosition() }
     function dejarPosicion() { if (_m) _m.unwatchPosition() }
 
-    //  ── requieren el permiso `medios` ─────────────────────────────
+    //  ── require the `medios` permission ───────────────────────────
     function alternarPausa() { if (_m) _m.togglePlaying() }
     function siguiente() { if (_m) _m.siguiente() }
     function anterior() { if (_m) _m.anterior() }

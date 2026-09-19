@@ -1,7 +1,7 @@
-//  Insignia de rareza: el nombre del grado sobre su color.
+//  Rarity badge: the grade's name over its color.
 //
-//  Distinguir diez grados solo por el tinte del texto es pedir demasiado —el
-//  celeste y el divino se parecen bastante—, así que el nombre va escrito.
+//  Distinguishing ten grades by text color alone is too demanding: the
+//  celestial and divine grades look similar, so spell out the name too.
 
 import QtQuick
 import "../services"
@@ -10,7 +10,7 @@ Rectangle {
     id: insignia
 
     property int rareza: 0
-    property int nivel: 0        // 0 = no mostrarlo
+    property int nivel: 0        // 0 = do not display the level
     property bool compacta: false
 
     readonly property var grado: Items.rarezaDe(rareza)

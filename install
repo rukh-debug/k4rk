@@ -1,0 +1,821 @@
+#!/bin/sh
+#  Install and update k4. Same script for both: it pulls, brings the packages
+#  and the shortcuts up to date, and offers to restart the bar.
+#
+#      ./install                 everything: packages, shortcuts, autostart, restart
+#      ./install --dry-run       look and report; change nothing
+#      ./install --yes           don't ask (for scripts)
+#      ./install --optional      install the optional packages too
+#      ./install --no-packages   skip the package manager
+#      ./install --no-restart    leave the running bar alone
+#
+#  The Spanish flags this started with —--seco, --si, --opcionales,
+#  --sin-paquetes, --sin-reiniciar— still work and are not going away. The code
+#  retains legacy identifiers; new code and all messages use English.
+
+#  ── Nothing below this point is printed as help ─────────────────────────────
+#
+#  `ayuda()` prints the header up to the first line that does not start with
+#  `#`. The blank line above is that boundary: users see the usage header,
+#  while everything below it is an implementation comment.
+#
+#  This uses plain `sh`, not Python, for a practical reason: it runs BEFORE
+#  the dependencies exist, so it cannot depend on them. No Bash, Python or
+#  jq; only the tools already available on the system.
+#
+#  k4's requirements are not listed here: `dependencies.tsv` is the single
+#  source, also used by the README's requirements section.
+
+set -eu
+
+# ─── Presentation ────────────────────────────────────────────────────────────
+# Use color only when attached to a terminal. If output goes to a log file,
+# do not fill it with escape sequences.
+if [ -t 1 ]; then
+    NEGRITA=$(printf '\033[1m'); APAGADO=$(printf '\033[2m')
+    VERDE=$(printf '\033[32m'); AMBAR=$(printf '\033[33m')
+    ROJO=$(printf '\033[31m'); FIN=$(printf '\033[0m')
+else
+    NEGRITA=''; APAGADO=''; VERDE=''; AMBAR=''; ROJO=''; FIN=''
+fi
+
+titulo() { printf '\n%s%s%s\n' "$NEGRITA" "$1" "$FIN"; }
+bien()   { printf '  %s✓%s %s\n' "$VERDE" "$FIN" "$1"; }
+aviso()  { printf '  %s!%s %s\n' "$AMBAR" "$FIN" "$1"; }
+mal()    { printf '  %s✗%s %s\n' "$ROJO" "$FIN" "$1"; }
+nota()   { printf '    %s%s%s\n' "$APAGADO" "$1" "$FIN"; }
+morir()  { printf '\n%s✗ %s%s\n\n' "$ROJO" "$1" "$FIN" >&2; exit 1; }
+
+# ─── Options ─────────────────────────────────────────────────────────────────
+SECO=0; SIN_PREGUNTAR=0; OPCIONALES=0; SIN_PAQUETES=0; SIN_REINICIAR=0
+
+# Help comes from this file's own header so the two cannot disagree:
+# line 2 through the first blank line. What follows explains implementation
+# decisions, which are not part of the usage instructions.
+ayuda() {
+    awk 'NR > 1 { if ($0 !~ /^#/) exit; sub(/^#[ ]?/, ""); print }' "$0"
+    exit 0
+}
+
+# English flags work alongside the original aliases, just as they do in
+# `tools/plugins.py`. Command-line flags are the entry point for users, who
+# should not need to know Spanish to install the bar. English is also the
+# project's language for new code; existing identifiers migrate separately.
+#
+# The original flags are neither removed nor deprecated: they appear in old
+# documentation and user scripts, and people have used them for months.
+# Supporting each one costs a single alternative in the pattern.
+#
+# `--yes` spent months in the README's table but not in this `case`, so copying
+# it produced an unknown-option error. That mismatch prompted this alias list.
+for arg in "$@"; do
+    case "$arg" in
+        --seco|--dry-run|-n)          SECO=1 ;;
+        --si|--yes|-s|-y)             SIN_PREGUNTAR=1 ;;
+        --opcionales|--optional|-o)   OPCIONALES=1 ;;
+        --sin-paquetes|--no-packages) SIN_PAQUETES=1 ;;
+        --sin-reiniciar|--no-restart) SIN_REINICIAR=1 ;;
+        --ayuda|--help|-h)            ayuda ;;
+        *) morir "Unknown option '$arg'. Try --help." ;;
+    esac
+done
+
+# ─── Locating the code ───────────────────────────────────────────────────────
+# `$0` is `sh` when this is read through a pipe (curl | sh). In that case
+# there is no checkout yet, and cloning it must come first.
+if [ -f "$0" ] && [ "${0##*/}" = "install" ]; then
+    RAIZ=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+else
+    RAIZ=''
+fi
+
+DESTINO=${K4_DESTINO:-$HOME/.config/quickshell/k4}
+TABLA="${RAIZ:-$DESTINO}/dependencies.tsv"
+
+# ─── Package manager ─────────────────────────────────────────────────────────
+# Arch is the supported installation path. Other distributions get diagnostics
+# only: package-name mappings are suggestions, and this script has no
+# Quickshell package mapping for them.
+# `K4_GESTOR` forces a manager so branches for distributions not available
+# on the development machine can still be tested.
+if [ -n "${K4_GESTOR:-}" ];             then GESTOR=$K4_GESTOR
+elif command -v pacman >/dev/null 2>&1;   then GESTOR=pacman
+elif command -v apt-get >/dev/null 2>&1; then GESTOR=apt
+elif command -v dnf >/dev/null 2>&1;     then GESTOR=dnf
+elif command -v zypper >/dev/null 2>&1;  then GESTOR=zypper
+else                                          GESTOR=ninguno
+fi
+
+# Map package names for managers other than pacman. List only differences;
+# names not listed stay unchanged. These are suggestions, identified as such.
+#
+# A `-` means there is no package mapping for this distribution. Report that
+# rather than install a near match: fonts-firacode is not a Nerd Font, and
+# installing it would still leave square placeholders with no explanation.
+traducir() {
+    _p=$1
+    [ "$GESTOR" = pacman ] && { printf '%s' "$_p"; return; }
+    case "$GESTOR:$_p" in
+        *:quickshell)            printf '%s' '-' ;;
+        apt:ttf-meslo-nerd|dnf:ttf-meslo-nerd|zypper:ttf-meslo-nerd) printf '%s' '-' ;;
+        apt:python)              printf 'python3' ;;
+        apt:fd)                  printf 'fd-find' ;;
+        apt:libpulse)            printf 'pulseaudio-utils' ;;
+        apt:adwaita-fonts)       printf 'fonts-adwaita' ;;
+        apt:qt6-multimedia)      printf 'qml6-module-qtmultimedia' ;;
+        apt:qt6-multimedia-ffmpeg) printf 'qt6-multimedia-plugin-ffmpeg' ;;
+        apt:libnotify)           printf 'libnotify-bin' ;;
+        apt:networkmanager)      printf 'network-manager' ;;
+        apt:wireplumber)         printf 'wireplumber' ;;
+        dnf:python)              printf 'python3' ;;
+        dnf:fd)                  printf 'fd-find' ;;
+        dnf:libpulse)            printf 'pulseaudio-utils' ;;
+        dnf:imagemagick)         printf 'ImageMagick' ;;
+        dnf:libnotify)           printf 'libnotify' ;;
+        dnf:networkmanager)      printf 'NetworkManager' ;;
+        dnf:qt6-multimedia)      printf 'qt6-qtmultimedia' ;;
+        dnf:qt6-multimedia-ffmpeg) printf 'qt6-qtmultimedia' ;;
+        zypper:python)           printf 'python3' ;;
+        zypper:libpulse)         printf 'pulseaudio-utils' ;;
+        zypper:imagemagick)      printf 'ImageMagick' ;;
+        zypper:qt6-multimedia)   printf 'qt6-multimedia-imports' ;;
+        *)                       printf '%s' "$_p" ;;
+    esac
+}
+
+# Ask the package manager whether a package is installed. This covers
+# dependencies without their own executable, such as fonts and Qt modules.
+hay_paquete() {
+    case "$GESTOR" in
+        pacman) pacman -Qq "$1" >/dev/null 2>&1 ;;
+        apt)    dpkg -s "$(traducir "$1")" >/dev/null 2>&1 ;;
+        dnf|zypper) rpm -q "$(traducir "$1")" >/dev/null 2>&1 ;;
+        *)      return 1 ;;
+    esac
+}
+
+# ─── Reading the table ───────────────────────────────────────────────────────
+# No arrays: lists are space-separated strings queried with `case`. This is
+# POSIX-compatible and avoids duplicates (ffmpeg appears twice in the table,
+# once for `ffmpeg` and once for `ffprobe`).
+en_lista() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
+
+FALTAN_BASE=''       # Packages to install.
+FALTAN_OPC=''
+DETALLE_BASE=''      # Package/purpose lines, with literal newlines.
+DETALLE_OPC=''
+SIN_PAQUETE=''       # Missing dependencies that cannot be installed.
+N_BASE=0; N_OPC=0; N_TOTAL=0
+
+leer_tabla() {
+    [ -f "$TABLA" ] || morir "Cannot find $TABLA. Is the checkout complete?"
+    while IFS='	' read -r comp paq nivel para || [ -n "$comp" ]; do
+        case "$comp" in ''|\#*) continue ;; esac
+        [ -n "${para:-}" ] || continue
+        N_TOTAL=$((N_TOTAL + 1))
+
+        case "$comp" in
+            pkg:*) hay_paquete "${comp#pkg:}" && continue ;;
+            *)     command -v "$comp" >/dev/null 2>&1 && continue ;;
+        esac
+
+        # Missing. A `-` in the package column means no package is available:
+        # report the dependency and leave it to the user.
+        if [ "$paq" = '-' ]; then
+            SIN_PAQUETE="$SIN_PAQUETE$comp	$para
+"
+            continue
+        fi
+
+        if [ "$nivel" = base ]; then
+            en_lista "$paq" "$FALTAN_BASE" || {
+                FALTAN_BASE="$FALTAN_BASE $paq"
+                DETALLE_BASE="$DETALLE_BASE$paq	$para
+"
+                N_BASE=$((N_BASE + 1))
+            }
+        else
+            en_lista "$paq" "$FALTAN_OPC" || {
+                FALTAN_OPC="$FALTAN_OPC $paq"
+                DETALLE_OPC="$DETALLE_OPC$paq	$para
+"
+                N_OPC=$((N_OPC + 1))
+            }
+        fi
+    done < "$TABLA"
+
+    # Remove the extra leading space.
+    FALTAN_BASE=${FALTAN_BASE# }
+    FALTAN_OPC=${FALTAN_OPC# }
+}
+
+pintar_detalle() {
+    printf '%s' "$1" | while IFS='	' read -r paq para; do
+        [ -n "$paq" ] || continue
+        _n=$(traducir "$paq")
+        if [ "$_n" = '-' ]; then
+            printf '      %s%-22s%s %s%s%s\n' "$AMBAR" "$paq" "$FIN" \
+                "$APAGADO" "$para — no package mapping for $GESTOR; install manually" "$FIN"
+        else
+            printf '      %s%-22s%s %s%s%s\n' "$NEGRITA" "$_n" "$FIN" \
+                "$APAGADO" "$para" "$FIN"
+        fi
+    done
+}
+
+# ─── Diagnostics ─────────────────────────────────────────────────────────────
+diagnosticar() {
+    titulo "Dependencies"
+    leer_tabla
+
+    if [ "$N_BASE" -eq 0 ]; then
+        bien "All required dependencies are available ($N_TOTAL checks)."
+    else
+        mal "$N_BASE required dependencies are missing:"
+        pintar_detalle "$DETALLE_BASE"
+    fi
+
+    if [ "$N_OPC" -gt 0 ]; then
+        aviso "$N_OPC optional dependencies are missing. The bar works without them:"
+        pintar_detalle "$DETALLE_OPC"
+    fi
+
+    if [ -n "$SIN_PAQUETE" ]; then
+        printf '%s' "$SIN_PAQUETE" | while IFS='	' read -r comp para; do
+            [ -n "$comp" ] || continue
+            aviso "$comp has no package listed; install it manually if wanted: $para"
+        done
+    fi
+
+    if [ "$GESTOR" != pacman ] && [ "$N_BASE" -gt 0 ]; then
+        printf '\n'
+        aviso "pacman is unavailable, so this is a diagnostic report only."
+        nota "Package names for $GESTOR are SUGGESTIONS: adjust them if your"
+        nota "distribution uses different names. This script has no Quickshell"
+        nota "package mapping outside Arch; you may need to build it yourself."
+    fi
+}
+
+# ─── Confirmation ────────────────────────────────────────────────────────────
+# --yes skips confirmation. Without a terminal, decline rather than wait for
+# an answer nobody can type: a stuck installer is worse than one that stops.
+preguntar() {
+    if [ "$SIN_PREGUNTAR" -eq 1 ]; then return 0; fi
+    if [ ! -t 0 ]; then
+        aviso "No interactive terminal is available, so this step is skipped. Use --yes to proceed."
+        return 1
+    fi
+    printf '  %s%s%s [y/N] ' "$NEGRITA" "$1" "$FIN"
+    read -r _r || return 1
+    case "$_r" in y|Y|[yY][eE][sS]|s|S|si|Si|SI) return 0 ;; *) return 1 ;; esac
+}
+
+# Choose a privilege-elevation tool. Root does not need one.
+if [ "$(id -u)" = 0 ];                then SUDO=''
+elif command -v sudo >/dev/null 2>&1;  then SUDO='sudo'
+elif command -v doas >/dev/null 2>&1;  then SUDO='doas'
+else                                        SUDO=''
+fi
+
+# ─── Step: packages ──────────────────────────────────────────────────────────
+paso_paquetes() {
+    titulo "Packages"
+
+    if [ "$SIN_PAQUETES" -eq 1 ]; then
+        nota "Skipped as requested with --no-packages."
+        return 0
+    fi
+
+    _lista=$FALTAN_BASE
+    if [ "$OPCIONALES" -eq 1 ]; then
+        _lista="$_lista $FALTAN_OPC"
+    elif [ -n "$FALTAN_OPC" ]; then
+        nota "Optional packages are excluded. To include them: ./install --optional"
+    fi
+
+    # Exclude packages without a mapping for this distribution. Diagnostics
+    # already reported them; including them would only fail the whole command.
+    _instalables=''
+    for _p in $_lista; do
+        [ -n "$_p" ] || continue
+        _n=$(traducir "$_p")
+        [ "$_n" = '-' ] && continue
+        _instalables="$_instalables $_n"
+    done
+    _instalables=${_instalables# }
+
+    if [ -z "$_instalables" ]; then
+        bien "Nothing to install."
+        return 0
+    fi
+
+    if [ "$GESTOR" != pacman ]; then
+        aviso "Automatic installation is supported only on Arch. Review this command:"
+        case "$GESTOR" in
+            apt)    printf '\n      sudo apt install %s\n\n' "$_instalables" ;;
+            dnf)    printf '\n      sudo dnf install %s\n\n' "$_instalables" ;;
+            zypper) printf '\n      sudo zypper install %s\n\n' "$_instalables" ;;
+            *)      printf '\n      %s\n\n' "$_instalables" ;;
+        esac
+        return 0
+    fi
+
+    if [ -z "$SUDO" ] && [ "$(id -u)" != 0 ]; then
+        mal "Neither sudo nor doas is available. Install the packages manually:"
+        printf '\n      pacman -S --needed %s\n\n' "$_instalables"
+        return 0
+    fi
+
+    # `PACMAN=echo` lets tests exercise this step without installing anything.
+    _pac=${PACMAN:-pacman}
+    printf '  Command to run:\n\n      %s%s %s -S --needed %s%s\n\n' \
+        "$NEGRITA" "$SUDO" "$_pac" "$_instalables" "$FIN"
+
+    if preguntar "Run this command?"; then
+        printf '\n'
+        # Intentionally unquoted: `_instalables` contains multiple words and
+        # $SUDO may be empty.
+        # shellcheck disable=SC2086
+        if $SUDO $_pac -S --needed $_instalables; then
+            printf '\n'
+            bien "Installed."
+        else
+            printf '\n'
+            mal "The package manager failed. Continuing with the remaining steps."
+        fi
+    else
+        aviso "Nothing installed. You can copy the command above and run it later."
+    fi
+    return 0
+}
+
+# ─── Step: Hyprland ──────────────────────────────────────────────────────────
+# k4 owns ONE file and adds ONE include to yours, following the arrangement
+# used by the legacy theme module's config/k4-theme.lua. Removing those two
+# pieces undoes the integration without guessing what changed. Migration of
+# older inline bindings is separate and keeps backups beside the originals.
+HYPR=${HYPR_DIR:-$HOME/.config/hypr}
+
+# Normalize shortcut keys for comparison. In Lua the modifier is usually a
+# variable (`mainMod`), so substitute SUPER. A differently named variable may
+# escape detection, but that only loses a warning; it cannot cause bad writes.
+teclas_lua() {
+    sed -n 's/^[[:space:]]*hl\.bind(\([^,]*\),.*/\1/p' "$1" 2>/dev/null \
+        | sed -e 's/"//g' -e 's/\.\.//g' -e 's/[[:space:]]//g' \
+        | tr 'a-z' 'A-Z' \
+        | sed -e 's/^MAINMOD/SUPER/' -e 's/^MOD/SUPER/' -e 's/^SUPERMOD/SUPER/' \
+        | sed '/^$/d' | sort -u
+}
+
+teclas_conf() {
+    sed -n 's/^[[:space:]]*bind[lnedmpirst]*[[:space:]]*=[[:space:]]*\([^,]*\),[[:space:]]*\([^,]*\),.*/\1 \2/p' \
+        "$1" 2>/dev/null \
+        | tr 'a-z' 'A-Z' \
+        | sed -e 's/\$[A-Z0-9_]*MOD/SUPER/g' -e 's/[[:space:]]\{1,\}/+/g' \
+              -e 's/^+//' -e 's/+$//' \
+        | sed '/^$/d' | sort -u
+}
+
+paso_hyprland() {
+    titulo "Hyprland"
+
+    if [ ! -d "$HYPR" ]; then
+        aviso "$HYPR does not exist; shortcuts will not be configured."
+        nota "The bar can still start; only its shortcuts will be missing."
+        return 0
+    fi
+
+    # Lua configuration (CachyOS/noctalia), or the classic format?
+    if [ -f "$HYPR/hyprland.lua" ]; then
+        FORMA=lua
+        PLANTILLA="$RAIZ/hypr/k4.lua"
+        CFG="$HYPR/config/k4.lua"
+        ENTRADA="$HYPR/hyprland.lua"
+        ENGANCHE='require("config.k4")'
+        MARCA='require("config.k4")'
+    elif [ -f "$HYPR/hyprland.conf" ]; then
+        FORMA=conf
+        PLANTILLA="$RAIZ/hypr/k4.conf"
+        CFG="$HYPR/k4.conf"
+        ENTRADA="$HYPR/hyprland.conf"
+        ENGANCHE="source = $CFG"
+        MARCA="k4.conf"
+    else
+        aviso "$HYPR contains neither hyprland.lua nor hyprland.conf."
+        nota "There is no configuration to attach shortcuts to. Create one and rerun."
+        return 0
+    fi
+
+    [ -f "$PLANTILLA" ] || morir "Missing template: $PLANTILLA."
+
+    # 1 · k4's file. Always rewrite it: k4 owns it.
+    mkdir -p "$(dirname "$CFG")"
+    sed "s|@RAIZ@|$RAIZ|g" "$PLANTILLA" > "$CFG"
+    bien "Wrote $CFG ($FORMA)."
+
+    # 2 · Add the include only if absent. Running twice must not leave
+    #     duplicate includes.
+    if grep -qF "$MARCA" "$ENTRADA" 2>/dev/null; then
+        bien "Already included in $(basename "$ENTRADA")."
+    elif [ "$FORMA" = lua ] && grep -qF 'require("config.k4-theme")' "$ENTRADA"; then
+        # The legacy theme must stay last so its settings take precedence;
+        # insert shortcuts immediately before it rather than at the end.
+        # Insert above its accompanying comment, not between the comment and
+        # include, which would orphan the comment and make it look like ours.
+        _tmp="$ENTRADA.k4nuevo"
+        awk -v linea="$ENGANCHE" '
+            function suelta() { for (i = 1; i <= n; i++) print buf[i]; n = 0 }
+            /^[[:space:]]*(--.*)?$/ { buf[++n] = $0; next }
+            /require\("config\.k4-theme"\)/ && !hecho {
+                print "";
+                print "-- k4: shortcuts and bar startup";
+                print linea;
+                hecho = 1;
+                suelta(); print; next
+            }
+            { suelta(); print }
+            END { suelta() }
+        ' "$ENTRADA" > "$_tmp" && mv "$_tmp" "$ENTRADA"
+        bien "Included in $(basename "$ENTRADA"), before the theme."
+    else
+        {
+            printf '\n'
+            if [ "$FORMA" = lua ]; then
+                printf -- '-- k4: shortcuts and bar startup\n'
+            else
+                printf '# k4: shortcuts and bar startup\n'
+            fi
+            printf '%s\n' "$ENGANCHE"
+        } >> "$ENTRADA"
+        bien "Included at the end of $(basename "$ENTRADA")."
+    fi
+
+    migrar_duplicados
+    revisar_duplicados
+    revisar_colisiones
+}
+
+# ─── Existing configuration ──────────────────────────────────────────────────
+# Recognizing a k4 line takes more than searching for `call k4`: most users
+# store the command in a variable and concatenate it instead of repeating it
+# for every shortcut. A typical configuration has the text in three variable
+# definitions and none of its twenty-odd bindings. Discover those variable
+# names first, then search for them too.
+# Restrict the scan to configuration files, not recursive `grep -r`: a stray
+# `binds.lua.bak` would otherwise trigger every warning despite never being
+# loaded by Hyprland. This happened with the author's own backup files.
+ficheros_hypr() {
+    for _g in "$HYPR"/*.lua "$HYPR"/*.conf "$HYPR"/config/*.lua "$HYPR"/config/*.conf; do
+        [ -f "$_g" ] || continue
+        [ "$_g" = "$CFG" ] && continue
+        printf '%s\n' "$_g"
+    done
+}
+
+patron_k4() {
+    _vars=$(
+        ficheros_hypr | while IFS= read -r _f; do
+            grep -hE '=[^=]*call k4' "$_f" 2>/dev/null || true
+        done \
+        | sed -E 's/^[[:space:]]*(local[[:space:]]+)?//' \
+        | sed -E 's/[[:space:]]*=.*//' \
+        | grep -E '^\$?[A-Za-z_][A-Za-z0-9_]*$' | sort -u
+    )
+    #  List the GLOBAL shortcuts installed by k4 individually, not with a
+    #  `k4:*` wildcard: external plugins publish their own too (the rift plugin
+    #  is one example), and users bind those themselves. A broad pattern would
+    #  delete bindings the installer neither created nor knows how to restore.
+    _pat='call k4|k4:clic|k4:clicDerecho|k4:dual|k4:atalaya'
+    for _v in $_vars; do
+        # Escape the `$` in hyprland.conf variables for the extended regex.
+        _pat="$_pat|$(printf '%s' "$_v" | sed 's/\$/\\$/')"
+    done
+    printf '%s' "$_pat"
+}
+
+# Before warning, remove old lines the installer can identify unambiguously.
+# Keep a backup beside each file so a custom action resembling k4 can be
+# recovered if necessary. Comment lines are never changed.
+migrar_duplicados() {
+    PAT_K4=$(patron_k4)
+    [ -n "$PAT_K4" ] || return 0
+
+    _cambios=0
+    _ficheros=$(ficheros_hypr)
+    [ -n "$_ficheros" ] || return 0
+
+    while IFS= read -r _f; do
+        [ -n "$_f" ] || continue
+        _tmp=$(mktemp) || continue
+
+        # The pattern includes variables pointing to `call k4`, so it also
+        # catches bindings that concatenate k4Call. Preserve every comment
+        # and anything that is not a complete k4 line.
+        awk -v patron="$PAT_K4" -v raiz="$RAIZ" -v destino="$DESTINO" '
+            /^[[:space:]]*(--|#)/ { print; next }
+            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/ || index($0, raiz "/launch") || index($0, destino "/launch") || index($0, "k4/launch")) { quitadas++; next }
+            $0 ~ patron { quitadas++; next }
+            { print }
+            END { if (quitadas) printf "%d\n", quitadas > "/dev/stderr" }
+        ' "$_f" > "$_tmp" 2>"$_tmp.n"
+        _quitadas=$(cat "$_tmp.n" 2>/dev/null || printf '0')
+        rm -f "$_tmp.n"
+        # `mktemp` creates mode 0600. Preserve the original file's permissions
+        # when replacing it so a shared configuration does not accidentally
+        # become private.
+        if ! chmod --reference="$_f" "$_tmp" 2>/dev/null; then
+            _modo=$(ls -ld "$_f" 2>/dev/null | awk '{print $1}' | cut -c2- || true)
+            [ -n "${_modo:-}" ] && chmod "$_modo" "$_tmp" 2>/dev/null || true
+        fi
+
+        if [ "${_quitadas:-0}" -eq 0 ] || cmp -s "$_f" "$_tmp"; then
+            rm -f "$_tmp"
+            continue
+        fi
+
+        _copia="$_f.k4.bak"
+        if [ -e "$_copia" ]; then
+            _copia="$_f.k4.bak.$(date +%Y%m%d-%H%M%S)"
+        fi
+        cp -p "$_f" "$_copia"
+        mv "$_tmp" "$_f"
+        _cambios=$((_cambios + 1))
+        bien "Migrated $_quitadas old k4 lines in $(basename "$_f")."
+        nota "Backup: $_copia"
+    done <<EOF
+$_ficheros
+EOF
+
+    if [ "$_cambios" -gt 0 ]; then
+        nota "The updated shortcuts and startup command are centralized in $(basename "$CFG")."
+    fi
+}
+
+# Show any remaining partial matches so they do not go unnoticed. A normal
+# installation should have none left.
+revisar_duplicados() {
+    PAT_K4=$(patron_k4)
+    _viejos=$(ficheros_hypr | while IFS= read -r _f; do
+        awk -v f="$_f" -v patron="$PAT_K4" -v raiz="$RAIZ" -v destino="$DESTINO" '
+            /^[[:space:]]*(--|#)/ { next }
+            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/ || index($0, raiz "/launch") || index($0, destino "/launch") || index($0, "k4/launch") || $0 ~ patron) {
+                printf "%s:%d:%s\n", f, NR, $0
+            }
+        ' "$_f" 2>/dev/null || true
+    done)
+    [ -n "$_viejos" ] || return 0
+
+    _atajos=$(printf '%s\n' "$_viejos" | grep -E "$PAT_K4" || true)
+    _arranques=$(printf '%s\n' "$_viejos" | grep -E '/arrancar|/launch' || true)
+
+    if [ -n "$_atajos" ]; then
+        printf '\n'
+        aviso "Hand-written k4 shortcuts remain. Remove duplicates or they may"
+        nota  "run twice. Review these lines before deleting them."
+        pintar_lineas "$_atajos"
+    fi
+
+    if [ -n "$_arranques" ]; then
+        printf '\n'
+        aviso "Your configuration already starts the bar:"
+        pintar_lineas "$_arranques"
+        nota "Remove the duplicate: $(basename "$CFG") now starts it. Two launches mean two islands."
+    fi
+}
+
+# Group `grep -n` lines by file and numeric line number, shortening paths and
+# content. Otherwise the report repeats forty absolute paths sorted as text,
+# making it difficult to read.
+pintar_lineas() {
+    printf '%s\n' "$1" | awk -F: -v base="$HYPR/" -v ap="$APAGADO" -v fin="$FIN" '
+        {
+            f = $1; n = $2;
+            sub("^" base, "", f);
+            texto = $0;
+            sub(/^[^:]*:[^:]*:/, "", texto);
+            gsub(/^[[:space:]]+/, "", texto);
+            if (length(texto) > 58) texto = substr(texto, 1, 55) "…";
+            clave[++i] = sprintf("%s\t%06d\t%s", f, n, texto);
+        }
+        END {
+            n = asort_simple(clave, i);
+            for (j = 1; j <= i; j++) {
+                split(clave[j], p, "\t");
+                printf "    %s%-22s%s %s%s%s\n", "", p[1] ":" (p[2] + 0), "", ap, p[3], fin
+            }
+        }
+        function asort_simple(a, n,   x, y, t) {
+            for (x = 2; x <= n; x++) {
+                t = a[x];
+                for (y = x - 1; y >= 1 && a[y] > t; y--) a[y + 1] = a[y];
+                a[y + 1] = t
+            }
+            return n
+        }'
+}
+
+# Report keys k4 wants that are already bound to another action. This is only
+# a warning: classic configurations use the last binding, while Lua keeps
+# both. The installer does not choose which user binding to remove.
+revisar_colisiones() {
+    _tmp=$(mktemp -d) || return 0
+
+    if [ "$FORMA" = lua ]; then teclas_lua "$CFG"; else teclas_conf "$CFG"; fi > "$_tmp/mias"
+    [ -s "$_tmp/mias" ] || { rm -rf "$_tmp"; return 0; }
+
+    : > "$_tmp/suyas"
+    ficheros_hypr > "$_tmp/ficheros"
+    while IFS= read -r _f; do
+        # Count only non-k4 lines; k4's own duplicates were already reported.
+        grep -vE "$PAT_K4" "$_f" > "$_tmp/limpio" 2>/dev/null || true
+        case "$_f" in
+            *.lua)  teclas_lua  "$_tmp/limpio" >> "$_tmp/suyas" ;;
+            *.conf) teclas_conf "$_tmp/limpio" >> "$_tmp/suyas" ;;
+        esac
+    done < "$_tmp/ficheros"
+
+    sort -u "$_tmp/suyas" -o "$_tmp/suyas"
+    _choque=$(comm -12 "$_tmp/mias" "$_tmp/suyas")
+    rm -rf "$_tmp"
+
+    [ -n "$_choque" ] || return 0
+    printf '\n'
+    aviso "These keys are already bound to other actions:"
+    printf '%s\n' "$_choque" | while IFS= read -r t; do
+        [ -n "$t" ] && nota "$t"
+    done
+    nota "k4's bindings are loaded by '$ENGANCHE'."
+    nota "Classic configurations use the last binding; Lua keeps both bindings."
+    nota "For classic configs, put overrides after that line. For Lua, remove the duplicate binding."
+}
+
+# ─── Step: code ──────────────────────────────────────────────────────────────
+ORIGEN=${K4_ORIGEN:-https://github.com/k4ditano/k4.git}
+
+# First installation through a pipe: there is no checkout yet.
+clonar_y_seguir() {
+    titulo "Code"
+    command -v git >/dev/null 2>&1 || morir "git is required to clone k4."
+
+    if [ -e "$DESTINO" ]; then
+        morir "$DESTINO already exists. If it is a k4 installation, run its installer:
+    $DESTINO/install"
+    fi
+
+    printf '  Cloning into %s…\n' "$DESTINO"
+    mkdir -p "$(dirname "$DESTINO")"
+    git clone --depth 1 "$ORIGEN" "$DESTINO" || morir "Cloning failed."
+    bien "Cloned."
+
+    # Relaunch from the checkout, where the table and templates live. Standard
+    # input is occupied by the script itself (read through a pipe), so recover
+    # the terminal for confirmation prompts; continue without it if absent.
+    printf '\n%s  Continuing from %s%s\n' "$APAGADO" "$DESTINO/install" "$FIN"
+    # /dev/tty existing is not enough: without a controlling terminal it cannot
+    # be opened. Try opening it in a subshell, because a failed redirection on
+    # a special builtin can terminate the whole shell, bypassing `if`. This
+    # previously made the relaunch exit without a message.
+    if (true < /dev/tty) 2>/dev/null; then
+        exec "$DESTINO/install" "$@" < /dev/tty
+    else
+        exec "$DESTINO/install" "$@"
+    fi
+}
+
+paso_codigo() {
+    titulo "Code"
+
+    if [ ! -d "$RAIZ/.git" ]; then
+        nota "$RAIZ is not a git checkout; there is no code update to apply."
+        return 0
+    fi
+    if ! command -v git >/dev/null 2>&1; then
+        aviso "Cannot update without git. Continuing with the other steps."
+        return 0
+    fi
+
+    # Leave uncommitted changes untouched. An update must never discard
+    # someone's work.
+    if [ -n "$(git -C "$RAIZ" status --porcelain 2>/dev/null)" ]; then
+        aviso "$RAIZ has uncommitted changes; the code will not be updated."
+        nota "Commit, stash, or discard them as appropriate, then rerun."
+        return 0
+    fi
+
+    _antes=$(git -C "$RAIZ" rev-parse --short HEAD 2>/dev/null || printf '?')
+    if git -C "$RAIZ" pull --ff-only --quiet 2>/dev/null; then
+        _ahora=$(git -C "$RAIZ" rev-parse --short HEAD 2>/dev/null || printf '?')
+        if [ "$_antes" = "$_ahora" ]; then
+            bien "Already up to date ($_ahora)."
+        else
+            bien "Updated: $_antes → $_ahora."
+        fi
+    else
+        aviso "Update failed. Check connectivity and whether the branch has diverged."
+        nota "Continuing: shortcut and package setup do not depend on this update."
+    fi
+}
+
+# ─── Step: agent skill ───────────────────────────────────────────────────────
+# An agent on this machine may not know k4 exists or how its native features
+# and plugins fit together. Rather than explain it in every session, install
+# the guidance where the agent can discover it.
+#
+# Link rather than copy it, so updating k4 also updates the agent's guidance.
+paso_agente() {
+    titulo "Agent integration"
+    if [ ! -d "$RAIZ/agentes/skills/k4" ]; then
+        aviso "The agent skill is missing; skipping it."
+        return
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        aviso "Cannot link the skill without python3."
+        return
+    fi
+    python3 "$RAIZ/tools/agent_skill.py" --install 2>/dev/null | while read -r l; do
+        nota "$l"
+    done
+    bien "Claude, Codex and other agents can discover k4 and learn how to write a plugin."
+}
+
+# ─── Step: restart ───────────────────────────────────────────────────────────
+paso_reiniciar() {
+    titulo "The bar"
+
+    if [ "$SIN_REINICIAR" -eq 1 ]; then
+        nota "Leaving the bar running as requested with --no-restart."
+        return 0
+    fi
+
+    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+        hyprctl reload >/dev/null 2>&1 && bien "Hyprland configuration reloaded."
+    fi
+
+    command -v quickshell >/dev/null 2>&1 || {
+        aviso "quickshell is not installed yet; the bar cannot start."
+        return 0
+    }
+
+    if pgrep -x quickshell >/dev/null 2>&1; then
+        preguntar "Restart the bar to apply the changes?" || {
+            nota "Start it whenever you are ready: $RAIZ/launch"
+            return 0
+        }
+        # Use `pkill -x`, never `pkill -f`: -f also matches this script's own
+        # command line and kills the invoking process. This has happened twice,
+        # with a duplicate island as the symptom.
+        pkill -x quickshell || true
+        _i=0
+        while pgrep -x quickshell >/dev/null 2>&1 && [ "$_i" -lt 20 ]; do
+            sleep 0.2; _i=$((_i + 1))
+        done
+    fi
+
+    "$RAIZ/launch" --no-duplicate -d >/dev/null 2>&1 &
+    _i=0
+    while [ "$_i" -lt 25 ]; do
+        pgrep -x quickshell >/dev/null 2>&1 && break
+        sleep 0.2; _i=$((_i + 1))
+    done
+
+    _n=$(pgrep -c -x quickshell 2>/dev/null || printf '0')
+    case "$_n" in
+        1) bien "The bar is running." ;;
+        0) mal "The bar did not start. Check its output: $RAIZ/launch" ;;
+        *) mal "There are $_n quickshell processes running: the island is duplicated."
+           nota "Stop them with 'pkill -x quickshell', then start a single instance." ;;
+    esac
+}
+
+# ─── Entry point ─────────────────────────────────────────────────────────────
+printf '\n%sk4%s · installer\n' "$NEGRITA" "$FIN"
+
+# Without a checkout (curl | sh), clone it first. This does not return:
+# `clonar_y_seguir` ends by exec'ing the installer from the new checkout.
+if [ -z "$RAIZ" ]; then
+    [ "$SECO" -eq 1 ] && morir "--dry-run does not clone a checkout. Clone it first:
+    git clone $ORIGEN $DESTINO"
+    clonar_y_seguir "$@"
+fi
+
+diagnosticar
+
+if [ "$SECO" -eq 1 ]; then
+    printf '\n%sDry run: nothing changed.%s\n\n' "$APAGADO" "$FIN"
+    [ "$N_BASE" -eq 0 ] || exit 1
+    exit 0
+fi
+
+paso_codigo
+paso_paquetes
+paso_hyprland
+paso_agente
+paso_reiniciar
+
+titulo "Done"
+if [ "$N_BASE" -gt 0 ]; then
+    aviso "The initial check found $N_BASE missing required packages; review the results above."
+fi
+nota "Shortcuts: SUPER+Space launcher · SUPER+I control center · SUPER+Z settings"
+nota "All shortcuts are in $RAIZ/hypr/ and documented in the README."
+printf '\n'

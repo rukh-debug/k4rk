@@ -1,34 +1,32 @@
-//  Un sonido: el clic, el aviso, el «has perdido».
+//  A sound: a click, a notification or a game-over cue.
 //
-//  Por dentro hay dos motores y se elige solo, porque ninguno vale para todo:
+//  Two backends are selected automatically; neither suits every format:
 //
-//  - **WAV → SoundEffect.** Carga el fichero en memoria al arrancar y lo
-//    dispara sin latencia. Es lo que necesita un efecto de juego, donde el
-//    sonido tiene que ir CON el golpe y no un cuarto de segundo después.
-//  - **Lo demás → MediaPlayer.** SoundEffect solo admite WAV sin comprimir, y
-//    esto no lo dice al fallar: se queda en `status: Error` y no suena nada.
-//    Me pasó con los sonidos del escritorio, que son .oga — un rato mirando
-//    por qué la campana no sonaba. Ahora esos van por MediaPlayer, que abre
-//    el fichero al reproducir y por eso llega un pelín tarde, pero suena.
+//  - **WAV → SoundEffect.** Loads the file into memory on startup and plays
+//    it without loading latency. Game effects need the sound WITH the impact,
+//    not a quarter of a second afterward.
+//  - **Other formats → MediaPlayer.** SoundEffect only accepts uncompressed
+//    WAV. An unsupported file leaves it at `status: Error` without playback.
+//    Desktop sounds exposed this with their .oga files: the bell stayed
+//    silent. Those now use MediaPlayer, which opens the file on playback,
+//    adding a little delay but actually producing sound.
 //
-//  Para música o algo largo esto no es lo suyo: un plugin que quiera
-//  reproducir música lo que quiere es ser un reproductor, y para eso está
-//  MPRIS y K4.Medios.
+//  This is not intended for music or long recordings. A plugin playing
+//  music is a media player; MPRIS and K4.Medios are the relevant interfaces.
 //
-//  Requiere declarar el permiso `sonido`: hacer ruido en el escritorio de
-//  alguien es un efecto, y los efectos se declaran.
+//  Requires the `sonido` permission: producing sound on someone's desktop
+//  is a side effect, and side effects must be declared.
 //
 //      K4.Sonido { id: campana; fuente: campana.delSistema("bell") }
 //      // …
 //      campana.sonar()
 //
-//  Ojo con esa línea, que aquí ponía `K4.Sonido.delSistema("bell")` y NO
-//  funciona: `delSistema` es un método del objeto, no del tipo. Llamarlo
-//  sobre `K4.Sonido` da «Property 'delSistema' of object Sonido is not a
-//  function», y como el fallo ocurre dentro de un enlace, no rompe nada: te
-//  deja sin sonido y en silencio. Se tardó en ver porque hasta hoy ningún
-//  módulo de la barra usaba esto — el primero que lo estrenó copió el
-//  ejemplo y se comió el fallo.
+//  Note the instance call: the former `K4.Sonido.delSistema("bell")` example
+//  did NOT work. `delSistema` is an instance method, not a type method.
+//  Calling it on `K4.Sonido` reports "Property 'delSistema' of object Sonido
+//  is not a function". Because the error occurs in a binding, loading can
+//  continue with no sound. It went unnoticed until the first shell module
+//  to use this component copied the example and encountered the failure.
 
 import QtQuick
 import QtMultimedia
@@ -36,30 +34,29 @@ import QtMultimedia
 QtObject {
     id: sonido
 
-    //  Un fichero: ruta absoluta con file://, o relativa a tu carpeta con
-    //  Qt.resolvedUrl.
+    //  A file: an absolute file:// URL, or a path relative to your directory
+    //  resolved with Qt.resolvedUrl.
     property string fuente: ""
 
-    //  De 0 a 1. Esto no toca el volumen del sistema: si el usuario quiere
-    //  menos ruido, baja el suyo.
+    //  From 0 to 1. This does not change system volume: users can lower
+    //  their own volume if they want less sound.
     property real volumen: 0.5
 
     readonly property bool _esWav: fuente.toLowerCase().indexOf(".wav") ===
                                    fuente.length - 4 && fuente.length >= 4
 
-    //  Listo para sonar, y ahí es donde se mira cuando «no suena y no dice
-    //  nada». Cada motor sabe fallar de una manera:
+    //  Ready to play: check this when playback is unexpectedly silent.
+    //  The backends expose failure differently:
     //
-    //  - el WAV avisa en cuanto carga, así que se espera a `Ready`;
-    //  - el resto solo se entera al abrir el fichero, así que se mira su
-    //    `error`. Se mira el error y NO se espera a `LoadedMedia` a
-    //    propósito: hay motores que no cargan hasta que se les pide
-    //    reproducir, y esperando la carga esto se quedaría en false para
-    //    siempre — que es peor mentira que la de antes.
+    //  - WAV reports its status on loading, so wait for `Ready`.
+    //  - Other formats only discover failures when opening the file, so
+    //    inspect `error`. Deliberately do NOT wait for `LoadedMedia`: some
+    //    backends defer loading until playback is requested. Waiting for
+    //    loading would leave this false forever, an even less useful result.
     //
-    //  Antes, para todo lo que no fuera WAV, esto valía `true` con solo tener
-    //  la propiedad puesta: un .oga inexistente daba `listo` igual, y quien
-    //  lo usara de guarda no se enteraba de nada.
+    //  Previously, any non-WAV source was considered ready merely because
+    //  the property was set. Even a missing .oga file left `listo` true,
+    //  hiding the failure from callers using it as a guard.
     readonly property bool listo: fuente.length > 0
         && (_esWav ? _efecto.status === SoundEffect.Ready
                    : _repro.error === MediaPlayer.NoError)
@@ -80,8 +77,8 @@ QtObject {
         if (_esWav) {
             _efecto.play()
         } else {
-            //  Desde el principio: sin esto, la segunda vez arranca donde se
-            //  quedó —que en un efecto de medio segundo es no sonar.
+            //  Start from the beginning: otherwise the next play resumes
+            //  at the old position, leaving a half-second effect silent.
             _repro.position = 0
             _repro.play()
         }

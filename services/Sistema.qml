@@ -95,7 +95,7 @@ Singleton {
     function matar(pid, start) {
         if (terminate.running) return
         processNotice = "Ending process…"
-        terminate.command = ["python3", Quickshell.shellPath("tools/sistema.py"), "--terminate", String(pid), String(start)]
+        terminate.command = ["python3", Quickshell.shellPath("tools/system.py"), "--terminate", String(pid), String(start)]
         terminate.running = true
     }
     Process {
@@ -207,13 +207,13 @@ Singleton {
         if (data.procesos) { procesos = data.procesos; processesReady = true }
     }
     Process {
-        command: ["python3", Quickshell.shellPath("tools/sistema.py"), "--discover"]
+        command: ["python3", Quickshell.shellPath("tools/system.py"), "--discover"]
         running: true
         stdout: SplitParser { onRead: line => sistema.receive(line) }
     }
     Process {
         running: sistema.mirando
-        command: ["python3", Quickshell.shellPath("tools/sistema.py")]
+        command: ["python3", Quickshell.shellPath("tools/system.py")]
         stdout: SplitParser { onRead: line => sistema.receive(line) }
         onExited: {
             sistema.gpuUso = -1

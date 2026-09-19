@@ -1,10 +1,10 @@
-//  Carga algo solo cuando hace falta, y lo suelta cuando deja de hacer falta.
+//  Load something only while it is needed, and release it afterward.
 //
-//  Para lo caro que no debe existir siempre: una ventana a pantalla completa,
-//  una vista con vídeo dentro. Reexporta LazyLoader.
+//  For expensive objects that should not exist permanently: a fullscreen
+//  window or a view containing video. Reexports LazyLoader.
 //
-//  Ojo con una cosa que no se ve: su propiedad por defecto es `component`, así
-//  que lo que se declare dentro ES lo que se carga, no un hijo suyo.
+//  Note its non-obvious default property, `component`: the object declared
+//  inside IS the component to load, rather than a child of the loader.
 //
 //      K4.Cargador {
 //          active: seleccionando

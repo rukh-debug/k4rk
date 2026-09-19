@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
-"""Almacén del historial del portapapeles.
+"""Clipboard history storage.
 
-Quickshell expone `clipboardText`, pero en Wayland su señal de cambio no salta
-cuando copia otra aplicación —probado: ni siquiera lee el contenido inicial—,
-así que quien vigila es `wl-paste --watch`, que sí se entera de todo. Este
-guión es lo que ese vigilante ejecuta en cada copia.
+Quickshell exposes `clipboardText`, but in Wayland testing its change signal
+missed other applications' copies and even the initial contents. Instead,
+`wl-paste --watch` runs this script on each copy.
 
-Órdenes:
+Commands:
 
-    guardar texto|imagen   lee la copia de la entrada estándar y la archiva
-    listar                 saca el índice en JSON, lo más nuevo primero
-    copiar <id>            devuelve esa entrada al portapapeles
-    borrar <id>            la quita
-    fijar <id>             la clava arriba, y ya no caduca
-    limpiar                borra todo lo que no esté fijado
+    save text|image        read clipboard data from stdin and store it
+    list                   emit the JSON index, pinned first then newest
+    copy <id>              put that entry back on the clipboard
+    delete <id>            remove the entry
+    pin <id>               toggle pinning; pinned entries do not expire
+    clear                  remove every unpinned entry
 
-Cada entrada se guarda en su propio fichero y el índice solo lleva lo que hace
-falta para pintar la lista. El identificador es el hash del contenido, así que
-volver a copiar lo mismo no duplica: lo sube arriba y ya está.
+Each entry has its own file; the index holds only what the list view needs.
+Content hashes identify entries, so copying the same content moves it to the
+top instead of creating a duplicate.
 """
 
 import hashlib
@@ -34,15 +33,14 @@ DATOS = os.path.join(BASE, "datos")
 INDICE = os.path.join(BASE, "indice.json")
 
 TOPE_ENTRADAS = 300
-TOPE_BYTES = 8 * 1024 * 1024      # una copia mayor que esto no vale la pena
-#  Y un techo para el conjunto: 300 entradas de imágenes generosas podían
-#  ser cientos de MB perfectamente legales. El historial es una comodidad,
-#  no un archivo: lo viejo cede sitio.
+TOPE_BYTES = 8 * 1024 * 1024      # larger copies are not worth retaining
+#  Also cap total storage: 300 large images could consume hundreds of MB.
+#  History is a convenience, not an archive; old entries make room for new ones.
 TOPE_TOTAL = 50 * 1024 * 1024
-RESUMEN = 400                     # lo que se guarda para pintar la fila
+RESUMEN = 400                     # preview length stored for the list row
 
 
-# ── índice ───────────────────────────────────────────────────────────
+# ── index ────────────────────────────────────────────────────────────
 
 def carga():
     try:
@@ -65,10 +63,9 @@ def ruta(ident):
     return os.path.join(DATOS, ident)
 
 
-# ── de qué es esto ───────────────────────────────────────────────────
+# ── content labels ───────────────────────────────────────────────────
 #
-#  Una etiqueta corta ayuda a encontrar de un vistazo «ese color» o «ese
-#  enlace» entre doscientas líneas de texto plano.
+#  Short labels help identify colors and links among hundreds of text entries.
 
 RE_URL = re.compile(r"^\s*(https?|ftp|ssh|magnet)://\S+\s*$", re.I)
 RE_COLOR = re.compile(r"^\s*#[0-9a-fA-F]{3,8}\s*$")
@@ -92,11 +89,10 @@ def etiqueta(texto):
 
 
 def es_secreto():
-    """¿Lo ha puesto un gestor de contraseñas?
+    """Check whether a password manager marked the clipboard offer.
 
-    Los gestores marcan la oferta con una pista propia justo para que los
-    historiales no la archiven. Guardarla sería la peor clase de fallo, así
-    que ante la duda no se guarda.
+    Password-manager hints tell history tools not to store the content.
+    If MIME-type discovery fails, this function currently returns False.
     """
     try:
         tipos = subprocess.run(["wl-paste", "--list-types"],
@@ -106,7 +102,7 @@ def es_secreto():
     return "password" in tipos.lower() or "x-kde-passwordManagerHint" in tipos
 
 
-# ── guardar ──────────────────────────────────────────────────────────
+# ── save ─────────────────────────────────────────────────────────────
 
 def guardar(tipo):
     bruto = sys.stdin.buffer.read()
@@ -133,7 +129,7 @@ def guardar(tipo):
     ident = hashlib.sha1(bruto).hexdigest()[:16]
     entradas = carga()
 
-    # ya estaba: sube arriba y conserva si estaba fijada
+    # Existing entry: move to the top and preserve its pinned state.
     previa = None
     for e in entradas:
         if e["id"] == ident:
@@ -169,7 +165,7 @@ def guardar(tipo):
 
 
 def podar(entradas):
-    """Recorta por el final —número Y bytes totales—, sin tocar lo fijado."""
+    """Trim oldest entries by count AND total bytes, preserving pinned ones."""
     sobran = max(0, len(entradas) - TOPE_ENTRADAS)
 
     def peso(e):
@@ -194,10 +190,10 @@ def podar(entradas):
         sobran -= 1
 
 
-# ── el resto de órdenes ──────────────────────────────────────────────
+# ── remaining commands ───────────────────────────────────────────────
 
 def listar():
-    # Lo fijado primero y, dentro de cada grupo, lo más reciente arriba.
+    # Pinned first, then newest within each group.
     entradas = carga()
     entradas.sort(key=lambda e: (not e.get("fijado"), -e.get("cuando", 0)))
     for e in entradas:
@@ -215,8 +211,8 @@ def copiar(ident):
                 datos = f.read()
         except OSError:
             return
-        # --type explícito: sin él wl-copy adivina, y una imagen pegada como
-        # texto sale como un churro de bytes
+        # Set --type explicitly so wl-copy does not guess and paste image
+        # bytes as text.
         subprocess.run(["wl-copy", "--type", e.get("mime", "text/plain")],
                        input=datos, check=False)
         return

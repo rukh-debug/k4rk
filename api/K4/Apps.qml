@@ -1,10 +1,10 @@
 pragma Singleton
 
-//  Las aplicaciones instaladas.
+//  Installed applications.
 //
-//  Lo que el escritorio sabe de ellas: nombre, icono, orden de arranque. Un
-//  plugin no debería tener que saber que esto sale de leer ficheros .desktop
-//  repartidos por medio sistema.
+//  What the desktop knows about them: name, icon and launch command. Plugins
+//  should not need to know that this comes from reading .desktop files
+//  scattered across the system.
 
 import QtQuick
 import Quickshell
@@ -15,7 +15,7 @@ Singleton {
 
     readonly property int count: lista.length
 
-    // Buscar por identificador, que es como las nombra todo el mundo.
+    // Look up an application by its identifier, the shared naming convention.
     function porId(id) {
         const bajo = String(id).toLowerCase()
         for (let i = 0; i < lista.length; ++i)
@@ -24,7 +24,7 @@ Singleton {
         return null
     }
 
-    // El icono de una aplicación, ya resuelto a ruta.
+    // An application icon, already resolved to a path.
     function icono(nombre) {
         return nombre && nombre.length > 0
             ? (Quickshell.iconPath(nombre, true) || "") : ""

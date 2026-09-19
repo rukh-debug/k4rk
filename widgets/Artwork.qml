@@ -1,6 +1,6 @@
-//  Carátula: portada o miniatura de vídeo, si no el favicon del sitio, si no
-//  el icono de la app, y si no una nota. Cada paso solo aparece cuando el
-//  anterior ha fallado, así que un acierto nunca cuesta una segunda petición.
+//  Artwork fallback order: cover or video thumbnail, site favicon, application
+//  icon, then a music note. Each fallback appears only when the preceding
+//  source is unavailable; a successful cover avoids a second favicon request.
 
 import QtQuick
 import Quickshell.Widgets

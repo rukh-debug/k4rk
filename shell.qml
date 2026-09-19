@@ -371,7 +371,7 @@ Scope {
         }
         function hostStatus(): string { return SurfaceRegistry.hostStatus() }
 
-        // Start an asynchronous update check; Settings shows novedades when ready.
+        // Start an asynchronous update check; Settings shows updates when ready.
         function pluginCheck(): void { PluginManager.comprobarNovedades() }
         function wifi(): void { _p("panel")?.openTab("wifi") }
         function bluetooth(): void { _p("panel")?.openTab("bluetooth") }
@@ -464,7 +464,7 @@ Scope {
             //
             //  The bar has its edge; every view that OPENS can have its own
             //  — the control centre from the left, Settings from the bottom
-            //  — read from its placement in Ajustes. A view with no entry
+            //  — read from its placement in Settings. A view with no entry
             //  follows the bar: its edge, its alignment, which is what every
             //  view did before placement existed and stays the default so
             //  nothing jumps after the update.

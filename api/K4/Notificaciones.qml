@@ -1,10 +1,10 @@
 pragma Singleton
 
-//  Las notificaciones que recibe la barra.
+//  Notifications received by the shell.
 //
-//  Leerlas es libre —un registro, un contador, un filtro que solo mira— y
-//  descartarlas pide el permiso `notificaciones`: borrarle a alguien un aviso
-//  que no ha leído es una pérdida de verdad.
+//  Reading is unrestricted for logs, counters and observational filters.
+//  Dismissing requires the `notificaciones` permission: deleting an unread
+//  notice can lose information the user has not yet seen.
 //
 //      Connections {
 //          target: K4.Notificaciones
@@ -20,12 +20,12 @@ QtObject {
 
     readonly property int cuantas: _n ? _n.count : 0
     readonly property var ultima: _n ? _n.latest : null
-    //  Las recientes, ya recortadas por la barra.
+    //  Recent notifications, already limited by the shell.
     readonly property var recientes: _n ? _n.recent : []
 
     signal llego()
 
-    //  ── requiere el permiso `notificaciones` ──────────────────────
+    //  ── requires the `notificaciones` permission ──────────────────
     function limpiar() { if (_n) _n.clear() }
 
     property Connections _puente: Connections {

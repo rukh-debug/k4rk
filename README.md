@@ -1,8 +1,8 @@
 # k4
 
 **A Dynamic Island for Hyprland.** It sits collapsed at the edge of your
-screen and expands only when it has something to say — and everything it does,
-including the parts that look built in, is a plugin.
+screen and expands only when it has something to say. Native host features
+provide the core desktop surfaces; installable plugins extend them.
 
 [![Follow @k4ditano on X](https://img.shields.io/badge/follow-%40k4ditano-000000?style=flat&logo=x&logoColor=white)](https://x.com/k4ditano)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
@@ -10,14 +10,27 @@ including the parts that look built in, is a plugin.
 
 <img src="screenshots/bar.png" width="100%" alt="The k4 bar at rest, collapsed at the top edge of the screen">
 
+On Arch Linux with Hyprland, run the installer from this checkout:
+
+```sh
+./install --dry-run
+./install
+```
+
+Installs what is missing, writes the Hyprland
+integration, starts the bar, and keeps a checkout at
+`~/.config/quickshell/k4` when bootstrapped; an existing checkout is used in place.
+
+The historical upstream bootstrap is still:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/k4ditano/k4/main/instalar | sh
 ```
 
-Arch Linux and Hyprland. Installs what is missing, writes the Hyprland
-integration, starts the bar, and keeps a checkout at
-`~/.config/quickshell/k4`. Run `./instalar --dry-run` first if you would rather
-see what it would do.
+That endpoint depends on upstream's historical installer and checkout layout;
+it does not install this checkout's filename migration. This checkout uses
+`./install` for installation and updates. Piping this checkout's installer
+requires `K4_ORIGEN` to point to a repository that already contains `install`.
 
 On Nix, use the flake instead — `nix run github:rukh-debug/k4rk`, a Home
 Manager module, or the overlay — same bar, same plugins, updates through
@@ -102,7 +115,7 @@ running code for what is on disk, without restarting anything.
 > **"Make me a k4 plugin that shows the train times to work."**
 
 That works, and it is the point. k4 installs a skill for coding agents —
-`./instalar` links it into `~/.claude/skills/` and `~/.config/agents/skills/`
+`./install` links it into `~/.claude/skills/` and `~/.config/agents/skills/`
 — so Claude Code, Codex and anything else that reads those already know:
 
 - that this machine runs k4, with native host features plus installable plugins;
@@ -116,8 +129,8 @@ With it, it starts by running `--new` and editing something that already
 works.
 
 ```sh
-python3 tools/agente.py             # where it is, and whether it's linked
-python3 tools/agente.py --install   # link it (./instalar does this for you)
+python3 tools/agent_skill.py             # where it is, and whether it's linked
+python3 tools/agent_skill.py --install   # link it (./install does this for you)
 ```
 
 The skill is [`agentes/skills/k4/`](agentes/skills/k4/) — a page on writing a
@@ -133,7 +146,7 @@ python3 tools/plugins.py     # the permissions you declare are the ones you use
 git rev-parse HEAD           # the SHA you want published
 ```
 
-**2.** Open the [**Publish a plugin**](../../issues/new?template=publicar-plugin.yml)
+**2.** Open the [**Publish a plugin**](../../issues/new?template=publish-plugin.yml)
 issue with the repository URL and that full 40-character SHA.
 
 **3.** A bot fetches **that exact commit**, validates it *without running any
@@ -173,7 +186,11 @@ Full guide: [docs/PLUGINS.md](docs/PLUGINS.md) · API: [docs/API.md](docs/API.md
 <summary><b>Shortcuts</b></summary>
 
 Written to `~/.config/hypr/config/k4.lua` (or `k4.conf` on the legacy format).
-That file is owned by k4; put your overrides after it.
+That file is owned by k4. In the classic format, put overrides after its
+include. Lua accumulates bindings, so remove conflicts in your own template
+instead; the Nix option is `programs.k4.hyprland.template`. The table below
+describes the Lua template; the classic template does not include the terminal
+shortcuts.
 
 | Shortcut | Action |
 |---|---|
@@ -184,8 +201,8 @@ That file is owned by k4; put your overrides after it.
 | `SUPER + Shift + W` | Wallpaper page |
 | `SUPER + V` | Clipboard history |
 | `SUPER + K` | Shortcut viewer |
-| `SUPER + L` | Lock screen |
-| `SUPER + G` | Ask Codex |
+| `SUPER + Alt + C` | Session controls, including lock |
+| `SUPER + G` | Open the assistant |
 | `SUPER + Shift + T` | Terminal in the island (sessions kept alive) |
 | `SUPER + Alt + T` | Pop that session out into a window |
 
@@ -218,7 +235,7 @@ Plugin management: `pluginEnable <id>`, `pluginDisable <id>`,
 <summary><b>Requirements and install options</b></summary>
 
 The installer is the source of truth and reads
-[`dependencias.tsv`](dependencias.tsv). The main ones:
+[`dependencies.tsv`](dependencies.tsv). The main ones:
 
 | Package | Purpose |
 |---|---|
@@ -245,7 +262,7 @@ Codex integration.
 The Spanish flags this started with — `--seco`, `--si`, `--opcionales`,
 `--sin-paquetes`, `--sin-reiniciar` — still work and are not going away.
 
-**Update with the same script**: `~/.config/quickshell/k4/instalar`. It pulls
+**Update with the same script**: `~/.config/quickshell/k4/install`. It pulls
 with `--ff-only`, refreshes packages and shortcuts and offers to restart the
 bar. With uncommitted changes in the checkout it leaves the code alone and
 tells you so — nobody loses work to an update.
@@ -295,21 +312,36 @@ each other; references are injected by `SurfaceRegistry`.
 Before opening a pull request:
 
 ```sh
-python3 tools/plugins.py && python3 tools/api.py && python3 tools/guia.py
-python3 tools/layouts.py && python3 tools/glifos.py
-python3 tools/prueba_plugins.py && python3 tools/prueba_texto.py
+python3 tools/plugins.py && python3 tools/api.py && python3 tools/docs_check.py
+python3 -B tools/test_docs.py
+python3 -B tools/test_shortcuts.py
+python3 tools/layouts.py && python3 tools/glyphs.py
+python3 tools/test_plugins.py && python3 tools/test_text.py
 git diff --check
 ```
 
-Naming: the `K4Plugin` contract keeps its English members (`open`, `close`,
-`toggle`, `active`, `view`); everything else — services, properties, functions,
-signals — is Spanish, which is the project's voice. Do not add a third variant
-of an existing pair: if a file already has `abrir()`/`cerrar()`, extend that.
-The codebase predates the rule, so migrate names when you touch them, never in
-bulk.
+Language and naming: write all new prose, comments, UI strings, identifiers,
+IPC verbs, plugin IDs, settings keys, permissions and stored values in English.
+UI strings are plain English literals; there is no translation layer.
+
+Existing Spanish identifiers, filenames and public `K4.*` names remain until
+their coordinated migration. Translate comments first, preserving their full
+explanations, then migrate identifiers and paths in reviewable batches; public
+API names come last. Do not rename contracts opportunistically while doing
+unrelated work. Update callers, persisted-state migrations and documentation
+together, and keep the validators green. Existing compatibility aliases remain
+supported during that transition, then move out of the maintained source with
+the archived migration release/tool. The approved target is strict final removal,
+not permanent bilingual interfaces. See the [migration ledger](docs/ENGLISH-MIGRATION.md)
+for scope, ordering, completion gates and current progress.
+
+k4term's own configuration keys and shell-integration markers are external
+contracts: preserve compatibility at the integration boundary. The bundled
+terminal and this repository's migration do not require a separate k4term checkout.
+Preserve source identities and license notices.
 
 More: [docs/API.md](docs/API.md) · [docs/PLUGINS.md](docs/PLUGINS.md) ·
-[api/LEEME.md](api/LEEME.md)
+[api/README.md](api/README.md)
 
 </details>
 

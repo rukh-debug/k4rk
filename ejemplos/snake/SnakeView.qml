@@ -1,8 +1,8 @@
-//  El tablero del snake. Solo pinta: el juego entero vive en el plugin.
+//  The Snake board only renders; the whole game lives in the plugin.
 //
-//  Un Repeater de celdas y no un Canvas, a propósito: con 238 casillas los
-//  bindings de QML llegan de sobra, y así cada celda decide su color sola
-//  mirando el estado — sin repintados a mano ni contexto 2D.
+//  A Repeater of cells rather than a Canvas: QML bindings easily handle
+//  238 cells, and each cell derives its color from the state without
+//  manual repainting or a 2D context.
 
 import QtQuick
 import K4 as K4
@@ -15,7 +15,7 @@ Item {
     readonly property int celda: 24
     readonly property int margen: 14
 
-    //  Las flechas. WASD también, que en un juego es lo que la mano espera.
+    //  Arrow keys and WASD, as expected in a game.
     Keys.onPressed: function (ev) {
         if (ev.key === Qt.Key_Left || ev.key === Qt.Key_A)
             vista.plugin.girar(-1, 0)
@@ -39,7 +39,7 @@ Item {
         anchors.topMargin: vista.margen
         spacing: 8
 
-        // ── el marcador ───────────────────────────────────────────
+        // ── the score ─────────────────────────────────────────────
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 18
@@ -57,7 +57,7 @@ Item {
             }
         }
 
-        // ── el tablero ────────────────────────────────────────────
+        // ── the board ─────────────────────────────────────────────
         Rectangle {
             width: vista.plugin.ancho * vista.celda + 2
             height: vista.plugin.alto * vista.celda + 2
@@ -83,8 +83,8 @@ Item {
 
                     color: puesto === 0 ? K4.Tema.verde
                          : puesto > 0
-                           //  El cuerpo se apaga hacia la cola: se ve por
-                           //  dónde va sin tener que adivinarlo.
+                           //  The body fades toward the tail, making the
+                           //  direction of travel clear.
                            ? Qt.darker(K4.Tema.verde,
                                        1 + puesto / vista.plugin.serpiente.length)
                          : index === vista.plugin.comida ? K4.Tema.rojo
@@ -94,7 +94,7 @@ Item {
                 }
             }
 
-            //  La pantalla de empezar y la de morirse: el mismo velo.
+            //  The start and game-over screens share the same overlay.
             Rectangle {
                 anchors.fill: parent
                 radius: parent.radius

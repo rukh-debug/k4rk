@@ -4,9 +4,10 @@ This is the quick reference. For complete guides see:
 
 - [Public API](../docs/API.md)
 - [Creating a plugin](../docs/PLUGINS.md)
-- [Creating a game plugin](../docs/GAMES.md)
+- [Game example](../ejemplos/snake/)
 
-> A plugin imports `QtQuick` and `K4`. Nothing else from the host.
+> A plugin imports `QtQuick` and `K4`. Platform functionality belongs behind
+> the public API, not in private host imports.
 
 ## Native markdown
 
@@ -22,39 +23,40 @@ plain source on worker failure. See [the reference](../docs/API.md#native-markdo
 ```qml
 import QtQuick
 import K4 as K4
-import "../../core"
 
-K4Plugin {
+K4.Plugin {
     id: self
     name: "hello"
     title: "Hello"
     priority: 70
-    active: habilitado && abierto
+    active: habilitado && isOpen
     islandWidth: 300
     islandHeight: 120
 
-    property bool abierto: false
+    property bool isOpen: false
+    function toggle() { isOpen = !isOpen }
+    function close() { isOpen = false }
 
     view: Component {
         Item {
-            IslandLabel { anchors.centerIn: parent; text: "Hello" }
+            K4.Etiqueta { anchors.centerIn: parent; text: "Hello" }
         }
     }
 
     K4.Ipc {
         target: "k4.hello"
-        function toggle(): void { self.abierto = !self.abierto }
+        function toggle(): void { self.toggle() }
     }
 }
 ```
 
-`K4Plugin` is the contract: it declares when the plugin wants the island, its
+`K4.Plugin` is the contract: it declares when the plugin wants the island, its
 requested size, the view to render and keyboard behavior. The host binds
 `habilitado` to `PluginManager`; it is different from `active`:
 
 ```qml
-K4.Process { running: self.habilitado && self.abierto }
-Timer { running: self.habilitado && self.abierto }
+K4.Process { running: self.habilitado && self.isOpen }
+Timer { running: self.habilitado && self.isOpen }
 ```
 
 By default, the view deploys from the bar, one at a time, at its position in
@@ -105,7 +107,7 @@ not be declared inside the view.
 | `K4.MenuBandeja` | Tray application menu |
 | `K4.Pildora` | Small indicators in the folded pill; host **Island → Indicator icon size** controls all status glyphs (8–20 px, default 14 px). Optional seventh `registrar` argument `slots: [{ text, samples, prefix }]` reserves stable numeric widths. Prefixed values align left beside the prefix; other values align right. Update the whole array via `actualizar`; keep samples/prefixes fixed. See [pill indicators](../docs/API.md#pill-indicators) |
 | `K4.Capsule` | Flank extensions: the capsule growing with your text |
-| `K4.Sonido` | Short sound effect (permission `sonido`) |
+| `K4.Sonido` | Short sound effect (permission `sound`) |
 | `K4.Feedback` | Fixed UI cues: `click()` and rate-limited `tick()`; no permission, governed by host UI sound settings and system mute |
 | `K4.Tema` | Palette, fonts, island geometry — `tintar()` to tint the bar ambience, plus the current tint owner and colour |
 | `K4.Guardado` | Plugin state as JSON, in its own directory |

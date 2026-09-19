@@ -1,9 +1,10 @@
 pragma Singleton
 
-//  Reproductor activo (MPRIS) y resolución de carátula.
+//  Active player (MPRIS) and cover-art resolution.
 //
-//  Los navegadores no publican mpris:artUrl, pero sí xesam:url, que basta para
-//  construir la miniatura. Cada paso solo se intenta si el anterior no dio nada.
+//  Browsers may omit mpris:artUrl but publish xesam:url, which is enough
+//  to construct a thumbnail. Each fallback is tried only if the previous
+//  step returned nothing.
 
 import QtQuick
 import Quickshell
@@ -24,9 +25,9 @@ Singleton {
     readonly property bool hasPlayer: activePlayer !== null
     readonly property bool isPlaying: hasPlayer && activePlayer.isPlaying
 
-    // Algunos reproductores (Firefox/Zen) nunca publican mpris:length: para
-    // ellos se oculta la línea de tiempo. Con retardo, para que un cambio de
-    // pista (length brevemente a 0) no haga saltar la island.
+    // Some players (Firefox/Zen) never publish mpris:length, so hide their
+    // timeline. Delay hiding it so a track change, with length briefly at
+    // zero, does not make the island jump.
     readonly property bool hasTimelineRaw: hasPlayer && activePlayer.lengthSupported && activePlayer.length > 0
     property bool hasTimeline: false
 
@@ -39,10 +40,10 @@ Singleton {
 
     Component.onCompleted: hasTimeline = hasTimelineRaw
 
-    // ── sondeo de posición ────────────────────────────────────────
-    // MPRIS no notifica la posición, hay que preguntarla. Solo mientras alguna
-    // vista la esté mirando: las vistas se apuntan al montarse y se borran al
-    // destruirse, así que con la island plegada no se gasta nada.
+    // ── position polling ─────────────────────────────────────────
+    // MPRIS does not notify position changes, so query it only while a view
+    // is watching. Views register on creation and unregister on destruction,
+    // avoiding polling while the island is folded.
     property int positionWatchers: 0
 
     function watchPosition() { positionWatchers += 1 }
@@ -78,7 +79,7 @@ Singleton {
         return ""
     }
 
-    // último recurso antes del glifo de nota: favicon del sitio, luego icono de la app
+    // Last fallbacks before the music-note glyph: site favicon, then app icon.
     function faviconFor(player) {
         const host = trackUrl(player).match(/^https?:\/\/([^\/]+)/)
         return host ? "https://" + host[1] + "/favicon.ico" : ""

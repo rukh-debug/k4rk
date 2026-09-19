@@ -1,5 +1,5 @@
-//  Capa fina sobre K4.Deslizador — ver core/IconGlyph.qml. Solo traduce
-//  nombres: la lógica del cuantizado y del aviso vive en la pieza de la API.
+//  Thin wrapper around K4.Deslizador; see core/IconGlyph.qml. Only maps names:
+//  quantization and change notification remain in the API component.
 
 import K4 as K4
 

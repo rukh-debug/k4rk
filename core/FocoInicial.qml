@@ -1,5 +1,5 @@
-//  Capa fina sobre K4.FocoInicial — ver core/IconGlyph.qml. El porqué de que
-//  haya que insistir en pedir el foco está documentado en la pieza de la API.
+//  Thin wrapper around K4.FocoInicial; see core/IconGlyph.qml. The API
+//  component documents why focus requests need repeated attempts.
 
 import K4 as K4
 

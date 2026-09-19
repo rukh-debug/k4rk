@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
-"""Ratón virtual por uinput, para comprobar lo que necesita un ratón de verdad.
+"""Virtual uinput mouse for tests that need real pointer events.
 
-    raton.py mueve 960 540      # a esa posición de pantalla
-    raton.py clic               # izquierdo donde esté
-    raton.py clic 960 540       # mover y pulsar
-    raton.py derecho 960 540
-    raton.py donde              # dónde está ahora
-    raton.py rueda 3            # tres muescas arriba (negativo, abajo)
-    raton.py arrastra 100 200 400 200      # arrastre de verdad, en tramos
-    raton.py guion "mueve 900 17" "espera 1" "arrastra 900 300 1100 300"
+    mouse.py mueve 960 540      # move to this screen position
+    mouse.py clic               # left-click at the current position
+    mouse.py clic 960 540       # move and click
+    mouse.py derecho 960 540
+    mouse.py donde              # current position
+    mouse.py rueda 3            # three notches up (negative for down)
+    mouse.py arrastra 100 200 400 200      # drag in multiple steps
+    mouse.py guion "mueve 900 17" "espera 1" "arrastra 900 300 1100 300"
 
-Compañero de teclas.py: el compositor no acepta eventos sintéticos por Wayland,
-pero un dispositivo del kernel lo ve como cualquier ratón enchufado.
+Companion to keyboard.py: the compositor rejects synthetic Wayland events but
+treats a kernel input device like a physical mouse.
 
-Se mueve en RELATIVO y no en absoluto a propósito. Un dispositivo absoluto lo
-trata libinput como una tableta o una pantalla táctil, con su propio mapeado y
-sus sorpresas; con movimiento relativo basta con irse a una esquina —el cursor
-se queda pegado al borde— y contar desde ahí. La posición se comprueba luego
-preguntándosela a Hyprland, así que no hay que fiarse de la cuenta.
+Use relative motion: libinput treats absolute devices as tablets or touch
+screens with their own mappings. Relative motion can start from a corner,
+where the pointer stops at the edge. Query Hyprland to verify the resulting
+position rather than trusting accumulated movement.
 """
 import fcntl, os, socket, struct, sys, time
 
@@ -49,7 +48,7 @@ BOTONES = {"clic": BTN_LEFT, "izquierdo": BTN_LEFT,
 
 
 def donde():
-    """Dónde está el cursor según Hyprland, o None."""
+    """Return Hyprland's cursor position, or None."""
     firma = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
     runtime = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%d" % os.getuid())
     ruta = "%s/hypr/%s/.socket.sock" % (runtime, firma)
@@ -81,7 +80,7 @@ class Raton:
         fcntl.ioctl(self.fd, UI_DEV_SETUP,
                     struct.pack("HHHH80sI", 0x03, 0x1234, 0x5679, 1, nombre, 0))
         fcntl.ioctl(self.fd, UI_DEV_CREATE)
-        # Al compositor le lleva un momento darse cuenta del dispositivo nuevo.
+        # Give the compositor time to discover the new device.
         time.sleep(1.2)
 
     def evento(self, tipo, codigo, valor):
@@ -91,8 +90,7 @@ class Raton:
         self.evento(EV_SYN, SYN_REPORT, 0)
 
     def paso(self, dx, dy):
-        # En trozos: un salto de miles de píxeles de golpe se lo puede comer la
-        # aceleración de puntero, y el destino sale corrido.
+        # Move in small steps: pointer acceleration can distort a large jump.
         while dx or dy:
             px = max(-100, min(100, dx))
             py = max(-100, min(100, dy))
@@ -106,12 +104,10 @@ class Raton:
             time.sleep(0.002)
 
     def ir_a(self, x, y):
-        """A una posición de pantalla, corrigiendo con lo que diga Hyprland."""
-        #  Si se sabe dónde está, se va en relativo desde ahí. Irse antes a la
-        #  esquina parece más seguro y es peor: saca el puntero de lo que
-        #  estuviera señalando, y cualquier cosa que reaccione al ratón —la
-        #  island se despliega al pasar por encima— se cierra por el camino.
-        #  Entonces no se puede pulsar nada que solo exista mientras señalas.
+        """Move to a screen position, correcting with Hyprland feedback."""
+        #  Move from the known position when possible. Visiting a corner first
+        #  leaves the hovered surface and closes hover-only island controls
+        #  before they can be clicked.
         p = donde()
         if p is not None:
             self.paso(x - p[0], y - p[1])
@@ -121,7 +117,7 @@ class Raton:
             self.paso(x, y)
         time.sleep(0.08)
 
-        # Y se afina, porque la aceleración puede haber desviado la cuenta.
+        # Correct any drift caused by pointer acceleration.
         for _ in range(4):
             p = donde()
             if p is None:
@@ -152,21 +148,19 @@ class Raton:
         time.sleep(0.05)
 
     def arrastrar(self, x0, y0, x1, y1, tramos=12):
-        """Un arrastre de verdad, en tramos.
+        """Drag in multiple steps.
 
-        Los tramos no son por realismo: un salto único no genera posiciones
-        intermedias, y la mitad de los gestos de QML —que reaccionan a
-        onPositionChanged— no llegan a dispararse. Con doce tramos y una pausa
-        corta entre ellos, cualquier interfaz se entera.
+        A single jump misses intermediate positions needed by QML gestures
+        driven by onPositionChanged. Twelve steps with short pauses give the
+        interface time to react.
         """
         self.ir_a(x0, y0)
         self.abajo()
         for i in range(1, tramos + 1):
             objetivo_x = round(x0 + (x1 - x0) * i / tramos)
             objetivo_y = round(y0 + (y1 - y0) * i / tramos)
-            # Se mira dónde está de verdad en cada tramo: la aceleración de
-            # puntero desvía la cuenta, y en un arrastre el desvío se acumula
-            # hasta soltar en otro sitio. Preguntarlo cuesta 0,02 ms.
+            # Query each step so acceleration drift does not accumulate and
+            # cause a drop at the wrong position. A query measured 0.02 ms.
             p = donde()
             if p is None:
                 break
@@ -198,12 +192,10 @@ def main():
     r = Raton()
     try:
         if orden == "guion":
-            #  Una secuencia con UN solo dispositivo. Hace falta porque crear
-            #  un ratón nuevo por cada paso pierde lo que estuvieras señalando,
-            #  y hay cosas —las cápsulas de la island, los menús— que solo
-            #  existen mientras señalas.
+            #  Run a sequence with ONE device. Creating a new mouse for each
+            #  step loses hover state, hiding hover-only island chips or menus.
             #
-            #      raton.py guion "mueve 900 17" "espera 1.5" "clic 1217 31"
+            #      mouse.py guion "mueve 900 17" "espera 1.5" "clic 1217 31"
             for paso in sys.argv[2:]:
                 trozos = paso.split()
                 if trozos[0] == "mueve":
@@ -242,7 +234,7 @@ def main():
                 r.ir_a(int(sys.argv[2]), int(sys.argv[3]))
             r.pulsar(BOTONES[orden])
         else:
-            print("orden desconocida: %s" % orden, file=sys.stderr)
+            print("unknown command: %s" % orden, file=sys.stderr)
             return 1
         time.sleep(0.15)
         print(donde())

@@ -1,12 +1,12 @@
 pragma Singleton
 
-//  El estado de la island: si está abierta, quién la ocupa y cuánto sitio hay.
+//  Island state: whether it is open, who occupies it and how much room exists.
 //
-//  Solo lectura, y a propósito. Quién ocupa la island lo decide el host con
-//  las prioridades de cada plugin —es la única forma de que dos plugins no se
-//  peleen por la pantalla—; tú lo pides con `active` en tu K4.Plugin y aquí
-//  ves qué ha pasado. Sirve para no hacer trabajo que nadie va a ver: si tu
-//  plugin no tiene la island, no animes, no sondees, no pintes.
+//  Ownership is deliberately read-only. The host arbitrates using plugin
+//  priorities so two plugins cannot fight over the display. Request it with
+//  `active` on your K4.Plugin and observe the result here. Avoid work nobody
+//  can see: when your plugin does not own the island, stop its animations,
+//  polling and rendering.
 
 import QtQuick
 
@@ -15,52 +15,48 @@ QtObject {
 
     readonly property bool abierta: _i ? _i.abierta : false
 
-    //  ¿La ve alguien AHORA MISMO?
+    //  Is the island visible RIGHT NOW?
     //
-    //  No es lo mismo que `abierta`: la píldora plegada también se ve. Esto es
-    //  falso cuando la island está retirada —el modo «escondida» de Ajustes—,
-    //  cuando un diálogo del sistema la aparta, y en el monitor
-    //  cuya barra no está enseñándose.
+    //  This differs from `abierta`: the folded pill is visible too. False
+    //  when the island is retracted in Settings' hidden mode, when a system
+    //  dialog moves it aside, or when its monitor's bar is not showing.
     //
-    //  Existe para una cosa concreta: en Qt Quick una animación NO se para
-    //  porque su item deje de verse, así que una que no acaba nunca tiene que
-    //  preguntar. Ver docs/PLUGINS.md.
+    //  Qt Quick does NOT stop an animation merely because its item becomes
+    //  invisible, so indefinite animations must check this state. See
+    //  docs/PLUGINS.md.
     //
-    //  Sin barra detrás —una prueba con `--test`— contesta que sí, que es el
-    //  defecto prudente: una animación de más se nota menos que una que no
-    //  arranca.
+    //  Without a host, such as a `--test` run, default to true: an extra
+    //  animation is less disruptive than one that never starts.
     readonly property bool aLaVista: _i ? _i.aLaVista : true
-    //  El ratón encima de la píldora: la barra se abre sola al pasar.
+    //  Pointer over the pill: the shell opens its hover view automatically.
     readonly property bool raton: _i ? _i.hovered : false
-    //  El `name` del plugin que la tiene ahora, "" si no la tiene nadie.
+    //  The current owner's `name`, or "" when nobody owns it.
     readonly property string ocupadaPor: _i ? (_i.ocupante || "") : ""
 
-    //  Lo que como mucho puedes pedir, para no declarar un alto imposible.
+    //  Maximum requestable height, to avoid declaring an impossible size.
     readonly property int altoMaximo: Tema.altoMaximo
 
-    //  En qué borde vive la barra: "arriba" o "abajo". Lo decide el usuario
-    //  en Ajustes; léelo para saber hacia dónde asoma lo que pintes fuera.
+    //  The bar's edge: "arriba" or "abajo", chosen by the user in Settings.
+    //  Read it to orient content drawn outside the island.
     readonly property string posicion: _i ? (_i.posicion || "arriba") : "arriba"
 
-    //  Dónde está la island, en coordenadas de pantalla: { x, y, ancho, alto }.
+    //  Island bounds in screen coordinates: { x, y, ancho, alto }.
     //
-    //  Para pintar FUERA de ella con una K4.Ventana —una mano que asoma por
-    //  el borde, algo que se cae de la barra— anclado al píxel. `rect` es la
-    //  de la pantalla principal; con varios monitores, `rectEn(nombre)` da
-    //  la de cada una (la K4.Ventana dice su pantalla con `pantalla`).
+    //  Anchor a K4.Ventana precisely when drawing OUTSIDE the island, such as
+    //  a hand reaching over its edge or something falling from the bar.
+    //  `rect` describes the primary screen; `rectEn(nombre)` supplies the
+    //  bounds for each monitor. K4.Ventana selects its monitor with `pantalla`.
     readonly property var rect: (_i && _i.rect) ? _i.rect
         : ({ x: 0, y: 0, ancho: 0, alto: 0 })
 
-    //  En qué pantalla está desplegada AHORA, por nombre (los de `hyprctl
-    //  monitors`). La píldora existe en todas; una vista abierta vive en una
-    //  sola, y esta es esa.
+    //  The screen hosting the open view NOW, named as in `hyprctl monitors`.
+    //  The pill exists on every screen, but an open view belongs to one.
     //
-    //  Es lo que hay que pasarle a `pantalla` de una K4.Ventana para asomar
-    //  por la island correcta. Sin esto no había forma de saberlo desde fuera:
-    //  `rect` da la de la pantalla PRINCIPAL, así que con dos monitores lo que
-    //  pintaras salía anclado a una island que estaba en la otra —y como las
-    //  coordenadas son locales a cada monitor, ni siquiera se veía mal: se veía
-    //  en otro sitio, o no se veía—.
+    //  Pass this to K4.Ventana's `pantalla` to attach to the correct island.
+    //  Previously external views could only read the PRIMARY screen's `rect`,
+    //  anchoring their content to the wrong island on multi-monitor setups.
+    //  Since coordinates are local to each monitor, the result could appear
+    //  elsewhere or disappear entirely rather than merely look misaligned.
     readonly property string pantalla: _i ? (_i.pantallaActiva || "") : ""
 
     function rectEn(pantalla) {
@@ -68,21 +64,21 @@ QtObject {
         return (d && d[pantalla]) ? d[pantalla] : rect
     }
 
-    //  Dónde cae la island a lo largo de su borde, como fracción del ancho
-    //  libre: 0 pegada a la izquierda, 0.5 en el centro, 1 a la derecha. La
-    //  base la elige el usuario en Ajustes; esto es lo efectivo ahora mismo.
+    //  Position along the bar's edge, as a fraction of the free width:
+    //  0 at the left, 0.5 centered, 1 at the right. Settings owns the base
+    //  position; this reports the currently effective value.
     readonly property real colocacion: _i ? _i.colocacion : 0.5
 
-    //  Desplazarla TEMPORALMENTE a un punto del borde, animado:
+    //  Animate a TEMPORARY move along the edge:
     //
-    //      K4.Isla.colocar("mi-juego", 0.3, 3000)   // al 30%, 3 segundos
-    //      K4.Isla.colocar("mi-juego", 0.92, 0)     // al rincón, hasta...
-    //      K4.Isla.soltar("mi-juego")               // ...esto
+    //      K4.Isla.colocar("mi-juego", 0.3, 3000)   // to 30%, for 3 seconds
+    //      K4.Isla.colocar("mi-juego", 0.92, 0)     // near the corner, until...
+    //      K4.Isla.soltar("mi-juego")               // ...this call
     //
-    //  Vuelve sola a la base del usuario: por plazo, al soltar, o al
-    //  deshabilitar tu plugin. Para lo que dura una escena —la island que
-    //  esquiva, que hace de pala, que se aparta— no para quedarse: la
-    //  posición permanente es del usuario y se elige en Ajustes.
+    //  Returns to the user's base position on timeout, release or plugin
+    //  disable. Use for a scene in which the island dodges, acts as a paddle
+    //  or moves aside, not for permanent placement: that belongs to the user
+    //  and is chosen in Settings.
     function colocar(dueno, fraccion, duracionMs) {
         if (_i && _i.colocar)
             _i.colocar(dueno, fraccion, duracionMs || 0)
@@ -93,16 +89,17 @@ QtObject {
             _i.soltar(dueno)
     }
 
-    //  La island como objeto físico: pide un gesto y el host lo anima.
+    //  Treat the island as a physical object: request a gesture for the host
+    //  to animate.
     //
-    //      K4.Isla.efecto("mi-juego", "sacudida")        // golpe recibido
-    //      K4.Isla.efecto("mi-juego", "empujon", 0.6)    // algo pesado cae
-    //      K4.Isla.efecto("mi-juego", "tiron")           // ¡pica un pez!
+    //      K4.Isla.efecto("mi-juego", "sacudida")        // an impact
+    //      K4.Isla.efecto("mi-juego", "empujon", 0.6)    // a heavy object falls
+    //      K4.Isla.efecto("mi-juego", "tiron")           // a fish bites
     //
-    //  Nombres: "sacudida", "empujon", "tiron". `fuerza` 0.2..1 (1 si no se
-    //  da). El host limita la cadencia —un gesto cada medio segundo— porque
-    //  el efecto raro impresiona justo porque la barra es sobria: pide el
-    //  gesto en el momento que importa y déjalo respirar.
+    //  Names: "sacudida", "empujon", "tiron". `fuerza` ranges from 0.2 to 1,
+    //  defaulting to 1. The host limits requests to one gesture per half
+    //  second. These effects stand out because the shell is otherwise quiet:
+    //  request them at meaningful moments and leave time between them.
     function efecto(dueno, nombre, fuerza) {
         if (_i && _i.efecto)
             _i.efecto(dueno, nombre, fuerza)

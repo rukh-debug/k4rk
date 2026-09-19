@@ -2,7 +2,7 @@
 // Processes, timers and IPC handlers live on the plugin, independently of
 // whether its view is mounted in the main island or an independent window.
 //
-//      K4Plugin {
+//      K4.Plugin {
 //          name: "launcher"
 //          priority: 60
 //          habilitado: true
@@ -11,8 +11,8 @@
 //          islandHeight: 480
 //          view: Component { LauncherView {} }
 //
-//          IpcHandler { target: "k4.launcher"; function toggle() { ... } }
-//          Process { id: apply }
+//          K4.Ipc { target: "k4.launcher"; function toggle() { ... } }
+//          K4.Process { id: apply }
 //      }
 
 import QtQuick
@@ -181,8 +181,8 @@ QtObject {
 
     //  Click OUTSIDE the shell closes this view, same as Escape.
     //
-    //  While a view is deployed the host grows the bar's layer surface to
-    //  cover the screen, and a tap that lands outside the island closes the
+    //  The bar's layer surface stays screen-tall. While a view is deployed,
+    //  the host expands its input mask so a tap outside the island closes the
     //  view instead of reaching the desktop. The click is SPENT on closing —
     //  it does not fall through — which is the point: it is the pointer's
     //  way of pressing Escape. This flag only controls taps around the view

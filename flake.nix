@@ -78,6 +78,13 @@
           touch "$out"
         '';
 
+        shortcuts = pkgs.runCommand "k4-shortcuts-tests" {
+          nativeBuildInputs = [ pkgs.python3 ];
+        } ''
+          python3 -B ${self}/tools/test_shortcuts.py
+          touch "$out"
+        '';
+
         openwebui = pkgs.runCommand "k4-openwebui-tests" {
           nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ ps.mistune ps.pygments ])) ];
         } ''

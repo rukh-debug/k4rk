@@ -1,16 +1,16 @@
 pragma Singleton
 
-//  Historial del portapapeles.
+//  Clipboard history.
 //
-//  Quickshell expone `clipboardText`, pero en Wayland su señal de cambio no
-//  salta cuando copia otra aplicación: probado con una sonda, no llegó ni el
-//  contenido inicial. El compositor solo avisa a quien tiene el foco, y la
-//  barra nunca lo tiene. Así que quien vigila es `wl-paste --watch`, uno para
-//  texto y otro para imágenes, que sí se enteran de todo.
+//  Quickshell exposes `clipboardText`, but on Wayland its change signal does
+//  not fire when another application copies: a probe received no initial
+//  content either. The compositor only notifies the focused client, and the
+//  bar never has focus here. Instead, `wl-paste --watch` observes changes,
+//  with one watcher for text and another for images so both are captured.
 //
-//  El archivo lo lleva tools/portapapeles.py: guarda cada copia en su propio
-//  fichero y mantiene un índice ligero. Aquí solo se arrancan los vigilantes,
-//  se pide la lista y se mandan las órdenes.
+//  tools/clipboard.py manages the archive: each copy has its own file,
+//  with a lightweight index. This service only starts the watchers, requests
+//  the list and sends commands.
 
 import QtQuick
 import Quickshell
@@ -19,7 +19,7 @@ import Quickshell.Io
 Singleton {
     id: portapapeles
 
-    readonly property string guion: Quickshell.shellPath("tools/portapapeles.py")
+    readonly property string guion: Quickshell.shellPath("tools/clipboard.py")
 
     property var entradas: []
     readonly property int count: entradas.length
@@ -27,7 +27,7 @@ Singleton {
 
     signal cambio()
 
-    // ── consulta ──────────────────────────────────────────────────
+    // ── queries ───────────────────────────────────────────────────
     function filtrar(texto) {
         const q = (texto || "").trim().toLowerCase()
         if (q.length === 0)
@@ -43,13 +43,13 @@ Singleton {
         return salida
     }
 
-    // Primera línea con algo escrito: una copia que empieza con saltos de
-    // línea no puede salir como una fila en blanco.
+    // Use the first nonblank line: a copy starting with line breaks must
+    // not appear as an empty row.
     function titulo(e) {
         if (!e)
             return ""
         if (e.tipo === "image")
-            return "Imagen · " + tamaño(e.bytes)
+            return "Image · " + tamaño(e.bytes)
 
         const lineas = e.resumen.split("\n")
         for (let i = 0; i < lineas.length; ++i) {
@@ -75,7 +75,7 @@ Singleton {
         return Math.floor(h / 24) + " d"
     }
 
-    // ── órdenes ───────────────────────────────────────────────────
+    // ── commands ──────────────────────────────────────────────────
     function copiar(id) { mandar(["copy", id]) }
     function borrar(id) { mandar(["delete", id]) }
     function fijar(id) { mandar(["pin", id]) }
@@ -91,7 +91,7 @@ Singleton {
         onExited: portapapeles.recargar()
     }
 
-    // ── la lista ──────────────────────────────────────────────────
+    // ── the list ──────────────────────────────────────────────────
     function recargar() { lector.running = true }
 
     Process {
@@ -113,14 +113,14 @@ Singleton {
         }
     }
 
-    // ── los vigilantes ────────────────────────────────────────────
+    // ── watchers ──────────────────────────────────────────────────
     //
-    //  `wl-paste --watch` ejecuta el guión con la copia en la entrada estándar
-    //  cada vez que cambia el portapapeles, y lo que el guión imprime sale por
-    //  aquí: es el aviso de que hay algo nuevo que releer.
+    //  `wl-paste --watch` runs the script with the copy on standard input
+    //  whenever the clipboard changes. The script's output arrives here,
+    //  indicating that something new is ready to read.
     //
-    //  Van dos porque el vigilante de texto ignora las imágenes y al revés;
-    //  con uno solo se perdería la mitad.
+    //  Two watchers are needed because the text watcher ignores images and
+    //  vice versa; one alone would miss half the supported content types.
 
     Process {
         id: vigilaTexto
@@ -148,8 +148,8 @@ Singleton {
         onExited: revivir.restart()
     }
 
-    // Si el compositor se reinicia, wl-paste se cae y el historial dejaría de
-    // llenarse en silencio. Se reintenta con calma.
+    // A compositor restart kills wl-paste and would silently stop history
+    // collection. Retry at a relaxed interval.
     Timer {
         id: revivir
         interval: 12000

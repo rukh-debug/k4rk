@@ -1,16 +1,15 @@
 pragma Singleton
 
-//  Las ventanas abiertas, para el cambiador.
+//  Open windows for the switcher.
 //
-//  La fuente es Hyprland y no el protocolo de Wayland, y no por gusto: el
-//  `activate()` del protocolo pide el foco pero NO cambia de escritorio, así
-//  que elegir una ventana de otro espacio no llevaba a ninguna parte. Hyprland
-//  da además la dirección de cada ventana y en qué espacio está, que es
-//  justo lo que hace falta para ir a ella de verdad.
+//  Use Hyprland rather than the Wayland protocol: the protocol's activate()
+//  requests focus but does NOT switch workspaces, so selecting a window on
+//  another workspace did nothing. Hyprland also supplies each window's
+//  address and workspace, which are needed to actually reach it.
 //
-//  El compositor las lista en el orden en que se abrieron, que es el menos
-//  útil posible: al pulsar Alt+Tab uno quiere la de antes, no la primera de la
-//  mañana. Aquí se lleva el orden de uso.
+//  The compositor lists windows in creation order, which is unhelpful for
+//  Alt+Tab: users want the previous window, not the first one opened that
+//  morning. Track most-recently-used order here.
 
 import QtQuick
 import Quickshell
@@ -19,19 +18,18 @@ import Quickshell.Hyprland
 Singleton {
     id: ventanas
 
-    // Direcciones en orden de uso, de la más reciente a la más antigua.
+    // Addresses in usage order, most recent first.
     property var recientes: []
 
-    //  El pid de la ventana que tiene el foco ahora mismo.
+    //  The PID of the currently focused window.
     //
-    //  Está aquí y no en quien lo usa porque un plugin no puede preguntarle a
-    //  Hyprland por su cuenta —y con razón: la plataforma se toca desde un
-    //  servicio—. Lo quiere quien tenga algo apuntado por pid y necesite saber
-    //  que ya te has puesto delante: la campana de la terminal, sin ir más
-    //  lejos, pedía que fueras y no tenía forma de enterarse de que fuiste.
+    //  Plugins cannot query Hyprland directly; platform access belongs in
+    //  a service. Consumers with items tracked by PID need to know when
+    //  the user has focused their window. The terminal bell, for example,
+    //  could request attention but previously could not tell it was given.
     //
-    //  Cadena y no entero para que el que compara no tenga que convertir: lo
-    //  que llega por IPC son cadenas.
+    //  A string rather than an integer matches IPC values without forcing
+    //  every consumer to convert them before comparison.
     property string pidActivo: ""
 
     readonly property var lista: {
@@ -52,15 +50,14 @@ Singleton {
 
     readonly property int count: lista.length
 
-    //  ── cuáles se están viendo ────────────────────────────────────
+    //  ── which windows are visible ────────────────────────────────
     //
-    //  El campo `visible` de un cliente de Hyprland NO sirve para esto: una
-    //  ventana de otro escritorio lo trae en `true` igualmente. Lo que sí vale
-    //  es mirar qué escritorio tiene delante cada monitor —más el especial, si
-    //  hay uno desplegado— y comparar.
+    //  A Hyprland client's `visible` field does NOT answer this: windows on
+    //  other workspaces also report true. Compare against each monitor's
+    //  shown workspace, plus its special workspace if one is expanded.
     //
-    //  Quien pinta encima del escritorio necesita esta distinción: ofrecer como
-    //  objetivo una ventana que no está en pantalla es recortar el vacío.
+    //  Desktop overlays need this distinction: targeting an off-screen
+    //  window for a crop would capture empty space.
     readonly property var espaciosVistos: {
         const ids = ({})
         const monitores = Hyprland.monitors.values
@@ -85,7 +82,7 @@ Singleton {
             Hyprland.refreshToplevels()
     }
 
-    // ── datos de una ventana ──────────────────────────────────────
+    // ── window data ───────────────────────────────────────────────
     function datos(t) { return t && t.lastIpcObject ? t.lastIpcObject : ({}) }
 
     function direccion(t) {
@@ -109,8 +106,8 @@ Singleton {
         if (id.length === 0)
             return ""
 
-        // El nombre de la clase casi nunca coincide con el del icono: hay que
-        // buscarlo. Tres intentos, de más barato a más caro.
+        // A class name rarely matches its icon name. Try three lookups,
+        // from cheapest to most expensive.
         let r = Quickshell.iconPath(id, true)
         if (r) return r
         r = Quickshell.iconPath(id.toLowerCase(), true)
@@ -130,7 +127,7 @@ Singleton {
         return ""
     }
 
-    // El nombre bonito, si la entrada de escritorio lo tiene.
+    // The display name, if its desktop entry provides one.
     function titulo(t) {
         const id = clase(t).toLowerCase()
         if (id.length === 0)
@@ -145,12 +142,11 @@ Singleton {
         return clase(t)
     }
 
-    // ── ir a ella ─────────────────────────────────────────────────
+    // ── focus a window ────────────────────────────────────────────
     //
-    //  En sintaxis Lua, como el resto de la configuración de Hyprland: con el
-    //  parser nuevo `dispatch focuswindow address:…` no compila. `focus` con
-    //  la dirección sí cambia de escritorio, que es lo que fallaba usando el
-    //  activate del protocolo de Wayland.
+    //  Use Lua syntax like the rest of the Hyprland configuration: the new
+    //  parser rejects `dispatch focuswindow address:…`. `focus` with an
+    //  address does switch workspaces, unlike the Wayland activate request.
     function activar(t) {
         const d = direccion(t)
         if (d.length === 0)
@@ -166,7 +162,7 @@ Singleton {
         refrescar()
     }
 
-    // ── orden de uso ──────────────────────────────────────────────
+    // ── usage order ───────────────────────────────────────────────
     Connections {
         target: Hyprland
 

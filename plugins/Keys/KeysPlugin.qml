@@ -27,8 +27,8 @@ K4Plugin {
     islandWidth: 760
     islandHeight: 440
 
-    readonly property var lista: Atajos.filtrar(query)
-    readonly property int count: lista.length
+    readonly property var entries: Shortcuts.filter(query)
+    readonly property int count: entries.length
 
     view: Component {
         KeysView { plugin: self }
@@ -38,7 +38,7 @@ K4Plugin {
         // re-read on opening: if you just touched the config, you
         // want to see what is there now, not what was there when
         // the bar started
-        Atajos.recargar()
+        Shortcuts.reload()
         query = ""
         closing = false
         open = true
@@ -51,13 +51,13 @@ K4Plugin {
             return
         open = false
         closing = true
-        cierre.restart()
+        closeDelay.restart()
     }
 
     function toggle() { open ? close() : abrir() }
 
     Timer {
-        id: cierre
+        id: closeDelay
         interval: 260
         onTriggered: self.closing = false
     }

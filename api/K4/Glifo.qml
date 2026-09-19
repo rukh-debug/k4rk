@@ -1,15 +1,15 @@
-//  Un icono de la Nerd Font, que es como la barra dibuja casi todos los suyos.
+//  A Nerd Font icon, the source of most shell icons.
 //
-//  El texto es el códice: `text: ""`. Para saber cuál es cuál sin
-//  adivinar, `python3 tools/glifos.py <palabra>` busca por nombre — se hizo
-//  porque tres códices puestos de memoria salieron mal.
+//  The text contains the glyph: `text: ""`. Look up icons by name with
+//  `python3 tools/glyphs.py <word>` rather than guessing. That tool exists
+//  because three code points chosen from memory turned out to be wrong.
 
 import QtQuick
 
 Text {
-    //  Un glifo es un punto de código, nunca marcado. Se dice igualmente: el
-    //  día que alguien pase por aquí un nombre en vez de un icono, no se
-    //  convierte en un agujero.
+    //  A glyph is a code point, never markup. Enforce plain text anyway:
+    //  accidentally passing a name instead of an icon must not introduce
+    //  markup interpretation.
     textFormat: Text.PlainText
     color: Tema.tinta
     font.family: Tema.fuenteIconos

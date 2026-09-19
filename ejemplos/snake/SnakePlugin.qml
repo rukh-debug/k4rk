@@ -1,8 +1,8 @@
-//  Snake en la island: la prueba de que con la API pública se hacen juegos.
+//  Snake in the island: a game built with the public API.
 //
-//  Todo el juego está escrito contra K4 y QtQuick, nada más: el tablero es un
-//  estado en el plugin, el tick un Timer, el control las flechas —con el
-//  teclado en exclusiva solo mientras se juega— y el récord un K4.Guardado.
+//  The game uses only K4 and QtQuick: board state lives in the plugin,
+//  a Timer advances it, arrow keys control it with exclusive keyboard
+//  access only during play, and K4.Guardado stores the high score.
 //
 //      cp -r ejemplos/snake ~/.config/k4/plugins/
 //      quickshell ipc -p …/shell.qml call k4 pluginEnable snake
@@ -18,9 +18,9 @@ K4.Plugin {
     title: "Snake"
     priority: 66
     active: abierto
-    //  El teclado entero, pero solo mientras el juego está en marcha: en la
-    //  pantalla de inicio basta el opcional, y así ESC sigue siendo del
-    //  escritorio hasta que empiezas.
+    //  Exclusive keyboard access only while the game is running. Optional
+    //  access is enough on the start screen, so Escape still belongs to the
+    //  desktop until play starts.
     grabKeyboard: abierto && enMarcha
     tecladoOpcional: abierto
     islandWidth: 460
@@ -28,10 +28,9 @@ K4.Plugin {
 
     property bool abierto: false
 
-    // ── el tablero ────────────────────────────────────────────────
-    //  17×14 casillas: cabe en la island con celdas de 24 y deja sitio al
-    //  marcador. La serpiente es una lista de índices (x + y*ancho), la cabeza
-    //  la primera.
+    // ── the board ─────────────────────────────────────────────────
+    //  17×14 cells: fits in the island at 24 pixels per cell, with room for
+    //  the score. The snake is a list of indices (x + y*ancho), head first.
     readonly property int ancho: 17
     readonly property int alto: 14
 
@@ -39,9 +38,9 @@ K4.Plugin {
     property int comida: -1
     property int dx: 1
     property int dy: 0
-    //  El giro pendiente se aplica en el TICK, no al pulsar: dos giros entre
-    //  dos ticks permitirían darse la vuelta sobre uno mismo y morder el
-    //  cuello, que es la muerte más injusta del snake.
+    //  Apply the pending turn on the tick, not the keypress: two turns
+    //  between ticks would let the snake reverse into its own neck,
+    //  causing an unfair death.
     property int pdx: 1
     property int pdy: 0
     property bool enMarcha: false
@@ -67,8 +66,8 @@ K4.Plugin {
     }
 
     function soltarComida() {
-        //  En una casilla libre. Con el tablero casi lleno esto podría dar
-        //  vueltas; a 238 casillas no es un problema real.
+        //  Pick an empty cell. A nearly full board may take several tries;
+        //  with 238 cells, this is not a practical concern.
         let sitio = -1
         do {
             sitio = Math.floor(Math.random() * ancho * alto)
@@ -79,7 +78,7 @@ K4.Plugin {
     function girar(gx, gy) {
         if (!enMarcha)
             return
-        // Nada de invertir el sentido: la serpiente no camina hacia atrás.
+        // No reversing direction: the snake cannot move backward.
         if (gx === -dx && gy === -dy)
             return
         pdx = gx
@@ -93,9 +92,9 @@ K4.Plugin {
         const x = cabeza % ancho + dx
         const y = Math.floor(cabeza / ancho) + dy
 
-        //  Chocar con el borde o con uno mismo es morir. La cola no cuenta si
-        //  este mismo tick la va a soltar, pero esa fineza no compensa el lío:
-        //  aquí la cola cuenta, como en el Nokia.
+        //  Hitting the edge or the snake ends the game. The tail could be
+        //  exempt when it moves away on this tick, but that adds complexity:
+        //  here the tail counts, as in the Nokia game.
         const nueva = y * ancho + x
         if (x < 0 || x >= ancho || y < 0 || y >= alto
                 || serpiente.indexOf(nueva) >= 0) {
@@ -112,15 +111,15 @@ K4.Plugin {
         if (nueva === comida) {
             puntos += 1
             soltarComida()
-            // No se corta la cola: comer es crecer.
+            // Keep the tail: eating makes the snake grow.
         } else {
             s.pop()
         }
         serpiente = s
     }
 
-    //  El tick, algo más vivo con cada pieza: empieza tranquilo y a 30 puntos
-    //  va al doble. Es la curva del original.
+    //  Each piece of food speeds up the tick: it starts slowly and runs
+    //  twice as fast at 30 points, following the original game's curve.
     property var reloj: Timer {
         interval: Math.max(90, 180 - self.puntos * 3)
         repeat: true
@@ -132,8 +131,8 @@ K4.Plugin {
         target: "k4.snake"
         function toggle(): void { self.abierto = !self.abierto }
         function close(): void { self.abierto = false; self.enMarcha = false }
-        //  Para poder probar el juego sin ratón ni ventana: empezar, girar y
-        //  leer el estado por IPC.
+        //  Test the game without a mouse or window: start, turn, and read
+        //  its state over IPC.
         function empezar(): void { self.empezar() }
         function girar(gx: int, gy: int): void { self.girar(gx, gy) }
         function estado(): string {

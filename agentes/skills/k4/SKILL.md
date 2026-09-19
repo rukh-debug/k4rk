@@ -16,11 +16,13 @@ description: >
 on Quickshell. It sits collapsed at one edge of the screen and expands when it
 has something to show.
 
-**Everything in it is a plugin**, including the parts that look built in: the
-clock, the launcher, the control center. There is no
-privileged inner circle — the API a stranger's plugin gets is the API the
-launcher uses. That is the single most useful thing to know before writing
-one, because it means anything you can see the bar do, a plugin can do.
+**Native host features and installable plugins have different roles.** The
+pill, volume HUD, sound mixer, clock, player, notifications, control center,
+session and tray are native host features. The launcher, settings and other
+installable modules are plugins. External plugins use the public `K4` API,
+just as repository plugins should; native host internals are not templates to
+copy into a plugin. Read the API reference before assuming a native feature
+is available to an external plugin.
 
 ## Where things are
 
@@ -34,7 +36,17 @@ one, because it means anything you can see the bar do, a plugin can do.
 ## Read the right guide
 
 - [`plugins.md`](plugins.md) — writing a plugin: the fastest path, the API, permissions, testing it without touching the running bar, publishing it.
-- [`barra.md`](barra.md) — driving and debugging the bar itself: IPC, the log, restarting, shortcuts, translations.
+- [`barra.md`](barra.md) — driving and debugging the bar itself: IPC, the log, restarting, shortcuts, and language policy.
+
+## Language and compatibility
+
+Write new prose, comments, UI strings and identifiers in English. The UI uses
+plain English literals, with no translation layer. Existing Spanish API names,
+paths and contract values stay until their coordinated migration; do not invent
+English replacements that the current host does not implement. Use English
+manifest keys while preserving the actual permission and surface values listed
+in `docs/PLUGINS.md`. Local `AGENTS.md` instructions take precedence over this
+skill, including migration sequencing and operational guidance.
 
 ## Three things to get right from the start
 

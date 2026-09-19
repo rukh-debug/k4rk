@@ -31,7 +31,7 @@
 //  card disappears from both the moment your plugin is off or
 //  unloaded — nobody renders a card whose author is gone.
 //
-//  `componente` is instantiated only while the centre is open on its
+//  `component` is instantiated only while the centre is open on its
 //  controls tab, in your plugin's own context: your ids, your
 //  imports, your sibling types.
 //
@@ -56,7 +56,7 @@ QtObject {
     property string titulo: ""
 
     //  A Nerd Font codex for the editor row — find it with
-    //  `tools/glifos.py`. Zero means the plugin's manifest icon.
+    //  `tools/glyphs.py`. Zero means the plugin's manifest icon.
     property int glifo: 0
 
     //  One line under the label, for the editor row.

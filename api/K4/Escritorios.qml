@@ -1,23 +1,23 @@
 pragma Singleton
 
-//  Los escritorios de Hyprland: cuáles hay y en cuál estás.
+//  Hyprland workspaces: which exist and which one is active.
 //
-//  Da para un paginador propio, un indicador distinto al de la píldora, o un
-//  plugin que cambie de comportamiento según dónde estés. Cambiar de
-//  escritorio no está aquí: para eso está `K4.Process` con `hyprctl`, que es
-//  explícito y pide el permiso `procesos`.
+//  Enough for a custom pager, an alternative pill indicator, or a plugin
+//  whose behavior depends on the current workspace. Switching workspaces
+//  is not exposed here: use `K4.Process` with `hyprctl`, an explicit action
+//  requiring the `procesos` permission.
 
 import QtQuick
 
 QtObject {
     readonly property var _e: Puente.escritorios
 
-    //  Cada uno tal cual lo da Hyprland: `{ id, name, … }`.
+    //  Each workspace as supplied by Hyprland: `{ id, name, … }`.
     readonly property var lista: _e ? _e.list : []
     readonly property int activo: _e ? _e.activo : 0
 
-    //  ¿Lo que se ve en esa pantalla ocupa todo? Por nombre de monitor —el
-    //  mismo que trae `K4.Isla.rects` o el que le toca a una `K4.Ventana`—,
-    //  para que un plugin pueda quitarse de en medio cuando estorbe.
+    //  Does fullscreen content occupy this display? Pass the monitor name,
+    //  as used by `K4.Isla.rectEn()` or a `K4.Ventana`, so a plugin can move
+    //  out of the way when it would obstruct the display.
     function lleno(pantalla) { return _e ? _e.lleno(pantalla) : false }
 }

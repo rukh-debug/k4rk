@@ -5,7 +5,7 @@ source files contain additional implementation notes.
 
 ## Imports
 
-A plugin imports Qt and k4:
+A plugin imports QtQuick and k4:
 
 ```qml
 import QtQuick
@@ -16,9 +16,11 @@ Start the host with `launch` (or the Nix `k4` wrapper). It adds `api/` to
 `QML_IMPORT_PATH`; launching
 `quickshell -p shell.qml` directly will not resolve `import K4`.
 
-Qt (`QtQuick`, `QtMultimedia`, `Timer`, animations, and so on) is the portable
-layer. Quickshell and Wayland should stay behind a `K4` API type whenever an
-equivalent exists.
+Use QtQuick's items, timers and animations directly. Other platform or module
+functionality belongs in a `K4` wrapper or a host service. Do not import private
+host directories from a plugin. The current checker still accepts some legacy
+Qt and relative imports; that enforcement gap is tracked in the migration ledger
+and is not the contract for new plugins.
 
 ## Native markdown
 
@@ -39,7 +41,7 @@ code or fetches remote images (images are explicit links).
 | `selectionStarted()` | Nonempty text selection; a following chat should pause automatic scrolling |
 
 One internal JSON-lines worker uses Mistune 3 and Pygments, pinned through the
-Nix lockfile and declared in `dependencias.tsv`. Rendering runs outside the UI
+Nix lockfile and declared in `dependencies.tsv`. Rendering runs outside the UI
 thread, uses a bounded cache, and preserves unchanged block delegates. If the
 worker fails, the view shows selectable plain source. Selection is per rendered
 block. Math and diagrams remain source text/code. Internal underscored members
@@ -190,7 +192,7 @@ The bar's look, ready to assemble — every piece takes the palette from
 | Type | What it is |
 |---|---|
 | `K4.Etiqueta` | Text with the bar's defaults (white, Adwaita, 12px) |
-| `K4.Glifo` | A Nerd Font glyph (find codepoints with `tools/glifos.py`) |
+| `K4.Glifo` | A Nerd Font glyph (find codepoints with `tools/glyphs.py`) |
 | `K4.Icono` | An `IconImage` ready to render application icons |
 | `K4.IconoPlugin` | A plugin's own image, falling back to a glyph |
 | `K4.Miniatura` | The live thumbnail of an open window, by address |
@@ -415,7 +417,7 @@ operations are permission-gated (see the manifest permissions below):
 ## Sound: `K4.Sonido`
 
 A short effect — `fuente` points at the audio file, `volumen` scales it.
-Requires the `sonido` permission: a plugin that can make noise says so.
+Requires the `sound` permission: a plugin that can make noise says so.
 
 ```qml
 K4.Sonido {
@@ -582,8 +584,8 @@ K4.Pagina {
 - External plugins declare the `"paginas"` permission: injecting pages
   into Settings is UI power, and it shows on the consent card.
 
-The bar's own plugins use the same door — the theme engine ships the
-Display family's Colour, Windows and Effects pages this way.
+The bar's own plugins use the same contribution API: Agents supplies its provider
+page, for example. Cross-cutting wallpaper and palette settings remain host-owned.
 
 ## Your blocks in the control centre: `K4.Card`
 
@@ -723,5 +725,5 @@ a plugin is trusting its author.
 Two doors stay shut on purpose: connecting to networks and pairing Bluetooth
 devices are read-only for plugins, with no permission that opens them.
 
-The full guide, kept current by `tools/api.py` and `tools/guia.py`, is
-`docs/PLUGINS.md`. New dependencies still go in `dependencias.tsv`.
+The full guide, kept current by `tools/api.py` and `tools/docs_check.py`, is
+`docs/PLUGINS.md`. New dependencies still go in `dependencies.tsv`.

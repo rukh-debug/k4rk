@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
-"""Comprueba que cada icono es el icono que dice ser.
+"""Check that each named icon matches its glyph.
 
-    python3 tools/glifos.py            revisa el proyecto entero
-    python3 tools/glifos.py blur       busca por nombre y da el codepoint
+    python3 tools/glyphs.py            check the entire project
+    python3 tools/glyphs.py blur       search names and show codepoints
 
-Los iconos de la interfaz son glifos de la Nerd Font, y en el código van como
-números: `0x000F02E9` con un comentario al lado que dice qué son. El número y el
-comentario pueden discrepar y nadie se entera hasta que en la barra aparece un
-tenedor donde debía haber un desenfoque. Me ha pasado tres veces.
+UI icons are Nerd Font glyphs represented by numbers such as `0x000F02E9`,
+with a comment naming the icon. A mismatch can display the wrong symbol.
 
-La fuente trae los nombres de sus propios glifos, así que no hay que fiarse de
-la memoria de nadie: se leen y se comparan con lo que dice el comentario.
-
-Solo se revisan los codepoints que llevan comentario con nombre —del estilo
-`// md-blur`—; los demás no se pueden comprobar porque no afirman nada.
+Compare comments with the font's own glyph names rather than relying on
+memory. Only codepoints with named comments such as `// md-blur` are checked;
+unnamed icons make no claim to verify.
 """
 import os
 import re
@@ -21,14 +17,14 @@ import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-#  `0x000F02E9   // md-image` y también `0xF0190), // md-content_cut`.
-#  El comentario puede ir tras coma, paréntesis o nada.
+#  Match `0x000F02E9   // md-image` and `0xF0190), // md-content_cut`.
+#  Allow punctuation between the codepoint and comment.
 RE_ICONO = re.compile(
     r"0x0*([0-9A-Fa-f]{4,6})\s*[,)\]]*\s*//\s*([a-z]{2,5}-[a-z0-9_]+)")
 
 
 def fuente():
-    """El fichero de la Nerd Font, preguntándoselo a fontconfig."""
+    """Ask fontconfig for the Nerd Font file."""
     import subprocess
     for familia in ("MesloLGS Nerd Font Mono", "MesloLGS Nerd Font",
                     "Symbols Nerd Font"):
@@ -44,7 +40,7 @@ def nombres():
     from fontTools.ttLib import TTFont
     ruta = fuente()
     if not ruta:
-        print("No encuentro la Nerd Font. ¿Está ttf-meslo-nerd instalado?")
+        print("Cannot find the Nerd Font. Is ttf-meslo-nerd installed?")
         sys.exit(2)
     f = TTFont(ruta, fontNumber=0)
     return ruta, f.getBestCmap()
@@ -60,7 +56,7 @@ def ficheros():
 
 def revisar():
     ruta, cmap = nombres()
-    print("Fuente: %s\n" % ruta)
+    print("Font: %s\n" % ruta)
 
     revisados = malos = 0
     for f in sorted(ficheros()):
@@ -76,15 +72,15 @@ def revisar():
                 continue
             malos += 1
             print("  %s:%d" % (os.path.relpath(f, RAIZ), n))
-            print("      dice: %s" % dice)
-            print("        es: %s" % (real or "(ningún glifo en ese hueco)"))
-            #  Y de paso, dónde está el que quería: es el 90 % del arreglo.
+            print("   claimed: %s" % dice)
+            print("    actual: %s" % (real or "(no glyph at this codepoint)"))
+            #  Show the intended glyph's codepoint to make correction easy.
             for c, nombre in cmap.items():
                 if nombre == dice:
-                    print("     está en: 0x%06X" % c)
+                    print("  found at: 0x%06X" % c)
                     break
 
-    print("\n%d iconos con nombre, %d mal." % (revisados, malos))
+    print("\n%d named icons, %d incorrect." % (revisados, malos))
     return 1 if malos else 0
 
 
@@ -92,12 +88,12 @@ def buscar(texto):
     ruta, cmap = nombres()
     hits = sorted((n, c) for c, n in cmap.items() if texto.lower() in n.lower())
     if not hits:
-        print("Nada con «%s»." % texto)
+        print("No matches for '%s'." % texto)
         return 1
     for nombre, cp in hits[:40]:
         print("  0x%06X   %s" % (cp, nombre))
     if len(hits) > 40:
-        print("  … y %d más." % (len(hits) - 40))
+        print("  … and %d more." % (len(hits) - 40))
     return 0
 
 

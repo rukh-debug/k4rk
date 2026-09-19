@@ -1,9 +1,9 @@
-//  La barra de desplazamiento de la casa, edición de dentro.
+//  The in-house scrollbar, for host views.
 //
-//  Es un envoltorio de K4.Desplazador y nada más: la implementación vive UNA
-//  vez, en la API, porque los plugins de fuera también la necesitan — sin
-//  ella sus listas salían con la barra de fábrica de Qt y desentonaban. Aquí
-//  solo se le da el nombre de la familia de core.
+//  Only a wrapper around K4.Desplazador: the single implementation lives in
+//  the API because external plugins need it too. Otherwise their lists used
+//  Qt's default scrollbar and looked inconsistent. This supplies only the
+//  core component name.
 
 import K4 as K4
 

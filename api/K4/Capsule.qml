@@ -13,8 +13,8 @@
 //      extension: grabando ? ({
 //          lado: "right",            // "left" · "right"
 //          texto: "Recording",
-//          glifo: 0xF037E,           // md-record_circle_outline
-//          color: K4.Tema.red,
+//          glifo: 0xF0EC3,           // md-record_circle_outline
+//          color: K4.Tema.rojo,
 //          maxLength: 300            // px the capsule may grow to
 //      }) : null
 //  }

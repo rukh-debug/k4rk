@@ -1,18 +1,17 @@
-//  Bloquear la sesión de verdad.
+//  Lock the session through the compositor.
 //
-//  Reexporta WlSessionLock, que habla el protocolo `ext-session-lock`: el
-//  compositor dibuja la superficie por encima de todo y le da el teclado en
-//  exclusiva, y ninguna ventana puede pintar encima ni escuchar lo que
-//  escribes. Eso es lo que separa un bloqueo de una ventana que tapa la
-//  pantalla.
+//  Reexports WlSessionLock, which uses the `ext-session-lock` protocol. The
+//  compositor draws the lock surface above everything and grants it exclusive
+//  keyboard access: no window can draw over it or hear what you type. That
+//  distinguishes a session lock from a window merely covering the screen.
 //
-//  Dos avisos que cuestan caros:
+//  Two important operational details:
 //
-//  1. Se abre y se cierra escribiendo `locked`. El `unlock()` que aparece en la
-//     documentación existe en C++ pero no está expuesto a QML.
-//  2. Si el proceso muere con el bloqueo puesto, el compositor se queda con uno
-//     huérfano y cualquier bloqueo posterior es un error de protocolo que mata
-//     la conexión del cliente nuevo. No hay arreglo sin cerrar sesión.
+//  1. Set `locked` to lock or unlock. The documented `unlock()` exists in C++
+//     but is not exposed to QML.
+//  2. If the process dies while locked, the compositor retains an orphaned
+//     lock. A subsequent lock attempt causes a protocol error that terminates
+//     the new client's connection. Recovery requires ending the session.
 
 import Quickshell.Wayland
 

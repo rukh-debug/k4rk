@@ -23,8 +23,8 @@ python3 tools/plugins.py                        # validates it
 
 ## What `--new` gives you
 
-This is the whole thing it writes, and it is worth reading before changing
-anything — it is the shape every k4 plugin has.
+This is the starter's structure, with an English description and greeting.
+Read it before changing anything: it is the shape every k4 plugin has.
 
 `plugin.json`:
 
@@ -34,10 +34,10 @@ anything — it is the shape every k4 plugin has.
   "entry": "DemoPlugin.qml",
   "version": "0.1.0",
   "title": "Demo",
-  "description": "Un plugin recién nacido",
+  "description": "A freshly born plugin",
   "host": ">=1.1.0",
-  "permisos": [],
-  "superficies": ["island"]
+  "permissions": [],
+  "surfaces": ["island"]
 }
 ```
 
@@ -68,7 +68,7 @@ K4.Plugin {
         Item {
             K4.Etiqueta {
                 anchors.centerIn: parent
-                text: "Hola desde Demo"
+                text: "Hello from Demo"
                 font.pixelSize: 16
             }
         }
@@ -110,10 +110,10 @@ Nine things that are easy to get wrong and cost an hour each:
   resting views so you survive being touched; below what the user opens on
   purpose if yours can open itself.
 
-- **`"aplicacion": true` in the manifest, or nobody finds you.** The app centre
-  filters on exactly that key, so without it your plugin is installed, enabled,
+- **`"application": true` in the manifest, or nobody finds you.** The app centre
+  uses that declaration, so without it your plugin is installed, enabled,
   working — and absent from the grid where people look for what the bar can
-  open. Give it an `"icono"` too (a `0x…` codepoint or a file): without one the
+  open. Give it an `"icon"` too (a `0x…` codepoint or a file): without one the
   grid paints the generic icon and a good plugin looks like filler.
 
 **An animation that nobody sees still runs.** In Qt Quick an animation does
@@ -137,16 +137,21 @@ And one that is worse than an hour: **never run a probe that can block.** A `Pro
   "id": "mi-plugin",
   "entry": "MiPluginPlugin.qml",
   "version": "1.0.0",
-  "title": "Mi plugin",
-  "description": "Una línea de qué hace",
+  "title": "My plugin",
+  "description": "A one-line description of what it does",
   "host": ">=1.1.0",
-  "permisos": [],
-  "superficies": ["pildora"]
+  "permissions": [],
+  "surfaces": ["pildora"]
 }
 ```
 
-`id` must match the folder name and be lowercase with dashes. `permisos` and
-`superficies` are the two lists that matter and both are checked; see below.
+`id` must match the folder name and be lowercase with dashes. `permissions` and
+`surfaces` are the two lists that matter and both are checked; see below.
+Write English manifest keys: `icon`, `application`, `permissions`, `require`
+and `surfaces`. The old Spanish keys remain read aliases; English wins when
+both spellings are present. Permission and surface **values** are separate
+contracts, and several still use their original names. Use the current values
+below rather than translating them in a manifest.
 
 The entry QML is a `K4.Plugin`. From there you get the whole API under the
 `K4` namespace. Native host features are not templates: do not copy
@@ -155,13 +160,13 @@ API.
 
 ## Permissions
 
-`permisos` declares which parts of the API the plugin touches.
+`permissions` declares which parts of the API the plugin touches.
 `tools/plugins.py` reads the QML, finds what it actually calls, and compares.
 **Using something without declaring it makes the plugin fail to load**, with
 the reason recorded — it is not a warning.
 
 The current list is in `docs/PLUGINS.md`; `procesos`, `red`, `ficheros`,
-`portapapeles` and `sonido` are the ones that come up
+`portapapeles` and `sound` are the ones that come up
 most. Declare the smallest set that works.
 
 Permissions are honest about what they are: a plugin runs inside the bar and
@@ -171,8 +176,8 @@ than implying a sandbox that does not exist.
 
 ## Surfaces
 
-`superficies` says where the plugin *appears*, as opposed to what it touches:
-`island`, `pildora`, `ventana`, `ipc`, `atajo`. It is optional, and worth
+`surfaces` says where the plugin *appears*, as opposed to what it touches:
+`island`, `pildora`, `ventana`, `ipc`, `centro`. It is optional, and worth
 filling in — it is what lets the user see what a plugin will occupy before
 turning it on.
 
@@ -189,7 +194,7 @@ QML `Text` defaults to `Text.AutoText`, which *interprets markup*. If a plugin
 shows anything the user did not type itself — a filename, a song title, the
 response from a command — set `textFormat: Text.PlainText`. Otherwise a name
 containing `<img src=...>` gets rendered as an image request rather than shown
-literally. k4 has a check for this (`tools/prueba_texto.py`) because it has
+literally. k4 has a check for this (`tools/test_text.py`) because it has
 gone wrong before.
 
 ## Publishing it

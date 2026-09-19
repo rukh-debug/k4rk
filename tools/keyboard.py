@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Teclado virtual por uinput, para comprobar cosas que necesitan teclas de verdad.
+"""Virtual uinput keyboard for tests that need real key events.
 
-    python3 teclas.py escribe hola
-    python3 teclas.py pulsa ESC ENTER TAB
-    python3 teclas.py manten CTRL 3     # tres segundos, para ctrl+rueda
+    python3 keyboard.py escribe hola
+    python3 keyboard.py pulsa ESC ENTER TAB
+    python3 keyboard.py manten CTRL 3     # three seconds, for ctrl+wheel
 
-El compositor no acepta pulsaciones sintéticas por Wayland, pero sí un
-dispositivo de entrada del kernel: uinput crea uno y lo ve como cualquier
-teclado enchufado.
+The compositor rejects synthetic Wayland key events but accepts kernel input
+devices. A uinput keyboard appears like a physical keyboard.
 """
 import ctypes, fcntl, os, struct, sys, time
 
@@ -33,7 +32,7 @@ SYN_REPORT = 0
 
 KEY_LEFTSHIFT = 42
 
-# Distribución US, que es lo que interpreta el compositor salvo que se diga otra.
+# US layout, interpreted by the compositor unless configured otherwise.
 NORMAL = {
     **{c: 2 + i for i, c in enumerate("1234567890")},
     **{c: 16 + i for i, c in enumerate("qwertyuiop")},
@@ -56,7 +55,7 @@ ESPECIALES = {
 
 
 def codigo(caracter):
-    """(código, ¿hace falta shift?) para un carácter suelto."""
+    """Return (keycode, shift required) for a single character."""
     bajo = caracter.lower()
     if caracter in CON_SHIFT:
         return CON_SHIFT[caracter], True
@@ -69,8 +68,7 @@ class Teclado:
     def __init__(self):
         self.fd = os.open("/dev/uinput", os.O_WRONLY | os.O_NONBLOCK)
         fcntl.ioctl(self.fd, UI_SET_EVBIT, EV_KEY)
-        # Se habilitan todas las teclas del rango normal: sale más barato que
-        # ir declarando una a una las que vayamos a usar.
+        # Enable the normal key range rather than declaring keys individually.
         for tecla in range(1, 128):
             fcntl.ioctl(self.fd, UI_SET_KEYBIT, tecla)
 
@@ -78,8 +76,8 @@ class Teclado:
         fcntl.ioctl(self.fd, UI_DEV_SETUP,
                     struct.pack("HHHH80sI", 0x03, 0x1234, 0x5678, 1, nombre, 0))
         fcntl.ioctl(self.fd, UI_DEV_CREATE)
-        # udev y el compositor necesitan un momento para enterarse de que hay
-        # un teclado nuevo; sin esta pausa las primeras teclas se pierden.
+        # Give udev and the compositor time to discover the new keyboard;
+        # otherwise the first key events are lost.
         time.sleep(1.2)
 
     def evento(self, tipo, codigo_, valor):
@@ -104,7 +102,7 @@ class Teclado:
         for caracter in texto:
             c, shift = codigo(caracter)
             if c is None:
-                print("sin código para %r, se salta" % caracter, file=sys.stderr)
+                print("no keycode for %r; skipping" % caracter, file=sys.stderr)
                 continue
             self.pulsar(c, shift)
 
@@ -124,8 +122,8 @@ def main():
             t.escribir(" ".join(resto))
         elif orden == "pulsa":
             for nombre in resto:
-                # "SUPER+ALT+PRINT" es una combinación: los modificadores se
-                # mantienen pulsados mientras baja y sube la última tecla.
+                # "SUPER+ALT+PRINT" is a chord: hold modifiers while pressing
+                # and releasing the last key.
                 partes = [x for x in nombre.upper().split("+") if x]
                 codigos = []
                 for parte in partes:
@@ -145,17 +143,13 @@ def main():
                     t.evento(EV_KEY, c, 0)
                 t.sync()
         elif orden == "manten":
-            #  Mantener un modificador un rato, para comprobar cosas como
-            #  ctrl+rueda.
-            #
-            #  Con segundos y no con «pulsa/suelta» en dos llamadas porque cada
-            #  llamada crea y destruye su propio dispositivo uinput: al morir el
-            #  proceso el compositor da la tecla por soltada, así que la segunda
-            #  llamada no encontraría nada mantenido. Aquí el dispositivo vive lo
-            #  que dure la espera, y mientras tanto otro proceso mueve el ratón.
+            #  Hold a modifier for tests such as ctrl+wheel. Separate press
+            #  and release processes would destroy their uinput devices on
+            #  exit, releasing the key early. Keep this device alive while
+            #  another process moves the mouse.
             nombre = resto[0].upper()
             if nombre not in ESPECIALES:
-                print("no sé mantener %s" % nombre, file=sys.stderr)
+                print("cannot hold unknown key %s" % nombre, file=sys.stderr)
                 return 1
             segundos = float(resto[1]) if len(resto) > 1 else 2.0
             t.evento(EV_KEY, ESPECIALES[nombre], 1)
@@ -164,7 +158,7 @@ def main():
             t.evento(EV_KEY, ESPECIALES[nombre], 0)
             t.sync()
         else:
-            print("orden desconocida: %s" % orden, file=sys.stderr)
+            print("unknown command: %s" % orden, file=sys.stderr)
             return 1
     finally:
         t.cerrar()

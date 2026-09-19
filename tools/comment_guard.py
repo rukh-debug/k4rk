@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Comment-sweep guard: the code under the comments must not move.
 
-Usage: tools/comentario.py FILE... (or directories)
+Usage: tools/comment_guard.py FILE... (or directories)
 
-Diffs each file against HEAD and checks that every changed line is a
-comment line: pure `//` lines, whole `/* */` blocks, or a line whose
-code prefix (everything before the `//`) is untouched. Any change to a
-code prefix, or any line that changes without carrying a `//`, is a
-failure — the translation sweep is allowed to touch comments only, and
-this is the cheap, mechanical proof that it did.
+Checks unstaged changes against the index using a line-based // heuristic.
+Directories are scanned for QML files only; explicit files are also accepted.
+Blank lines and pure // lines are ignored; sorted code prefixes must match.
+
+Limitations: this is not a parser or proof of unchanged behavior. It does not
+understand block comments, Python # comments or docstrings, and // inside a
+string cuts the line early. Sorting can hide reordered code. Staged changes
+and untracked file contents are not checked by git diff. Review the diff too.
 """
 
 import pathlib
@@ -19,8 +21,7 @@ import sys
 
 def prefijo(linea: str) -> str:
     """The code part of a line: everything before its `//`, if any."""
-    #  A `//` inside a string would cut early; the sweep's own output is
-    #  reviewed on failure, and a false alarm costs one look.
+    #  A `//` inside a string cuts early and can hide a changed suffix.
     corte = linea.find("//")
     return linea if corte < 0 else linea[:corte]
 
@@ -38,9 +39,8 @@ def revisar(ruta: pathlib.Path) -> bool:
             continue
         (quitados if linea[0] == "-" else puestos).append(cuerpo)
     bien = True
-    #  Pure comment lines may come and go freely. What may NOT change
-    #  is code: every changed code line must keep its prefix — the
-    #  part before its trailing `//` — identical on both sides.
+    #  Ignore pure // lines. Compare sorted prefixes before //; this cannot
+    #  distinguish a comment marker from one inside a string or detect reorderings.
     def prefijo(linea):
         corte = linea.find("//")
         return (linea if corte < 0 else linea[:corte]).rstrip()
@@ -48,7 +48,7 @@ def revisar(ruta: pathlib.Path) -> bool:
     if sorted(quitar_comentarios(quitados)) != sorted(quitar_comentarios(puestos)):
         for l in quitados + puestos:
             if prefijo(l):
-                print(f"{ruta}: codigo tocado: {'-' if l in quitados else '+'}{l[:100]}")
+                print(f"{ruta}: code changed: {'-' if l in quitados else '+'}{l[:100]}")
         bien = False
     return bien
 
@@ -68,7 +68,7 @@ def main() -> int:
                 fallos += 1
     if fallos:
         return 1
-    print("comment sweep clean: only comments changed")
+    print("comment sweep heuristic passed; review its documented limitations")
     return 0
 
 

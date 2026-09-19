@@ -228,7 +228,7 @@ FadeIn {
             }
         }
 
-        // ── transporte
+        // ── transport
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false

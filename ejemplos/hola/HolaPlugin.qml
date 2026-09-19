@@ -1,8 +1,8 @@
-//  El plugin mínimo: un saludo en la island.
+//  The minimal plugin: a greeting in the island.
 //
-//  Es el ejemplo de docs/PLUGINS.md, completo y cargable tal cual: copia la
-//  carpeta a ~/.config/k4/plugins/hola, enciéndelo en Ajustes, y
-//  `quickshell ipc -p <ruta>/shell.qml call k4.hola toggle` lo abre.
+//  The example from docs/PLUGINS.md, complete and loadable as is: copy the
+//  folder to ~/.config/k4/plugins/hola, enable it in Settings, and open it
+//  with `quickshell ipc -p <path>/shell.qml call k4.hola toggle`.
 
 import QtQuick
 import K4 as K4
@@ -11,7 +11,7 @@ K4.Plugin {
     id: self
 
     name: "hola"
-    title: "Hola"
+    title: "Hello"
     priority: 65
     active: abierto
     islandWidth: 360
@@ -24,7 +24,7 @@ K4.Plugin {
 
     view: Component { HolaView { plugin: self } }
 
-    //  El estado propio: sobrevive a reiniciar la barra.
+    //  The plugin's own state survives a bar restart.
     property var guardado: K4.Guardado {
         plugin: "hola"
         onCargado: function (d) {
@@ -39,8 +39,8 @@ K4.Plugin {
                            aQuien: aQuien })
     }
 
-    //  Mis ajustes, dentro de los Ajustes de la barra. Los valores los guardo
-    //  yo; la barra solo pregunta y avisa.
+    //  Plugin settings inside the bar's Settings. The plugin stores the
+    //  values; the bar only reads them and reports changes.
     property var misAjustes: K4.Ajustes {
         plugin: "hola"
         grupo: "Hello"
@@ -48,8 +48,8 @@ K4.Plugin {
             { id: "saludar", nombre: "Greet on open",
               desc: "Otherwise just show the counter",
               glifo: 0xF1821 },
-            //  Un campo libre: aquí un nombre; en un plugin de verdad, la
-            //  URL de un servicio o —con `secreto: true`— su clave.
+            //  A free-text field: a name here; in a real plugin, a service
+            //  URL or its key with `secreto: true`.
             { id: "aQuien", tipo: "texto",
               nombre: "Who to greet",
               desc: "Shows up in the island greeting",
@@ -65,7 +65,7 @@ K4.Plugin {
         }
     }
 
-    //  Y una entrada en el lanzador, para abrirse escribiendo.
+    //  A launcher entry, so typing can open the plugin.
     property var enElLanzador: K4.Lanzador {
         plugin: "hola"
         onBuscando: function (texto) {

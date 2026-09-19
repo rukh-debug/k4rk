@@ -18,8 +18,8 @@ FadeIn {
 
     // Without this one must click before typing: the island's root
     // keeps focus and the surface takes a moment to receive it.
-    FocoInicial { id: foco; objetivo: entrada }
-    Component.onCompleted: foco.reclamar()
+    FocoInicial { id: initialFocus; objetivo: searchInput }
+    Component.onCompleted: initialFocus.reclamar()
 
     ColumnLayout {
         anchors.fill: parent
@@ -43,7 +43,8 @@ FadeIn {
             }
 
             TextInput {
-                id: entrada
+                id: searchInput
+                objectName: "shortcutSearch"
                 cursorDelegate: IslandCursor {}
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
@@ -63,7 +64,7 @@ FadeIn {
 
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: entrada.text.length === 0
+                    visible: searchInput.text.length === 0
                     text: "Search shortcut, key or action…"
                     color: Theme.dim
                     font.pixelSize: 15
@@ -71,7 +72,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: view.plugin.count + " of " + Atajos.lista.length
+                text: view.plugin.count + " of " + Shortcuts.entries.length
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -88,6 +89,7 @@ FadeIn {
 
         // ── the list ───────────────────────────────────────────────
         ListView {
+            objectName: "shortcutList"
             //  The house scrollbar: shows only if there is more than
             //  fits.
             ScrollBar.vertical: IslandScrollBar {}
@@ -95,35 +97,35 @@ FadeIn {
             Layout.fillHeight: true
             clip: true
             spacing: 1
-            model: view.plugin.lista
+            model: view.plugin.entries
             boundsBehavior: Flickable.StopAtBounds
 
             delegate: Column {
-                id: fila
+                id: row
                 required property var modelData
                 required property int index
 
                 // the section title only when it changes, not on every
                 // row
-                readonly property bool abreSeccion: index === 0
-                    || view.plugin.lista[index - 1].seccion !== modelData.seccion
+                readonly property bool startsSection: index === 0
+                    || view.plugin.entries[index - 1].section !== modelData.section
 
                 // What the shortcut does: the phrase carries «%1» where the
                 // detail goes — a command, a mode, a direction.
-                readonly property string haceTexto: modelData.detalle
-                    ? modelData.hace.replace("%1", modelData.detalle)
-                    : modelData.hace
+                readonly property string actionText: modelData.detail
+                    ? modelData.description.replace("%1", modelData.detail)
+                    : modelData.description
 
                 width: ListView.view.width
                 spacing: 0
 
                 IslandLabel {
-                    visible: fila.abreSeccion
+                    visible: row.startsSection
                     height: visible ? 22 : 0
                     verticalAlignment: Text.AlignBottom
                     leftPadding: 4
                     bottomPadding: 3
-                    text: fila.modelData.seccion
+                    text: row.modelData.section
                     color: Theme.dim
                     font.pixelSize: 9
                     font.capitalization: Font.AllUppercase
@@ -134,7 +136,7 @@ FadeIn {
                     width: parent.width
                     height: 30
                     radius: 8
-                    color: filaRaton.containsMouse ? Theme.surface : "transparent"
+                    color: rowPointer.containsMouse ? Theme.surface : "transparent"
 
                     Behavior on color { ColorAnimation { duration: 110 } }
 
@@ -156,12 +158,12 @@ FadeIn {
                             Layout.alignment: Qt.AlignVCenter
 
                             Repeater {
-                                model: Atajos.teclas(fila.modelData.combo)
+                                model: Shortcuts.keysForCombo(row.modelData.combo)
 
                                 delegate: Rectangle {
                                     required property var modelData
 
-                                    Layout.preferredWidth: capsula.implicitWidth + 12
+                                    Layout.preferredWidth: keyLabel.implicitWidth + 12
                                     Layout.preferredHeight: 18
                                     radius: 5
                                     color: Theme.surfaceHi
@@ -169,7 +171,7 @@ FadeIn {
                                     border.color: "#1affffff"
 
                                     IslandLabel {
-                                        id: capsula
+                                        id: keyLabel
                                         anchors.centerIn: parent
                                         text: parent.modelData
                                         font.pixelSize: 9
@@ -182,7 +184,7 @@ FadeIn {
                         }
 
                         IslandLabel {
-                            text: fila.haceTexto
+                            text: row.actionText
                             color: Theme.ink
                             font.pixelSize: 11
                             elide: Text.ElideRight
@@ -192,7 +194,7 @@ FadeIn {
                     }
 
                     MouseArea {
-                        id: filaRaton
+                        id: rowPointer
                         anchors.fill: parent
                         hoverEnabled: true
                     }
@@ -203,7 +205,7 @@ FadeIn {
         IslandLabel {
             Layout.fillWidth: true
             visible: view.plugin.count === 0
-            text: Atajos.cargado
+            text: Shortcuts.loaded
                 ? "No shortcut matches" : "Reading the configuration…"
             color: Theme.muted
             font.pixelSize: 11

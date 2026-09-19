@@ -1,4 +1,4 @@
-//  Capa fina sobre K4.Boton — ver core/IconGlyph.qml. Solo traduce nombres.
+//  Thin wrapper around K4.Boton; see core/IconGlyph.qml. Only maps names.
 
 import K4 as K4
 

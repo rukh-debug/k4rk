@@ -1,11 +1,11 @@
 pragma Singleton
 
-//  Bandeja del sistema (StatusNotifierItem).
+//  System tray (StatusNotifierItem).
 //
-//  Instanciar este servicio es lo que registra a k4 como anfitrión de bandeja:
-//  hasta que existe, las aplicaciones no publican nada. Las que arrancaron
-//  antes que la barra puede que no vuelvan a intentarlo, así que si falta
-//  alguna hay que reiniciar esa aplicación, no la barra.
+//  Instantiating this service registers k4 as a tray host: applications
+//  publish nothing until it exists. Those started before the bar may not
+//  retry, so a missing application needs to be restarted itself rather
+//  than restarting the bar.
 
 import QtQuick
 import Quickshell
@@ -16,8 +16,8 @@ Singleton {
 
     readonly property var items: SystemTray.items
 
-    // Ordenados por nombre para que no bailen de sitio cada vez que una
-    // aplicación se registra de nuevo.
+    // Sort by name so applications do not move around when they register
+    // again.
     readonly property var sorted: {
         const list = SystemTray.items.values.slice()
         list.sort(function (a, b) {
@@ -28,7 +28,7 @@ Singleton {
 
     readonly property int count: sorted.length
 
-    // Los que piden atención: en la píldora parpadean.
+    // Items requesting attention blink in the pill.
     readonly property var attention: sorted.filter(function (i) {
         return i.status === Status.NeedsAttention
     })
@@ -42,13 +42,13 @@ Singleton {
             return item.title
         if (item.tooltipTitle && item.tooltipTitle.length > 0)
             return item.tooltipTitle
-        return item.id || "Sin nombre"
+        return item.id || "Unnamed"
     }
 
     function detail(item) {
         if (!item)
             return ""
-        // el tooltip repite el título más veces de las que aporta algo
+        // Tooltips often repeat the title instead of adding information.
         if (item.tooltipDescription && item.tooltipDescription.length > 0
             && item.tooltipDescription !== label(item))
             return item.tooltipDescription
@@ -64,12 +64,12 @@ Singleton {
         if (item.status === Status.NeedsAttention)
             return "Needs attention"
         if (item.status === Status.Passive)
-            return "En segundo plano"
-        return "Activo"
+            return "In background"
+        return "Active"
     }
 
-    // Clic izquierdo. Hay aplicaciones que solo traen menú (onlyMenu): para
-    // esas, activar no hace nada y hay que enseñar el menú directamente.
+    // Left click. Some applications only provide a menu (onlyMenu): their
+    // activation does nothing, so the caller must show the menu directly.
     function primary(item) {
         if (!item || item.onlyMenu)
             return false

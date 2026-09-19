@@ -1,0 +1,64 @@
+#  Project validators, on every push and pull request.
+#
+#  These are the checks the README requests before a PR, made automatic so
+#  they do not depend on someone remembering. They use Python's standard
+#  library. qmllint is absent on the runner, so docs_check.py skips that part;
+#  example linting requires a local environment with the matching Qt tools.
+
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validadores:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Validate the plugin catalog
+        run: python3 tools/plugins.py
+
+      - name: Check plugin API boundaries
+        run: python3 tools/api.py
+
+      - name: Check documentation against the code
+        run: python3 tools/docs_check.py
+
+      - name: Run documentation checker regression tests
+        run: python3 -B tools/test_docs.py
+
+      #  This needs no external reference: it catches a pattern seen three
+      #  times already, where a direct layout child positions itself manually,
+      #  stays at 0×0 and stops responding without an error. The checker runs
+      #  its own self-test before reporting that no violations were found.
+      - name: Check layout-owned positioning
+        run: python3 tools/layouts.py
+
+      - name: Run agent tests
+        run: python3 -B tools/test_agents.py
+
+      - name: Run shortcut parser and schema tests
+        run: python3 -B tools/test_shortcuts.py
+
+      #  The retired editor and path-helper suites no longer exist, so do not
+      #  invoke them or install
+      #  ffmpeg solely for the old editor suite. The live plugin suite below
+      #  retains entry/icon/registry path checks and reviewed-commit checks;
+      #  the text-format check remains a separate regression gate.
+      - name: Run plugin installer and publisher tests
+        run: python3 tools/test_plugins.py
+
+      #  Keep the regression check automatic: undeclared rich-text handling
+      #  has previously turned user-supplied text into image requests.
+      - name: Check explicit text formats for user content
+        run: python3 tools/test_text.py
+
+      - name: Check whitespace and conflict markers
+        run: git diff --check

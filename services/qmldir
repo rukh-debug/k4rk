@@ -24,7 +24,7 @@ singleton Settings 1.0 Settings.qml
 singleton Enganches 1.0 Enganches.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Sistema 1.0 Sistema.qml
-singleton Atajos 1.0 Atajos.qml
+singleton Shortcuts 1.0 Shortcuts.qml
 singleton Fondos 1.0 Fondos.qml
 singleton WallpaperPalette 1.0 WallpaperPalette.qml
 singleton Motivos 1.0 Motivos.qml

@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 MIRROR="$HOME/.local/share/k4/code"
 LOG="${TMPDIR:-/tmp}/k4-dev.log"
@@ -37,14 +37,14 @@ done
 # ── which store path to run ─────────────────────────────────────────
 if (( BUILD )); then
     echo "==> building .#k4"
-    STORE="$(cd "$RAIZ" && nix build .#k4 --no-link --print-out-paths | tail -1)"
+    STORE="$(cd "$ROOT" && nix build .#k4 --no-link --print-out-paths | tail -1)"
 else
-    ORIGEN="$(cat "$MIRROR/.k4-origen" 2>/dev/null || true)"
-    if [ -z "$ORIGEN" ]; then
+    ORIGIN="$(cat "$MIRROR/.k4-origen" 2>/dev/null || true)"
+    if [ -z "$ORIGIN" ]; then
         echo "nothing recorded in $MIRROR/.k4-origen — run once without --no-build" >&2
         exit 1
     fi
-    STORE="${ORIGEN%/share/k4}"
+    STORE="${ORIGIN%/share/k4}"
 fi
 BIN="$STORE/bin/k4"
 
@@ -128,7 +128,8 @@ d = json.load(sys.stdin)
 errs = [p for p in d if p.get("error")]
 print("plugins: %d  errors: %d" % (len(d), len(errs)))
 for e in errs:
-    print("  %s: %s" % (e["id"], e["error"]))'
+    print("  %s: %s" % (e["id"], e["error"]))
+sys.exit(1 if errs else 0)'
 HOST="$(quickshell ipc -p "$MIRROR/shell.qml" call k4 hostStatus 2>/dev/null || true)"
 case "$HOST" in \{*\}*) : ;; *) HOST="" ;; esac
 if [ -n "$HOST" ]; then

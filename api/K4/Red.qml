@@ -1,13 +1,12 @@
 pragma Singleton
 
-//  Wi‑Fi y Bluetooth, para saber a qué está conectado esto.
+//  Wi-Fi and Bluetooth: report the machine's connections.
 //
-//  Solo lectura: conectarse a una red o emparejar un aparato no se abre a los
-//  plugins, ni con permiso. Es la única puerta que dejo cerrada a propósito —
-//  el precio de equivocarse ahí es quedarse sin red o entregarle el portátil a
-//  un dispositivo ajeno, y ninguna idea bonita de plugin lo compensa. Si te
-//  hace falta, `k4 wifi` y `k4 bluetooth` abren los paneles de la barra y ahí
-//  decide la persona.
+//  Read-only: plugins cannot connect to networks or pair devices, even with
+//  permission. This restriction is deliberate: mistakes can disconnect the
+//  machine or pair it with someone else's device, and plugin convenience
+//  does not justify that tradeoff. When needed, `k4 wifi` and `k4 bluetooth`
+//  open the shell's panels so the user can decide.
 
 import QtQuick
 
@@ -19,7 +18,7 @@ QtObject {
     readonly property bool wifiActiva: _w ? _w.activada : false
     readonly property string wifiNombre: _w ? _w.name : ""
     readonly property bool buscando: _w ? _w.scanning : false
-    //  Las redes a la vista, cada una tal cual la da NetworkManager.
+    //  Visible networks, each passed through as NetworkManager supplies it.
     readonly property var redes: _w ? _w.networks : []
 
     // ── Bluetooth ─────────────────────────────────────────────────

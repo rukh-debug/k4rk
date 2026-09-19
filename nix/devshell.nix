@@ -1,7 +1,7 @@
 #  The hacking shell: `nix develop`.
 #
 #  Everything the bar's own tooling expects — the validators the README asks
-#  for before a PR, the `--test` plugin runner, the editor tests that need
+#  for before a PR, the `--test` plugin runner, and media helpers that need
 #  real ffmpeg — against a checkout, not the store copy.
 {
   lib,
@@ -52,8 +52,8 @@ mkShell {
     brightnessctl
     ddcutil
     systemd
-    #  tools/ beyond the standard library: spritesheet wants PIL and numpy,
-    #  glifos wants fontTools (and skips itself without it)
+    #  Beyond the standard library: PIL and numpy for image work,
+    #  fontTools for the glyph checker (required to inspect font coverage).
     (python3.withPackages (
       ps: with ps; [
         numpy

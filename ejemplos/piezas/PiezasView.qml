@@ -20,7 +20,7 @@ K4.Aparicion {
                 font.weight: Font.Bold
             }
 
-            // ── Interruptor ───────────────────────────────────────
+            // ── Toggle switch ─────────────────────────────────────
             Row {
                 width: parent.width
                 spacing: 10
@@ -41,12 +41,12 @@ K4.Aparicion {
                 K4.Interruptor {
                     marcado: vista.plugin.encendido
                     anchors.verticalCenter: parent.verticalCenter
-                    //  No cambia solo: manda el plugin.
+                    //  The plugin controls the state, not the switch.
                     onAlternado: vista.plugin.encendido = !vista.plugin.encendido
                 }
             }
 
-            // ── Deslizador ────────────────────────────────────────
+            // ── Slider ────────────────────────────────────────────
             K4.Deslizador {
                 width: parent.width
                 etiqueta: "Slider"
@@ -55,8 +55,8 @@ K4.Aparicion {
                 onMovido: function (v) { vista.plugin.nivel = v }
             }
 
-            // ── Medidor ───────────────────────────────────────────
-            //  El hermano quieto del deslizador: este se mira, no se toca.
+            // ── Gauge ─────────────────────────────────────────────
+            //  The slider's read-only counterpart: for viewing, not input.
             Row {
                 width: parent.width
                 spacing: 10
@@ -76,7 +76,7 @@ K4.Aparicion {
                     maximo: 100
                     tono: valor >= 85 ? K4.Tema.rojo
                         : valor >= 60 ? K4.Tema.amarillo : K4.Tema.verde
-                    //  Con 3, un valor diminuto se sigue viendo.
+                    //  A minimum of 3 keeps even a tiny value visible.
                     minimo: 3
                 }
 
@@ -89,7 +89,7 @@ K4.Aparicion {
                 }
             }
 
-            // ── Baldosas ──────────────────────────────────────────
+            // ── Tiles ─────────────────────────────────────────────
             Row {
                 spacing: 10
 
@@ -133,13 +133,13 @@ K4.Aparicion {
                 }
             }
 
-            // ── Botones ───────────────────────────────────────────
+            // ── Buttons ───────────────────────────────────────────
             Row {
                 spacing: 4
 
                 K4.Boton {
                     glifo: "󰒮"  // md-skip_previous
-                    activo: false                  // apagado, no escondido
+                    activo: false                  // disabled, not hidden
                 }
                 K4.Boton {
                     glifo: "󰐊"  // md-play
@@ -159,12 +159,12 @@ K4.Aparicion {
                 }
             }
 
-            // ── Estela: el cursor de la casa ──────────────────────
+            // ── Cursor trail: the bar's cursor ─────────────────────
             //
-            //  Va de `cursorDelegate` y ya: el campo lo coloca, la pieza
-            //  decide cómo se pinta. Escribe aquí y mira el rastro.
+            //  Set it as `cursorDelegate`: the field positions it, and the
+            //  component draws it. Type here and watch the trail.
             K4.Etiqueta {
-                text: "Estela — type and watch the cursor"
+                text: "Cursor trail — type and watch the cursor"
                 font.pixelSize: 11
                 color: K4.Tema.apagado
             }
@@ -189,7 +189,7 @@ K4.Aparicion {
                 }
             }
 
-            // ── Relleno, para que haya algo que rodar ─────────────
+            // ── Filler rows to make the view scrollable ────────────
             Repeater {
                 model: 6
                 delegate: K4.Baldosa {

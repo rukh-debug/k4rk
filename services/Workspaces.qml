@@ -1,6 +1,6 @@
 pragma Singleton
 
-// Espacios de trabajo de Hyprland, ordenados por id.
+// Hyprland workspaces, sorted by ID.
 
 import QtQuick
 import Quickshell
@@ -40,9 +40,9 @@ Singleton {
         return corte >= 0 ? n.slice(corte + 1) : n
     }
 
-    // Cuál tiene el foco. Hace falta como propiedad suelta porque `list` cambia
-    // por muchos motivos —una ventana que abre, un nombre que cambia— y lo que
-    // interesa señalar es solo el salto de escritorio.
+    // The focused workspace needs its own property: `list` changes for many
+    // reasons, such as an opened window or a renamed workspace, but this
+    // indicator should only signal workspace switches.
     readonly property int activo: {
         for (let i = 0; i < list.length; ++i)
             if (list[i].focused)
@@ -50,23 +50,22 @@ Singleton {
         return -1
     }
 
-    // ancho que ocupan los puntos en la píldora: activo + resto + hueco al reloj
+    // Pill dot width: active dot + remaining dots + gap before the clock.
     readonly property int dotsWidth: list.length === 0
         ? 0 : (list.length - 1) * 10 + 18 + 8
 
-    //  ── ¿hay algo llenando la pantalla? ───────────────────────────
+    //  ── is anything filling the screen? ──────────────────────────
     //
-    //  Por escritorio y no por ventana, que es donde Hyprland lo apunta:
-    //  `hasfullscreen` responde justo a la pregunta —«lo que este monitor tiene
-    //  delante, ¿ocupa todo?»— y sale gratis. Mirar cliente a cliente obligaría
-    //  a comparar geometrías y a decidir qué es «casi toda», que es una
-    //  discusión sin final.
+    //  Read the workspace, not individual windows: that is where Hyprland
+    //  records `hasfullscreen`, answering whether the monitor's shown
+    //  workspace is filled without extra work. Checking every client would
+    //  require comparing geometry and defining how close to full counts.
     //
-    //  Y cubre las DOS pantallas completas de Hyprland: la de verdad y la
-    //  «maximizada» del dispatcher, porque el escritorio marca las dos.
+    //  This includes BOTH Hyprland fullscreen modes: true fullscreen and
+    //  dispatcher maximization, because the workspace flags both.
     //
-    //  Por NOMBRE de monitor, que es como se conocen las pantallas en el resto
-    //  de la barra: una `PanelWindow` sabe la suya y un plugin también.
+    //  Key by monitor NAME, as used throughout the bar: both PanelWindow
+    //  and plugins know their screen by name.
     readonly property var llenos: {
         const d = ({})
         const monitores = Hyprland.monitors.values
@@ -81,14 +80,13 @@ Singleton {
 
     function lleno(pantalla) { return llenos[String(pantalla)] === true }
 
-    //  Y hay que ir a por el dato: la lista de escritorios NO se rehace sola
-    //  cuando algo se pone a pantalla completa. Hyprland lo cuenta por el
-    //  socket de eventos y ahí se queda; sin pedir la lista otra vez, quien
-    //  pregunte se entera la próxima vez que abras o cierres una ventana, que
-    //  puede ser dentro de una hora.
+    //  Explicitly refresh the data: the workspace list does NOT refresh
+    //  itself when a window becomes fullscreen. Hyprland announces it over
+    //  the event socket; without rereading the list, consumers might not
+    //  learn about it until a window opens or closes an hour later.
     //
-    //  `closewindow` también: cerrar la ventana que estaba a pantalla completa
-    //  deshace el estado sin que llegue ningún `fullscreen`.
+    //  Also handle `closewindow`: closing a fullscreen window clears the
+    //  state without necessarily emitting a `fullscreen` event.
     Connections {
         target: Hyprland
         ignoreUnknownSignals: true

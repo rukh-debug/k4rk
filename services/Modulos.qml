@@ -1,15 +1,14 @@
 pragma Singleton
 
-//  Módulos apartados a un lado, para retomarlos luego.
+//  Modules set aside to resume later.
 //
-//  Cerrar no siempre quiere decir «tira esto». Una conversación con la IA
-//  es algo en lo que estabas, y que al cerrarla se
-//  pierda obliga a no cerrarla nunca —o sea, a tener la island ocupada
-//  mientras haces otra cosa—. Aquí se apuntan las que están apartadas para que
-//  la píldora pueda enseñarlas y devolverlas de un clic.
+//  Closing does not always mean discarding. Losing an AI conversation on
+//  close forces users to keep it open, occupying the island while they do
+//  something else. Register minimized modules here so the pill can show
+//  them and restore them with a click.
 //
-//  El estado NO vive aquí: cada módulo se queda con el suyo, que para eso es
-//  suyo. Esto es solo la lista de quién está esperando.
+//  State does NOT live here: each module keeps its own. This is only the
+//  list of modules waiting to be resumed.
 
 import QtQuick
 import Quickshell
@@ -22,13 +21,13 @@ Singleton {
 
     readonly property int count: lista.length
 
-    // Quien lo tenga apuntado escucha y se restaura solo.
+    // The registered owner listens and restores itself.
     signal restaurado(string id)
 
     function minimizar(id, titulo, detalle, glifo) {
         const sin = lista.filter(function (m) { return m.id !== id })
-        // Reasignar el array entero: mutarlo en su sitio no emite el cambio y
-        // la píldora se quedaría como estaba.
+        // Reassign the whole array: mutating it in place emits no change,
+        // which would leave the pill unchanged.
         lista = sin.concat([{ id: id, titulo: titulo,
                               detalle: detalle || "", glifo: glifo || 0 }])
     }

@@ -1,5 +1,5 @@
-//  Aparece con un fundido en vez de dar un salto. Envuelve lo que quieras
-//  que entre suave cuando tu plugin toma la island.
+//  Fade in rather than appear abruptly. Wrap anything that should enter
+//  smoothly when your plugin takes the island.
 
 import QtQuick
 

@@ -1,39 +1,23 @@
 #!/usr/bin/env python3
-"""Comprueba que nadie se coloque a mano dentro de un layout.
+"""Check for manually positioned direct children of layouts.
 
     python3 tools/layouts.py
 
-Un QQuickLayout —RowLayout, ColumnLayout, GridLayout, StackLayout— gobierna la
-geometría de todos sus hijos visibles: les pone x, y, width y height él. Un hijo
-directo que se los ponga por su cuenta, o que se ancle, no consigue nada: el
-layout lo pisa en cuanto dispone la fila. Y si además no tiene tamaño implícito
-—un MouseArea no lo tiene— la celda sale de cero y el elemento acaba midiendo
-0×0.
+A QQuickLayout — RowLayout, ColumnLayout, GridLayout or StackLayout — controls
+the x, y, width and height of its visible children. Direct children must not
+set those properties or anchors themselves. Without an implicit size, a child
+such as MouseArea can end up measuring 0×0.
 
-Eso no se ve. No hay error, no hay hueco raro en pantalla, no falta nada: solo
-que ese trozo deja de responder. Pasó tres veces en la barra antes de que se
-buscara el patrón:
+This can silently disable interaction. The dungeon pill let clicks through to
+the control center, and Ask image actions stopped responding to hover or click.
+Removing anchors silenced Qt warnings without fixing geometry ownership.
 
-  · la píldora de la mazmorra no se podía pulsar, y el clic seguía hasta el
-    fondo de la island, que abre el centro de control — o sea que hacía algo,
-    solo que no lo suyo;
-  · y las tres acciones de una imagen del Ask —ampliar, guardar, abrir— ni se
-    iluminaban al pasar el ratón ni hacían nada al pulsarlas.
+Use Layout.preferredWidth and related sizing hints, and Layout.alignment for
+placement. To anchor a MouseArea over a whole row, wrap the row in an Item
+sized from it and parent the anchored element to that Item.
 
-Los dos primeros llevaban encima un comentario explicando que se habían quitado
-los anchors porque Qt avisaba en cada arranque. El aviso se calló y el fallo se
-quedó: el problema nunca fue la forma de colocarse sino quién manda. Un
-comentario no comprueba nada, y por eso esto es una herramienta.
-
-Lo que se pide en su lugar: Layout.preferredWidth y compañía para las medidas,
-Layout.alignment para la colocación, y si de verdad hace falta anclar algo
-—un MouseArea que cubra la fila entera, por ejemplo— entonces la fila va dentro
-de un Item que se mida por ella y el elemento anclado se cuelga del Item, que
-es quien no está gobernado por nadie.
-
-Lo que esto NO mira, para que su cero no se lea como una garantía que no da:
-solo hijos DIRECTOS de un layout. Un hijo sin tamaño implícito que espere que
-alguien se lo dé, o uno que se cambie el `parent` visual a mano, se le escapan.
+Coverage is limited to DIRECT layout children with explicit geometry. It does
+not detect missing implicit sizes or manually reassigned visual `parent`s.
 """
 import pathlib, re, sys
 
@@ -41,23 +25,21 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
 LAYOUTS = ("RowLayout", "ColumnLayout", "GridLayout", "StackLayout")
 
-#  Lo que decide el layout y por tanto no puede fijar el hijo.
+#  Geometry controlled by the layout rather than its children.
 #
-#  Sin «^» a propósito: `match()` ya ancla en la posición que se le pasa, y el
-#  ancla de verdad solo casa en el principio de la CADENA. La primera versión de
-#  esto lo llevaba y no casaba nunca nada: daba cero en un repo que tenía ocho.
+#  No `^`: match() anchors at the supplied position, whereas `^` requires the
+#  start of the string. The first version used it and missed eight violations.
 GEOM = re.compile(r"(x|y|width|height|anchors)\s*[:.]")
 
-#  Un elemento: `Tipo {`, admitiendo nombres cualificados como `K4.Process`.
+#  An element opening, including qualified names such as `K4.Process`.
 ELEM = re.compile(r"([A-Z][A-Za-z0-9_]*(?:\.[A-Z][A-Za-z0-9_]*)*)\s*\{")
 
 
 def sin_ruido(texto):
-    """El fichero con comentarios y cadenas en blanco, del mismo largo.
+    """Blank comments and strings while preserving the total length.
 
-    Llevan llaves y dos puntos dentro, que es justo lo que aquí se cuenta. Se
-    sustituyen por espacios en vez de quitarse para que las posiciones sigan
-    valiendo y los números de línea salgan bien.
+    Their braces and colons must not affect parsing. Spaces preserve offsets
+    into the original text, which is used to calculate line numbers.
     """
     salida, i, n = [], 0, len(texto)
     while i < n:
@@ -83,7 +65,7 @@ def sin_ruido(texto):
 
 
 def revisar(texto):
-    """Los sitios donde un hijo directo de un layout se coloca a mano."""
+    """Find explicit geometry on direct layout children."""
     limpio = sin_ruido(texto)
     pila, prof, avisos = [], 0, []
     i, n = 0, len(limpio)
@@ -92,7 +74,7 @@ def revisar(texto):
         c = limpio[i]
 
         if c == "{":
-            #  De quién es esta llave: el último `Tipo {` que acabe justo aquí.
+            #  Identify the element opening that ends at this brace.
             tipo = None
             for m in ELEM.finditer(limpio, max(0, i - 160), i + 1):
                 if m.end() == i + 1:
@@ -109,7 +91,7 @@ def revisar(texto):
             i += 1
             continue
 
-        #  ¿Empieza aquí una sentencia, y es de las que decide el layout?
+        #  Does a statement start here and set layout-controlled geometry?
         if c.isalpha() and (i == 0 or limpio[i - 1] in "\n\t ;{"):
             m = GEOM.match(limpio, i)
             if m:
@@ -124,9 +106,8 @@ def revisar(texto):
     return avisos
 
 
-#  Un caso roto de verdad, de los que costaron el arreglo. Está aquí y no en un
-#  fichero aparte porque una comprobación que puede dar un cero falso tiene que
-#  demostrar que sabe encontrar algo ANTES de que su cero valga.
+#  A real broken case. Run this control before scanning the repository so a
+#  detector that stops recognizing violations cannot report a false clean run.
 CONTROL = """
 import QtQuick
 import QtQuick.Layouts
@@ -135,7 +116,7 @@ RowLayout {
     id: indicador
     spacing: 4
 
-    Text { text: "hola"; Layout.alignment: Qt.AlignVCenter }
+    Text { text: "hello"; Layout.alignment: Qt.AlignVCenter }
 
     MouseArea {
         x: -3
@@ -149,20 +130,20 @@ RowLayout {
 
 
 def autocomprobar():
-    """Que el detector detecta. Devuelve el motivo si no, o None si va bien."""
+    """Verify detection; return an error description or None on success."""
     salida = revisar(CONTROL)
     fijadas = sorted(set(p for _, _, _, p in salida))
     if fijadas != ["height", "width", "x", "y"]:
-        return ("el caso de control tenía que dar x, y, width y height, y dio: "
-                + (", ".join(fijadas) if fijadas else "nada"))
+        return ("control case must report x, y, width and height; reported: "
+                + (", ".join(fijadas) if fijadas else "nothing"))
     return None
 
 
 def main():
     fallo = autocomprobar()
     if fallo:
-        print("La comprobación está rota:", fallo)
-        print("\nSu «0 sitios» no significaría nada, así que no se da por buena.")
+        print("The checker is broken:", fallo)
+        print("\nA zero-result scan would be meaningless; refusing to pass.")
         return 1
 
     ficheros = sorted(RAIZ.rglob("*.qml"))
@@ -174,18 +155,17 @@ def main():
             todos.append((ruta.relative_to(RAIZ), linea, layout, hijo, prop))
 
     if not todos:
-        print("%d ficheros revisados, nadie se coloca a mano dentro de un layout."
+        print("%d files checked; no explicit geometry on direct layout children."
               % len(ficheros))
         return 0
 
-    print("Hay %d sitios colocándose a mano dentro de un layout:\n" % len(todos))
+    print("Found %d explicit geometry assignments inside layouts:\n" % len(todos))
     for ruta, linea, layout, hijo, prop in todos:
-        print("  %s:%d  %s dentro de %s fija «%s»" % (ruta, linea, hijo, layout, prop))
-    print("\nEl layout gobierna la geometría de sus hijos: eso no se aplica, y")
-    print("sin tamaño implícito el elemento acaba midiendo 0×0 —deja de")
-    print("responder sin dar un solo error—. Se usa Layout.preferredWidth y")
-    print("Layout.alignment; y si hace falta anclar de verdad, la fila va")
-    print("dentro de un Item que se mida por ella y lo anclado cuelga del Item.")
+        print("  %s:%d  %s inside %s sets '%s'" % (ruta, linea, hijo, layout, prop))
+    print("\nLayouts control child geometry. Without an implicit size, a child")
+    print("can become 0×0 and silently stop responding. Use Layout.preferredWidth")
+    print("and Layout.alignment. For anchors, wrap the row in an Item sized from")
+    print("it and parent the anchored element to that Item.")
     return 1
 
 

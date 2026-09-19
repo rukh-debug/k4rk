@@ -45,9 +45,9 @@ Item {
     implicitWidth: implicito
     implicitHeight: 18
 
-    //  Pegada al borde que toca: la zona es lo último de la fila y su
-    //  contenido corre hacia el borde de la pantalla, no hacia el
-    //  cuerpo de la píldora.
+    //  Align with the relevant edge: this zone sits at the end of the row,
+    //  and its content extends toward the screen edge rather than toward
+    //  the pill's body.
     RowLayout {
         anchors.left: zone.side === "left" ? zone.left : undefined
         anchors.right: zone.side === "right" ? zone.right : undefined

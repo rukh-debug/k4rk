@@ -1,7 +1,7 @@
-//  La vista: solo existe mientras el plugin tiene la island.
+//  The view exists only while the plugin occupies the island.
 //
-//  Un plugin de fuera importa QtQuick y K4, nada más. La paleta llega por
-//  K4.Tema y el texto con los defaults de la barra por K4.Etiqueta.
+//  An external plugin imports only QtQuick and K4. K4.Tema supplies the
+//  palette, and K4.Etiqueta supplies text with the bar's defaults.
 
 import QtQuick
 import K4 as K4

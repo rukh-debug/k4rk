@@ -1,10 +1,10 @@
 pragma Singleton
 
-// Registro y estado persistente de los plugins.
+// Plugin registry and persistent state.
 //
-// `active` sigue siendo una decisión momentánea del host —quién ocupa la
-// island—; `habilitado` es la decisión del usuario y sobrevive a los reinicios.
-// Mantenerlas separadas evita que cerrar un plugin lo desactive para siempre.
+// `active` is the host's momentary decision about who occupies the island;
+// `habilitado` is the user's choice and survives restarts. Keeping them
+// separate prevents closing a plugin from disabling it permanently.
 
 import QtQuick
 import Qt.labs.folderlistmodel
@@ -18,21 +18,19 @@ Singleton {
     readonly property string rutaEstado:
         (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins.json"
 
-    //  Dos redes de seguridad, y las dos existen por lo mismo: actualizar la
-    //  barra no puede costarte los plugins que tenías puestos.
+    //  Two recovery mechanisms ensure that updating the bar does not lose
+    //  the user's plugins.
     //
-    //   · `rutaCopia` es un duplicado del último estado que se pudo leer. Si
-    //     `plugins.json` aparece truncado —un corte a media escritura, el
-    //     disco lleno— sin esto se cae a los valores de fábrica, y los plugins
-    //     de usuario vienen de fábrica APAGADOS: se encuentra uno la barra sin
-    //     nada y encima el siguiente guardado deja esa pérdida escrita.
+    //   · `rutaCopia` duplicates the last readable state. If plugins.json is
+    //     truncated by an interrupted write or a full disk, falling back to
+    //     defaults would disable user plugins, which default to OFF. The
+    //     next save would then make that loss permanent.
     //
-    //   · `rutaCache` es la última lista buena de `tools/plugins.py --list`.
-    //     El catálogo lo emite ese guión, y un `git pull` lo reemplaza en
-    //     caliente: si la llamada falla una sola vez —fichero a medio escribir,
-    //     una dependencia nueva— antes se arrancaba con el catálogo de
-    //     emergencia embebido, que solo trae los de casa. Los tuyos
-    //     desaparecían de la lista y se descargaban de memoria.
+    //   · `rutaCache` stores the last valid `tools/plugins.py --list` result.
+    //     A git pull can replace that script while the bar is running. One
+    //     failed call, caused by a partial file or a new dependency, used to
+    //     select the embedded emergency catalog containing only built-ins.
+    //     User plugins then disappeared from the list and were unloaded.
     readonly property string rutaCopia:
         (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins.json.bak"
     readonly property string rutaCache:
@@ -44,9 +42,9 @@ Singleton {
     property var habilitados: ({})
     property var errores: ({})
 
-    // El catálogo en JSON es la fuente que leen las herramientas externas. La
-    // copia mínima evita que la barra se quede sin defaults si el fichero se
-    // está actualizando o si se arranca con una versión antigua instalada.
+    // External tools read the JSON catalog. This minimal copy keeps defaults
+    // available while that file is being updated or when an older installed
+    // version starts.
     property var catalogo: [
         { id: "launcher", title: "Launcher", version: "1.0.0", enabled: true },
         { id: "openwebui", title: "OpenWebUI", version: "1.0.0", enabled: true },
@@ -69,26 +67,25 @@ Singleton {
     //  just stops matching — so the id lives here and nowhere else.
     readonly property string pillId: "idle"
 
-    // ── las instancias vivas ──────────────────────────────────────
+    // ── live instances ────────────────────────────────────────────
     //
-    //  Aquí está el cambio de fondo: los plugins ya no se instancian
-    //  estáticamente en shell.qml sino que los crea este gestor desde el
-    //  catálogo, uno a uno y cada uno en su try. La diferencia no es
-    //  cosmética: con la instanciación estática, UN plugin roto dejaba
-    //  «Type X unavailable» y cero barras —pasó esta semana—; con esta, el
-    //  roto se apunta en `errores` y los otros diecinueve arrancan.
+    //  Plugins are no longer instantiated statically in shell.qml. This
+    //  manager creates each catalog entry separately with error handling.
+    //  Static instantiation let ONE broken plugin cause "Type X unavailable"
+    //  and prevent the whole bar from starting. Here its failure goes into
+    //  `errores` and the remaining plugins still start.
     //
-    //  Y «deshabilitado» pasa a significar NO INSTANCIADO: apagar un plugin
-    //  lo destruye y encenderlo lo vuelve a crear. Antes solo se le ponía una
-    //  bandera y el objeto seguía ahí, gastando y pudiendo romper.
+    //  Disabled means NOT INSTANTIATED: switching a plugin off destroys it,
+    //  and switching it on creates it again. Previously a flag left the
+    //  object alive, consuming resources and still able to fail.
     property var instancias: []
     property var _porId: ({})
     property bool listo: false
 
     function instancia(id) { return _porId[id] || null }
 
-    //  El clic de fondo de la island abre el centro de control. Vive aquí
-    //  porque shell.qml ya no tiene una referencia directa al panel.
+    //  The island background click opens the control centre. This helper
+    //  performs the lookup rather than requiring a direct panel reference.
     function abrirPanel() {
         const p = instancia("panel")
         if (p)
@@ -102,18 +99,17 @@ Singleton {
     //  is a second pass after every creation, so cycles (panel↔launcher)
     //  do not depend on the catalog's order. See `_repartir`.
 
-    //  ── lo que un plugin necesita para tener sentido ──────────────
+    //  ── plugin requirements ──────────────────────────────────────
     //
-    //  Hay módulos que solo existen si existe otra cosa: la terminal de la
-    //  isla no es «peor» sin k4term, es que no hay nada que enseñar. En vez de
-    //  dejarlos a medio gas —una tecla que no hace nada, una sección de
-    //  ajustes de algo que no está— se declara la dependencia en el catálogo
-    //  (`requiere`) y aquí se comprueba.
+    //  Some modules need another capability before they can work, such as
+    //  a backend for an island terminal. Rather than exposing shortcuts
+    //  that do nothing or settings for unavailable functionality, declare
+    //  the dependency in the catalog's `require` field and check it here.
     //
-    //  Se comprueba TARDE a propósito: qué terminal hay instalada lo averigua
-    //  `Consola` con un proceso al arrancar, así que al crear los plugins
-    //  todavía no se sabe. Se crean todos y, cuando la respuesta llega, se
-    //  destruye lo que no puede ser.
+    //  Check LATE deliberately: Consola discovers the installed terminal
+    //  through a startup process, so the answer may be unknown during
+    //  plugin creation. Create enabled plugins, then destroy those whose
+    //  requirements fail when the answer arrives.
     function requisitoCumplido(m) {
         if (!m || !m.require)
             return true
@@ -153,17 +149,17 @@ Singleton {
             Binarios.sondear(nombres)
     }
 
-    //  Cuando `Consola` termina de mirar qué hay, se revisa a quién le falta
-    //  su dependencia. Vale para las dos direcciones: si alguien instala
-    //  k4term y recarga la barra, el módulo aparece solo.
+    //  When Consola finishes discovery, recheck requirements. This works
+    //  in both directions: installing k4term and reloading the bar can make
+    //  its dependent module appear automatically.
     property Connections vigilaRequisitos: Connections {
         target: Consola
         function onBinarioChanged() { manager.revisarRequisitos() }
         function onHayIslaChanged() { manager.revisarRequisitos() }
     }
 
-    //  Y lo mismo con las herramientas sueltas: el sondeo contesta —ahora
-    //  hay codex, ahora no lo hay— y las dependencias se re leen.
+    //  Likewise for individual tools: probe results, such as codex becoming
+    //  available or disappearing, trigger another requirement check.
     property Connections vigilaBinarios: Connections {
         target: Binarios
         function onCambiado() { manager.revisarRequisitos() }
@@ -190,18 +186,18 @@ Singleton {
     }
 
     function arrancar() {
-        //  Hacen falta las dos patas: el estado del usuario —qué tiene apagado—
-        //  y el catálogo combinado. Llegan en asíncrono y en cualquier orden;
-        //  quien llega segundo dispara la creación.
+        //  Wait for both user state, including disabled plugins, and the
+        //  combined catalog. They arrive asynchronously in either order;
+        //  whichever arrives second triggers creation.
         if (listo || !cargado || !catalogoListo)
             return
         for (let i = 0; i < catalogo.length; ++i) {
             const m = catalogo[i]
-            //  Un plugin no cargable —manifiesto roto, versión incompatible,
-            //  permisos sin declarar— ni se intenta: su motivo ya viene del
-            //  listado y Ajustes lo enseña.
+            //  Do not attempt plugins marked unloadable due to a broken
+            //  manifest, incompatible version or undeclared permissions.
+            //  The catalog already supplies the reason for Settings.
             if (m.cargable === false) {
-                registrarError(m.id, m.motivo || "no cargable")
+                registrarError(m.id, m.motivo || "not loadable")
                 continue
             }
             if (estaHabilitado(m.id))
@@ -211,20 +207,19 @@ Singleton {
         _publicar()
         listo = true
 
-        //  Y una revisión al terminar: si `Consola` ya había contestado antes
-        //  de que existiera un solo plugin —que es lo normal, tarda menos que
-        //  el listado del catálogo— su aviso no encontró a nadie a quien
-        //  destruir. Sin esto, el módulo que necesita k4term se creaba igual.
+        //  Recheck after creation too: Consola often answers before any
+        //  plugin exists because discovery is faster than catalog listing.
+        //  Its earlier notification then had nothing to destroy. Without
+        //  this pass, a plugin requiring an absent terminal would remain.
         revisarRequisitos()
     }
 
-    //  La carpeta de un plugin, contada desde la raíz de k4. Son los mismos
-    //  tres casos que resuelve la `url` de `_crear`, dichos en ruta en vez de
-    //  en url — y por eso viven pegadas: si alguien toca una, toca la otra.
+    //  A plugin's directory relative to the k4 root. These are the same
+    //  three cases handled by _crear's URL, expressed as a filesystem path.
+    //  Keep both resolvers together and update them together.
     //
-    //  `externos/` es un enlace a ~/.config/k4/plugins que mantiene
-    //  tools/plugins.py; leer a través de él va bien y deja una sola forma de
-    //  nombrar las cosas.
+    //  tools/plugins.py maintains `externos/` as a link to ~/.config/k4/plugins.
+    //  Reading through it keeps a single path convention.
     function relDeCarpeta(m, ruta) {
         if (m._recarga)
             return String(ruta).replace(/\/[^/]*$/, "")
@@ -239,28 +234,26 @@ Singleton {
             registrarError(m.id, "no entry in the catalog")
             return null
         }
-        //  TODO se resuelve contra este fichero, nunca con file://, y es de
-        //  las cosas que solo se ven al pisarlas: Quickshell sirve el shell
-        //  con su propio esquema de URL, y un singleton cargado por dos URLs
-        //  distintas son DOS singletons. Con file:// cada plugin traía su
-        //  propia copia de la barra entera: dos PluginManager, dos oleadas de
-        //  creación, cada target de IPC registrado dos veces y los toggles
-        //  contestando desde el cadáver equivocado.
+        //  Resolve EVERYTHING relative to this file, never through file://.
+        //  Quickshell serves the shell through its own URL scheme, and a
+        //  singleton loaded through two URLs becomes TWO singletons. Using
+        //  file:// gave each plugin a separate copy of the bar: duplicate
+        //  PluginManagers, creation passes and IPC registrations, with
+        //  toggles answered by stale instances.
         //
-        //  Los de usuario entran por el enlace `externos/` —que apunta a
-        //  ~/.config/k4/plugins y lo mantiene tools/plugins.py— justamente
-        //  para poder resolverse con el mismo esquema que todo lo demás.
-        //  Y una recarga llega ya con su ruta hecha —`recargas/<id>-<n>/…`,
-        //  la carpeta nueva que da plugins.py— así que se resuelve tal cual.
+        //  User plugins enter through `externos/`, the link to
+        //  ~/.config/k4/plugins maintained by tools/plugins.py, so they use
+        //  the same scheme. Reloads already provide a fresh path such as
+        //  `recargas/<id>-<n>/…` from plugins.py; resolve it as supplied.
         const url = m._recarga ? Qt.resolvedUrl("../" + ruta)
             : ruta.indexOf("/") === 0
             ? Qt.resolvedUrl("../externos/" + m.id + "/"
                              + ruta.split("/").pop())
             : Qt.resolvedUrl("../plugins/" + ruta)
 
-        //  `Qt.createComponent` es síncrono con ficheros locales, y el error
-        //  se queda en `errorString()` en vez de tumbar el motor: esto es lo
-        //  que convierte «barra cero» en «un plugin menos y un aviso».
+        //  Qt.createComponent is synchronous for local files and reports
+        //  failures through errorString() rather than terminating the
+        //  engine. One failed plugin produces a notice, not a missing bar.
         const comp = Qt.createComponent(url)
         if (comp.status === Component.Error) {
             registrarError(m.id, comp.errorString())
@@ -268,19 +261,16 @@ Singleton {
         }
         let obj = null
         try {
-            //  `habilitado: true` de fábrica: solo se crean los habilitados,
-            //  así que la bandera vieja queda como constante y los bindings
-            //  de los plugins (`running: habilitado && …`) siguen valiendo.
-            //  Y su propia carpeta, que hasta ahora un plugin no tenía forma
-            //  de saber. `K4.Paths.raiz` es la de k4, no la suya, así que un
-            //  plugin de fuera no podía construir la ruta de un guion propio ni
-            //  de un asset para pasárselo a un proceso — comprobado: ninguno de
-            //  los externos ejecuta nada suyo, y sospecho que es por esto.
-            //  Se saca de `Quickshell.shellPath` y NO de la `url` de arriba:
-            //  lo que devuelve `Qt.resolvedUrl` aquí dentro es un `qs:@/qs/…`,
-            //  el esquema interno de Quickshell, y eso a un `Process` no le
-            //  sirve de nada. Se vio porque el guion del plugin no corría y el
-            //  plugin decía vivir en «qs:@/qs/externos/…».
+            //  Set `habilitado: true`: only enabled plugins are created, so
+            //  the old flag stays constant and bindings such as
+            //  `running: habilitado && …` still work.
+            //  Also supply the plugin's own directory. K4.Paths.raiz is k4's
+            //  root, not the plugin's, so external plugins otherwise cannot
+            //  build paths to their scripts or assets for a process.
+            //  Use Quickshell.shellPath, NOT the URL above: Qt.resolvedUrl
+            //  returns an internal `qs:@/qs/…` URL, unusable by Process.
+            //  This previously left scripts unable to run while the plugin
+            //  reported its directory as `qs:@/qs/externos/…`.
             obj = comp.createObject(null, {
                 habilitado: true,
                 carpeta: Quickshell.shellPath(relDeCarpeta(m, ruta))
@@ -371,30 +361,27 @@ Singleton {
         const obj = _porId[id]
         if (!obj)
             return
-        //  Cerrar antes de destruir: que suelte la island y sus vistas por las
-        //  buenas. Lo que era un Connections en shell.qml vive ahora aquí.
+        //  Close before destroying so the plugin releases the island and
+        //  its views cleanly. This used to be a Connections in shell.qml.
         if (typeof obj.close === "function") {
             try { obj.close() } catch (e) { }
         }
 
-        //  Y sus enganches fuera: una fila de Ajustes o un resultado del
-        //  lanzador que apunte a un plugin destruido es una llamada a un
-        //  cadáver. Los K4.Ajustes se dan de baja solos al destruirse, pero
-        //  eso es diferido y aquí queremos que desaparezcan YA.
+        //  Remove its contributions: a Settings row or launcher result must
+        //  not call a destroyed plugin. K4.Ajustes unregisters on destruction,
+        //  but destruction is deferred and these entries must disappear NOW.
         Enganches.quitarDe(id)
 
-        //  Y su tinte y su colocación: una barra teñida o desplazada por un
-        //  plugin apagado no tiene ya quién la devuelva.
+        //  Release its tint and placement: a disabled plugin can no longer
+        //  restore the bar's original appearance or position.
         Theme.destintar(id)
         Island.soltar(id)
 
-        //  Y sus indicadores, por la misma razón. Esto solo se hacía al
-        //  APAGAR un plugin, así que recargarlo dejaba en la píldora un
-        //  indicador huérfano: con el número congelado en el del momento de
-        //  recargar, sin nadie que lo actualice ni lo quite, y llamando al
-        //  pulsarlo a un objeto que ya no existe. Va aquí, que es el único
-        //  sitio por el que pasan las tres formas de morir —apagado, recarga
-        //  y desaparecer del catálogo—, y no en una de ellas.
+        //  Remove its indicators too. Previously this only happened on
+        //  disablement, so reload left orphan indicators with frozen values
+        //  and click handlers targeting destroyed objects. Put cleanup here,
+        //  where all three removal paths meet: disablement, reload and
+        //  disappearance from the catalog.
         Indicadores.quitarDe(id)
 
         //  And its flank capsule, same reasoning: the K4.Capsule
@@ -405,15 +392,15 @@ Singleton {
         //  whole sweep.
         Extensions.quitar(id)
 
-        //  Y APAGAR sus IpcHandler, que es lo que desregistra sus targets.
+        //  DISABLE its IpcHandlers to unregister their targets.
         //
-        //  Destruir no desregistra —medido: ni tres segundos después—, así que
-        //  sin esto el target quedaba secuestrado por el cadáver: el plugin
-        //  recreado registraba en vano («another handler is registered») y
-        //  contestaba «Function not found» desde el muerto. Se buscan entre
-        //  los hijos declarados los que tengan target y enabled, que son los
-        //  K4.Ipc. `Component.onDestruction` dentro del propio Ipc habría sido
-        //  más limpio, pero a un IpcHandler no se le puede adjuntar.
+        //  Destruction did not unregister them even after three seconds in
+        //  testing. The stale handler retained the target; recreation failed
+        //  with "another handler is registered", and the old object answered
+        //  "Function not found". Find declared children with target and
+        //  enabled properties, as exposed by K4.Ipc. Handling this through
+        //  Component.onDestruction inside Ipc would be cleaner, but that
+        //  attached handler cannot be used on an IpcHandler.
         const hijos = obj.services || []
         for (let i = 0; i < hijos.length; ++i) {
             const h = hijos[i]
@@ -424,33 +411,24 @@ Singleton {
         const d = Object.assign({}, _porId)
         delete d[id]
         _porId = d
-        //  Y el reparto otra vez: quien tuviera esta referencia pasa a null en
-        //  vez de quedarse con un objeto muerto, que revienta al primer uso.
+        //  Redistribute references so consumers receive null instead of a
+        //  destroyed object that would fail on its next use.
         _repartir()
         obj.destroy()
     }
 
-    //  Volver a intentar un plugin que falló: es lo que hace útil el botón de
-    //  «reintentar» de Ajustes. Solo para los que no están cargados; recargar
-    //  uno vivo con procesos y vistas es otra historia y queda fuera.
-    //  Recargar un plugin VIVO: destruirlo y volver a crearlo del disco.
+    //  Reload a LIVE plugin: destroy it and recreate it from disk. The
+    //  Settings retry action for a failed, unloaded plugin uses this same
+    //  path through reintentar().
     //
-    //  Es la herramienta de desarrollo: editas el QML de tu plugin, lanzas
-    //  `k4 pluginReload <id>` y ves el cambio sin reiniciar la barra. Vale
-    //  igual para los de casa que para los de fuera.
+    //  For development, edit the plugin's QML and run `k4 pluginReload <id>`
+    //  to see the change without restarting the bar. This works for both
+    //  built-in and external plugins.
     //
-    //  Si la versión nueva no compila, el plugin queda como roto —con su error
-    //  y su reintentar en Ajustes— pero la barra sigue: es exactamente el
-    //  mismo camino que un fallo en el arranque. Lo que había ya se destruyó y
-    //  no se finge lo contrario.
-    //  Recargar un plugin VIVO, del disco, sin reiniciar la barra.
-    //
-    //  Es la herramienta de desarrollo: editas tu plugin, `k4 pluginReload
-    //  <id>`, y ves el cambio. Vale para los de casa y para los de fuera.
-    //
-    //  Si la versión nueva no compila, el plugin queda como roto —con su error
-    //  y su reintentar en Ajustes— y la barra sigue: el mismo camino que un
-    //  fallo de arranque. Lo que había ya se destruyó y no se finge otra cosa.
+    //  If the new version fails to compile, Settings shows its error and
+    //  retry action while the bar continues, just as for a startup failure.
+    //  The previous instance has already been destroyed; it is not retained
+    //  as a fallback.
     function recargar(id) {
         if (!estaHabilitado(id))
             return
@@ -460,17 +438,15 @@ Singleton {
         if (_porId[id])
             _destruir(id)
         _publicar()
-        //  Y la creación DESPUÉS, en dos tiempos y por dos motivos distintos:
+        //  Create LATER, in a separate step, for two reasons:
         //
-        //  1. `destroy()` es diferido —el objeto muere cuando el control
-        //     vuelve al bucle de eventos— y crear en la misma pasada dejaba el
-        //     IPC viejo aún registrado: el nuevo se descartaba con «another
-        //     handler is registered» y el plugin quedaba vivo pero SORDO.
-        //  2. Hay que pedirle a plugins.py una carpeta nueva. Ponerle `?r1` a
-        //     la entrada recarga la entrada y solo la entrada: los hermanos
-        //     —la vista, que es justo lo que el autor acaba de editar— se
-        //     resuelven contra la misma carpeta y salen de la caché. Se veía
-        //     recrear el plugin... con el contenido de antes.
+        //  1. destroy() is deferred until control returns to the event loop.
+        //     Creating immediately left the old IPC registered, rejecting
+        //     the new handler and leaving a live plugin unable to receive IPC.
+        //  2. Ask plugins.py for a fresh directory. Adding ?r1 to the entry
+        //     only reloads that file; sibling views resolve against the same
+        //     directory and remain cached. The plugin would be recreated
+        //     with its old view even after the author edited it.
         _pendienteRecarga = id
         procesoRecarga.running = true
     }
@@ -499,9 +475,9 @@ Singleton {
         }
     }
 
-    //  Reintentar es recargar uno que no llegó a existir. Mismo camino: hace
-    //  falta la carpeta nueva igual, porque lo que el autor acaba de arreglar
-    //  puede ser la vista y no la entrada.
+    //  Retrying reloads a plugin that failed to be created. It still needs
+    //  a fresh directory because the repaired file may be a view rather
+    //  than the entry point.
     function reintentar(id) {
         if (_porId[id] || !estaHabilitado(id))
             return
@@ -553,8 +529,8 @@ Singleton {
         const d = Object.assign({}, habilitados)
         d[id] = !!valor
         habilitados = d
-        //  Los indicadores los barre `_destruir`, por donde pasa apagar
-        //  también. Estaba aquí y solo cubría este camino.
+        //  _destruir removes indicators for every destruction path, including
+        //  disablement. Cleanup here used to cover only this path.
         guardar()
         cambiado(id, !!valor)
     }
@@ -566,7 +542,7 @@ Singleton {
 
     function registrarError(id, motivo) {
         const d = Object.assign({}, errores)
-        d[id] = String(motivo || "error de carga")
+        d[id] = String(motivo || "load error")
         errores = d
     }
 
@@ -576,16 +552,13 @@ Singleton {
         errores = d
     }
 
-    //  El icono de un plugin por su id, en los dos campos que entiende
-    //  `K4.IconoPlugin`: su imagen si trae una, su códice si no.
+    //  Look up a plugin icon by ID, using the two fields K4.IconoPlugin
+    //  understands: an image when supplied, otherwise a glyph code point.
     //
-    //  Existe porque el lanzador enseñaba los aportes de los plugins SIN
-    //  icono. La fila esperaba un nombre de icono del escritorio —lo que
-    //  traen las aplicaciones del sistema— y lo que un plugin declara es otra
-    //  cosa: un códice de la Nerd Font o un fichero suyo. Ni encajaba ni
-    //  fallaba: salía el hueco. Y un hueco entre filas que sí tienen icono se
-    //  lee como «esto está a medias», que era justo lo contrario de lo que
-    //  pasaba.
+    //  Launcher contributions used to appear without icons because rows
+    //  expected desktop icon names, whereas plugins declare Nerd Font code
+    //  points or their own image files. The mismatch silently left empty
+    //  space among otherwise complete rows. Expose both forms explicitly.
     function iconoDe(id) {
         for (let i = 0; i < catalogo.length; ++i) {
             const m = catalogo[i]
@@ -598,10 +571,10 @@ Singleton {
         return { imagen: "", glifo: 0xF06A5 }
     }
 
-    //  Las filas del grupo «Plugins» de Ajustes. Para uno de fuera, la
-    //  descripción enseña QUÉ es y QUÉ permisos pide antes del interruptor —
-    //  eso es el consentimiento—; para uno con error, el motivo en rojo y la
-    //  fila entera como botón de reintentar.
+    //  Rows for Settings' Plugins group. External plugins show their purpose
+    //  and requested permissions before the enable switch so users can make
+    //  an informed choice. Failed plugins show the reason in red, with the
+    //  row serving as a retry action when the error is reloadable.
     readonly property var opcionesAjustes: catalogo
         .filter(function (m) { return m.configurable !== false })
         .map(function (m) {
@@ -614,8 +587,8 @@ Singleton {
             }
             const sinRequisito = !requisitoCumplido(m)
             if (m.cargable === false)
-                //  `porque()` y no el motivo pelado: el guion devuelve un
-                //  código y esta línea la lee el usuario en su idioma.
+                //  Use porque(), not the raw reason code: the script returns
+                //  a machine token, while this row needs an English message.
                 desc = Motivos.porque(m.motivo || "no-cargable", m.detalle)
             else if (sinRequisito)
                 desc = motivoDelRequisito(m)
@@ -628,29 +601,26 @@ Singleton {
                      desc: desc,
                      error: (m.cargable === false || sinRequisito) ? "fijo"
                           : (error.length > 0 ? "recargable" : ""),
-                     //  Su icono si lo declara, y si no el genérico: pieza de
-                     //  puzle para los de fuera, enchufe para los de casa. Un
-                     //  plugin puede traer su propia imagen en vez de un
-                     //  códice; van en campos distintos para que la vista no
-                     //  tenga que adivinar de qué clase es.
+                      //  Use the declared icon or a generic puzzle piece for
+                      //  external plugins and a plug for built-ins. Separate
+                      //  image and code-point fields let the view render
+                      //  either form without guessing.
                       imagen: m.iconFile ? "file://" + m.iconFile : "",
                       glifo: m.icon ? parseInt(m.icon, 16)
                            : (m.externo ? 0xF0431 : 0xF06A5) }
          })
 
-    //  Las aplicaciones: lo que sale en el centro de aplicaciones y en los
-    //  accesos directos. Se declara en el catálogo o en el manifiesto
-    //  (`aplicacion: true`), no en el código, para que se sepa qué es antes
-    //  de cargar nada — y para que un plugin apagado siga saliendo, en gris,
-    //  en vez de desaparecer sin explicación.
+    //  Applications shown in the application centre and shortcuts are
+    //  declared by `application: true` in the catalog or manifest, not in
+    //  code. They can be identified before loading, and disabled plugins
+    //  remain visible in gray rather than disappearing without explanation.
     readonly property var aplicaciones: catalogo
         .filter(function (m) { return m.application === true })
         .map(function (m) {
             return { id: m.id,
-                     //  Los títulos del catálogo están escritos en el
-                     //  idioma de origen. Esta lista alimenta tanto la portada
-                     //  como sus accesos directos, así que se traducen antes
-                     //  de publicarla y reaccionan al cambio de idioma.
+                      //  Publish the catalog's plain-English title directly
+                      //  for both the application centre and its shortcuts,
+                      //  falling back to the ID when no title is supplied.
                      nombre: (m.title || m.id),
                      imagen: m.iconFile ? "file://" + m.iconFile : "",
                      glifo: m.icon ? parseInt(m.icon, 16) : 0xF0431,
@@ -660,8 +630,8 @@ Singleton {
                                  && !(errores[m.id] || "").length }
         })
 
-    //  Abrir una por su id. Aquí y no en la vista: quien tiene las instancias
-    //  es este gestor, y una aplicación apagada no se abre —se dice.
+    //  Open an application by ID here, where its instance is owned, rather
+    //  than in the view. Return false when no live instance can be opened.
     function abrirAplicacion(id) {
         const p = _porId[id]
         if (!p)
@@ -678,10 +648,9 @@ Singleton {
         alternar(String(id).replace(/^plugin_/, ""))
     }
 
-    //  ¿Trae este texto un estado que se pueda usar? Devuelve el mapa o null,
-    //  que no es lo mismo que un mapa vacío: vacío es «no tienes nada puesto»
-    //  y null es «no me he enterado», y confundirlos es justo lo que apagaba
-    //  los plugins de todo el mundo.
+    //  Parse usable state into a map or return null. An empty map is valid
+    //  state with no saved overrides; null means unreadable state. Confusing
+    //  the two previously caused users' plugins to be disabled.
     //  Plugin ids that were renamed when the bar went English-only;
     //  old saved state is remapped on load instead of being thrown
     //  away. `ask` is the newest: the Codex assistant became the
@@ -703,14 +672,14 @@ Singleton {
                 return m
             }
         } catch (e) {
-            //  Cae fuera: lo dirá quien llame.
+            //  Fall through; the caller reports the failure.
         }
         return null
     }
 
-    //  Se leyó de la copia porque el principal no servía. Se guarda para
-    //  poder decirlo: recuperarse en silencio de una pérdida de datos es
-    //  cómodo hoy y caro el día que la copia tampoco esté.
+    //  Record when the backup supplied state because the primary was
+    //  unreadable. Report recovery rather than hiding data loss until the
+    //  backup also becomes unavailable.
     property bool estadoRepuesto: false
 
     function cargar() {
@@ -718,9 +687,9 @@ Singleton {
         let mapa = _leerEstado(bruto)
 
         if (mapa === null) {
-            //  El principal no sirve. Antes de dar por hecho que no había
-            //  nada, mirar la copia — que es lo que distingue «primer
-            //  arranque» de «se ha roto el fichero».
+            //  Check the backup before treating an unreadable primary as
+            //  empty state. This distinguishes first startup from a damaged
+            //  state file.
             const deCopia = _leerEstado(copiaEstado.text())
             if (deCopia !== null) {
                 mapa = deCopia
@@ -732,10 +701,9 @@ Singleton {
 
         if (mapa !== null) {
             habilitados = mapa
-            //  Que la copia exista desde el primer arranque y no desde el
-            //  primer interruptor que se toque: si solo se escribiera al
-            //  guardar, la red no estaría puesta justo el día que hace falta.
-            //  Y si se ha leído DE la copia, se repara el principal con ella.
+            //  Create the backup on startup rather than waiting for the
+            //  first setting change, so recovery is available immediately.
+            //  If state came FROM the backup, repair the primary with it.
             const bueno = JSON.stringify({ habilitados: mapa }, null, 1)
             if (estadoRepuesto)
                 estado.setText(bueno)
@@ -744,24 +712,22 @@ Singleton {
         }
 
         cargado = true
-        //  Y con el estado en la mano, los plugins — si el catálogo ya llegó.
-        //  Arrancar desde aquí y no desde shell.qml evita la carrera: el
-        //  estado espera al mkdir y el catálogo al listador, y crear antes de
-        //  tener los dos instanciaría plugins apagados o se perdería los de
-        //  usuario.
+        //  With state loaded, start plugins if the catalog has arrived.
+        //  Starting here rather than in shell.qml avoids a race: state waits
+        //  for mkdir, while the catalog waits for the listing process.
+        //  Creating before both arrive could load disabled plugins or omit
+        //  user plugins.
         arrancar()
     }
 
-    //  El catálogo lo emite `tools/plugins.py --list`: los del repo más los
-    //  de ~/.config/k4/plugins, ya validados y con su veredicto. La validación
-    //  vive en UN sitio —python— y aquí solo se consume; un manifiesto roto
-    //  llega como `cargable: false` con su motivo, nunca como una barra que no
-    //  arranca.
+    //  `tools/plugins.py --list` emits repository and ~/.config/k4/plugins
+    //  entries with validation results. Validation belongs in ONE place,
+    //  Python; this service consumes it. A broken manifest arrives with
+    //  `cargable: false` and a reason rather than preventing bar startup.
     property bool catalogoListo: false
 
-    //  De dónde salió lo que se está enseñando. Vacío es «del guión, como
-    //  siempre»; con algo dentro, la tienda lo dice — una lista que puede
-    //  estar vieja tiene que ir con la etiqueta puesta.
+    //  The displayed catalog's source. Empty means a fresh script result;
+    //  otherwise the store labels the source because the list may be stale.
     property string catalogoDe: ""
 
     //  Manifest vocabulary: English is what the tools emit now. Lists
@@ -797,7 +763,7 @@ Singleton {
                 return true
             }
         } catch (e) {
-            //  Lo resuelve quien llama.
+            //  The caller handles the failure.
         }
         return false
     }
@@ -806,16 +772,14 @@ Singleton {
         if (_aplicarCatalogo(bruto)) {
             catalogoDe = ""
             _intentosLista = 0
-            //  Guardar la última lista buena. Es la que se usará el día que
-            //  el guión no conteste, y sin ella ese día la barra arranca sin
-            //  los plugins de usuario.
+            //  Save the last valid list for when the script fails to answer;
+            //  without it, startup would omit user plugins on that occasion.
             if (cacheCatalogo.text() !== bruto)
                 cacheCatalogo.setText(bruto)
         } else if (catalogo.length === 0 || !catalogoListo) {
-            //  No se ha entendido. Antes de caer al catálogo de emergencia
-            //  —que solo trae los de casa— probar con la última lista buena:
-            //  los plugins siguen en el disco, lo que ha fallado es quien los
-            //  cuenta.
+            //  An unreadable response does not mean the plugins disappeared.
+            //  Try the last valid list before the emergency built-in catalog:
+            //  the plugins may still exist even though listing failed.
             if (_aplicarCatalogo(cacheCatalogo.text())) {
                 catalogoDe = "cache"
                 console.warn("k4: couldn't list the plugins; falling back to "
@@ -830,49 +794,47 @@ Singleton {
             arrancar()
     }
 
-    //  Releer el catálogo con la barra en marcha: lo que hace que instalar o
-    //  quitar un plugin desde el terminal se note sin reiniciar.
+    //  Refresh the catalog while running so terminal-based installation or
+    //  removal takes effect without restarting the bar.
     function releerCatalogo() {
-        //  Un repaso a mano vuelve a dar oportunidades: si no, tras dos
-        //  fallos el reintento no se arma nunca más y pulsar «refrescar» no
-        //  haría nada.
+        //  A manual refresh resets the retry allowance; otherwise exhausting
+        //  two retries would prevent later refreshes from scheduling retries.
         _intentosLista = 0
         listador.running = false
         listador.running = true
     }
 
-    //  Y que se note SOLO: la carpeta de plugins del usuario se vigila con
-    //  inotify (vía FolderListModel, sin un solo proceso) y aparecer o
-    //  desaparecer una carpeta relee el catálogo. Instalar deja de exigir
-    //  saberse el `k4 pluginRefresh` — copias, y a los dos segundos está.
+    //  Watch the user plugin directory with inotify through FolderListModel,
+    //  without a separate process. Adding or removing a directory refreshes
+    //  the catalog automatically, so copying in a plugin appears shortly
+    //  afterward without requiring `k4 pluginRefresh`.
     property var _vigiaCarpeta: FolderListModel {
         folder: "file://" + Quickshell.env("HOME") + "/.config/k4/plugins"
         showDirs: true
         showFiles: false
         showDotAndDotDot: false
-        //  El primer conteo es la carga inicial, no un cambio: el arranque
-        //  ya trae su propio listado.
+        //  The first count is initial loading, not a change; startup already
+        //  requests its own catalog listing.
         onCountChanged: if (manager.listo) manager._relectura.restart()
     }
 
-    //  El respiro: `git clone` crea la carpeta ANTES que sus ficheros, y
-    //  validar a medio clonar daría un «roto» falso que se arregla solo.
+    //  Debounce: git clone creates the directory BEFORE its files. Validating
+    //  an incomplete clone would briefly report a false broken-plugin state.
     property var _relectura: Timer {
         interval: 1200
         onTriggered: manager.releerCatalogo()
     }
 
-    //  Casar lo que hay vivo con lo que dice el catálogo nuevo.
+    //  Reconcile live instances with the new catalog.
     //
-    //  Solo actúa sobre las diferencias: un plugin que desapareció del disco
-    //  se destruye, uno nuevo y habilitado se crea. A los que siguen igual no
-    //  se les toca — releer el catálogo no puede costar un parpadeo a los
-    //  veinte plugins que no han cambiado.
+    //  Only act on differences: destroy plugins that disappeared and create
+    //  newly available enabled plugins. Leave unchanged instances alone so
+    //  a catalog refresh does not make every existing view flicker.
     //
-    //  Y crear pide lo mismo que mantener: un requisito incumplido (`bin:`
-    //  ausente, k4term que no está) no entra por la puerta de la relectura —
-    //  sin la mirada de `revisarRequisitos`, cada repaso del catálogo
-    //  resucitaba justo lo que la sonda acababa de retirar.
+    //  Creation checks the same requirements as continued operation. A
+    //  missing `bin:` tool or terminal must not slip through on refresh;
+    //  otherwise each catalog refresh would recreate what the requirement
+    //  probe had just removed.
     function _sincronizar() {
         const vistos = {}
         let cambios = false
@@ -881,7 +843,7 @@ Singleton {
             vistos[m.id] = true
             if (m.cargable === false) {
                 if (_porId[m.id]) { _destruir(m.id); cambios = true }
-                registrarError(m.id, m.motivo || "no cargable")
+                registrarError(m.id, m.motivo || "not loadable")
                 continue
             }
             if (estaHabilitado(m.id) && !_porId[m.id]
@@ -890,7 +852,7 @@ Singleton {
                     cambios = true
             }
         }
-        //  Y el que ya no está en el catálogo: se lo llevaron del disco.
+        //  Remove live plugins that are no longer listed in the catalog.
         const ids = Object.keys(_porId)
         for (let j = 0; j < ids.length; ++j) {
             if (!vistos[ids[j]]) {
@@ -922,9 +884,8 @@ Singleton {
             habilitados = limpio
         const texto = JSON.stringify({ habilitados: limpio }, null, 1)
         estado.setText(texto)
-        //  Y el duplicado. Cuesta un fichero de dos líneas y es lo que
-        //  convierte «se me han apagado todos los plugins» en un aviso en el
-        //  log. Si el principal se rompe, esto es lo que queda.
+        //  Save a backup too. This small duplicate turns primary-file damage
+        //  into a logged recovery rather than losing every enabled plugin.
         copiaEstado.setText(texto)
         estadoRepuesto = false
     }
@@ -933,9 +894,9 @@ Singleton {
         id: estado
         path: manager.rutaEstado
         blockLoading: true
-        //  Escribir a un temporal y renombrar. Sin esto, un corte a mitad de
-        //  `setText` deja el JSON cortado por la mitad, que es exactamente el
-        //  fichero ilegible del que hay que defenderse arriba.
+        //  Write a temporary file and rename it. Otherwise an interrupted
+        //  setText could leave truncated JSON, the unreadable state handled
+        //  by the recovery path above.
         atomicWrites: true
     }
 
@@ -954,10 +915,11 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: manager.recibirCatalogo(String(this.text))
         }
-        //  Si python falla se vuelve a intentar, y solo después se tira de la
-        //  última lista buena. El caso que se está cubriendo es actualizar la
-        //  barra: `git pull` reemplaza `tools/plugins.py` mientras la barra
-        //  corre, así que un fallo aquí es muchas veces cosa de un segundo.
+        //  Retry Python failures. recibirCatalogo can use the last valid
+        //  list when output is unreadable; after retries are exhausted,
+        //  ensure that fallback also runs if no catalog was marked ready.
+        //  A git pull can replace tools/plugins.py while the bar is running,
+        //  so these failures are often temporary.
         onExited: function (codigo) {
             if (codigo === 0)
                 return
@@ -989,15 +951,14 @@ Singleton {
         atomicWrites: true
     }
 
-    //  ── la tienda ────────────────────────────────────────────────────
+    //  ── plugin store ─────────────────────────────────────────────────
     //
-    //  Buscar, examinar, instalar, actualizar y quitar, todo contra el MISMO
-    //  `tools/plugins.py` que se usa desde la terminal. No hay un camino
-    //  «de la barra» y otro «de consola»: serían dos validaciones distintas y
-    //  la menos usada acabaría siendo la que tiene los agujeros.
+    //  Search, examine, install, update and remove through the SAME
+    //  tools/plugins.py used from the terminal. Separate bar and CLI paths
+    //  would duplicate validation and leave the less-used path inconsistent.
     //
-    //  Una obra cada vez. Instalar y quitar tocan el disco, y dos a la vez
-    //  sobre el mismo plugin es una carrera que no hace falta ganar.
+    //  One operation at a time: installation and removal write to disk,
+    //  and concurrent operations on one plugin would introduce a race.
 
     signal registroListo(var entradas, var descartadas)
     signal examenListo(var d)
@@ -1011,9 +972,9 @@ Singleton {
         return _obrar("buscar", "", ["--search", "--json"])
     }
 
-    //  Mirar sin instalar. Devuelve, entre otras cosas, el commit que ha
-    //  visto — y ese es el que hay que pasarle luego a `instalarDesde`, para
-    //  que se instale exactamente lo que se enseñó en el diálogo.
+    //  Examine without installing. The result includes the inspected commit;
+    //  pass it to instalarDesde() so installation uses exactly the revision
+    //  shown in the dialog.
     function examinar(repo, carpeta, commit) {
         return _obrar("examinar", "", ["--examine", repo, "--json"]
                       .concat(carpeta ? ["--folder", carpeta] : [])
@@ -1046,14 +1007,13 @@ Singleton {
     property var _cola: []
     property string _queja: ""
 
-    //  Se ENCOLA, no se descarta. Descartar parecía razonable —una obra cada
-    //  vez— hasta que se vio en pantalla: abrir la tienda lanza la comprobación
-    //  de novedades, y la búsqueda en el registro que viene medio segundo
-    //  después se perdía. La pestaña «Descubrir» se quedaba vacía para siempre,
-    //  sin error ni rueda: no había fallado nada, es que nadie la había pedido.
+    //  QUEUE requests instead of dropping them. Opening the store starts an
+    //  update check; discarding concurrent work lost the registry search
+    //  arriving half a second later. The Discover tab then stayed empty
+    //  without an error or loading indicator because its request never ran.
     //
-    //  Una misma clase de obra no se repite en la cola: pulsar «refrescar» tres
-    //  veces son tres iguales, y con la primera basta.
+    //  Deduplicate queued operations by kind and plugin ID: pressing refresh
+    //  three times needs only one equivalent queued request.
     function _obrar(que, id, args) {
         const tarea = { que: que, id: id, args: args }
         if (ocupado) {
@@ -1084,8 +1044,8 @@ Singleton {
     }
 
     function _recibirTienda(texto) {
-        //  El guion escribe una línea de JSON por suceso; la última es el
-        //  veredicto. Se busca hacia atrás porque delante puede haber avisos.
+        //  The script writes one JSON line per event; the last is the result.
+        //  Search backward because earlier lines may contain notices.
         const lineas = String(texto || "").trim().split("\n")
         for (let i = lineas.length - 1; i >= 0; --i) {
             const l = lineas[i].trim()
@@ -1094,8 +1054,8 @@ Singleton {
             try {
                 return JSON.parse(l)
             } catch (e) {
-                //  Una línea que empieza por `{` y no es JSON: se sigue
-                //  mirando hacia atrás en vez de darlo todo por perdido.
+                //  A line starting with `{` may still be invalid JSON. Keep
+                //  looking backward instead of discarding the whole result.
             }
         }
         return null
@@ -1118,13 +1078,13 @@ Singleton {
             manager._salidaTienda = ""
             manager.ocupado = false
             manager.ocupadaEn = ""
-            //  Lo siguiente de la cola arranca pase lo que pase con esta: que
-            //  una falle no puede dejar plantadas a las que venían detrás.
+            //  Start the next queued operation regardless of this result:
+            //  one failure must not strand the requests behind it.
             Qt.callLater(manager._siguienteObra)
 
-            //  Un guion que peta sin decir nada deja al usuario mirando una
-            //  rueda para siempre. Si no hay veredicto, el motivo es lo que
-            //  haya escrito en stderr, y si tampoco hay, al menos el código.
+            //  A script dying silently must not leave a permanent spinner.
+            //  Without a structured reason, report stderr; if that is empty
+            //  too, at least report the exit code.
             const bien = codigo === 0 && d && d.ok
             const motivo = (d && d.motivo)
                 ? Motivos.porque(d.motivo, d.detalle)
@@ -1152,8 +1112,8 @@ Singleton {
                     manager.obraFallo(que, motivo)
                 return
             }
-            //  Instalar, actualizar y quitar cambian el disco: el catálogo que
-            //  tiene la barra en memoria ya no es el de fuera.
+            //  Installation, update and removal change disk contents, so the
+            //  in-memory catalog must be refreshed after success.
             if (bien)
                 manager.releerCatalogo()
             manager.obraHecha(que, id, bien, bien ? "" : motivo)
@@ -1162,7 +1122,7 @@ Singleton {
 
     property string _salidaTienda: ""
 
-    //  Lo que dice `--check`: por id, si hay algo más nuevo publicado.
+    //  The --check result: whether a newer revision is published for each ID.
     property var novedades: []
 
     function novedadDe(id) {

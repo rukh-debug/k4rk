@@ -1,7 +1,7 @@
-//  Lo que se dibuja mientras la sesión está bloqueada.
+//  What is drawn while the session is locked.
 //
-//  El compositor crea una de estas por monitor. Reexporta
-//  WlSessionLockSurface, que solo tiene sentido dentro de un K4.BloqueoSesion.
+//  The compositor creates one per monitor. Reexports WlSessionLockSurface,
+//  which only makes sense inside a K4.BloqueoSesion.
 
 import Quickshell.Wayland
 

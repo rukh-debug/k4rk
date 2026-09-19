@@ -1,0 +1,195 @@
+#  Publish a plugin in the registry.
+#
+#  Two main jobs share one rule: the bot REVIEWS, a person APPROVES.
+#
+#  `revisar` runs whenever a submission opens or is edited, without changing
+#  the registry: it fetches the form's commit, validates it and reports its
+#  findings. `publicar` runs only when someone with write access applies the
+#  `publicado` label. Before writing, it validates again and checks that the
+#  commit is the same one that was reviewed.
+#
+#  Anyone can supply an issue body, so NEVER interpolate it into `run:`:
+#  that would execute untrusted code on the runner. Pass it through `env:`
+#  and write it to a file instead. The review script does not execute any
+#  plugin code; it only clones and examines files.
+
+name: Publish plugin
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  #  Labels must EXIST before use: the first real submission failed with
+  #  "'envio' not found" because the form requested a label nobody had created.
+  #  Create missing labels without changing existing ones, so this can remain
+  #  enabled for every submission.
+  etiquetas:
+    if: contains(github.event.issue.labels.*.name, 'envio')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure submission labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          crear() {
+            gh label create "$1" --repo "$REPO" --color "$2" \
+              --description "$3" 2>/dev/null || true
+          }
+          crear envio                 1D76DB "A plugin submitted to the registry"
+          crear validado              0E8A16 "Validated by the bot at the submitted commit"
+          crear necesita-arreglos     D93F0B "Changes are needed before publication"
+          crear revision-de-seguridad FBCA04 "Permissions or a rule require human review"
+          crear publicado             5319E7 "Published in the registry (applied by a maintainer)"
+
+  revisar:
+    if: >
+      contains(github.event.issue.labels.*.name, 'envio')
+      && github.event.action != 'labeled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      #  Use `env`, not interpolation: the body is untrusted text and would
+      #  become executable shell input if inserted into `run:`.
+      - name: Write the submission to a file
+        env:
+          CUERPO: ${{ github.event.issue.body }}
+        run: printf '%s' "$CUERPO" > /tmp/envio.txt
+
+      - name: Review the submitted commit
+        id: revision
+        run: python3 tools/publish.py --revisar /tmp/envio.txt > /tmp/informe.md
+
+      - name: Post the review on the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+        run: gh issue comment "$NUMERO" --body-file /tmp/informe.md
+
+      - name: Update the review status labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+          ETIQUETA: ${{ steps.revision.outputs.etiqueta }}
+        run: |
+          for vieja in validado necesita-arreglos revision-de-seguridad; do
+            gh issue edit "$NUMERO" --remove-label "$vieja" || true
+          done
+          gh issue edit "$NUMERO" --add-label "$ETIQUETA"
+
+  publicar:
+    if: >
+      github.event.action == 'labeled'
+      && github.event.label.name == 'publicado'
+      && contains(github.event.issue.labels.*.name, 'envio')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      #  The person applying the label must have repository write access.
+      #  An issue label alone does not prove that permission: repository
+      #  settings may let other users apply labels, so check explicitly.
+      - name: Check the approving user's permission
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUIEN: ${{ github.event.sender.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          permiso=$(gh api "repos/$REPO/collaborators/$QUIEN/permission" \
+                     --jq .permission || echo none)
+          case "$permiso" in
+            admin|write) echo "Approved: $QUIEN has $permiso permission" ;;
+            *) echo "$QUIEN cannot publish (permission: $permiso)"; exit 1 ;;
+          esac
+
+      - name: Write the submission to a file
+        env:
+          CUERPO: ${{ github.event.issue.body }}
+        run: printf '%s' "$CUERPO" > /tmp/envio.txt
+
+      #  Validate again instead of trusting the earlier report: approval may
+      #  come days after review, and the script refuses publication if the
+      #  commit no longer matches.
+      - name: Revalidate and add the plugin to the registry
+        run: python3 tools/publish.py --anadir /tmp/envio.txt
+
+      - name: Validate the updated registry
+        run: python3 tools/plugins.py
+
+      - name: Commit the registry update
+        env:
+          NUMERO: ${{ github.event.issue.number }}
+        run: |
+          #  Use the actual Actions bot identity, NOT an invented one.
+          #
+          #  The original author used `k4@users.noreply.github.com`, assuming
+          #  it had no owner. GitHub maps `<user>@users.noreply.github.com` to
+          #  that user's account, and `k4` is a real person: the commit was
+          #  attributed to someone who had never contributed here. A noreply
+          #  address is not an unclaimed address.
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git add plugins/registro.json
+          git commit -m "Publish a plugin (#$NUMERO)" || exit 0
+          git push
+
+      - name: Confirm publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$NUMERO" --body \
+            'Published. The plugin now appears in `tools/plugins.py --search` and in the plugin store in the bar.'
+          gh issue close "$NUMERO"
+
+  #  ── Approval without a publishable submission ───────────────────────────
+  #
+  #  `publicar` correctly requires BOTH labels: without `envio`, this is not
+  #  a submission. The bug was skipping that job SILENTLY.
+  #
+  #  This happened: a maintainer applied `publicado` through the web label
+  #  picker, which REPLACES the selected set rather than adding one label,
+  #  and inadvertently removed `envio`. The job was skipped, no comment was
+  #  posted, and the issue kept `publicado` while the registry stayed unchanged.
+  #  It looked published when it was not, which is worse than an explicit
+  #  failure.
+  #
+  #  Remove the misleading label and explain why. Removal emits `unlabeled`,
+  #  which does not trigger this workflow, so there is no loop.
+  sin-envio:
+    if: >
+      github.event.action == 'labeled'
+      && github.event.label.name == 'publicado'
+      && !contains(github.event.issue.labels.*.name, 'envio')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove the invalid approval and explain why
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue edit "$NUMERO" --repo "$REPO" --remove-label publicado || true
+          cat > /tmp/aviso.md <<'FIN'
+          This issue no longer has the `envio` label, so **nothing was published**: the registry is unchanged.
+
+          The web label picker **replaces** the selected labels rather than adding one. The `publicado` label has been removed so the issue does not imply publication succeeded.
+
+          To publish: restore `envio`, then apply `publicado` without clearing the other labels.
+          FIN
+          gh issue comment "$NUMERO" --repo "$REPO" --body-file /tmp/aviso.md

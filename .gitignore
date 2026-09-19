@@ -1,20 +1,20 @@
-# copias de seguridad y temporales
+# Backups and temporary files
 *.bak
 *.orig
 *.rej
 *~
 
-# capturas de trabajo que no forman parte del proyecto
+# Working screenshots that are not part of the project
 /scratch/
 
-# Los .pyc de tools/, que aparecen al importar editar.py desde las pruebas.
+# Python bytecode generated when tests import helper modules.
 tools/__pycache__/
 plugins/Terminal/__pycache__/
 externos
 recargas
 
-#  El banco de pruebas de un plugin: lo genera y lo borra
-#  tools/plugins.py --probar, pero si algo peta puede quedarse.
+#  The isolated plugin test harness: tools/plugins.py --test creates and
+#  removes it, but a failed run can leave it behind.
 .banco.qml
 
 # Agent instructions are per-machine, not part of the project

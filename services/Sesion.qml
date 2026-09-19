@@ -67,23 +67,22 @@ Singleton {
             sesion.bloqueado = sesion.cerradura.locked
     }
 
-    // ── qué puede hacer esta máquina ──────────────────────────────
+    // ── machine capabilities ──────────────────────────────────────
     property bool swapReal: false
     property bool resumeConfigurado: false
     readonly property bool hibernacionPosible: swapReal && resumeConfigurado
 
-    // ── acciones ──────────────────────────────────────────────────
+    // ── actions ───────────────────────────────────────────────────
     //
-    //  systemd-logind se encarga de todas menos cerrar sesión, que es del
-    //  compositor: salir de Hyprland cierra la sesión gráfica sin tirar de
-    //  `loginctl terminate-user`, que se llevaría por delante también lo que
-    //  tengas corriendo en un tty.
+    //  systemd-logind handles every action except logout, which belongs to
+    //  the compositor. Exiting Hyprland ends the graphical session without
+    //  `loginctl terminate-user`, which would also kill work running in a tty.
     function apagar()    { correr(["systemctl", "poweroff"]) }
     function reiniciar() { correr(["systemctl", "reboot"]) }
     function hibernar()  { correr(["systemctl", "hibernate"]) }
 
-    // Dormir con la sesión ya bloqueada: si no, al despertar queda el
-    // escritorio a la vista el instante que tarda el bloqueo en montarse.
+    // Lock before sleeping; otherwise the desktop would be visible on
+    // resume during the brief interval needed to create the lock surface.
     function suspender() {
         bloquear()
         dormir.start()
@@ -98,19 +97,19 @@ Singleton {
 
     Process { id: accion }
 
-    // Un respiro antes de suspender para que la pantalla de bloqueo esté
-    // dibujada cuando la máquina se duerma, no a medio montar.
+    // Wait briefly before suspending so the lock screen is fully drawn
+    // when the machine sleeps, rather than still being created.
     Timer {
         id: dormir
         interval: 400
         onTriggered: sesion.correr(["systemctl", "suspend"])
     }
 
-    // El nombre bonito sale del quinto campo de passwd, hasta la primera coma:
-    // el resto del GECOS son despacho y teléfonos que no pintan nada aquí.
+    // The display name is passwd's fifth field up to the first comma;
+    // the remaining GECOS office and phone fields are irrelevant here.
     Process {
-        //  La voz de error, que antes se tiraba: si esto
-        //  falla, el motivo queda en el log de la barra.
+        //  Keep stderr, previously discarded, so failures leave their reason
+        //  in the bar's log.
         stderr: SplitParser {
             onRead: function (l) {
                 if (String(l).trim().length > 0)
@@ -129,8 +128,8 @@ Singleton {
         }
     }
 
-    // ¿Hay algún swap que no sea zram? Es la condición que falla en la mayoría
-    // de equipos actuales, y sin ella hibernar no vuelve.
+    // Is any swap device not zram? Many current systems fail this condition,
+    // and without disk-backed swap hibernation cannot resume.
     FileView {
         path: "/proc/swaps"
         blockLoading: true

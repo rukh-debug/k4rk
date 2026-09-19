@@ -1,8 +1,8 @@
-//  El escaparate de la island como escenario: teñir la barra entera, pedirle
-//  gestos físicos y pintar FUERA de ella con una ventana propia.
+//  The island as a stage: tint the whole bar, request physical gestures,
+//  and draw outside it in a separate window.
 //
-//  Copia la carpeta a ~/.config/k4/plugins/efectos, enciéndelo en Ajustes y
-//  `quickshell ipc -p <ruta>/shell.qml call k4.efectos toggle` lo abre.
+//  Copy the folder to ~/.config/k4/plugins/efectos, enable it in Settings,
+//  and open it with `quickshell ipc -p <path>/shell.qml call k4.efectos toggle`.
 
 import QtQuick
 import K4 as K4
@@ -11,21 +11,21 @@ K4.Plugin {
     id: self
 
     name: "efectos"
-    title: "Efectos"
+    title: "Effects"
     priority: 64
     active: abierto
     islandWidth: 620
     islandHeight: 168
 
     property bool abierto: false
-    //  La mano vive aparte de la island: puede quedarse saludando con el
-    //  módulo cerrado, que es justo lo que haría una mascota.
+    //  The hand lives separately from the island: it can keep waving with
+    //  the module closed, just as a mascot would.
     property bool manoFuera: false
 
 
     view: Component { EfectosView { plugin: self } }
 
-    //  La ventana de la mano solo existe mientras hace falta.
+    //  The hand's window exists only while needed.
     property var cargadorMano: K4.Cargador {
         active: self.manoFuera
         Mano { plugin: self }

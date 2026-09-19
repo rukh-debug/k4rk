@@ -1,6 +1,6 @@
 //  Is there a new k4?
 //
-//  The updater is `./instalar` and has been there from the start —it
+//  The updater is `./install` —it
 //  does the `git pull`, goes over packages and shortcuts and offers
 //  to restart the bar—, but the bar never mentioned it: you learned
 //  there was a new version if it occurred to you to run it by hand.
@@ -13,7 +13,7 @@
 //     do I have?» —until now shown nowhere—;
 //   · how many commits `origin` is ahead, which is the real news;
 //   · and whether you have uncommitted changes. This last one is not
-//     a detail: with a dirty tree `./instalar` does NOT touch the
+//     a detail: with a dirty tree `./install` does NOT touch the
 //     code on purpose —losing somebody's work to an «update» is
 //     exactly what must not happen— so showing «there is news»
 //     without saying that is sending somebody to press a button that
@@ -74,13 +74,13 @@ QtObject {
     //  And updating is launching the installer where it can be seen.
     //
     //  In a terminal and not in a silent process, on purpose:
-    //  `./instalar` asks —whether to restart the bar, whether to
+    //  `./install` asks —whether to restart the bar, whether to
     //  install what is missing— and may ask the package manager's
     //  password. With k4term it moreover comes out INSIDE the
     //  island, so updating the bar is seen in the bar itself.
     function actualizar() {
         K4.Terminal.ejecutar("cd " + JSON.stringify(K4.Paths.raiz)
-                             + " && ./instalar;" + K4.Terminal.cierre)
+                             + " && ./install;" + K4.Terminal.cierre)
     }
 
     property K4.Process ojeada: K4.Process {

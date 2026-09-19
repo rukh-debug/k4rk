@@ -1,5 +1,5 @@
-//  Una fila de botones por cada efecto. Lo interesante no está aquí sino en
-//  lo que provocan: K4.Tema.tintar, K4.Isla.efecto y la Mano de al lado.
+//  A row of buttons for each effect. The interesting part is what they
+//  trigger: K4.Tema.tintar, K4.Isla.efecto, and the adjacent Mano component.
 
 import QtQuick
 import K4 as K4
@@ -20,7 +20,7 @@ Item {
             font.weight: Font.DemiBold
         }
 
-        //  El tinte: el ambiente de toda la barra durante unos segundos.
+        //  Tint the whole bar for a few seconds.
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 8
@@ -57,7 +57,7 @@ Item {
             }
         }
 
-        //  Los gestos: la island como objeto físico.
+        //  Gestures: the island as a physical object.
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 8
@@ -87,8 +87,8 @@ Item {
             }
         }
 
-        //  Lo de fuera y lo de moverse: la mano que asoma, y la island que
-        //  se va de paseo por su borde y vuelve sola.
+        //  Drawing outside and moving: the hand peeks out, and the island
+        //  moves along its edge before returning on its own.
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 8
@@ -121,7 +121,7 @@ Item {
                     font.pixelSize: 11
                 }
 
-                //  Al 15% del borde tres segundos, y de vuelta sola.
+                //  Move to 15% of the edge for three seconds, then return.
                 onPulsada: K4.Isla.colocar("efectos", 0.15, 3000)
             }
         }

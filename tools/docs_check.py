@@ -1,29 +1,25 @@
 #!/usr/bin/env python3
-"""Comprueba que la documentación diga la verdad.
+"""Check documentation claims against the code.
 
-    python3 tools/guia.py
+    python3 tools/docs_check.py
 
-`tools/api.py` ya vigila que ningún tipo de la API se quede sin mencionar. Eso
-no basta: que un tipo esté NOMBRADO no garantiza que lo que se dice de él sea
-cierto. Un miembro renombrado, un permiso que se fue, una orden de IPC que ya
-no existe — la guía los sigue contando igual y nadie se entera hasta que
-alguien la sigue al pie de la letra y no le funciona.
+`tools/api.py` checks that API types are mentioned. A mention alone does not
+make the description accurate: renamed members, removed permissions and stale
+IPC commands can leave a guide unusable.
 
-Esto comprueba lo que se puede comprobar de verdad:
+This checks mechanically recognizable claims:
 
-  · cada `K4.Tipo.miembro` de la documentación existe en api/K4/Tipo.qml;
-  · los permisos de la guía y los de tools/plugins.py son los mismos;
-  · cada orden de IPC citada existe en algún IpcHandler;
-  · cada opción `tools/X.py --opcion` la entiende ese guion;
-  · cada fichero del repositorio que se cita existe;
-  · cada ejemplo en QML de la guía COMPILA, con qmllint y la API de verdad;
-  · los números que la guía promete —64 px de icono, 1 MB, el alto máximo—
-    son los que el código usa;
-  · cada atajo que se cita existe en hypr/k4.lua.
+  · documented `K4.Tipo.miembro` references against api/K4/Tipo.qml;
+  · permission and rule tables against tools/plugins.py;
+  · cited IPC commands for known targets against their handlers;
+  · cited `tools/X.py --opcion` flags against script string literals;
+  · cited repository paths against files on disk;
+  · eligible complete QML examples with qmllint, when available;
+  · recognized numeric claims against source constants;
+  · cited shortcuts against hypr/k4.lua.
 
-Lo que NO comprueba —y conviene decirlo en vez de dar una falsa sensación de
-red— es si un párrafo en prosa describe bien lo que hace el código. Un ejemplo
-que compila puede seguir estando mal explicado. Eso solo lo caza leerlo.
+This does NOT establish that prose accurately describes behavior. An example
+that passes lint can still be explained incorrectly. That requires review.
 """
 from __future__ import annotations
 
@@ -36,20 +32,18 @@ import sys
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 API = RAIZ / "api" / "K4"
 
-#  Los documentos que hablan de la API y por tanto pueden mentir sobre ella.
-DOCUMENTOS = ["docs/PLUGINS.md", "docs/API.md", "api/LEEME.md", "README.md"]
+#  Documents that describe the API and can contain stale claims about it.
+DOCUMENTOS = ["docs/PLUGINS.md", "docs/API.md", "api/README.md", "README.md"]
 
-#  Nombres que la documentación se INVENTA a propósito, porque está enseñando
-#  a crear algo que todavía no existe. Hay que listarlos a mano: no hay forma
-#  de distinguir «este fichero se renombró y la guía no se enteró» de «este
-#  fichero te toca crearlo a ti» mirando el texto. La lista es corta y se ve de
-#  un vistazo si crece de más.
+#  Deliberately invented example paths. Text alone cannot distinguish a stale
+#  path from a file the reader is meant to create. Keep this list small enough
+#  to review at a glance.
 INVENTADOS = {
     "services/MyGame.qml", "GameView.qml", "GamePlugin.qml", "Battle.qml",
     "Party.qml", "Achievements.qml", "Inventory.qml",
 }
 
-#  Lo que QtObject y compañía traen puesto: mencionarlo no es un error.
+#  Inherited Qt members: documenting these is not an error.
 HEREDADOS = {"objectName", "parent", "children", "data", "width", "height",
              "x", "y", "z", "visible", "opacity", "enabled", "anchors",
              "implicitWidth", "implicitHeight", "text", "color", "font",
@@ -57,7 +51,7 @@ HEREDADOS = {"objectName", "parent", "children", "data", "width", "height",
 
 
 def miembros_de(tipo):
-    """Lo que declara un tipo de la API: propiedades, funciones y señales."""
+    """Return properties, functions and signals declared by an API type."""
     f = API / (tipo + ".qml")
     if not f.is_file():
         return None
@@ -67,9 +61,8 @@ def miembros_de(tipo):
     salida |= set(re.findall(r"\breadonly\s+property\s+[\w<>.]+\s+(\w+)", texto))
     salida |= set(re.findall(r"\bfunction\s+(\w+)\s*\(", texto))
     salida |= set(re.findall(r"\bsignal\s+(\w+)", texto))
-    #  Un tipo que solo reexporta otro (`IpcHandler {}`, `SoundEffect {}`)
-    #  hereda todo lo suyo, y eso no está aquí para mirarlo: se marca para no
-    #  dar por falsos miembros que sí existen.
+    #  Re-exported types (`IpcHandler {}`, `SoundEffect {}`) inherit members
+    #  whose declarations are not available here. Avoid false missing members.
     if re.search(r"^\s*(IconImage|IpcHandler|SoundEffect|GlobalShortcut|"
                  r"QsMenuOpener|LazyLoader|PamContext|WlSessionLock\w*)\s*\{",
                  texto, re.M):
@@ -81,18 +74,18 @@ def revisar_miembros(doc, texto):
     fallos = []
     for tipo, miembro in re.findall(r"\bK4\.([A-Z]\w+)\.(\w+)", texto):
         declarados = miembros_de(tipo)
-        if declarados is None:          # tipo desconocido o reexportación
+        if declarados is None:          # unknown or re-exported type
             if not (API / (tipo + ".qml")).is_file():
-                fallos.append(f"{doc}: K4.{tipo} no existe")
+                fallos.append(f"{doc}: K4.{tipo} does not exist")
             continue
         if miembro not in declarados and miembro not in HEREDADOS:
-            fallos.append(f"{doc}: K4.{tipo}.{miembro} no existe "
-                          f"(api/K4/{tipo}.qml no lo declara)")
+            fallos.append(f"{doc}: K4.{tipo}.{miembro} does not exist "
+                          f"(not declared in api/K4/{tipo}.qml)")
     return fallos
 
 
 def revisar_permisos(doc, texto):
-    """Los permisos que cita la guía contra los que el código comprueba."""
+    """Compare documented permissions with those checked by the code."""
     import importlib.util
     spec = importlib.util.spec_from_file_location("p", RAIZ / "tools" / "plugins.py")
     mod = importlib.util.module_from_spec(spec)
@@ -100,41 +93,34 @@ def revisar_permisos(doc, texto):
     reales = set(mod.PERMISOS)
 
     fallos = []
-    #  Solo en la guía larga, que es la que lleva la tabla de permisos.
+    #  Only the full guide contains the permission table.
     if doc != "docs/PLUGINS.md":
         return fallos
 
-    #  Contra la TABLA, no contra el texto suelto: al probarlo quité una fila
-    #  y no se enteró, porque la palabra seguía apareciendo dos párrafos más
-    #  arriba. Estar mencionado de pasada no es estar documentado — quien
-    #  busca qué permisos hay mira la tabla.
-    #  `[\w-]`: los permisos pueden llevar guion (datos-personales fue el
-    #  primero y destapó que `\w+` no los veía).
+    #  Check the TABLE: a passing mention elsewhere must not conceal a missing
+    #  row. Readers look here to discover available permissions.
+    #  `[\w-]` includes hyphenated permission names that `\w+` would miss.
     documentados = set(re.findall(r"^\| `([\w-]+)` \|", texto, re.M))
 
-    #  La guía tiene DOS tablas con esta forma: los permisos y las reglas con
-    #  nombre. Se separan por lo que son y se comprueban las dos, en vez de
-    #  mirar solo una y que la otra pueda mentir sin que nadie se entere.
+    #  Permissions and named rules use the same table format. Check both.
     reglas = {r["id"] for r in getattr(mod, "REGLAS", [])}
 
     for p in sorted(reales - documentados):
-        fallos.append(f"{doc}: el permiso `{p}` existe y no está en la tabla")
+        fallos.append(f"{doc}: permission `{p}` exists but is missing from the table")
     for r in sorted(reglas - documentados):
-        fallos.append(f"{doc}: la regla `{r}` existe y no está en la tabla")
-    #  Y al revés: un permiso inventado en la guía manda a alguien a declarar
-    #  algo que se rechazará como «permisos desconocidos», y una regla
-    #  inventada le hace buscar un aviso que nunca va a saltar.
+        fallos.append(f"{doc}: rule `{r}` exists but is missing from the table")
+    #  Conversely, invented permissions lead to rejected manifests, and
+    #  invented rules describe warnings that will never be emitted.
     for p in sorted(documentados - reales - reglas):
-        fallos.append(f"{doc}: la tabla cita `{p}` y no es ni permiso ni regla")
+        fallos.append(f"{doc}: table entry `{p}` is neither a permission nor a rule")
     return fallos
 
 
 def ordenes_ipc():
-    """Todas las funciones que publica algún IpcHandler, por objetivo."""
+    """Return functions published by IpcHandler instances, grouped by target."""
     salida = {}
-    #  Los ejemplos cuentan: la guía enseña `k4.hola toggle` y eso tiene que
-    #  seguir existiendo, que es justo lo que se copia y se pega. Native
-    #  surfaces publish from services/ now, not plugins/.
+    #  Examples count: commands such as `k4.hola toggle` must remain usable
+    #  when copied from the guide. Native surfaces publish from services/ now.
     for f in (list((RAIZ / "plugins").rglob("*.qml"))
               + list((RAIZ / "services").rglob("*.qml"))
               + list((RAIZ / "ejemplos").rglob("*.qml"))
@@ -142,7 +128,7 @@ def ordenes_ipc():
         texto = f.read_text()
         for m in re.finditer(r'target:\s*"([\w.]+)"', texto):
             objetivo = m.group(1)
-            #  Desde el target hasta el cierre del bloque, a ojo de llaves.
+            #  Count braces from the target to the end of the block.
             resto = texto[m.end():]
             nivel, fin = 1, len(resto)
             for i, c in enumerate(resto):
@@ -165,12 +151,11 @@ def revisar_ipc(doc, texto):
     for objetivo, orden in re.findall(r"\bcall\s+(k4[\w.]*)\s+(\w+)", texto):
         conocidas = ordenes.get(objetivo)
         if conocidas is None:
-            #  Un objetivo que no existe suele ser un ejemplo inventado
-            #  («k4.hello»), y avisar de eso es ruido. Lo que sí importa es un
-            #  objetivo REAL al que se le atribuyen órdenes que no tiene.
+            #  Unknown targets are often invented examples ("k4.hello").
+            #  Check commands attributed to real targets only.
             continue
         if orden not in conocidas:
-            fallos.append(f"{doc}: {objetivo} no tiene la orden {orden}")
+            fallos.append(f"{doc}: {objetivo} has no command {orden}")
     return fallos
 
 
@@ -179,75 +164,67 @@ def revisar_opciones(doc, texto):
     for guion, opcion in re.findall(r"tools/(\w+\.py)\s+(--[\w-]+)", texto):
         f = RAIZ / "tools" / guion
         if not f.is_file():
-            fallos.append(f"{doc}: no existe tools/{guion}")
+            fallos.append(f"{doc}: tools/{guion} does not exist")
         elif f'"{opcion}"' not in f.read_text():
-            fallos.append(f"{doc}: tools/{guion} no entiende {opcion}")
+            fallos.append(f"{doc}: tools/{guion} does not recognize {opcion}")
     return fallos
 
 
 def revisar_rutas(doc, texto):
-    """Los ficheros y carpetas del repositorio que se citan, entre comillas."""
+    """Check repository files and directories cited in backticks."""
     fallos = []
     for cita in set(re.findall(r"`([\w./-]+\.(?:qml|py|json|md|tsv|lua|conf))`",
                                texto)):
-        #  Sin barra es un nombre suelto —«plugin.json», «shell.qml»— y no una
-        #  ruta del repositorio: comprobarlo daría por falso lo que solo es una
-        #  forma de nombrar las cosas.
+        #  Without a slash, names such as "plugin.json" are not repository
+        #  paths and cannot be checked for existence here.
         if "/" not in cita or cita.startswith(("~", "/")) or "*" in cita:
             continue
         if cita in INVENTADOS:
             continue
         if not (RAIZ / cita).exists():
-            fallos.append(f"{doc}: cita {cita}, que no existe")
+            fallos.append(f"{doc}: cites {cita}, which does not exist")
     for cita in set(re.findall(r"`(ejemplos/\w+|plugins/\w+|api/K4|tools)/?`",
                                texto)):
         if not (RAIZ / cita).exists():
-            fallos.append(f"{doc}: cita {cita}/, que no existe")
+            fallos.append(f"{doc}: cites {cita}/, which does not exist")
     return fallos
 
 
-#  Los números que la guía promete y de dónde salen de verdad. Un número en
-#  prosa es de lo que más envejece: se cambia la constante y la frase se queda
-#  con el valor viejo, tan convincente como el día que era cierto.
-#  Los números que la guía promete y de dónde salen de verdad.
-#
-#  Un número en prosa es de lo que más envejece: se cambia la constante y la
-#  frase se queda con el valor viejo, tan convincente como el día que era
-#  cierto. Cada entrada dice cómo se escribe en la guía y de dónde sale en el
-#  código, y se comparan los dos valores.
-#
-#  Ojo con la dirección: mi primer intento comprobaba «si la guía dice 64 y el
-#  código dice otra cosa», y eso NO caza el caso que importa —la guía diciendo
-#  128 cuando el código dice 64—, porque entonces el 64 ya no aparece y no
-#  compara nada. Se saca el número DE LA GUÍA y se compara con el del código.
+#  Extract numbers from the guide, then compare with source constants. Matching
+#  only the expected number would silently miss a stale claim with a new value.
+#  The current guide has no numeric maximum-height claim; recognize the English
+#  form if one is reintroduced. These patterns do not validate arbitrary prose.
 NUMEROS = [
     (r"\*\*(\d+)×\d+\*\*", "tools/plugins.py", r"ICONO_MINIMO\s*=\s*(\d+)",
-     "el mínimo de un icono PNG"),
-    (r"menos de (\d+) MB", "tools/plugins.py",
-     r"ICONO_MAXIMO_MB\s*=\s*(\d+)", "el peso máximo de un icono"),
-    (r"\((\d+) hoy\)", "core/Theme.qml", r"maxIslandHeight:\s*(\d+)",
-     "el alto máximo de la island"),
+     "minimum PNG icon width"),
+    (r"\*\*\d+×(\d+)\*\*", "tools/plugins.py", r"ICONO_MINIMO\s*=\s*(\d+)",
+     "minimum PNG icon height"),
+    (r"less than\s+(\d+)\s+MB", "tools/plugins.py",
+     r"ICONO_MAXIMO_MB\s*=\s*(\d+)", "maximum icon size"),
+    (r"\((\d+) today\)", "core/Theme.qml", r"maxIslandHeight:\s*(\d+)",
+     "maximum island height"),
 ]
 
 
 def revisar_numeros(doc, texto):
     fallos = []
     for en_guia, fuente, en_codigo, que in NUMEROS:
-        dicho = re.search(en_guia, texto)
+        dicho = list(re.finditer(en_guia, texto))
         if not dicho:
             continue
         m = re.search(en_codigo, (RAIZ / fuente).read_text())
         if not m:
-            fallos.append(f"{doc}: no encuentro {que} en {fuente}")
+            fallos.append(f"{doc}: cannot find {que} in {fuente}")
             continue
-        if dicho.group(1) != m.group(1):
-            fallos.append(f"{doc}: dice {dicho.group(1)} para {que} y "
-                          f"{fuente} usa {m.group(1)}")
+        for cita in dicho:
+            if cita.group(1) != m.group(1):
+                fallos.append(f"{doc}: claims {cita.group(1)} for {que}, but "
+                              f"{fuente} uses {m.group(1)}")
     return fallos
 
 
 def revisar_atajos(doc, texto):
-    """Los atajos que la guía promete tienen que estar en hypr/k4.lua."""
+    """Documented shortcuts must exist in hypr/k4.lua."""
     lua = (RAIZ / "hypr" / "k4.lua").read_text()
     fallos = []
     for combo in set(re.findall(r"\bSUPER\+((?:SHIFT\+|ALT\+|CONTROL\+)*\w+)",
@@ -255,24 +232,25 @@ def revisar_atajos(doc, texto):
         partes = combo.split("+")
         tecla = partes[-1]
         mods = partes[:-1]
-        #  En el lua se escribe `mod .. " + SHIFT + Space"`.
+        #  Lua spells this as `mod .. " + SHIFT + Space"`.
         esperado = " + ".join(mods + [tecla])
         if not re.search(r'mod \.\. " \+ %s"' % re.escape(esperado), lua):
-            fallos.append(f"{doc}: promete el atajo SUPER+{combo} y "
-                          f"hypr/k4.lua no lo ata")
+            fallos.append(f"{doc}: promises shortcut SUPER+{combo}, but "
+                          f"hypr/k4.lua does not bind it")
     return fallos
 
 
-#  qmllint se muere EN SILENCIO —sale con 255 y sin una palabra— en cuanto ve
-#  una función con tipo de retorno, `function toggle(): void`. Y esas no son
-#  opcionales: el IPC de Quickshell las exige. Así que se le quitan antes de
-#  pasárselo. Costó un rato descubrirlo porque no dice nada.
+#  qmllint has exited silently with 255 on typed functions such as
+#  `function toggle(): void`. Quickshell IPC requires those annotations;
+#  strip return types only from the temporary lint input.
 RE_TIPADA = re.compile(r"function (\w+)\(([^)]*)\):\s*\w+")
 
 
 def revisar_ejemplos(doc, texto):
-    """Que los ejemplos en QML de la guía compilen de verdad."""
+    """Lint eligible complete QML examples against the real API."""
     if not shutil.which("qmllint"):
+        print(f"warning: {doc}: qmllint not found; QML example checks skipped",
+              file=sys.stderr)
         return []
     fallos = []
     bloques = re.findall(r"```qml\n(.*?)```", texto, re.S)
@@ -281,17 +259,13 @@ def revisar_ejemplos(doc, texto):
         sin_comentarios = "\n".join(
             l for l in cuerpo.split("\n") if not l.strip().startswith("//"))
         primera = next((l for l in sin_comentarios.split("\n") if l.strip()), "")
-        #  Solo los que son un objeto completo. Un trozo suelto de propiedades
-        #  no se puede compilar solo y envolverlo sería inventarse contexto.
+        #  Only complete objects: wrapping loose properties invents context.
         if not re.match(r"^[A-Z]\w*(\.\w+)?\s*\{", primera.strip()):
             continue
-        #  Ni los que llevan puntos suspensivos: `{ ... }` es «aquí va lo
-        #  tuyo», no código. Exigirle que compile sería exigirle que deje de
-        #  ser un ejemplo.
+        #  Ellipses stand for reader-supplied code and cannot be linted.
         if re.search(r"(^|\s)\.\.\.($|\s)", sin_comentarios):
             continue
-        #  Ni los que enseñan dos objetos sueltos para comparar: eso no es un
-        #  fichero.
+        #  Side-by-side top-level objects do not form a valid QML file.
         if len(re.findall(r"^[A-Z]\w*(?:\.\w+)?\s*\{", sin_comentarios,
                           re.M)) > 1:
             continue
@@ -304,9 +278,9 @@ def revisar_ejemplos(doc, texto):
         tmp.unlink(missing_ok=True)
         if r.returncode != 0:
             aviso = (r.stdout + r.stderr).strip().split("\n")
-            aviso = next((l for l in aviso if l.strip()), "qmllint salió %d"
+            aviso = next((l for l in aviso if l.strip()), "qmllint exited with %d"
                          % r.returncode)
-            fallos.append(f"{doc}: el ejemplo {i} no compila: {aviso[:120]}")
+            fallos.append(f"{doc}: example {i} failed lint: {aviso[:120]}")
     return fallos
 
 
@@ -322,14 +296,14 @@ def revisar_motivos():
     fallos = []
     motivos = RAIZ / "services" / "Motivos.qml"
     if not motivos.is_file():
-        return ["falta services/Motivos.qml"]
+        return ["missing services/Motivos.qml"]
     bloque = motivos.read_text().split("readonly property var tabla")
     if len(bloque) < 2:
-        return ["services/Motivos.qml ya no tiene la tabla de motivos"]
+        return ["services/Motivos.qml no longer has the reason table"]
     conocidos = set(re.findall(r'"([^"\n]+)"\s*:\s*"',
                                bloque[1].split("})")[0]))
 
-    #  Los que emiten los guiones y los que emite la propia barra.
+    #  Reasons emitted by scripts and by the bar itself.
     emitidos = {}
     for ruta in list((RAIZ / "tools").glob("*.py")):
         if ruta.name.startswith("prueba_"):
@@ -348,8 +322,8 @@ def revisar_motivos():
 
     for codigo, donde in sorted(emitidos.items()):
         if codigo not in conocidos:
-            fallos.append("services/Motivos.qml: falta la frase del motivo "
-                          "`%s`, que emite %s"
+            fallos.append("services/Motivos.qml: missing text for reason "
+                          "`%s`, emitted by %s"
                           % (codigo, ", ".join(sorted(donde))))
     return fallos
 
@@ -359,7 +333,7 @@ def main():
     for doc in DOCUMENTOS:
         f = RAIZ / doc
         if not f.is_file():
-            fallos.append(f"falta el documento {doc}")
+            fallos.append(f"missing document {doc}")
             continue
         texto = f.read_text()
         fallos += revisar_miembros(doc, texto)
@@ -374,11 +348,11 @@ def main():
     fallos += revisar_motivos()
 
     if not fallos:
-        print("%d documentos revisados, no le mienten al código."
+        print("%d documents checked; available checks passed."
               % len(DOCUMENTOS))
         return 0
 
-    print("La documentación dice cosas que no son:\n")
+    print("Documentation claims do not match the code:\n")
     for x in fallos:
         print("  " + x)
     return 1

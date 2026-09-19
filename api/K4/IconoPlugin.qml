@@ -1,19 +1,18 @@
-//  El icono de un plugin, sea lo que sea: su imagen si trae una, y si no su
-//  códice de la Nerd Font.
+//  A plugin icon: its image when supplied, otherwise its Nerd Font glyph.
 //
-//  Existe porque el mismo icono se pinta en tres sitios —la fila de Ajustes,
-//  la rejilla del centro de aplicaciones y la franja del centro de control— y
-//  el «si tiene imagen, Image; si no, texto» ya se estaba copiando. Copiado
-//  tres veces, el cuarto sitio se olvida de una de las dos ramas.
+//  The same icon appears in three places: the Settings row, the application
+//  grid and the control-centre strip. The image-or-glyph fallback was already
+//  being copied between them; centralizing it keeps the next consumer from
+//  forgetting one of the two branches.
 
 import QtQuick
 
 Item {
     id: control
 
-    //  Ruta file:// a la imagen, o "" si no hay.
+    //  A file:// image URL, or "" if none is supplied.
     property string imagen: ""
-    //  El códice, que se usa cuando no hay imagen.
+    //  The code point used when no image is available.
     property int glifo: 0
     property int tamano: 20
     property color color: Tema.tinta
@@ -26,8 +25,8 @@ Item {
         anchors.fill: parent
         source: control.imagen
         visible: control.imagen.length > 0 && status === Image.Ready
-        //  A la resolución de la pantalla y no a la del fichero: sin esto un
-        //  PNG de 512 se escala en el momento de pintar y se ve pastoso.
+        //  Request the display size rather than the file's full resolution:
+        //  scaling a 512px PNG only at paint time made it look blurry.
         sourceSize.width: control.tamano * 2
         sourceSize.height: control.tamano * 2
         fillMode: Image.PreserveAspectFit
@@ -37,8 +36,8 @@ Item {
 
     Glifo {
         anchors.centerIn: parent
-        //  También si la imagen falló al cargar: mejor el icono genérico que
-        //  un hueco, que un hueco parece que el plugin está roto.
+        //  Also fall back when image loading fails: a generic icon is better
+        //  than a gap that makes the plugin look broken.
         visible: !pintura.visible
         text: control.glifo > 0 ? String.fromCodePoint(control.glifo) : ""
         color: control.color

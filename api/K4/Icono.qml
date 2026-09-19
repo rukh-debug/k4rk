@@ -1,8 +1,8 @@
-//  Un icono del tema del escritorio.
+//  An icon from the desktop theme.
 //
-//  Reexporta IconImage, que es el que sabe pedirle el icono al tema y escalarlo
-//  bien. Un `Image` normal serviría, pero hay que darle la ruta ya resuelta y
-//  no sale igual de nítido en los tamaños raros.
+//  Reexports IconImage, which resolves themed icons and scales them properly.
+//  A regular `Image` would require an already resolved path and would not
+//  render as sharply at unusual sizes.
 
 import Quickshell.Widgets
 

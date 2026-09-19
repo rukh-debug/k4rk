@@ -6,10 +6,10 @@
 #  checkout (the `externos` bridge, the `recargas/` hot-reload folders) and
 #  the store is read-only.
 #
-#  The dependency list mirrors dependencias.tsv — the project's single
+#  The dependency list mirrors dependencies.tsv — the project's single
 #  source of truth. Everything marked `base` that exists in nixpkgs is
 #  here; optional ones (yay, nvidia-smi, claude, codex) are left
-#  to the user, exactly as `./instalar` leaves them unless asked.
+#  to the user, exactly as `./install` leaves them unless asked.
 {
   lib,
   stdenvNoCC,
@@ -56,8 +56,8 @@
   adwaita-fonts,
   nerd-fonts, # .meslo-lg → «MesloLGS Nerd Font Mono», every icon in the bar
 
-  #  Qt: quickshell does not pull the multimedia module, and k4's editor and
-  #  video wallpapers need it (the ffmpeg backend rides along in its plugins)
+  #  Qt: quickshell does not pull the multimedia module, and k4's media players
+  #  and video wallpapers need it (the ffmpeg backend rides along in its plugins).
   qt6,
 
   #  k4 itself

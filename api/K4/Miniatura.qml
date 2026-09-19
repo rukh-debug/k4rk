@@ -1,23 +1,23 @@
-//  La miniatura EN VIVO de una ventana abierta.
+//  A LIVE thumbnail of an open window.
 //
-//  Lo que se ve dentro de otra ventana, pintado aquí y actualizándose solo. Lo
-//  quiere un selector de ventanas, un Alt+Tab, una vista previa al pasar el
-//  ratón: sitios donde el título no basta para saber cuál es cuál —tres
-//  terminales se llaman igual y no se parecen en nada—.
+//  Another window's contents, rendered here and updated automatically. Use
+//  it in window pickers, Alt+Tab interfaces or hover previews where a title
+//  cannot distinguish the choices: three terminals may share a title while
+//  showing completely different contents.
 //
 //      K4.Miniatura {
 //          width: 160; height: 100
-//          direccion: "0x5622613de2c0"      // la de `hyprctl clients`
+//          direccion: "0x5622613de2c0"      // from `hyprctl clients`
 //      }
 //
-//  Se le da la DIRECCIÓN de la ventana, no el objeto: un plugin no puede
-//  hablar con el compositor —eso se toca desde un servicio— pero sí tiene la
-//  dirección, que es lo que devuelve `hyprctl` y lo que ya se usa para ir a una
-//  ventana. Aquí dentro se busca a quién pertenece y se engancha.
+//  Supply the window's ADDRESS, not its object: compositor access belongs
+//  in a service, not a plugin. Plugins can still obtain the address from
+//  `hyprctl`, which they already use to activate windows. This component
+//  resolves that address to its owner and attaches the capture source.
 //
-//  Si la ventana no existe, o se cierra mientras se mira, no pinta nada. No se
-//  avisa de eso a propósito: quien la enseña ya sabe qué ventanas tiene, y una
-//  miniatura que grita cuando su ventana se va es más molesta que un hueco.
+//  If the window does not exist or closes during viewing, render nothing.
+//  This is deliberately silent: the caller already tracks its windows,
+//  and an error for each closed thumbnail is more distracting than a gap.
 
 import QtQuick
 import Quickshell.Wayland
@@ -26,12 +26,12 @@ import Quickshell.Hyprland
 ScreencopyView {
     id: self
 
-    //  La dirección tal cual viene de Hyprland, con su `0x` delante.
+    //  The address as supplied by Hyprland, including its `0x` prefix.
     property string direccion: ""
 
-    //  Se compara con `lastIpcObject.address` —que trae el `0x`— y, si no lo
-    //  hubiera, con `address` poniéndoselo. Son la misma dirección escrita de
-    //  dos maneras, y elegir solo una fallaba a ratos.
+    //  Compare with `lastIpcObject.address`, which includes `0x`, or fall
+    //  back to `address` with the prefix added. These are two forms of the
+    //  same address; relying on only one caused intermittent failures.
     captureSource: {
         if (self.direccion.length === 0)
             return null
@@ -47,7 +47,7 @@ ScreencopyView {
         return null
     }
 
-    //  Viva: lo que se enseña es la ventana AHORA, no una foto de cuando se
-    //  abrió el selector. Una miniatura congelada engaña más que informa.
+    //  Live: show the window NOW, not a snapshot from when the picker opened.
+    //  A frozen thumbnail misleads rather than informs.
     live: true
 }

@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
-"""Búsqueda de ficheros para el módulo de la island.
+"""File search for the island module.
 
-El motor es `fd`, no `plocate`, y no por gusto: medido en este equipo, el
-índice de plocate no contiene ni una ruta del home —consultarlo por ficheros
-propios devuelve cero—, y además es una foto que se rehace cada tantas horas,
-así que lo que acabas de guardar no aparece. `fd` recorre los 187.000 ficheros
-del home en 50 ms y siempre está al día.
+Use `fd`: on the tested machine, `plocate` indexed no home paths and its
+periodic snapshots missed newly saved files. `fd` scanned 187,000 home files
+in 50 ms and searched the current filesystem.
 
-Dos banderas que no son opcionales: `--hidden` y `--no-ignore`. Sin ellas fd se
-salta lo oculto y lo que esté en un .gitignore, que en un home es justo donde
-vive media vida —todo ~/.config, para empezar—. Sin ellas la misma búsqueda
-devolvía cero resultados.
+`--hidden` and `--no-ignore` are essential: otherwise fd skips hidden and
+gitignored files, including ~/.config. The same search returned no results
+without these flags.
 
-    buscar.py <consulta> [--ambito home|sistema] [--tope N] [--solo dir|archivo]
+    search.py <consulta> [--ambito home|sistema] [--tope N] [--solo dir|archivo]
 
-Saca JSON: cada resultado con su ruta, nombre, tamaño, fecha y una puntuación
-de lo bien que encaja, ya ordenado.
+Emit sorted JSON results with paths, names, sizes, dates and match scores.
 """
 
 import json
@@ -25,8 +21,7 @@ import sys
 import time
 
 TOPE = 60
-# Ni el ruido de las cachés ni los árboles de dependencias: llenan la lista de
-# cosas que nadie busca por su nombre.
+# Exclude caches and dependency trees that would overwhelm useful results.
 EXCLUIR = [
     "node_modules", ".git", ".cache", "__pycache__", ".venv", "venv",
     ".npm", ".cargo/registry", ".rustup", ".local/share/Trash",
@@ -48,11 +43,8 @@ def ejecutar(consulta, ambito, tope, solo, extensiones):
     elif solo == "archivo":
         orden += ["--type", "file"]
 
-    #  El filtro por extensión se lo hace fd, no nosotros.
-    #
-    #  Filtrarlo después parecería lo mismo y no lo es: `--max-results` corta
-    #  antes de que nadie filtre, así que un tope de sesenta se gastaría en
-    #  ficheros que se van a tirar y quedarían tres vídeos en la lista.
+    #  Let fd filter extensions before applying --max-results. Filtering here
+    #  would spend the result budget on files that are later discarded.
     for ext in extensiones:
         orden += ["--extension", ext]
 
@@ -71,11 +63,10 @@ def ejecutar(consulta, ambito, tope, solo, extensiones):
 
 
 def puntuar(ruta, consulta):
-    """Lo que mejor encaja, arriba.
+    """Rank better matches first.
 
-    Se mira solo el nombre del fichero, no la ruta entera: si buscas «informe»
-    interesa `informe.pdf`, no cualquier cosa dentro de una carpeta que se
-    llame así. La ruta larga penaliza un poco, que suele ser cosa enterrada.
+    Match the filename rather than its parent directories. Slightly penalize
+    deep paths, which tend to contain buried files.
     """
     nombre = os.path.basename(ruta).lower()
     q = consulta.lower()
@@ -91,7 +82,7 @@ def puntuar(ruta, consulta):
     elif q in nombre:
         base = 500
     else:
-        base = 200                      # solo encajaba en la ruta
+        base = 200                      # matched only the path
 
     return base - min(200, ruta.count("/") * 8)
 
@@ -115,24 +106,23 @@ def describir(ruta, consulta):
     }
 
 
-AYUDA = """Busca ficheros por nombre y devuelve JSON.
+AYUDA = """Search files by name and return JSON.
 
-    tools/buscar.py <texto>              busca en tu home
-    tools/buscar.py <texto> --ambito /   dónde buscar
-    tools/buscar.py <texto> --tope 30    cuántos devolver
-    tools/buscar.py <texto> --solo dir   sólo carpetas (`dir`) o ficheros
-    tools/buscar.py <texto> --ext png,jpg
+    tools/search.py <texto>              search your home directory
+    tools/search.py <texto> --ambito /   search scope (home unless sistema)
+    tools/search.py <texto> --tope 30    maximum results to return
+    tools/search.py <texto> --solo dir   directories (dir) or files (archivo)
+    tools/search.py <texto> --ext png,jpg
 
-Con menos de dos letras devuelve la lista vacía a propósito: la barra llama a
-esto en cada tecla y buscar por una sola letra recorrería el home entero.
+Queries shorter than two characters return an empty list: the bar calls this
+on every keystroke, and a one-character query would scan the entire home.
 """
 
 
 def main():
     args = sys.argv[1:]
-    #  Lo que no reconoce, abajo, se toma como el texto a buscar — que es lo
-    #  correcto para una consulta pero convertía `--help` en una búsqueda de
-    #  «--help». Cero resultados y ninguna pista.
+    #  Unknown arguments become query text below. Handle help first so --help
+    #  does not become a fruitless search for the literal flag.
     if args and args[0] in ("-h", "--help", "--ayuda"):
         print(AYUDA)
         return
@@ -168,14 +158,13 @@ def main():
 
     salida = []
     for r in rutas:
-        # fd termina las carpetas en barra: sin quitarla, basename devuelve
-        # cadena vacía y la carpeta se queda sin nombre y sin puntuación
+        # Strip fd's trailing directory slash so basename and scoring work.
         r = r.rstrip("/") or "/"
         d = describir(r, consulta)
         if d:
             salida.append(d)
 
-    # primero lo que mejor encaja y, a igualdad, lo más reciente
+    # Best matches first, then newest among ties.
     salida.sort(key=lambda d: (-d["punto"], -d["cuando"]))
 
     print(json.dumps({

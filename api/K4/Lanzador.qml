@@ -1,25 +1,24 @@
-//  Aportar resultados al lanzador de la barra.
+//  Contribute results to the shell's launcher.
 //
-//  El lanzador es lo que la gente abre con un atajo y donde escribe sin
-//  pensar. Poder poner ahí lo tuyo —tus notas, tus servidores, lo que sea—
-//  es lo que convierte un plugin en parte de la barra y no en otra ventana
-//  más que hay que ir a buscar.
+//  Users open the launcher with a shortcut and start typing immediately.
+//  Adding your notes, servers or other results there makes a plugin part
+//  of the shell rather than another window the user must go looking for.
 //
-//  Contestas cuando puedes: la barra avisa por `buscando` y tú dejas lo que
-//  tengas en `resultados`. Si tardas —una consulta por red, un proceso— no
-//  bloqueas a nadie: cuando llegue, se pinta.
+//  Respond when ready: the shell emits `buscando`, and you publish the
+//  available results in `resultados`. Network queries and processes need
+//  not block anyone; their results render when they arrive.
 //
-//  Lo tuyo sale DEBAJO de las aplicaciones del sistema, siempre. Ese panel es
-//  el de ellas: quien escribe «fire» quiere Firefox, y un aporte por bien
-//  intencionado que sea no debe colarse encima de lo que la persona venía a
-//  buscar. Estás ahí para que se te pueda ENCONTRAR, no para competir.
+//  Contributions always appear BELOW system applications. Someone typing
+//  "fire" expects Firefox; plugin results should not displace the item the
+//  user came to find. Contributions make your content discoverable without
+//  competing with the launcher's primary purpose.
 //
 //      K4.Lanzador {
 //          plugin: "hola"
 //          onBuscando: function (texto) {
 //              resultados = texto.length < 2 ? [] : [{
-//                  id: "saludo", titulo: "Saludar a " + texto,
-//                  desc: "Del plugin de ejemplo", glifo: 0xF02FC
+//                  id: "saludo", titulo: "Greet " + texto,
+//                  desc: "From the example plugin", glifo: 0xF02FC
 //              }]
 //          }
 //          onElegido: function (id) { ... }
@@ -32,25 +31,24 @@ QtObject {
 
     required property string plugin
 
-    //  `[{ id, titulo, desc }]` — lo que se pinta ahora mismo.
+    //  `[{ id, titulo, desc }]` — the currently displayed results.
     //
-    //  El icono de una fila, en este orden: `glifo` —un códice de la Nerd
-    //  Font— o `imagen` —una ruta `file://` tuya—; `icono`, el NOMBRE de un
-    //  icono del escritorio, si lo que aportas es una aplicación instalada;
-    //  y si no dices nada, el de tu plugin, que casi siempre es lo que
-    //  quieres. Sin icono ninguno la fila sale con un hueco, y un hueco entre
-    //  filas que sí lo tienen se lee como que algo está roto.
+    //  A row's icon, in order: `glifo`, a Nerd Font code point, or `imagen`,
+    //  your own `file://` image; then `icono`, the NAME of a desktop icon for
+    //  an installed application. If none is supplied, use the plugin's icon,
+    //  usually the desired fallback. A row without any icon leaves a gap
+    //  that looks broken beside rows with icons.
     //
     //  `insignia: { texto, acento }` is optional: a small badge after
     //  the title, accented (warm) or plain — where a thing comes from,
     //  which source answered. Rendered by the launcher for anyone.
     property var resultados: []
 
-    //  El usuario está escribiendo. Llega con cada tecla, así que si lo tuyo
-    //  cuesta, mira la longitud antes de ponerte.
+    //  The user is typing. Fires on every keystroke, so check the query length
+    //  before starting expensive work.
     signal buscando(string texto)
 
-    //  Ha elegido uno de los tuyos, por su `id`.
+    //  The user selected one of your results, identified by its `id`.
     signal elegido(string id)
 
     property Connections _puente: Connections {

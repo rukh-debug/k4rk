@@ -1,20 +1,20 @@
-//  El estado persistente de un plugin: un JSON con nombre, en su directorio.
+//  Persistent plugin state: a named JSON file in the plugin's own directory.
 //
-//  Es el andamiaje de partidas guardadas, récords y ajustes propios. Cada
-//  plugin escribe en SU directorio —~/.local/state/k4/plugins/<id>/— y no en
-//  el común, donde dos ficheros con el mismo nombre se pisarían.
+//  Storage for saved games, high scores and plugin settings. Each plugin
+//  writes in ITS directory, ~/.local/state/k4/plugins/<id>/, rather than a
+//  shared directory where identically named files would overwrite each other.
 //
 //      K4.Guardado {
 //          id: guardado
-//          plugin: "snake"                 // el id del manifiesto
+//          plugin: "snake"                 // the manifest id
 //          onCargado: function (d) { record = d.record || 0 }
 //      }
 //      ...
 //      guardado.guardar({ record: record })
 //
-//  `cargado` llega una vez, al arrancar, con {} si no había nada. `guardar`
-//  escribe entero lo que se le pasa: es un estado pequeño, no una base de
-//  datos, y lo simple aquí es lo que evita estados a medio escribir.
+//  `cargado` fires once at startup, with {} if no state existed. `guardar`
+//  writes the complete supplied value: this is small state, not a database,
+//  and keeping the write simple avoids partially updated application state.
 
 import QtQuick
 import Quickshell
@@ -24,7 +24,7 @@ QtObject {
     id: self
 
     required property string plugin
-    //  Por si un plugin quiere varios ficheros: partida.json y ajustes.json.
+    //  A plugin may want several files, such as a saved game and settings.
     property string nombre: "estado"
 
     signal cargado(var datos)
@@ -36,8 +36,8 @@ QtObject {
         _fichero.setText(JSON.stringify(datos, null, 1))
     }
 
-    //  El directorio primero y la lectura después: leer de un directorio que
-    //  no existe no es un fallo —es la primera vez— pero escribir sí lo sería.
+    //  Create the directory before reading: a missing directory is expected
+    //  on first use, but attempting to write into it would fail.
     property var _mkdir: Process {
         command: ["mkdir", "-p", self._dir]
         running: true
@@ -51,8 +51,8 @@ QtObject {
             if (bruto && bruto.length > 0)
                 d = JSON.parse(bruto)
         } catch (e) {
-            //  Un estado roto no puede impedir arrancar: se empieza de cero.
-            //  El fichero malo se queda en disco por si hay algo que rescatar.
+            //  Broken state must not prevent startup: start fresh instead.
+            //  Leave the damaged file on disk in case anything is recoverable.
         }
         cargado(d)
     }

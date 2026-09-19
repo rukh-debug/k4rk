@@ -1,9 +1,9 @@
-//  El menú que ofrece un icono de la bandeja.
+//  The menu offered by a tray icon.
 //
-//  Reexporta QsMenuOpener. Los menús de bandeja son un protocolo del
-//  escritorio —cada aplicación publica el suyo por D-Bus— y esto es lo que lo
-//  convierte en un modelo que se puede pintar dentro de la island, en vez de
-//  dejar que la aplicación abra su propia ventana emergente por su cuenta.
+//  Reexports QsMenuOpener. Tray menus use a desktop protocol: each application
+//  publishes its own over D-Bus. This turns that menu into a model that can
+//  render inside the island instead of asking the application to open its
+//  own popup window.
 
 import Quickshell
 

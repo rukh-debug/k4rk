@@ -75,8 +75,11 @@ edge and only comes back when something happens or the pointer brushes the
 `quickshell ipc -p shell.qml call k4 settings` opens Settings if the pill is
 not reachable.
 
-## Settings, shortcuts, translations
+## Settings, shortcuts, and language
 
 - Settings live in the panel; plugins contribute their own rows through the API rather than editing a central file.
-- Shortcuts are installed by `./instalar` into the Hyprland config and are listed in the bar's own searchable viewer.
+- Shortcuts are installed by `./install` into the Hyprland config and are listed in the bar's own searchable viewer.
 - The UI is plain English strings in the QML source.
+- New comments and identifiers are English. Existing API names and external
+  contracts are migrated separately; follow the checkout's `AGENTS.md` rather
+  than renaming them during an unrelated change.

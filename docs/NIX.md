@@ -1,6 +1,6 @@
 # k4 on Nix
 
-k4 runs on Nix without ever touching `./instalar`: the flake ships the bar,
+k4 runs on Nix without ever touching `./install`: the flake ships the bar,
 its whole environment, and the Hyprland integration. This page is for the
 Nix path; the [README](../README.md) is still the front door.
 
@@ -37,7 +37,7 @@ Everything else lives outside the code, as it always has:
 
 **The built-in updater is out of the picture.** There is no `.git` in the
 mirror, on purpose: Settings offering a `git pull` on a Nix-managed copy
-would be fighting itself. Settings says so quietly («sin-git») and updates
+would be fighting itself. Settings reports `no-git` and updates
 come through the flake.
 
 ## What the environment carries
@@ -45,14 +45,14 @@ come through the flake.
 The launcher exports everything the bar needs, so `nix run` behaves the
 same inside a Hyprland session on NixOS as on any other distro:
 
-- **PATH** with every helper from [`dependencias.tsv`](../dependencias.tsv):
+- **PATH** with every helper from [`dependencies.tsv`](../dependencies.tsv):
   grim, slurp, swaybg, ffmpeg, imagemagick, zenity,
   wl-clipboard, fd, pactl, wpctl, nmcli, bluetoothctl, notify-send,
   xdg-open, hyprctl, python3, git, curl… The optional ones (yay,
-  nvidia-smi, claude, codex) stay out, exactly as `./instalar` leaves them
+  nvidia-smi, claude, codex) stay out, exactly as `./install` leaves them
   without `--optional`.
-- **QtMultimedia**, which nixpkgs' quickshell does not pull in and the
-  editor and video wallpapers need — with the ffmpeg backend forced.
+- **QtMultimedia**, which nixpkgs' quickshell does not pull in and media
+  playback and video wallpapers need — with the ffmpeg backend forced.
 - **The two fonts as ever**, Adwaita Sans and MesloLGS Nerd Font Mono,
   through a `FONTCONFIG_FILE` that includes the system configuration:
   your other fonts keep resolving as before.
@@ -93,7 +93,7 @@ this option the page applies session-only changes. See [Monitor settings](MONITO
 for the apply/revert contract, supported controls, and recovery behavior.
 
 That gives you the package on PATH and the Hyprland integration written
-from the repo's own templates (`hypr/k4.conf` and `hypr/config/k4.lua`),
+from the repo's own templates (`hypr/k4.conf` and `hypr/k4.lua`),
 with three changes — autostart calls the store wrapper (on a cold start
 the mirror does not exist yet; the wrapper creates it), IPC shortcuts
 target the mirror's `shell.qml` (the running instance, which is what
@@ -148,12 +148,12 @@ nix develop
 ```
 
 The flake's shell against a checkout: quickshell with QtMultimedia, the
-helpers, python with numpy/Pillow/fontTools (for `tools/spritesheet.py`
-and `tools/glifos.py`), the fonts, and `QML_IMPORT_PATH` already pointing
+helpers, Python with numpy/Pillow for image work and fontTools for
+`tools/glyphs.py`, the fonts, and `QML_IMPORT_PATH` already pointing
 at `./api`. The README's validators run as-is:
 
 ```sh
-python3 tools/plugins.py && python3 tools/api.py && python3 tools/glifos.py
+python3 tools/plugins.py && python3 tools/api.py && python3 tools/glyphs.py
 ```
 
 ## Notes
@@ -164,5 +164,5 @@ python3 tools/plugins.py && python3 tools/api.py && python3 tools/glifos.py
   ~/.local/share/k4/code/shell.qml call k4 pluginReload <id>`) does too.
 - **IPC**: always point at the mirror's `shell.qml`,
   `~/.local/share/k4/code/shell.qml` — not the store's.
-- **Non-Nix machines**: none of this changes the `./instalar` path; two
+- **Non-Nix machines**: none of this changes the `./install` path; two
   doors into the same room.

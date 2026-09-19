@@ -48,7 +48,7 @@ QtObject {
     property string titulo: ""
 
     //  A Nerd Font codex for the sidebar row — find it with
-    //  `tools/glifos.py`. Zero means the plugin's manifest icon.
+    //  `tools/glyphs.py`. Zero means the plugin's manifest icon.
     property int glifo: 0
 
     //  One line under the title, for the sidebar and the search results.

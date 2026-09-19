@@ -1,9 +1,9 @@
-//  Tira de notificaciones recientes.
+//  Recent-notification strip.
 //
-//  Aparece bajo el reloj y bajo el reproductor al pasar el ratón por la
-//  island, que es cuando ya la estás mirando: así se llega a lo que acaba de
-//  llegar sin abrir el panel. Pulsar una lleva a su aplicación igual que en el
-//  toast; la ✕ la descarta.
+//  Appears below the clock or player while hovering over the island, when
+//  the user is already looking there. Recent arrivals are accessible without
+//  opening the panel. Clicking opens the associated application, as with a
+//  toast; the close button dismisses the notification.
 
 import QtQuick
 import QtQuick.Layouts
@@ -13,14 +13,14 @@ import "../services"
 ColumnLayout {
     id: strip
 
-    // cuántas caben sin que la island se convierta en una pared
+    // Limit the visible count so notifications do not overwhelm the island.
     property int max: 3
 
     readonly property int shown: Math.min(Notifs.recent.length, max)
     readonly property int rowHeight: 34
 
-    // alto que necesita quien la incruste, cabecera incluida; la fórmula está
-    // en el servicio porque los plugins la usan para dimensionar la island
+    // Required height, including the header. The service owns the formula
+    // because plugins use it to size the island too.
     readonly property int neededHeight: Settings.notificationsOnHover
         ? Notifs.stripHeight(max) : 0
 
@@ -58,9 +58,9 @@ ColumnLayout {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        // Vaciar de golpe. Aquí es donde más falta hacía: la tira sale al
-        // pasar el ratón por la island, y sin esto había que abrir el panel
-        // entero solo para quitarse de encima cuatro avisos leídos.
+        // Clear everything here: without this action, a user viewing the
+        // hover strip had to open the full panel merely to dismiss a few
+        // notifications they had already read.
         Rectangle {
             Layout.preferredWidth: vaciarFila.implicitWidth + 12
             Layout.preferredHeight: 15
@@ -145,19 +145,18 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignVCenter
                     spacing: 0
 
-                    //  Una línea cada uno, pase lo que pase.
+                    //  One line each, regardless of the input.
                     //
-                    //  `elide` recorta lo ANCHO, y de lo alto no dice nada: un
-                    //  cuerpo con saltos de línea —los cronjobs mandan varias,
-                    //  «respuesta \n (job_id: …) \n ---»— se pintaba entero
-                    //  hacia abajo y se salía del recuadro, que tiene la altura
-                    //  fija de `rowHeight`. El aviso pisaba lo que hubiera
-                    //  debajo y la tarjeta parecía rota.
+                    //  `elide` limits WIDTH, not height. Bodies with line
+                    //  breaks, such as cronjob output with a response, job id
+                    //  and separator on separate lines, used to render below
+                    //  the fixed `rowHeight` box. The notification overlapped
+                    //  whatever followed and made the card look broken.
                     //
-                    //  Los saltos se sustituyen por espacios en vez de cortar
-                    //  por el primero: la primera línea de un cronjob suele ser
-                    //  el «Cronjob Response» genérico y lo que dice de verdad
-                    //  viene detrás. Así se lee corrido y elide remata.
+                    //  Replace breaks with spaces rather than cutting at the
+                    //  first one: cronjobs often start with a generic "Cronjob
+                    //  Response" heading, followed by the useful content.
+                    //  Joining the lines lets elision preserve that content.
                     IslandLabel {
                         text: row.modelData.summary.replace(/\s*\n\s*/g, " ")
                         font.pixelSize: 11
@@ -193,7 +192,7 @@ ColumnLayout {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                // el botón de cerrar va por encima y se queda su propio clic
+                // The close button sits above this and receives its own click.
                 onClicked: Notifs.activate(row.modelData)
             }
         }

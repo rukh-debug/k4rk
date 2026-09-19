@@ -1,13 +1,13 @@
-//  Tus ajustes, dentro de los Ajustes de la barra.
+//  Your plugin's settings, inside the shell's Settings window.
 //
-//  Sin esto, un plugin con dos opciones tenía que inventarse su propia
-//  pantalla, su propio botón para abrirla y su propia forma de guardarlas —y
-//  el usuario tenía que aprender un sitio nuevo para cada plugin. Con esto,
-//  tus opciones salen en Ajustes como una sección más, con la misma cara.
+//  Without this, a plugin with two options had to invent its own screen,
+//  its own button to open it, and its own way to save them. Users then had
+//  to learn a new location for each plugin. Here, those options appear as
+//  another Settings section with the same presentation as the rest.
 //
-//  Los valores los guardas TÚ: la barra pregunta por `valores` y avisa por
-//  `cambiado`. Así lo que se enseña es siempre lo que de verdad tienes
-//  guardado, y no una copia que se desincroniza al primer fallo de escritura.
+//  YOU persist the values: the shell reads `valores` and reports changes
+//  through `cambiado`. The displayed state is therefore the state you
+//  actually saved, not a copy that drifts after the first failed write.
 //
 //      K4.Ajustes {
 //          plugin: "hola"
@@ -25,40 +25,39 @@ import QtQuick
 QtObject {
     id: aporte
 
-    //  Tu id, el mismo del manifiesto. Es lo que separa tus opciones de las
-    //  de otro plugin que use el mismo nombre.
+    //  Your id, matching the manifest. It separates your options from
+    //  another plugin's options with the same names.
     required property string plugin
 
-    //  El título de la sección en Ajustes.
+    //  The section title in Settings.
     property string grupo: ""
 
-    //  Y cómo se ve esa sección en la barra lateral de la ventana de Ajustes:
-    //  un icono y una línea que diga de qué va. Las dos son opcionales — sin
-    //  `glifo` se usa el icono que el plugin declara en su manifiesto, y sin
-    //  `desc` la sección simplemente no lleva subtítulo.
+    //  The section's appearance in the Settings sidebar: an icon and one
+    //  line explaining its purpose. Both are optional: without `glifo`, use
+    //  the plugin's manifest icon; without `desc`, omit the subtitle.
     //
-    //  `glifo` es un códice de la Nerd Font, como el del manifiesto: búscalo
-    //  con `tools/glifos.py` y compruébalo, que el nombre no es la forma.
+    //  `glifo` is a Nerd Font code point, like the manifest's icon. Find it
+    //  with `tools/glyphs.py` and verify its appearance rather than guessing.
     property int glifo: 0
     property string desc: ""
 
-    //  `[{ id, nombre, desc, glifo }]`. `glifo` es un códice de la Nerd Font
-    //  —búscalo con `tools/glifos.py`—. Un interruptor por opción, salvo que
-    //  digas otro `tipo`:
+    //  `[{ id, nombre, desc, glifo }]`. `glifo` is a Nerd Font code point;
+    //  find it with `tools/glyphs.py`. Each option is a switch unless you
+    //  specify another `tipo`:
     //
-    //   · "eleccion": chips de varias respuestas. Trae las tuyas en
-    //     `alternativas: [{ codigo, nombre }]`; lo que llega por `cambiado`
-    //     es el `codigo` elegido.
-    //   · "texto": un campo libre — una URL, un modelo, una clave de API.
-    //     `pista` es el texto gris del campo vacío y `secreto: true` lo
-    //     tapa con puntos en cuanto se deja de teclear. El valor llega por
-    //     `cambiado` al confirmar —Intro o clic fuera—, no tecla a tecla.
+    //   · "eleccion": chips offering several choices. Supply them in
+    //     `alternativas: [{ codigo, nombre }]`; `cambiado` receives the
+    //     selected `codigo`.
+    //   · "texto": a free-text field for a URL, model or API key. `pista`
+    //     is the empty field's gray placeholder; `secreto: true` masks input
+    //     with dots after typing. `cambiado` receives the value on commit
+    //     (Enter or clicking outside), rather than on every keystroke.
     property var opciones: []
 
-    //  Lo que vale cada opción AHORA, por su id. La barra lo lee al pintar.
+    //  Each option's CURRENT value, keyed by id. The shell reads it to render.
     property var valores: ({})
 
-    //  El usuario ha tocado una: guárdalo y actualiza `valores`.
+    //  The user changed an option: persist it and update `valores`.
     signal cambiado(string id, var valor)
 
     function _registrar() {
@@ -68,13 +67,12 @@ QtObject {
 
     Component.onCompleted: _registrar()
 
-    //  Y otra vez cada vez que cambien, que lo de arriba es una FOTO: la barra
-    //  se queda con la lista tal como estaba al nacer el plugin. Sin esto, un
-    //  plugin cuyas opciones dependan de algo que se averigua después —si un
-    //  programa está instalado, si hay red— o las enseña siempre o no las
-    //  enseña nunca, según qué hubiera en ese instante. Dejar `opciones` vacío
-    //  esconde la sección entera, que es la forma de decir «esto ahora mismo
-    //  no aplica».
+    //  Register again whenever these change: registration takes a SNAPSHOT
+    //  of the list at plugin creation. Otherwise, options that depend on a
+    //  later discovery, such as an installed program or network access,
+    //  would always or never appear according to that initial state.
+    //  Empty `opciones` hides the entire section, expressing that these
+    //  settings do not currently apply.
     onOpcionesChanged: _registrar()
     onGrupoChanged: _registrar()
     onGlifoChanged: _registrar()

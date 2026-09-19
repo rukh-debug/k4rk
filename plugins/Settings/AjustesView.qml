@@ -809,7 +809,7 @@ FadeIn {
 
                 //  And a new version IS news, so it goes blue and clickable.
                 //
-                //  With unsaved changes the button is not offered: `./instalar`
+                //  With unsaved changes the button is not offered: `./install`
                 //  refuses to touch the code with a dirty tree —on purpose— so
                 //  it would be a button that does not do what it says. The
                 //  situation is stated and whoever reads it decides; the

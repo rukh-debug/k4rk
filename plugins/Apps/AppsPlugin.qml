@@ -68,10 +68,9 @@ K4.Plugin {
         }
     })
 
-    //  Las de la barra, filtradas por lo que se escribe. Una apagada NO
-    //  desaparece: sale en gris. Que algo se esfume al apagarlo obliga a
-    //  guess where it went; in gray one sees it is there and why it
-    //  does not open.
+    //  The bar's applications, filtered by what is typed. A disabled one
+    //  stays visible in gray. Hiding it would make people guess where it
+    //  went; in gray they can see it is still there and why it does not open.
     readonly property var lista: {
         const todas = SurfaceRegistry.aplicaciones
         const q = busqueda.trim().toLowerCase()

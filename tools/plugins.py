@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""El catálogo de plugins: valida el del repo y lista el combinado.
+"""The plugin catalog: validate the repository catalog and list the combined one.
 
-    python3 tools/plugins.py            valida (repo + qmldir + usuario)
-    python3 tools/plugins.py --listar   emite el catálogo combinado en JSON
+    python3 tools/plugins.py            validate (repo + qmldir + user plugins)
+    python3 tools/plugins.py --listar   emit the combined catalog as JSON
 
-El combinado es lo que carga la barra: los plugins del repo más los del
-usuario en ~/.config/k4/plugins/<id>/, cada uno con su plugin.json. La
-validación vive AQUÍ y en ningún otro sitio: el gestor de QML consume lo que
-esto emite, y un manifiesto roto es un plugin marcado como no cargable con su
-motivo — nunca una barra que no arranca.
+The bar loads the combined catalog: repository plugins plus user plugins in
+~/.config/k4/plugins/<id>/, each with its own plugin.json. Validation lives
+HERE and nowhere else: the QML manager consumes this output, and a broken
+manifest marks a plugin as unloadable with a reason, rather than preventing
+the bar from starting.
 
-No ejecuta QML: comprueba lo que se puede saber antes de arrancar Quickshell.
+No QML is executed: check what can be known before starting Quickshell.
 """
 from __future__ import annotations
 
@@ -45,25 +45,25 @@ IPC_NATIVOS = {"k4", "k4.panel", "k4.sound", "k4.session", "k4.tray"}
 
 RE_ID = re.compile(r"[a-z0-9][a-z0-9-]*")
 
-#  Cuarenta caracteres, en minúsculas y completo. Un SHA corto o una rama NO
-#  valen aquí a propósito: la gracia de anclar es que lo que se revisó sea
-#  exactamente lo que se instala, y una rama se mueve después de la revisión.
+#  All forty lowercase characters. Short SHAs and branches are deliberately
+#  rejected: pinning ensures the installed code is exactly what was reviewed,
+#  whereas a branch can move after review.
 RE_SHA = re.compile(r"[0-9a-f]{40}")
 
-#  Qué puede pedir un plugin de fuera, y qué delata cada permiso en el QML.
+#  What an external plugin may request, and what reveals each permission in QML.
 #
-#  Esto no es un sandbox y no se vende como tal: QML en el mismo proceso puede
-#  hacer lo que la barra pueda hacer. Es consentimiento informado — el usuario
-#  ve qué declara el plugin antes de encenderlo — más un análisis que convierte
-#  el descuido y el engaño simple en un error de instalación.
-#  La línea la marca el efecto, no el módulo: mirar el volumen no le hace nada
-#  a nadie y cambiarlo sí, así que se vigila `ponerVolumen`, no `K4.Audio`. El
-#  portapapeles es la excepción y va al revés — ahí lo delicado es LEER, que
-#  guarda contraseñas y tokens, así que basta con nombrarlo.
+#  This is not a sandbox and makes no such claim: QML in the same process can
+#  do anything the bar can do. It provides informed consent — users see the
+#  plugin's declarations before enabling it — plus analysis that turns
+#  oversights and simple deception into installation errors.
+#  Effects matter, not modules: reading volume changes nothing, but setting
+#  it does, so we check `ponerVolumen`, not `K4.Audio`. The clipboard is the
+#  exception: READING is sensitive because it holds passwords and tokens, so
+#  merely referencing it requires permission.
 PERMISOS = {
-    #  `K4.Terminal.ejecutar` y `.abrir` corren un guion; que lo lance otro
-    #  por ti no lo hace menos correr un guion. Mirar qué terminal hay
-    #  —`cual`, `enLaIsla`, `cierre`— no delata nada y va libre.
+    #  `K4.Terminal.ejecutar` and `.abrir` execute a script; delegating the
+    #  launch does not change that. Inspecting the terminal through `cual`,
+    #  `enLaIsla`, or `cierre` requires no permission.
     "procesos": re.compile(r"\bK4\.Process\b|\bexecDetached\b"
                            r"|\bK4\.Terminal\.(ejecutar|abrir)\b"),
     "red": re.compile(r"\bXMLHttpRequest\b|\bWebSocket\b"),
@@ -80,106 +80,102 @@ PERMISOS = {
     "paginas": re.compile(r"\bK4\.Pagina\b"),
 }
 
-#  Y QUÉ ES cada plugin: dónde se dibuja y por dónde se le llama.
+#  And WHAT each plugin is: where it draws and how it can be called.
 #
-#  Los permisos dicen qué puede TOCAR; esto dice qué OCUPA. Hasta ahora el host
-#  lo descubría por efectos secundarios —¿pone `view`? ¿crea una `K4.Ventana`?—
-#  y eso tiene dos costes: Ajustes no puede contarte qué es un plugin sin
-#  cargarlo, y nadie puede negarle una superficie que no pidió.
+#  Permissions describe what it can TOUCH; surfaces describe what it OCCUPIES.
+#  The host previously inferred this from side effects — setting `view` or
+#  creating a `K4.Ventana`. That has two costs: Settings cannot describe a
+#  plugin without loading it, and unrequested surfaces cannot be denied.
 #
-#  Declararlo es opcional: un manifiesto sin `superficies` sigue valiendo y esto
-#  no dice nada. Quien lo declare, se compromete.
-#  ── reglas con nombre ────────────────────────────────────────────────
+#  Declarations are optional: a manifest without surfaces remains valid and
+#  makes no promise. Once declared, they are binding.
+#  ── named rules ──────────────────────────────────────────────────────
 #
-#  Los permisos dicen qué API de k4 toca un plugin. Esto es otra cosa: patrones
-#  que, estén donde estén —en el QML, en un guion suyo—, hacen que el código
-#  que acabas ejecutando NO sea el que alguien miró.
+#  Permissions describe which k4 APIs a plugin touches. These rules instead
+#  detect patterns anywhere — QML or bundled scripts — that can make the code
+#  eventually executed differ from what someone reviewed.
 #
-#  Cada regla lleva por qué importa y qué hacer, y eso no es adorno: un aviso
-#  que no dice cómo arreglarse se ignora, y entonces da igual tenerlo.
+#  Every rule explains why it matters and how to fix it. A warning without
+#  an actionable fix gets ignored and serves no purpose.
 #
-#  «bloquea» es lo que impide PUBLICAR, no instalar. Si te traes tu propio
-#  plugin a tu propia máquina, allá tú; lo que no puede pasar es que el
-#  registro le sirva a un desconocido algo que se descarga y ejecuta lo que
-#  haya en ese momento en internet.
+#  `bloquea` prevents PUBLICATION, not installation. Installing your own
+#  plugin on your machine is your choice; the registry must not serve
+#  strangers code that downloads and executes whatever is currently online.
 #
-#  Y el resto no bloquean: marcan el envío para que lo mire una persona. Pedir
-#  `procesos` no tiene nada de malo —media barra ejecuta cosas— pero es lo que
-#  hay que leer antes de firmar.
+#  Other rules flag submissions for human review without blocking them.
+#  Requesting `procesos` is normal — much of the bar runs commands — but
+#  deserves review before approval.
 
 REGLAS = [
     {
         "id": "descarga-y-ejecuta",
-        "que": "Se descarga algo de internet y se lo pasa a una shell",
-        "porque": "Lo que se ejecuta es lo que haya en esa URL en ese momento,"
-                  " no lo que se revisó. Quien controle la URL controla la"
-                  " máquina de quien instale el plugin.",
-        "arreglo": ["Trae el fichero, compruébalo y ejecútalo por separado.",
-                    "O mejor: mételo en el repositorio del plugin, que así va"
-                    " atado al commit."],
+        "que": "Downloads content from the internet and pipes it to a shell",
+        "porque": "The executed code is whatever that URL currently serves,"
+                  " not what was reviewed. Whoever controls the URL controls"
+                  " the machine where the plugin is installed.",
+        "arreglo": ["Download, verify, and execute the file as separate steps.",
+                    "Better yet, include it in the plugin repository so it is"
+                    " tied to the commit."],
         "bloquea": True,
         "patron": re.compile(r"(?:curl|wget)[^\n|;]*\|\s*(?:sudo\s+)?"
                              r"(?:ba|z|k)?sh\b"),
     },
     {
         "id": "clon-sin-commit",
-        "que": "Clona un repositorio sin fijar el commit",
-        "porque": "Una rama o una etiqueta se mueven. Lo que se ejecute la"
-                  " semana que viene no será lo que se miró hoy.",
-        "arreglo": ["Pásale el SHA completo y haz `checkout` de él.",
-                    "Actualiza ese SHA en un commit tuyo cuando quieras subir"
-                    " de versión."],
-        #  Este NO bloquea, y es a propósito: saber si un clon está anclado
-        #  de verdad es difícil —el `checkout` puede venir tres líneas más
-        #  abajo— y un falso positivo pararía a alguien que lo hizo bien. Se
-        #  marca para que lo mire una persona, que sí sabe leer tres líneas.
+        "que": "Clones a repository without pinning the commit",
+        "porque": "Branches and tags can move. Next week's executed code may"
+                  " differ from what was reviewed today.",
+        "arreglo": ["Supply the full SHA and check it out with `checkout`.",
+                    "Update that SHA in your own commit when you want to"
+                    " upgrade."],
+        #  Deliberately nonblocking: proving a clone is pinned is difficult
+        #  because `checkout` may appear three lines later. A false positive
+        #  would block correct code. Flag it for a person who can read ahead.
         "bloquea": False,
         "patron": re.compile(r"git\s+clone(?![^\n]*[0-9a-f]{40})"
                              r"[^\n]*(?:https?://|git@)"),
     },
     {
         "id": "sudo-sin-contrasena",
-        "que": "Pide root sin que nadie escriba una contraseña",
-        "porque": "Cualquier proceso que corra como tú puede invocar eso como"
-                  " root, y un plugin no está en ninguna jaula.",
-        "arreglo": ["Pide autenticación de verdad, o quítalo.",
-                    "Nada de comodines ni de argumentos que venga de fuera."],
+        "que": "Requests root access without anyone entering a password",
+        "porque": "Any process running as your user can invoke this as root,"
+                  " and plugins are not sandboxed.",
+        "arreglo": ["Require real authentication, or remove it.",
+                    "Do not allow wildcards or externally supplied arguments."],
         "bloquea": True,
         "patron": re.compile(r"\bNOPASSWD\b|\bsudo\s+-n\b|\bpkexec\b"),
     },
     {
         "id": "qml-desde-texto",
-        "que": "Construye QML a partir de una cadena en tiempo de ejecución",
-        "porque": "Lo que se ejecuta no está en el repositorio, así que"
-                  " revisarlo no dice nada de lo que hará. Si la cadena viene"
-                  " de fuera —un fichero, una respuesta— es peor.",
-        "arreglo": ["Usa un `Loader` con un componente que esté en el"
-                    " repositorio.",
-                    "Si la forma cambia, haz varios componentes y elige."],
+        "que": "Constructs QML from a string at runtime",
+        "porque": "The executed code is not in the repository, so reviewing"
+                  " it cannot establish its behavior. External strings from"
+                  " files or responses make this worse.",
+        "arreglo": ["Use a `Loader` with a component from the repository.",
+                    "For varying layouts, create several components and select one."],
         "bloquea": False,
         "patron": re.compile(r"\bQt\.createQmlObject\b|\beval\s*\("
                              r"|\bnew\s+Function\s*\("),
     },
     {
         "id": "borra-a-lo-ancho",
-        "que": "Borra recursivamente con comodines o rutas de fuera",
-        "porque": "Un `rm -rf` con una variable vacía dentro borra otra cosa."
-                  " Ha pasado en proyectos con mucha más gente mirando.",
-        "arreglo": ["Borra rutas concretas, dentro de la carpeta del plugin.",
-                    "Comprueba que la variable no esté vacía antes de usarla."],
+        "que": "Deletes recursively using wildcards or external paths",
+        "porque": "An empty variable in `rm -rf` can delete the wrong target."
+                  " This has happened in projects with far more reviewers.",
+        "arreglo": ["Delete specific paths inside the plugin folder.",
+                    "Check that the variable is nonempty before using it."],
         "bloquea": False,
         "patron": re.compile(r"rm\s+-[a-z]*[rR][a-z]*f|rm\s+-[a-z]*f[a-z]*[rR]"),
     },
 ]
 
-#  Dónde se buscan: en todo lo que el plugin traiga y pueda acabar
-#  ejecutándose. Un `.md` no ejecuta nada y un README con un ejemplo de
-#  `curl | sh` no es el plugin haciéndolo.
+#  Scan anything bundled with the plugin that could be executed. Markdown is
+#  not executable, and a README example of `curl | sh` is not plugin behavior.
 EJECUTABLES = (".qml", ".js", ".sh", ".bash", ".zsh", ".py", ".mjs")
 
 
 def revisar_reglas(carpeta):
-    """Qué reglas incumple lo que hay en esa carpeta, con dónde."""
+    """Return rule violations in the folder, including their locations."""
     fuera = []
     for ruta in sorted(pathlib.Path(carpeta).rglob("*")):
         if not ruta.is_file() or ruta.suffix.lower() not in EJECUTABLES:
@@ -199,43 +195,41 @@ def revisar_reglas(carpeta):
                     "bloquea": regla["bloquea"],
                     "donde": "%s:%d" % (rel, texto[:m.start()].count("\n") + 1),
                 })
-                break   # una vez por fichero y regla; el resto es ruido
+                break   # Once per file and rule; further matches add noise.
     return fuera
 
 
 SUPERFICIES = {
-    #  Se dibuja en la island: tiene vista.
+    #  Draws in the island: it has a view.
     "island": re.compile(r"^\s*view\s*:", re.MULTILINE),
-    #  Habla en la píldora aunque esté cerrado.
+    #  Displays content in the pill even while closed.
     "pildora": re.compile(r"\bK4\.Pildora\b"),
-    #  Pinta FUERA de la island, en su propia superficie.
+    #  Draws OUTSIDE the island, on its own surface.
     "ventana": re.compile(r"\bK4\.Ventana\b"),
-    #  Se le puede llamar desde fuera.
+    #  Can be called externally.
     "ipc": re.compile(r"\bK4\.Ipc\b"),
-    #  Aporta un bloque al centro de control.
+    #  Contributes a block to the control center.
     "centro": re.compile(r"\bK4\.Card\b"),
 }
 
 
-#  Los COMANDOS que un plugin registra: los targets de IPC por los que se le
-#  puede llamar desde fuera.
+#  The COMMANDS a plugin registers: IPC targets for external calls.
 #
-#  Se sacan del QML y no del manifiesto porque es lo que de verdad se registra:
-#  un manifiesto puede declarar misa, pero quien se queda `k4.notas` es el
-#  `K4.Ipc` que hay escrito. Es la misma idea que los permisos —mirar la fuente
-#  y no fiarse de lo declarado— aplicada a lo que se reparte entre plugins.
+#  Read QML rather than the manifest because it defines actual registrations:
+#  regardless of declarations, the written `K4.Ipc` claims `k4.notas`. As with
+#  permissions, inspect source rather than trusting declarations, here to
+#  determine ownership across plugins.
 #
-#  La ventana de 400 caracteres es un apaño consciente: en QML `target` y `name`
-#  se escriben en la primera o segunda línea del bloque, y casar llaves
-#  anidadas con una expresión regular es peor negocio que este recorte. Si
-#  alguien esconde su target quinientos caracteres más abajo, aquí no sale — y
-#  el choque se lo encontrará en el log, como hasta ahora.
+#  The 400-character window is a deliberate compromise: QML normally puts
+#  `target` and `name` in the first two lines. Matching nested braces with a
+#  regex is worse than this limit. A target hidden five hundred characters
+#  later is missed, and its collision will appear only in the log as before.
 RE_IPC_BLOQUE = re.compile(r"\bK4\.Ipc\b\s*\{")
 RE_TARGET = re.compile(r"\btarget\s*:\s*[\"']([^\"']+)[\"']")
 
 
 def comandos_de_texto(texto, ipc):
-    """Apunta en `ipc` lo que registre este QML."""
+    """Add the targets registered by this QML to `ipc`."""
     for m in RE_IPC_BLOQUE.finditer(texto):
         hallado = RE_TARGET.search(texto[m.end():m.end() + 400])
         if hallado:
@@ -243,7 +237,7 @@ def comandos_de_texto(texto, ipc):
 
 
 def comandos_de_carpeta(d):
-    """`{"ipc": [...]}` de una carpeta de plugin."""
+    """Return `{"ipc": [...]}` for a plugin folder."""
     ipc = set()
     for qml in d.glob("**/*.qml"):
         try:
@@ -256,15 +250,15 @@ def comandos_de_carpeta(d):
 
 
 def marcar_choques(combinado):
-    """Marca no cargable a quien pida un comando que ya se ha llevado otro.
+    """Mark plugins unloadable when they claim an already-owned command.
 
-    Quién gana: el primero del catálogo combinado, y el combinado va con los
-    del repo delante. O sea que un plugin de fuera nunca le quita un comando a
-    uno de casa — la misma regla que ya rige con los ids.
+    The first entry in the combined catalog wins, and repository plugins
+    come first. External plugins therefore cannot take their commands,
+    following the same precedence rule as ids.
 
-    Sin esto el choque no se ve: Quickshell registra el primero, deja el
-    segundo MUERTO y lo cuenta en el log y en ningún sitio más. El plugin
-    figura cargado y sin error, y sus comandos sencillamente no contestan.
+    Otherwise collisions are invisible: Quickshell registers the first and
+    leaves the second inactive, reporting it only in the log. The plugin
+    appears loaded without errors but its commands never respond.
     """
     dueno = {t: "nativo" for t in IPC_NATIVOS}
     for item in combinado:
@@ -277,7 +271,7 @@ def marcar_choques(combinado):
                 item["cargable"] = False
                 item["motivo"], item["dice"], item["detalle"] = (
                     "comando-ocupado",
-                    f"el comando {t} ya lo registra «{dueno[t]}»", t)
+                    f"command {t} is already registered by «{dueno[t]}»", t)
                 break
         else:
             for t in cmds.get("ipc") or []:
@@ -293,7 +287,7 @@ def version_tupla(v):
 
 
 def host_compatible(requisito, version_host):
-    """`>=x.y.z` contra la versión de la barra. Sin requisito, compatible."""
+    """Compare `>=x.y.z` with the bar version; no requirement means compatible."""
     if not requisito:
         return True
     m = re.fullmatch(r">=\s*(\d+(?:\.\d+)*)", str(requisito).strip())
@@ -336,7 +330,7 @@ def validar_nativo(fallos):
     try:
         datos = json.loads(CATALOGO_NATIVO.read_text())
     except Exception as exc:
-        fallos.append(f"features/catalog.json ilegible: {exc}")
+        fallos.append(f"features/catalog.json unreadable: {exc}")
         return set()
     feats = datos.get("features") or []
     ids: set[str] = set()
@@ -345,94 +339,94 @@ def validar_nativo(fallos):
         ident = item.get("id")
         entrada = item.get("entry")
         if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
-            fallos.append(f"nativo id inválido: {ident!r}")
+            fallos.append(f"invalid native id: {ident!r}")
             continue
         if ident in ids:
-            fallos.append(f"nativo id duplicado: {ident}")
+            fallos.append(f"duplicate native id: {ident}")
         ids.add(ident)
         if ident not in IDS_NATIVOS:
-            fallos.append(f"nativo {ident}: id no reservado")
+            fallos.append(f"native {ident}: id is not reserved")
         orden = item.get("order")
         if not isinstance(orden, int) or orden in ordenes:
-            fallos.append(f"nativo {ident}: order duplicado o inválido")
+            fallos.append(f"native {ident}: duplicate or invalid order")
         else:
             ordenes.add(orden)
         if not isinstance(entrada, str):
-            fallos.append(f"nativo {ident}: falta entry")
+            fallos.append(f"native {ident}: missing entry")
             continue
         ruta = (CATALOGO_NATIVO.parent / str(entrada)).resolve()
         try:
             ruta.relative_to(RAIZ)
         except ValueError:
-            fallos.append(f"nativo {ident}: entry fuera del repo")
+            fallos.append(f"native {ident}: entry outside the repository")
             continue
         if not ruta.is_file():
-            fallos.append(f"nativo {ident}: no existe {entrada}")
+            fallos.append(f"native {ident}: {entrada} does not exist")
             continue
         texto = ruta.read_text()
         if "pragma Singleton" not in texto or "Singleton {" not in texto:
-            fallos.append(f"nativo {ident}: la raíz debe ser un Singleton")
+            fallos.append(f"native {ident}: root must be a Singleton")
         if "Quickshell" not in texto:
-            fallos.append(f"nativo {ident}: falta import Quickshell "
-                          "(Singleton no es un tipo sin él)")
+            fallos.append(f"native {ident}: missing import Quickshell "
+                          "(Singleton is not a type without it)")
         if ("IpcHandler" in texto or "Process" in texto
                 or "FileView" in texto or "StdioCollector" in texto
                 or "SplitParser" in texto) and "Quickshell.Io" not in texto:
-            fallos.append(f"nativo {ident}: falta import Quickshell.Io")
+            fallos.append(f"native {ident}: missing import Quickshell.Io")
     if ids != IDS_NATIVOS - {"tray"}:
-        fallos.append(f"nativo: ids {sorted(ids)} != esperados {sorted(IDS_NATIVOS - {'tray'})}")
+        fallos.append(f"native: ids {sorted(ids)} != expected {sorted(IDS_NATIVOS - {'tray'})}")
     # services/ and core/ qmldir stay complete for native singletons/views.
     for qmldir_rel in ["services/qmldir", "core/qmldir"]:
         qmldir = RAIZ / qmldir_rel
         if not qmldir.is_file():
-            fallos.append(f"falta {qmldir_rel}")
+            fallos.append(f"missing {qmldir_rel}")
     return ids
 
 
 def validar_repo(plugins, fallos):
-    """Los de casa: catálogo, name, carpeta y qmldir al día."""
+    """Validate repository plugins: catalog, name, folder, and current qmldir."""
     nativos = validar_nativo(fallos)
     ids: set[str] = set()
     for item in plugins:
         ident = item.get("id")
         entrada = item.get("entry")
         if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
-            fallos.append(f"id inválido: {ident!r}")
+            fallos.append(f"invalid id: {ident!r}")
             continue
         if ident in ids:
-            fallos.append(f"id duplicado: {ident}")
+            fallos.append(f"duplicate id: {ident}")
         ids.add(ident)
         if not isinstance(entrada, str):
-            fallos.append(f"{ident}: falta entry")
+            fallos.append(f"{ident}: missing entry")
             continue
         ruta = RAIZ / "plugins" / entrada
         if not ruta.is_file():
-            fallos.append(f"{ident}: no existe {entrada}")
+            fallos.append(f"{ident}: {entrada} does not exist")
             continue
         texto = ruta.read_text()
         nombres = re.findall(r"^\s{4}name\s*:\s*['\"]([^'\"]+)['\"]\s*$",
                              texto, re.MULTILINE)
         if len(nombres) != 1:
-            fallos.append(f"{ident}: debe declarar exactamente un name")
+            fallos.append(f"{ident}: must declare exactly one name")
         elif nombres[0] != ident:
-            fallos.append(f"{ident}: name QML es {nombres[0]!r}")
+            fallos.append(f"{ident}: QML name is {nombres[0]!r}")
 
         #  House plugins get the same honesty the door demands of strangers:
         #  what they touch declared, what they are said out loud, an icon to
         #  be found by. Repo manifests are written by hand, and hands drift.
         desc = item.get("description")
         if not isinstance(desc, str) or not desc.strip():
-            fallos.append(f"{ident}: falta description")
+            fallos.append(f"{ident}: missing description")
         icono = item.get("icon")
         if not isinstance(icono, str) or not icono:
-            fallos.append(f"{ident}: falta icon")
+            fallos.append(f"{ident}: missing icon")
         elif not re.fullmatch(r"0[xX][0-9a-fA-F]{4,6}", icono) \
                 and not ((RAIZ / "plugins" / str(entrada)).parent / icono).is_file():
-            fallos.append(f"{ident}: icon no es un códice ni un fichero")
+            fallos.append(f"{ident}: icon is neither a code point nor a file")
         declarados = set(item.get("permissions") or [])
         raros = declarados - set(PERMISOS)
         if raros:
-            fallos.append(f"{ident}: permisos desconocidos: "
+            fallos.append(f"{ident}: unknown permissions: "
                           + ", ".join(sorted(raros)))
         usados = set()
         for qml in (RAIZ / "plugins" / str(entrada)).parent.glob("**/*.qml"):
@@ -443,51 +437,50 @@ def validar_repo(plugins, fallos):
                     usados.add(permiso)
         sin_declarar = usados - declarados
         if sin_declarar:
-            fallos.append(f"{ident}: usa sin declarar: "
+            fallos.append(f"{ident}: uses without declaring: "
                           + ", ".join(sorted(sin_declarar)))
 
     for duplicado in sorted(ids & nativos):
-        fallos.append(f"id {duplicado}: nativo y plugin a la vez")
+        fallos.append(f"id {duplicado}: both a native feature and a plugin")
 
     carpetas = {p.name for p in (RAIZ / "plugins").iterdir()
                 if p.is_dir() and (p / (p.name + "Plugin.qml")).is_file()}
     en_catalogo = {str(item.get("entry", "")).split("/", 1)[0]
                    for item in plugins}
     for carpeta in sorted(carpetas - en_catalogo):
-        fallos.append(f"plugin sin catálogo: {carpeta}")
+        fallos.append(f"plugin missing from catalog: {carpeta}")
 
-    #  El qmldir de cada carpeta tiene que listar TODOS sus .qml: con el
-    #  esquema de URLs de Quickshell la resolución implícita de hermanos no
-    #  existe, y un tipo que falte aquí es un «X is not a type» al cargar.
-    #  Se generaron al pasar a la carga dinámica; esto evita que envejezcan.
+    #  Each folder's qmldir must list ALL its .qml files: Quickshell's URL
+    #  scheme has no implicit sibling resolution, so missing types cause
+    #  "X is not a type" at load time. These were generated for dynamic
+    #  loading; this check keeps them current.
     for carpeta in sorted(carpetas):
         d = RAIZ / "plugins" / carpeta
         qmldir = d / "qmldir"
         if not qmldir.is_file():
-            fallos.append(f"{carpeta}: falta qmldir")
+            fallos.append(f"{carpeta}: missing qmldir")
             continue
         declarados = set(re.findall(r"^(\w+) 1\.0", qmldir.read_text(),
                                     re.MULTILINE))
         reales = {f.stem for f in d.glob("*.qml")}
         for falta in sorted(reales - declarados):
-            fallos.append(f"{carpeta}/qmldir: falta {falta}")
+            fallos.append(f"{carpeta}/qmldir: missing {falta}")
     return ids
 
 
-#  Lo que se admite como icono de imagen, y por qué ese mínimo.
+#  Accepted image icons and the reason for the minimum size.
 #
-#  64 px es el tamaño al que se pinta en el centro de aplicaciones en una
-#  pantalla normal; por debajo se ve borroso justo donde más se mira. No es
-#  un capricho: un icono pixelado hace que un plugin bueno parezca malo.
-#  SVG no lleva mínimo — escala, para eso está.
+#  The app center renders icons at 64 px on a normal display. Smaller images
+#  look blurry exactly where users focus; a pixelated icon makes a good plugin
+#  look bad. SVG has no minimum because it scales.
 ICONO_MINIMO = 64
 ICONO_MAXIMO_MB = 1
 ICONO_MAXIMO_BYTES = ICONO_MAXIMO_MB * 1024 * 1024
 
 
 def medida_png(ruta):
-    """Ancho y alto de un PNG leyendo su cabecera. Nada de dependencias: son
-    veinticuatro bytes y el formato lleva veinte años sin moverse."""
+    """Read PNG width and height from its header, without dependencies.
+    It takes twenty-four bytes and the format has been stable for decades."""
     with open(ruta, "rb") as f:
         cab = f.read(24)
     if len(cab) < 24 or cab[:8] != b"\x89PNG\r\n\x1a\n" or cab[12:16] != b"IHDR":
@@ -496,43 +489,43 @@ def medida_png(ruta):
 
 
 def revisar_icono(carpeta, icono, item):
-    """Valida el icono declarado. Devuelve el motivo del fallo, o None.
+    """Validate the declared icon. Return a failure explanation, or None.
 
-    Como efecto, deja en `item` lo que la barra necesita: `icon` si es un
-    códice, `iconFile` (ruta absoluta) si es una imagen. Se separan aquí
-    para que el QML no tenga que adivinar de qué clase es.
+    Populate `item` with what the bar needs: `icon` for a code point or
+    `iconFile` (absolute path) for an image. Separate them here so QML does
+    not need to guess which kind it received.
     """
     if not isinstance(icono, str) or not icono:
-        return f"icono debe ser un códice o un fichero, no {icono!r}"
+        return f"icon must be a code point or a file, not {icono!r}"
 
     if re.fullmatch(r"0[xX][0-9a-fA-F]{4,6}", icono):
         item["icon"] = icono
         return None
 
-    #  Un fichero de la propia carpeta: nada de rutas absolutas ni de subir
-    #  por ella. El icono de un plugin es SUYO.
+    #  A file in the plugin's own folder: no absolute paths or traversal.
+    #  A plugin must own its icon.
     if "/" in icono or icono.startswith("."):
-        return "el icono debe ser un fichero de tu carpeta, sin rutas"
+        return "the icon must be a file in your folder, without a path"
     ext = icono.lower().rsplit(".", 1)[-1] if "." in icono else ""
     if ext not in ("png", "svg"):
-        return f"icono {icono!r}: solo PNG o SVG (o un códice tipo 0xF04E5)"
+        return f"icon {icono!r}: only PNG or SVG (or a code point like 0xF04E5)"
 
     ruta = carpeta / icono
     if not ruta.is_file():
-        return f"no existe el icono {icono}"
+        return f"icon {icono} does not exist"
     if ruta.stat().st_size > ICONO_MAXIMO_BYTES:
-        return (f"el icono pesa {ruta.stat().st_size // 1024} KB; el tope es "
+        return (f"the icon is {ruta.stat().st_size // 1024} KB; the limit is "
                 f"{ICONO_MAXIMO_BYTES // 1024} KB")
 
     if ext == "png":
         medida = medida_png(ruta)
         if medida is None:
-            return f"{icono} no es un PNG válido"
+            return f"{icono} is not a valid PNG"
         ancho, alto = medida
         if ancho < ICONO_MINIMO or alto < ICONO_MINIMO:
-            return (f"el icono es de {ancho}x{alto} y el mínimo es "
-                    f"{ICONO_MINIMO}x{ICONO_MINIMO}: más pequeño se ve "
-                    f"borroso justo donde más se mira")
+            return (f"the icon is {ancho}x{alto} and the minimum is "
+                    f"{ICONO_MINIMO}x{ICONO_MINIMO}: smaller images look "
+                    f"blurry exactly where users focus")
 
     item.pop("icon", None)
     item["iconFile"] = str(ruta)
@@ -540,24 +533,24 @@ def revisar_icono(carpeta, icono, item):
 
 
 def validar_carpeta(d, ids_repo, version_host):
-    """El veredicto sobre UNA carpeta de plugin: `{…, cargable, motivo}`.
+    """Return the verdict for ONE plugin folder: `{…, cargable, motivo}`.
 
-    Vale para una ya instalada y para un clon recién bajado que todavía no ha
-    entrado en ~/.config/k4/plugins — que es justo lo que permite validar
-    ANTES de instalar, en vez de instalar y ver qué pasa.
+    Works for installed plugins and fresh clones not yet placed in
+    ~/.config/k4/plugins, allowing validation BEFORE installation rather than
+    installing first and seeing what happens.
     """
     item = {"id": d.name, "title": d.name, "externo": True,
             "enabledByDefault": False, "cargable": True,
             "permissions": [], "version": "0"}
 
-    #  Dos cosas a la vez, y las dos hacen falta:
+    #  Two representations, both necessary:
     #
-    #  `motivo` es un CÓDIGO, para la barra, que escribe la frase en el idioma
-    #  del usuario. `dice` es la frase en español, para quien está mirando una
-    #  terminal — que es el público de este guion y no merece leer códigos.
+    #  `motivo` is a CODE for the bar to turn into a message. `dice` is the
+    #  English explanation for terminal users, this script's audience, who
+    #  should not have to decipher codes.
     #
-    #  Antes solo estaba la frase, y acababa en la interfaz: con la barra en
-    #  inglés salía el título traducido y el porqué debajo en español.
+    #  Previously only the explanation existed and leaked into the UI,
+    #  producing English titles with Spanish reasons underneath.
     def mal(codigo, dice, detalle=""):
         item["cargable"] = False
         item["motivo"] = codigo
@@ -568,11 +561,11 @@ def validar_carpeta(d, ids_repo, version_host):
 
     manifiesto = d / "plugin.json"
     if not manifiesto.is_file():
-        return mal("sin-manifiesto", "sin plugin.json")
+        return mal("sin-manifiesto", "missing plugin.json")
     try:
         m = normalizar(json.loads(manifiesto.read_text()))
     except Exception as exc:
-        return mal("manifiesto-ilegible", f"plugin.json ilegible: {exc}",
+        return mal("manifiesto-ilegible", f"plugin.json unreadable: {exc}",
                    str(exc))
 
     for clave in ("id", "title", "version", "description", "permissions", "host",
@@ -581,44 +574,44 @@ def validar_carpeta(d, ids_repo, version_host):
             item[clave] = m[clave]
     ident = m.get("id")
     if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
-        return mal("id-invalido", f"id inválido: {ident!r}", str(ident))
+        return mal("id-invalido", f"invalid id: {ident!r}", str(ident))
     if ident != d.name:
         return mal("id-no-coincide",
-                   f"el id {ident!r} no coincide con la carpeta {d.name!r}",
+                   f"id {ident!r} does not match folder {d.name!r}",
                    f"{ident} / {d.name}")
     if ident in IDS_NATIVOS:
-        return mal("id-nativo", f"el id {ident!r} es una función nativa de la barra",
+        return mal("id-nativo", f"id {ident!r} is a native bar feature",
                    ident)
     if ident in ids_repo:
-        return mal("id-ocupado", "el id ya lo usa un plugin de la barra")
+        return mal("id-ocupado", "the id is already used by a bar plugin")
     entrada = m.get("entry")
     if not isinstance(entrada, str) or "/" in entrada:
         return mal("entrada-fuera",
-                   "entry debe ser un fichero de la propia carpeta")
+                   "entry must be a file in the plugin's own folder")
     ruta = d / entrada
     if not ruta.is_file():
-        return mal("sin-entrada", f"no existe {entrada}", str(entrada))
+        return mal("sin-entrada", f"{entrada} does not exist", str(entrada))
     if not host_compatible(m.get("host"), version_host):
         return mal("barra-vieja",
-                   f"pide barra {m.get('host')} y esta es {version_host}",
+                   f"requires bar {m.get('host')}, this is {version_host}",
                    str(m.get("host") or ""))
 
-    #  El icono, que puede ser un códice de la Nerd Font o una imagen propia.
-    #  Se valida aquí para que uno mal puesto sea un error de instalación y no
-    #  un cuadradito vacío en el centro de aplicaciones.
+    #  The icon may be a Nerd Font code point or a bundled image. Validate it
+    #  here so a bad icon causes an installation error rather than an empty
+    #  square in the app center.
     if m.get("icon") is not None:
         fallo = revisar_icono(d, m.get("icon"), item)
         if fallo:
-            #  El icono trae su propia frase ya escrita; el código es común
-            #  porque para el usuario todos son «ese icono no vale».
+            #  Icon validation supplies its own explanation; the shared code
+            #  covers all variants of "that icon is invalid".
             return mal("icono-malo", fallo)
 
-    #  El análisis de permisos: lo que el QML usa contra lo declarado.
+    #  Permission analysis: actual QML usage versus declarations.
     declarados = set(m.get("permissions") or [])
     raros = declarados - set(PERMISOS)
     if raros:
         return mal("permisos-raros",
-                   "permisos desconocidos: " + ", ".join(sorted(raros)),
+                   "unknown permissions: " + ", ".join(sorted(raros)),
                    ", ".join(sorted(raros)))
     usados = set()
     for qml in d.glob("**/*.qml"):
@@ -630,28 +623,27 @@ def validar_carpeta(d, ids_repo, version_host):
     sin_declarar = usados - declarados
     if sin_declarar:
         return mal("sin-declarar",
-                   "usa sin declarar: " + ", ".join(sorted(sin_declarar)),
+                   "uses without declaring: " + ", ".join(sorted(sin_declarar)),
                    ", ".join(sorted(sin_declarar)))
 
-    #  Las superficies: qué OCUPA, frente a qué TOCA.
+    #  Surfaces: what it OCCUPIES versus what it TOUCHES.
     #
-    #  Opcional a propósito. Un manifiesto sin `superficies` sigue siendo
-    #  válido y esto no dice nada: no se rompe a nadie por una comodidad que
-    #  no existía ayer. Pero quien la declare se compromete, y entonces sí se
-    #  comprueba contra lo que el QML hace de verdad — que es lo que la
-    #  vuelve útil y no un adorno del manifiesto.
+    #  Deliberately optional: a manifest without surfaces remains valid and
+    #  makes no promise, preserving compatibility with older plugins. Once
+    #  declared, surfaces are checked against actual QML behavior, making
+    #  them useful rather than decorative manifest metadata.
     sup_declaradas = m.get("surfaces")
     if sup_declaradas is not None:
         sup_declaradas = set(sup_declaradas or [])
-        #  Y se pasan al resultado, que si no se validan y se tiran: la tienda
-        #  y el informe de un envío preguntan por ellas y les llegaba una
-        #  lista vacía aunque el manifiesto las declarase. Toda la gracia de
-        #  las superficies es que alguien las VEA antes de encender el plugin.
+        #  Forward them to the result instead of validating and discarding
+        #  them. The store and submission report used to receive an empty
+        #  list despite declarations. Surfaces matter only if users can SEE
+        #  them before enabling the plugin.
         item["surfaces"] = sorted(sup_declaradas)
         raras = sup_declaradas - set(SUPERFICIES)
         if raras:
             return mal("superficies-raras",
-                       "superficies desconocidas: " + ", ".join(sorted(raras)),
+                       "unknown surfaces: " + ", ".join(sorted(raras)),
                        ", ".join(sorted(raras)))
         sup_usadas = set()
         for qml in d.glob("**/*.qml"):
@@ -663,23 +655,22 @@ def validar_carpeta(d, ids_repo, version_host):
         faltan = sup_usadas - sup_declaradas
         if faltan:
             return mal("superficie-sin-declarar",
-                       "ocupa sin declarar: " + ", ".join(sorted(faltan)),
+                       "occupies without declaring: " + ", ".join(sorted(faltan)),
                        ", ".join(sorted(faltan)))
 
-    #  Los comandos que registra, para que la barra los enseñe y para que
-    #  `marcar_choques` pueda cruzarlos con los del resto. Native targets
-    #  belong to the host and cannot be claimed.
+    #  Record registered commands for display and for `marcar_choques` to
+    #  compare with other plugins. Native targets belong to the host and
+    #  cannot be claimed.
     item["comandos"] = comandos_de_carpeta(d)
     nativos = set(item["comandos"].get("ipc") or []) & IPC_NATIVOS
     if nativos:
         return mal("comando-nativo",
-                   "el comando " + sorted(nativos)[0] + " es de la barra",
+                   "command " + sorted(nativos)[0] + " belongs to the bar",
                    sorted(nativos)[0])
 
-    #  El qmldir, generado si falta o si envejeció: con el esquema de URLs de
-    #  Quickshell los tipos hermanos no se resuelven solos, y pedirle a cada
-    #  autor que mantenga la lista a mano es pedir un «X is not a type» al
-    #  primer fichero nuevo.
+    #  Generate qmldir when missing or outdated: Quickshell's URL scheme
+    #  cannot resolve sibling types implicitly. Requiring authors to maintain
+    #  this list manually invites "X is not a type" on the first new file.
     reales = sorted(f.stem for f in d.glob("*.qml"))
     qmldir = d / "qmldir"
     declarados_qml = (set(re.findall(r"^(\w+) 1\.0", qmldir.read_text(),
@@ -695,21 +686,21 @@ def validar_carpeta(d, ids_repo, version_host):
                 "\n"
                 + "".join(f"{n} 1.0 {n}.qml\n" for n in reales))
         except OSError:
-            return mal("sin-qmldir", "no puedo escribir el qmldir")
+            return mal("sin-qmldir", "cannot write qmldir")
 
-    #  Cargable. La entrada sale ABSOLUTA: el gestor no tiene por qué saber
-    #  dónde viven los de usuario.
+    #  Loadable. Emit an ABSOLUTE entry path: the manager need not know where
+    #  user plugins live.
     item["entry"] = str(ruta)
     return item
 
 
 def cargar_usuario(ids_repo, version_host):
-    """Los de ~/.config/k4/plugins, cada uno con su veredicto.
+    """Return plugins in ~/.config/k4/plugins, each with its verdict.
 
-    Un plugin de usuario mal montado nunca es un fallo del repo: se lista como
-    `cargable: false` con su motivo, para que Ajustes lo enseñe y el gestor no
-    lo intente. Y los ids del repo ganan: un plugin de fuera no puede
-    suplantar a uno de casa.
+    A broken user plugin is never a repository failure: list it with
+    `cargable: false` and a reason, so Settings can display it and the manager
+    can skip loading it. Repository ids take precedence: external plugins
+    cannot impersonate bundled ones.
     """
     if not DE_USUARIO.is_dir():
         return []
@@ -718,25 +709,23 @@ def cargar_usuario(ids_repo, version_host):
         if not d.is_dir() or d.name.startswith("."):
             continue
         item = validar_carpeta(d, ids_repo, version_host)
-        #  Marcado para la barra: un plugin de casa no se puede quitar ni
-        #  actualizar, y la tienda necesita distinguirlos sin adivinar por el
-        #  id. Va aquí porque es aquí donde se sabe de dónde salió.
+        #  Mark ownership for the bar: bundled plugins cannot be removed or
+        #  updated, and the store needs to distinguish them without guessing
+        #  from ids. Set it here, where the origin is known.
         item["deUsuario"] = True
         fuera.append(item)
     return fuera
 
 
 def enlazar_externos():
-    """El puente por el que la barra carga los de usuario: un enlace dentro
-    del árbol del shell.
+    """Bridge user plugins into the bar through a symlink in the shell tree.
 
-    No es un capricho: Quickshell sirve su configuración bajo un esquema de
-    URL propio, y un fichero QML cargado por file:// trae SUS PROPIAS copias
-    de todos los singletons — dos PluginManager, dos servicios de todo, cada
-    target de IPC registrado dos veces. Con el enlace, los de usuario viven
-    (a ojos del motor) dentro del árbol y comparten esquema y singletons con
-    el resto. Se paga con un symlink; la alternativa se pagaba con duplicar
-    la barra entera.
+    Quickshell serves its configuration under its own URL scheme. QML loaded
+    through file:// creates ITS OWN copies of every singleton: two
+    PluginManagers, duplicate services, and every IPC target registered twice.
+    The symlink places user plugins inside the tree from the engine's point
+    of view, sharing the scheme and singletons. One symlink avoids duplicating
+    the entire bar.
     """
     DE_USUARIO.mkdir(parents=True, exist_ok=True)
     enlace = RAIZ / "externos"
@@ -751,16 +740,16 @@ def enlazar_externos():
         pass
 
 
-#  El papel que un plugin instalado lleva encima: de dónde salió y, sobre
-#  todo, EN QUÉ COMMIT. Antes era un `.origen` con la URL suelta, y con eso no
-#  se podía contestar a «¿qué versión tengo puesta?» ni a «¿ha cambiado el
-#  repo desde que la puse?». Se sigue leyendo el viejo para no romper lo que ya
-#  está instalado; a la primera actualización se queda en el formato de ahora.
+#  An installed plugin's provenance: its source and, crucially, ITS COMMIT.
+#  Previously `.origen` held only a URL, which could not answer "which version
+#  is installed?" or "has the repository changed since installation?". Keep
+#  reading the old format for compatibility; the first update writes the new
+#  format.
 ORIGEN = ".origen.json"
 
 
 def leer_origen(ident):
-    """El papel de un plugin instalado, en el formato de ahora o en el viejo."""
+    """Read an installed plugin's provenance in the current or legacy format."""
     d = DE_USUARIO / ident
     nuevo = d / ORIGEN
     if nuevo.is_file():
@@ -776,9 +765,8 @@ def leer_origen(ident):
             pass
     viejo = d / ".origen"
     if viejo.is_file():
-        #  El formato de antes: una URL y nada más. Sin carpeta —que era un
-        #  fallo: actualizar un plugin que vivía en una subcarpeta del repo
-        #  volvía a adivinarla— y sin commit.
+        #  Legacy format: only a URL, with no commit or folder. Omitting the
+        #  folder was a bug: updates had to rediscover repository subfolders.
         return {"repo": viejo.read_text().strip()}
     return None
 
@@ -794,14 +782,14 @@ def escribir_origen(destino, repo, subcarpeta, commit, item):
 
 
 def _contexto():
-    """El par que hace falta para juzgar a un plugin: ids de casa y versión."""
+    """Return the context for validation: repository ids and host version."""
     datos, plugins = leer_catalogo()
     return ({item.get("id") for item in plugins},
             str(datos.get("version", "1.0.0")))
 
 
 def _commit_de(clon):
-    """En qué commit ha quedado el clon, o cadena vacía si no se sabe."""
+    """Return the clone's current commit, or an empty string if unknown."""
     try:
         p = subprocess.run(["git", "-C", str(clon), "rev-parse", "HEAD"],
                            capture_output=True, text=True, timeout=20)
@@ -812,9 +800,9 @@ def _commit_de(clon):
 
 
 def _ir_al_commit(clon, url, commit):
-    """Dejar el clon EXACTAMENTE en ese commit. ¿Se ha podido?"""
+    """Check out EXACTLY that commit and return whether it succeeded."""
     g = ["git", "-C", str(clon)]
-    #  ¿Ya lo tiene? Pasa cuando el commit pedido es la punta de la rama.
+    #  Already available? This happens when the requested commit is the tip.
     try:
         if subprocess.run(g + ["cat-file", "-e", commit + "^{commit}"],
                           capture_output=True, timeout=20).returncode == 0:
@@ -822,9 +810,9 @@ def _ir_al_commit(clon, url, commit):
                                   capture_output=True, timeout=60).returncode == 0
     except Exception:
         return False
-    #  Si no, pedirlo suelto. Y si el servidor no los sirve, traer el
-    #  historial entero: lento, pero es la única forma de garantizar que se
-    #  instala lo que se revisó.
+    #  Otherwise fetch it directly. If the server will not serve individual
+    #  commits, fetch the full history: slower, but necessary to guarantee
+    #  that the installed code is what was reviewed.
     for traer in (["fetch", "-q", "--depth", "1", url, commit],
                   ["fetch", "-q", "--unshallow"],
                   ["fetch", "-q", url]):
@@ -840,11 +828,11 @@ def _ir_al_commit(clon, url, commit):
 
 
 def _carpeta_del_clon(base):
-    """Dónde está el plugin dentro de lo clonado.
+    """Locate the plugin inside the clone.
 
-    Se acepta el plugin.json en la raíz —lo normal, un repo por plugin— o en
-    una única subcarpeta, que es como quedan los repos que traen el ejemplo
-    dentro. Más de un candidato y no se adivina: que lo diga el usuario.
+    Accept plugin.json at the root, as in a typical one-plugin repository,
+    or in a single subfolder, as in repositories containing an example.
+    With multiple candidates, require the user to choose instead of guessing.
     """
     if (base / "plugin.json").is_file():
         return base
@@ -867,10 +855,10 @@ def _describir(item):
 
 
 class Traido:
-    """Lo que sale de traerse un repo y mirarlo: un plugin válido, o el porqué.
+    """The result of fetching and examining a repo: a valid plugin or a reason.
 
-    El `motivo` es un CÓDIGO y el dato va en `detalle`, para que la frase la
-    escriba quien sabe cómo se cuenta. Ver `Motivos.porque()`.
+    `motivo` is a CODE, with data in `detalle`, so the presentation layer can
+    write the explanation. See `Motivos.porque()`.
     """
 
     def __init__(self, ok, motivo="", carpeta=None, item=None, commit="",
@@ -883,28 +871,27 @@ class Traido:
         self.commit = commit
 
     def contar(self):
-        """Para una persona en una terminal, que sí quiere la frase entera."""
+        """Format the reason and details for a person using a terminal."""
         return self.motivo + (": " + self.detalle if self.detalle else "")
 
 
 @contextlib.contextmanager
 def _traer(url, subcarpeta=None, commit=None):
-    """Clonar, anclar, encontrar el plugin dentro y validarlo.
+    """Clone, pin, locate the plugin, and validate it.
 
-    Está aparte porque lo hacen DOS: instalar, y el examen que la barra pide
-    antes de enseñarte los permisos. Y tienen que hacerlo idéntico — si el
-    examen mirase una cosa y la instalación trajese otra, el diálogo de
-    permisos estaría mintiendo. Por eso el examen devuelve el commit que vio y
-    la barra lo pasa como ancla: se instala exactamente lo que se enseñó.
+    Shared by TWO operations: installation and the examination requested by
+    the bar before displaying permissions. They must behave identically: if
+    examination and installation fetched different code, the permissions
+    dialog would lie. Examination therefore returns its commit for the bar
+    to pass as a pin, installing exactly what was shown.
 
-    Cede un `Traido` mientras el temporal sigue vivo. Al salir se borra.
+    Yield a `Traido` while the temporary directory exists; remove it on exit.
     """
     ids_repo, version_host = _contexto()
     with tempfile.TemporaryDirectory(prefix="k4-plugin-") as tmp:
         clon = pathlib.Path(tmp) / "clon"
-        #  `--depth 1` solo para lo remoto: en un clon local git avisa de que
-        #  la ignora, y ese aviso en medio de la pantalla de permisos parece
-        #  un error cuando no lo es.
+        #  Use `--depth 1` only for remote clones. Git warns that it is ignored
+        #  for local clones, which looks like an error in the permissions UI.
         orden = ["git", "clone", "-q"]
         if "://" in url and not url.startswith("file://"):
             orden += ["--depth", "1"]
@@ -914,10 +901,9 @@ def _traer(url, subcarpeta=None, commit=None):
             yield Traido(False, "sin-clonar", detalle=f"{url}: {exc}")
             return
 
-        #  Si se pide un commit concreto, se va A ESE y no a la punta de la
-        #  rama. Un clon `--depth 1` no lo tiene, así que hay que pedirlo
-        #  aparte; si el servidor no sirve SHAs sueltos —GitHub sí—, se cae al
-        #  clon entero, que siempre lo tiene.
+        #  Check out the requested commit, not the branch tip. A shallow clone
+        #  may lack it, requiring a separate fetch. If the server does not
+        #  serve individual SHAs — GitHub does — fall back to the full clone.
         if commit:
             if not RE_SHA.fullmatch(commit):
                 yield Traido(False, "commit-raro", detalle=str(commit))
@@ -927,9 +913,8 @@ def _traer(url, subcarpeta=None, commit=None):
                              detalle="%s · %s" % (commit[:12], url))
                 return
 
-        #  El SHA se apunta SIEMPRE, lo hubieran pedido o no: es la respuesta a
-        #  «¿qué tengo instalado exactamente?», y después de borrar el `.git`
-        #  ya no hay a quién preguntárselo.
+        #  ALWAYS record the SHA, requested or not: it answers "what exactly
+        #  is installed?". After removing `.git`, that information is gone.
         traido = _commit_de(clon)
         shutil.rmtree(clon / ".git", ignore_errors=True)
 
@@ -938,8 +923,8 @@ def _traer(url, subcarpeta=None, commit=None):
             yield Traido(False, "sin-plugin")
             return
 
-        #  El id manda sobre el nombre del clon: la carpeta se llama como el
-        #  repositorio y el manifiesto exige que coincida con el id.
+        #  The id takes precedence over the clone's name: the folder starts
+        #  with the repository name, but validation requires it to match the id.
         try:
             ident = json.loads((carpeta / "plugin.json").read_text())["id"]
         except Exception as exc:
@@ -964,16 +949,15 @@ def _traer(url, subcarpeta=None, commit=None):
 
 
 def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
-    """Clonar, validar y —con permiso— instalar un plugin de fuera.
+    """Clone, validate, and — with consent — install an external plugin.
 
-    El orden importa y es el único defendible: se clona a un temporal, se
-    valida ENTERO ahí, y solo entonces se enseña lo que declara y se pide
-    permiso. Nada llega a ~/.config/k4/plugins sin haber pasado el mismo
-    examen que pasan los ya instalados, así que no existe el estado «medio
-    instalado y roto».
+    Order matters: clone into a temporary directory, validate EVERYTHING
+    there, then display declarations and request consent. Nothing reaches
+    ~/.config/k4/plugins without the same validation as installed plugins,
+    avoiding a "half-installed and broken" state.
 
-    Y llega DESHABILITADO, siempre. Instalar es traerlo; encenderlo es otra
-    decisión, y se toma en Ajustes viendo estos mismos permisos.
+    It always arrives DISABLED. Installation fetches it; enabling it is a
+    separate decision made in Settings with these same permissions visible.
     """
     with _traer(url, subcarpeta, commit) as t:
         if not t.ok:
@@ -982,41 +966,40 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
         carpeta, item, traido = t.carpeta, t.item, t.commit
 
         destino = DE_USUARIO / item["id"]
-        print(f"\nDe {url}:\n")
+        print(f"\nFrom {url}:\n")
         print(_describir(item))
         if traido:
-            #  El commit sale ANTES de pedir permiso, no después: es parte de
-            #  lo que estás aceptando. «Confío en este repo» y «confío en este
-            #  código» no son la misma frase.
+            #  Show the commit BEFORE asking for consent: it is part of what
+            #  users accept. Trusting a repository differs from trusting code.
             print(f"  Commit:   {traido[:12]}"
-                  + ("  (el que pediste)" if commit else "  (punta de la rama)"))
+                  + ("  (as requested)" if commit else "  (branch tip)"))
         anterior = leer_origen(item["id"]) or {}
-        print("\n  Se instalará en", destino)
-        print("  Llega apagado: se enciende en Ajustes.")
+        print("\n  Will install into", destino)
+        print("  Arrives disabled: enable it in Settings.")
         if destino.exists():
-            print("  YA EXISTE: se reemplaza la versión instalada.")
+            print("  ALREADY EXISTS: the installed version will be replaced.")
         print()
-        #  Los avisos van ANTES de la frase de siempre y antes de preguntar:
-        #  después de un «¿instalar? [s/N]» ya no los lee nadie.
+        #  Show warnings BEFORE the standard notice and consent prompt:
+        #  nobody reads them after "Install? [y/N]".
         avisos = revisar_reglas(carpeta)
         if avisos:
             print()
             for a in avisos:
-                print("  %s %s" % ("BLOQUEA " if a["bloquea"] else "aviso:  ",
+                print("  %s %s" % ("BLOCKS  " if a["bloquea"] else "warning:",
                                    a["que"]))
-                print("           en %s" % a["donde"])
+                print("           at %s" % a["donde"])
                 print("           %s" % a["porque"])
         print()
-        print("  Un plugin corre dentro de la barra y puede hacer lo que la")
-        print("  barra pueda hacer. Los permisos son lo que DECLARA, no una")
-        print("  jaula: instalarlo es confiar en quien lo escribió.")
+        print("  A plugin runs inside the bar and can do anything the bar")
+        print("  can do. Permissions are its DECLARATIONS, not a sandbox:")
+        print("  installing it means trusting its author.")
         if not sin_preguntar:
             try:
-                if input("\n¿Instalar? [s/N] ").strip().lower() not in ("s", "si", "sí"):
-                    print("nada instalado.")
+                if input("\nInstall? [y/N] ").strip().lower() not in ("y", "yes", "s", "si", "sí"):
+                    print("nothing installed.")
                     return 1
             except EOFError:
-                print("sin terminal para preguntar; usa --yes si estás seguro.",
+                print("no terminal for confirmation; use --yes if you are sure.",
                       file=sys.stderr)
                 return 1
 
@@ -1029,76 +1012,75 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
 
     ident = item["id"]
     if reemplaza:
-        print(f"\nactualizado: {ident} v{item.get('version', '0')}.")
+        print(f"\nupdated: {ident} v{item.get('version', '0')}.")
         antes = (anterior.get("commit") or "")[:12]
         if traido and antes and antes != traido[:12]:
             print(f"  {antes} → {traido[:12]}")
         elif traido and antes:
-            print(f"  sigue en {traido[:12]}: no había nada nuevo.")
-        #  Si estaba encendido, en la barra sigue corriendo el código viejo:
-        #  el disco cambió, la instancia no.
-        print(f"  Si lo tenías encendido: `k4 pluginReload {ident}`.")
+            print(f"  still at {traido[:12]}: nothing new was available.")
+        #  If enabled, the bar still runs the old code: disk contents changed,
+        #  but the live instance did not.
+        print(f"  If it was enabled: `k4 pluginReload {ident}`.")
     else:
-        print(f"\ninstalado: {ident}. Enciéndelo en Ajustes"
-              f" (o `k4 pluginRefresh` y `k4 pluginEnable {ident}`).")
+        print(f"\ninstalled: {ident}. Enable it in Settings"
+              f" (or `k4 pluginRefresh` and `k4 pluginEnable {ident}`).")
     return 0
 
 
 def actualizar(ident, sin_preguntar=False, commit=None):
-    """Reinstalar desde donde vino, y a la carpeta correcta.
+    """Reinstall from the original source into the correct folder.
 
-    Lo de la carpeta no es un detalle: antes solo se guardaba la URL, así que
-    actualizar un plugin que vive en una subcarpeta del repo —los ejemplos de
-    k4, sin ir más lejos— volvía a adivinarla, y con más de un candidato ya no
-    se podía. Ahora va apuntada.
+    The folder matters: previously only the URL was saved, so updates had to
+    rediscover repository subfolders, including k4's examples. Multiple
+    candidates made this impossible. The folder is now recorded.
 
-    Sin `--commit`, actualizar es «tráeme la punta de la rama», que es lo que
-    uno espera al pedir una actualización. Con él, «tráeme exactamente este».
+    Without `--commit`, an update fetches the branch tip as expected. With
+    it, the update fetches exactly the specified commit.
     """
     o = leer_origen(ident)
     if not o:
-        print(f"{ident} no se instaló desde una URL, no sé de dónde "
-              "actualizarlo.", file=sys.stderr)
+        print(f"{ident} was not installed from a URL; its update source is "
+              "unknown.", file=sys.stderr)
         return 1
     return instalar(o["repo"], sin_preguntar, o.get("folder") or None, commit)
 
 
 def quitar(ident, sin_preguntar=False, con_estado=False):
-    """Desinstalar: la carpeta, y si se pide, también lo que había guardado."""
+    """Uninstall the folder and, if requested, its saved state."""
     d = DE_USUARIO / ident
     if not d.is_dir():
-        print(f"{ident} no está instalado.", file=sys.stderr)
+        print(f"{ident} is not installed.", file=sys.stderr)
         return 1
     estado = (pathlib.Path.home() / ".local" / "state" / "k4" / "plugins"
               / ident)
-    print(f"se borrará {d}")
+    print(f"will delete {d}")
     if con_estado and estado.is_dir():
-        print(f"y su estado guardado en {estado}")
+        print(f"and its saved state in {estado}")
     if not sin_preguntar:
         try:
-            if input("¿Seguro? [s/N] ").strip().lower() not in ("s", "si", "sí"):
-                print("nada borrado.")
+            if input("Are you sure? [y/N] ").strip().lower() not in ("y", "yes", "s", "si", "sí"):
+                print("nothing deleted.")
                 return 1
         except EOFError:
-            print("sin terminal para preguntar; usa --yes.", file=sys.stderr)
+            print("no terminal for confirmation; use --yes.", file=sys.stderr)
             return 1
     shutil.rmtree(d)
     if con_estado:
         shutil.rmtree(estado, ignore_errors=True)
-    print(f"quitado: {ident}")
+    print(f"removed: {ident}")
     return 0
 
 
 def instalados():
-    """Los de fuera que hay, con su veredicto y de dónde vinieron."""
+    """List installed external plugins with their verdicts and sources."""
     ids_repo, version_host = _contexto()
     externos = cargar_usuario(ids_repo, version_host)
     if not externos:
-        print("no hay plugins de usuario instalados.")
+        print("no user plugins installed.")
         return 0
     for item in externos:
         estado = ("ok" if item.get("cargable")
-                  else "NO CARGA: %s" % (item.get("dice")
+                  else "UNLOADABLE: %s" % (item.get("dice")
                                          or item.get("motivo") or "?"))
         o = leer_origen(item["id"])
         de = o["repo"] if o else "local"
@@ -1107,24 +1089,23 @@ def instalados():
         sha = (o or {}).get("commit") or ""
         print(f"{item['id']:<16} v{item.get('version', '0'):<8} {estado}")
         print(f"{'':<16} {de}")
-        #  Sin commit apuntado es que se instaló antes de que esto existiera:
-        #  se sabe de dónde vino pero no QUÉ vino, y eso hay que decirlo.
-        print(f"{'':<16} {sha[:12] if sha else 'commit desconocido (instalado con la versión de antes)'}")
+        #  A missing commit means installation predates commit tracking: the
+        #  source is known but the exact code is not, and users need to know.
+        print(f"{'':<16} {sha[:12] if sha else 'unknown commit (installed with an older version)'}")
     return 0
 
 
 def recargar(ident):
-    """Una carpeta nueva para una recarga en caliente.
+    """Create a fresh folder URL for hot reload.
 
-    El truco de ponerle `?r1` a la entrada recarga la entrada... y solo la
-    entrada. Los ficheros hermanos —la vista, casi siempre lo que el autor
-    acaba de editar— se resuelven contra la MISMA carpeta y salen calentitos
-    de la caché: el plugin se recreaba enseñando la versión anterior. Muy
-    difícil de ver, porque el plugin sí se recreaba.
+    Adding `?r1` to the entry reloads only the entry. Sibling files — usually
+    the view the author just edited — resolve against the SAME folder and
+    come from cache. The plugin was recreated but displayed the old version,
+    a subtle bug because recreation really did occur.
 
-    Así que se recarga la carpeta entera: un enlace nuevo en `recargas/` es
-    una URL nueva para TODO lo que hay dentro. Cuesta un symlink por recarga
-    y se limpian los anteriores del mismo plugin.
+    Reload the whole folder instead: a fresh symlink in `recargas/` gives
+    EVERYTHING inside a new URL. Each reload costs one symlink, with previous
+    links for the same plugin removed.
     """
     enlazar_externos()
     datos, plugins = leer_catalogo()
@@ -1158,7 +1139,7 @@ def recargar(ident):
 
 def listar():
     enlazar_externos()
-    #  Las carpetas de recarga son de la sesión anterior: al arrancar sobran.
+    #  Reload folders belong to the previous session and are stale at startup.
     for viejo in (RAIZ / "recargas").glob("*"):
         try:
             viejo.unlink()
@@ -1168,10 +1149,10 @@ def listar():
     version_host = str(datos.get("version", "1.0.0"))
     ids_repo = {item.get("id") for item in plugins}
 
-    #  Los del repo no pasan por `validar_carpeta` —su catálogo va escrito a
-    #  mano—, así que se les miran las fuentes aquí. Sin esto el cruce solo
-    #  vería a los de fuera y un plugin de usuario podría quitarle el comando
-    #  al lanzador sin que nadie chistara.
+    #  Repository plugins have a handwritten catalog and skip
+    #  `validar_carpeta`, so inspect their source here. Otherwise collision
+    #  checks would see only external plugins, letting a user plugin silently
+    #  claim the launcher's command.
     for item in plugins:
         entrada = item.get("entry")
         if not entrada:
@@ -1187,9 +1168,9 @@ def listar():
     return 0
 
 
-#  El escaparate: un JSON público con lo que la comunidad publica. Vive en
-#  el propio repositorio para no depender de ningún servidor, y cualquiera
-#  puede apuntar a otro con --registro.
+#  The storefront: public JSON listing community publications. Keep it in the
+#  repository to avoid a separate server; users can select another registry
+#  with --registro.
 REGISTRO = ("https://raw.githubusercontent.com/k4ditano/k4/main/"
             "plugins/registro.json")
 
@@ -1203,18 +1184,18 @@ def _campo(e, ingles, viejo):
 
 
 def leer_registro(url=None):
-    """El registro publicado. Lanza si no se puede leer."""
+    """Read the published registry, raising an exception on failure."""
     import urllib.request
     with urllib.request.urlopen(url or REGISTRO, timeout=10) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
 def buscar(termino=None, url=None):
-    """Lista lo publicado en el registro, filtrado si hay término."""
+    """List registry publications, optionally filtered by a search term."""
     try:
         datos = leer_registro(url)
     except Exception as exc:
-        print(f"no pude leer el registro: {exc}", file=sys.stderr)
+        print(f"could not read the registry: {exc}", file=sys.stderr)
         return 2
 
     t = (termino or "").lower()
@@ -1225,8 +1206,8 @@ def buscar(termino=None, url=None):
                 or t in str(e.get("description", "")).lower()]
 
     if not aciertos:
-        print("nada en el registro"
-              + (f" que case con {termino!r}" if t else "") + ".")
+        print("nothing in the registry"
+              + (f" matching {termino!r}" if t else "") + ".")
         return 1
 
     for e in aciertos:
@@ -1239,10 +1220,11 @@ def buscar(termino=None, url=None):
         if sha:
             print(f"    commit {sha[:12]}")
         orden = f"    install: tools/plugins.py --install {e.get('repo')}"
-        if _campo(e, "folder", "carpeta"):
-            orden += f" --folder {e['carpeta']}"
-        #  La orden que se copia y se pega lleva el commit dentro. Si no, la
-        #  gente instala la punta de la rama y el ancla no sirve de nada.
+        carpeta = _campo(e, "folder", "carpeta")
+        if carpeta:
+            orden += f" --folder {carpeta}"
+        #  Include the commit in the copyable command. Otherwise users install
+        #  the branch tip and pinning serves no purpose.
         if sha:
             orden += f" --commit {sha}"
         print(orden + "\n")
@@ -1253,71 +1235,70 @@ FICHERO_REGISTRO = RAIZ / "plugins" / "registro.json"
 
 
 def validar_registro(datos, fallos):
-    """El registro es un PR de un desconocido: se revisa como tal.
+    """Treat registry entries as pull requests from strangers and validate them.
 
-    Se comprueba aquí, en CI, y no al instalar: una entrada mal puesta que
-    llegue a `main` se la come todo el que busque, y el error saldría en la
-    máquina de otro. Es el mismo trato que reciben los manifiestos.
+    Check here in CI rather than at installation: a broken entry merged into
+    `main` reaches everyone searching, with failures on their machines.
+    Manifests receive the same treatment.
     """
     entradas = datos.get("plugins")
     if not isinstance(entradas, list):
-        fallos.append("el registro no trae una lista de plugins")
+        fallos.append("the registry does not contain a plugin list")
         return
     vistos = set()
     for i, e in enumerate(entradas):
         donde = f"registro[{i}]"
         if not isinstance(e, dict):
-            fallos.append(f"{donde}: no es un objeto")
+            fallos.append(f"{donde}: not an object")
             continue
         ident = e.get("id")
         donde = f"registro/{ident}" if ident else donde
         if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
-            fallos.append(f"{donde}: id ausente o con formato raro")
+            fallos.append(f"{donde}: missing or malformed id")
         elif ident in vistos:
-            fallos.append(f"{donde}: id repetido")
+            fallos.append(f"{donde}: duplicate id")
         else:
             vistos.add(ident)
         for campo in ("title", "description", "repo"):
             if not isinstance(e.get(campo), str) or not e[campo].strip():
-                fallos.append(f"{donde}: falta {campo}")
+                fallos.append(f"{donde}: missing {campo}")
         repo = str(e.get("repo") or "")
         if repo and not repo.startswith(("https://", "http://")):
-            fallos.append(f"{donde}: el repo tiene que ser una URL http(s)")
-        #  El commit es opcional MIENTRAS dure la transición, pero si está
-        #  tiene que ser un SHA entero: medio ancla no ancla.
+            fallos.append(f"{donde}: repo must be an http(s) URL")
+        #  Commit remains optional DURING the transition, but when present
+        #  must be a full SHA: a partial pin is not a pin.
         sha = e.get("commit")
         if sha is not None and (not isinstance(sha, str)
                                 or not RE_SHA.fullmatch(sha)):
-            fallos.append(f"{donde}: commit tiene que ser un SHA de 40 en "
-                          "minúscula")
+            fallos.append(f"{donde}: commit must be a 40-character lowercase "
+                          "SHA")
         carpeta = _campo(e, "folder", "carpeta")
         if carpeta is not None:
             c = str(carpeta)
             if c.startswith("/") or ".." in c.split("/"):
-                fallos.append(f"{donde}: carpeta tiene que ser relativa y sin ..")
+                fallos.append(f"{donde}: folder must be relative and contain no ..")
 
 
-#  ── hablar con la barra ──────────────────────────────────────────────
+#  ── communicating with the bar ──────────────────────────────────────
 #
-#  Las mismas órdenes, contestando en JSON. No es un guion aparte a propósito:
-#  dos caminos para instalar acabarían divergiendo, y el que se usa menos sería
-#  el que tiene los fallos. Es el mismo código y la misma validación; lo único
-#  que cambia es quién lee la respuesta.
+#  The same commands, responding in JSON. Deliberately not a separate script:
+#  two installation paths would diverge, with bugs hiding in the less-used
+#  one. Share code and validation; only the response's audience changes.
 #
-#  Una línea por suceso y `flush`, como el editor: la barra quiere enseñar
-#  «clonando…» mientras clona, no un tocho cuando acabe.
+#  One flushed line per event, like the editor: the bar needs to show
+#  "cloning..." while cloning, not a wall of text when it finishes.
 
 def _decir(**d):
     print(json.dumps(d, ensure_ascii=False), flush=True)
 
 
 def json_examinar(url, subcarpeta=None, commit=None):
-    """Traerse un plugin, mirarlo y contarlo SIN instalar nada.
+    """Fetch, examine, and describe a plugin WITHOUT installing it.
 
-    Es la mitad de arriba del diálogo de permisos de la barra. Devuelve el
-    commit que ha visto, y la barra lo pasa después como `--commit`: así lo
-    que se instala es exactamente lo que se enseñó, aunque la rama se mueva
-    entre que lo lees y le das a instalar.
+    This supplies the first half of the bar's permissions dialog. Return the
+    examined commit for the bar to pass later as `--commit`, ensuring the
+    installation matches what was shown even if the branch moves while the
+    user reads the dialog.
     """
     with _traer(url, subcarpeta, commit) as t:
         if not t.ok:
@@ -1347,7 +1328,7 @@ def json_examinar(url, subcarpeta=None, commit=None):
 
 
 def json_buscar(url=None):
-    """El registro, tal cual, para que lo pinte la barra."""
+    """Return registry data for the bar to display."""
     try:
         datos = leer_registro(url)
     except Exception as exc:
@@ -1355,8 +1336,8 @@ def json_buscar(url=None):
         return 2
     fallos_reg = []
     validar_registro(datos, fallos_reg)
-    #  Un registro con entradas rotas se sirve igual, pero sin las rotas: que
-    #  un PR mal puesto no deje la tienda en blanco.
+    #  Serve a registry with broken entries after excluding those entries:
+    #  a malformed PR must not leave the entire store blank.
     malas = {f.split("/", 1)[1].split(":")[0] for f in fallos_reg if "/" in f}
     entradas = [e for e in datos.get("plugins") or []
                 if str(e.get("id")) not in malas]
@@ -1427,21 +1408,21 @@ def json_comprobar(url=None):
 
 
 def comprobar(url=None):
-    """Qué tienes instalado que ya no es lo que dice el registro.
+    """Report installed plugins that differ from the registry.
 
-    Es la pregunta que antes no se podía contestar: sabías de dónde vino un
-    plugin, pero no qué versión de allí, así que «¿tengo lo último?» y «¿me han
-    cambiado el código debajo?» eran las dos indistinguibles.
+    Previously only the source was known, not the exact version, so "am I
+    up to date?" and "has the code changed underneath me?" could not be
+    distinguished.
     """
     ids_repo, version_host = _contexto()
     externos = cargar_usuario(ids_repo, version_host)
     if not externos:
-        print("no hay plugins de usuario instalados.")
+        print("no user plugins installed.")
         return 0
     try:
         datos = leer_registro(url)
     except Exception as exc:
-        print(f"no pude leer el registro: {exc}", file=sys.stderr)
+        print(f"could not read the registry: {exc}", file=sys.stderr)
         return 2
     publicado = {str(e.get("id")): e for e in datos.get("plugins") or []}
 
@@ -1452,20 +1433,20 @@ def comprobar(url=None):
         mio = str(o.get("commit") or "")
         e = publicado.get(ident)
         if not e:
-            que = "no está en el registro (instalado a mano)"
+            que = "not in the registry (installed manually)"
         elif not mio:
-            que = "no sé en qué commit está (instalado con la versión de antes)"
+            que = "unknown commit (installed with an older version)"
         elif not e.get("commit"):
-            que = "el registro no dice commit, no puedo comparar"
+            que = "the registry has no commit to compare"
         elif str(e["commit"]) == mio:
-            que = f"al día  ·  {mio[:12]}"
+            que = f"up to date  ·  {mio[:12]}"
         else:
-            que = f"hay novedad  ·  {mio[:12]} → {str(e['commit'])[:12]}"
+            que = f"update available  ·  {mio[:12]} → {str(e['commit'])[:12]}"
             novedades += 1
         print(f"{ident:<16} {que}")
 
     if novedades:
-        print(f"\n{novedades} con novedad. Para traerla:"
+        print(f"\n{novedades} with updates available. To fetch an update:"
               " tools/plugins.py --update <id> --commit <sha>")
     return 0
 
@@ -1475,27 +1456,27 @@ def main():
     try:
         datos, plugins = leer_catalogo()
     except Exception as exc:
-        print(f"catálogo ilegible: {exc}", file=sys.stderr)
+        print(f"unreadable catalog: {exc}", file=sys.stderr)
         return 2
 
     ids = validar_repo(plugins, fallos)
 
-    #  Y el escaparate, si está: es parte del repo y se rompe igual de fácil.
+    #  Check the storefront too, if present: it belongs to the repo and can break.
     if FICHERO_REGISTRO.is_file():
         try:
             validar_registro(json.loads(FICHERO_REGISTRO.read_text()), fallos)
         except Exception as exc:
-            fallos.append(f"registro.json ilegible: {exc}")
+            fallos.append(f"registro.json unreadable: {exc}")
 
     if fallos:
-        print("El catálogo de plugins tiene problemas:\n")
+        print("The plugin catalog has problems:\n")
         print("\n".join("  - " + x for x in fallos))
         return 1
 
     version_host = str(datos.get("version", "1.0.0"))
 
-    #  El mismo cruce que hace `listar()`, para que quien valida desde la
-    #  terminal vea el choque aquí y no cuando el plugin deje de contestar.
+    #  Use the same collision check as `listar()` so terminal validation
+    #  reports conflicts before a plugin stops responding.
     for item in plugins:
         entrada = item.get("entry")
         if not entrada:
@@ -1507,9 +1488,9 @@ def main():
     externos = cargar_usuario(ids, version_host)
     marcar_choques(list(plugins) + externos)
     rotos = [e for e in externos if not e.get("cargable")]
-    print(f"{len(plugins)} plugins del repo verificados"
-          + (f" · {len(externos)} de usuario" if externos else "")
-          + (f" ({len(rotos)} no cargables)" if rotos else "") + ".")
+    print(f"{len(plugins)} repository plugins verified"
+          + (f" · {len(externos)} user plugins" if externos else "")
+          + (f" ({len(rotos)} unloadable)" if rotos else "") + ".")
     for e in rotos:
         print(f"  - {e['id']}: {e.get('dice') or e.get('motivo')}")
     return 0
@@ -1544,13 +1525,12 @@ to.
 """
 
 
-#  ── empezar un plugin, y probarlo sin jugarte el escritorio ──────────
+#  ── create a plugin and test it without risking the desktop ──────────
 #
-#  Las dos cosas que más se echan de menos al escribir el primero. La
-#  documentación son quinientas líneas buenas, pero la primera hora no quiere
-#  leer: quiere algo que arranque. Y probar cargando el plugin en TU barra —la
-#  que lleva tu portapapeles y tu sesión— significa que un bucle infinito te
-#  tira el escritorio.
+#  The two things most needed when writing a first plugin. Good documentation
+#  may span five hundred lines, but the first hour calls for something that
+#  runs. Testing in YOUR bar, which holds your clipboard and session, means
+#  an infinite loop can freeze the desktop.
 
 PLANTILLA_MANIFIESTO = """{
   "id": "%(id)s",
@@ -1566,11 +1546,11 @@ PLANTILLA_MANIFIESTO = """{
 
 PLANTILLA_QML = """//  %(titulo)s
 //
-//  Un plugin de k4 es un objeto con nombre y vista. El host lo crea UNA vez y
-//  lo deja vivo; lo que aparece y desaparece es la vista. Por eso el estado se
-//  guarda aquí y sobrevive a cerrarla.
+//  A k4 plugin is an object with a name and a view. The host creates it ONCE
+//  and keeps it alive; only the view appears and disappears. State belongs
+//  here so it survives closing the view.
 //
-//  Para probarlo sin tocar tu barra:
+//  To test it without touching your bar:
 //
 //      tools/plugins.py --test %(id)s
 
@@ -1583,22 +1563,22 @@ K4.Plugin {
     name: "%(id)s"
     title: "%(titulo)s"
 
-    //  Cuánto sitio pide en la island.
+    //  Space requested in the island.
     islandWidth: 320
     islandHeight: 120
 
-    //  El host abre y cierra por aquí.
+    //  The host opens and closes it through these methods.
     property bool abierto: false
     active: abierto
     function toggle() { abierto = !abierto }
-    //  Sin `close()` el ESC no hace nada: el host cierra llamándola.
+    //  Without `close()`, Escape does nothing: the host calls it to close.
     function close() { abierto = false }
 
     view: Component {
         Item {
             K4.Etiqueta {
                 anchors.centerIn: parent
-                text: "Hola desde %(titulo)s"
+                text: "Hello from %(titulo)s"
                 font.pixelSize: 16
             }
         }
@@ -1608,20 +1588,20 @@ K4.Plugin {
 
 
 def nuevo(ident):
-    """Un plugin que ya arranca, para no empezar por una carpeta vacía."""
+    """Create a working plugin instead of starting from an empty folder."""
     if not re.match(r"^[a-z][a-z0-9-]*$", ident or ""):
-        print("Un id son minúsculas, números y guiones: mi-plugin")
+        print("An id uses lowercase letters, numbers, and hyphens: my-plugin")
         return 2
     destino = DE_USUARIO / ident
     if destino.exists():
-        print("Ya existe: %s" % destino)
+        print("Already exists: %s" % destino)
         return 1
     clase = "".join(p.capitalize() for p in ident.split("-"))
     datos = {"id": ident, "titulo": clase, "clase": clase}
     destino.mkdir(parents=True)
     (destino / "plugin.json").write_text(PLANTILLA_MANIFIESTO % datos)
     (destino / (clase + "Plugin.qml")).write_text(PLANTILLA_QML % datos)
-    print("Hecho: %s" % destino)
+    print("Created: %s" % destino)
     print()
     print("  tools/plugins.py --test %s    opens it without touching your bar" % ident)
     print("  tools/plugins.py                 validates it")
@@ -1629,13 +1609,13 @@ def nuevo(ident):
     return 0
 
 
-BANCO = """//  Banco de pruebas de un plugin. Lo genera `tools/plugins.py --test`.
+BANCO = """//  Plugin test bench, generated by `tools/plugins.py --test`.
 //
-//  Carga UN plugin y nada más: ni barra, ni servicios, ni tus notificaciones.
-//  Si el plugin se cuelga, se cuelga esto y no tu escritorio.
+//  Loads ONE plugin only: no bar, services, or personal notifications.
+//  If the plugin hangs, this instance hangs rather than your desktop.
 //
-//  Vive en la raíz de k4 a propósito: Quickshell no carga ficheros de fuera de
-//  la carpeta de la configuración, así que un banco en /tmp no podría abrir el
+//  Deliberately placed at the k4 root: Quickshell cannot load files outside
+//  the configuration folder, so a test bench in /tmp could not open the
 //  plugin.
 
 import QtQuick
@@ -1651,7 +1631,7 @@ ShellRoot {
     Component.onCompleted: {
         const c = Qt.createComponent("%(entry)s")
         if (c.status === Component.Error) {
-            console.log("BANCO no carga:\\n" + c.errorString())
+            console.log("TEST BENCH failed to load:\\n" + c.errorString())
             return
         }
         banco.plugin = c.createObject(null, {
@@ -1660,16 +1640,15 @@ ShellRoot {
         })
         if (banco.plugin && typeof banco.plugin.toggle === "function")
             banco.plugin.toggle()
-        console.log("BANCO listo:", banco.plugin ? banco.plugin.name : "nada")
+        console.log("TEST BENCH ready:", banco.plugin ? banco.plugin.name : "none")
     }
 
     PanelWindow {
         visible: banco.plugin !== null
 
-        //  En qué monitor se abre. Vacío es donde el compositor quiera, que
-        //  es lo de siempre; con `--pantalla` se manda a uno concreto —para
-        //  poder probar en la segunda mientras se usa la primera, que es de
-        //  las pocas cosas que un banco de pruebas debe dejarte hacer.
+        //  Choose the monitor. Empty lets the compositor decide as usual;
+        //  `--pantalla` selects a specific output, allowing testing on a
+        //  second monitor while using the first, a basic test-bench need.
         screen: {
             const quiere = "%(pantalla)s"
             if (quiere.length === 0)
@@ -1678,7 +1657,7 @@ ShellRoot {
             for (let i = 0; i < lista.length; ++i)
                 if (lista[i].name === quiere)
                     return lista[i]
-            console.log("BANCO: no hay ninguna pantalla «" + quiere + "»")
+            console.log("TEST BENCH: no screen named «" + quiere + "»")
             return null
         }
 
@@ -1711,13 +1690,13 @@ ShellRoot {
             }
         }
 
-        //  Un recordatorio: es fácil olvidarse de que esto no es la barra.
+        //  A reminder: it is easy to forget that this is not the live bar.
         Text {
             textFormat: Text.PlainText
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 40
-            text: "banco de pruebas · clic fuera para salir"
+            text: "test bench · click outside to exit"
             color: "#8e8e93"
             font.pixelSize: 12
         }
@@ -1727,25 +1706,25 @@ ShellRoot {
 
 
 def probar(ident, pantalla=""):
-    """Abre UN plugin en una instancia aparte, sin tocar la barra de verdad."""
-    #  `leer_catalogo` devuelve (datos, lista): la lista es lo que importa.
+    """Open ONE plugin in a separate instance without touching the live bar."""
+    #  `leer_catalogo` returns (metadata, list); only the list matters here.
     catalogo = {m.get("id"): m for m in leer_catalogo()[1]}
     if ident in catalogo:
         entry = "plugins/" + catalogo[ident]["entry"]
     else:
         manif = DE_USUARIO / ident / "plugin.json"
         if not manif.exists():
-            print("No encuentro el plugin «%s»." % ident)
+            print("Cannot find plugin «%s»." % ident)
             return 1
         try:
             m = json.loads(manif.read_text(encoding="utf-8"))
         except ValueError as e:
-            print("Su plugin.json no se lee: %s" % e)
+            print("Its plugin.json is unreadable: %s" % e)
             return 1
         entry = "externos/%s/%s" % (ident, m.get("entry", ""))
 
     if not (RAIZ / entry).exists():
-        print("El entry no está donde dice el manifiesto: %s" % entry)
+        print("Entry is missing from the manifest's declared location: %s" % entry)
         return 1
 
     banco = RAIZ / ".banco.qml"
@@ -1757,7 +1736,7 @@ def probar(ident, pantalla=""):
     api = str(RAIZ / "api")
     entorno["QML_IMPORT_PATH"] = (api + ":" + entorno["QML_IMPORT_PATH"]
                                   if entorno.get("QML_IMPORT_PATH") else api)
-    print("Abriendo «%s» en un banco aparte. Clic fuera para salir." % ident)
+    print("Opening «%s» in a separate test bench. Click outside to exit." % ident)
     try:
         return subprocess.call(["quickshell", "-p", str(banco)], env=entorno)
     except KeyboardInterrupt:
@@ -1777,17 +1756,15 @@ def _valor(bandera):
     return None
 
 
-#  Las banderas se escriben en inglés, y las de antes siguen valiendo.
+#  Flags are written in English; legacy flags remain supported.
 #
-#  El código de este proyecto habla español y va a seguir hablándolo, pero una
-#  bandera de línea de órdenes no es código: es la puerta. Quien llega a
-#  instalar un plugin puede no saber qué es «probar», y un ecosistema al que
-#  solo entra quien sepa español no es un ecosistema — el mismo motivo por el
-#  que el formulario de publicar está en inglés.
+#  Internal identifiers originated in Spanish, but CLI flags are the public
+#  entry point. Plugin users may not understand `probar`; language should not
+#  restrict participation. The publication form is English for the same reason.
 #
-#  Las españolas no se retiran ni se avisa de que están viejas: están en el
-#  README, en guiones de gente y en los dedos de quien lleva meses usándolas.
-#  Cuestan un diccionario.
+#  Spanish flags remain without deprecation warnings: they appear in README
+#  examples, users' scripts, and established habits. Compatibility costs one
+#  dictionary.
 EN_ESPANOL = {
     "--install": "--instalar",
     "--test": "--probar",
@@ -1808,25 +1785,25 @@ EN_ESPANOL = {
 
 
 def traducir_banderas(argv):
-    """Las banderas en inglés, pasadas a las de dentro."""
+    """Translate English flags to their internal equivalents."""
     return [EN_ESPANOL.get(a, a) for a in argv]
 
 
 if __name__ == "__main__":
-    #  Antes de mirar nada: así el resto del guion solo conoce un juego de
-    #  nombres y no hay que acordarse de aceptar los dos en cada `if`.
+    #  Normalize first so the rest of the script handles one set of names
+    #  rather than remembering both spellings in every branch.
     sys.argv = traducir_banderas(sys.argv)
 
-    #  `--help` también, aunque todo esto esté en español: es lo que teclea
-    #  cualquiera por reflejo, y sin ello NO fallaba —se caía a validar el
-    #  catálogo entero, que tarda y no es lo que le habías pedido.
+    #  Accept the conventional `--help` too. Previously it did not fail but
+    #  fell through to full catalog validation, which was slow and unrelated
+    #  to the user's request.
     if ("--ayuda" in sys.argv or "--help" in sys.argv or "-h" in sys.argv):
         print(AYUDA)
         sys.exit(0)
     _si = "--si" in sys.argv
     _commit = _valor("--commit")
-    #  `--json` no es un guion aparte: son las mismas órdenes contestando en
-    #  JSON, para que la barra no tenga que leer texto pensado para personas.
+    #  `--json` reuses the same commands with JSON responses, sparing the bar
+    #  from parsing human-facing text.
     _json = "--json" in sys.argv
     if "--examinar" in sys.argv:
         _url = _valor("--examinar")

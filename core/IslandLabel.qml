@@ -1,19 +1,18 @@
 import QtQuick
 
 Text {
-    //  Literal, siempre.
+    //  Plain text, always.
     //
-    //  Un `Text` usa `AutoText` de fábrica: husmea la cadena y, si le parece
-    //  marcado, la INTERPRETA. Por aquí pintan cuatrocientos y pico sitios de la
-    //  barra, y buena parte del texto NO lo escribe nadie de esta casa: el
-    //  cuerpo de una notificación lo manda cualquier aplicación, el título de
-    //  una ventana lo pone quien la abrió, el nombre de la canción viene del
-    //  reproductor. Una notificación cuyo cuerpo fuera `<img src="http://…">`
-    //  no se leería: QML montaría la imagen y saldría a pedirla, o sea una
-    //  baliza de lectura servida por la propia barra.
+    //  Text defaults to AutoText: it inspects the string and INTERPRETS it
+    //  when it looks like markup. Hundreds of shell labels use this component,
+    //  and much of their text is external: any application can send a
+    //  notification body, window owners supply titles, and media players
+    //  supply track names. A notification containing `<img src="http://…">`
+    //  would cause QML to create and fetch an image instead of displaying the
+    //  literal text, turning the shell into a notification-read beacon.
     //
-    //  Medido: `<img src="x.png" width=400 height=60>` mide 475x60 —la caja de
-    //  la imagen— y en `PlainText` mide 440x19, que es el texto tal cual.
+    //  Measured: `<img src="x.png" width=400 height=60>` occupies 475x60 as
+    //  markup (the image box), versus 440x19 in PlainText (the literal text).
     textFormat: Text.PlainText
     color: Theme.ink
     font.family: Theme.uiFont

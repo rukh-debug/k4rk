@@ -1,10 +1,10 @@
 pragma Singleton
 
-//  La hora, del mismo reloj que usa toda la barra.
+//  Time from the clock shared throughout the shell.
 //
-//  Existe para no tener cinco `SystemClock` sondeando por su cuenta: uno solo
-//  y todos miran ahí. Cambia una vez por minuto, que es lo que necesita un
-//  reloj de barra; si tu plugin necesita segundos, pon tu propio Timer.
+//  Share one source instead of having five SystemClock instances polling
+//  independently. Updates once per minute, enough for a bar clock; plugins
+//  needing second-level updates should use their own Timer.
 
 import QtQuick
 

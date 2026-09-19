@@ -1,8 +1,8 @@
-//  El glifo de siempre, ahora una capa fina sobre K4.Glifo.
+//  The in-house glyph component, now a thin wrapper around K4.Glifo.
 //
-//  La pieza de verdad vive en la API porque un plugin de fuera la necesita, y
-//  aquí queda el nombre en inglés que usan los veinte de casa. Una sola
-//  implementación: dos copias del mismo control acaban separándose siempre.
+//  The implementation lives in the API so external plugins can use it. This
+//  wrapper retains the English name used by host views. One implementation
+//  keeps separate copies of the same control from drifting apart.
 
 import K4 as K4
 

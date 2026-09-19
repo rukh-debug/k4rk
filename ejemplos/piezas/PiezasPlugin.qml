@@ -1,9 +1,9 @@
-//  El muestrario de las piezas visuales de la API.
+//  A showcase of the API's visual components.
 //
-//  Sirve de dos cosas: de catálogo para quien escribe un plugin y de prueba de
-//  que todas siguen funcionando —si una se rompe, se ve aquí—. Y de paso
-//  demuestra lo que importa: un plugin de FUERA puede tener exactamente la
-//  misma cara que la barra sin dibujar ni un rectángulo a mano.
+//  It serves as a catalog for plugin authors and a visual check that every
+//  component still works: failures show up here. It also demonstrates that
+//  an external plugin can look exactly like the bar without drawing a
+//  single rectangle by hand.
 
 import QtQuick
 import K4 as K4
@@ -12,7 +12,7 @@ K4.Plugin {
     id: self
 
     name: "piezas"
-    title: "Piezas"
+    title: "Pieces"
     priority: 64
     active: abierto
     islandWidth: 480
@@ -20,7 +20,7 @@ K4.Plugin {
 
     property bool abierto: false
 
-    //  El estado que mueven las piezas, para que se vea que responden.
+    //  State changed by the components, so their responses are visible.
     property bool encendido: true
     property real nivel: 40
     property bool baldosaActiva: false
