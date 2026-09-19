@@ -8,6 +8,11 @@ Rectangle {
     property bool marcado: false
     signal alternado()
 
+    Connections {
+        target: control
+        function onAlternado() { Feedback.click() }
+    }
+
     implicitWidth: 40
     implicitHeight: 24
     radius: 12

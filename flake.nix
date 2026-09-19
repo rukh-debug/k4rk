@@ -85,6 +85,20 @@
           touch "$out"
         '';
 
+        power-display = pkgs.runCommand "k4-power-display-tests" {
+          nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ ps.astral ps.tzdata ])) ];
+        } ''
+          python3 -B ${self}/tools/test_power_display.py
+          touch "$out"
+        '';
+
+        brightness = pkgs.runCommand "k4-brightness-tests" {
+          nativeBuildInputs = [ pkgs.python3 ];
+        } ''
+          python3 -B ${self}/tools/test_brightness.py
+          touch "$out"
+        '';
+
         #  The Home Manager module must evaluate with the integration on,
         #  both config flavors, and off.
         home-manager-hyprlang =
@@ -119,6 +133,7 @@
                   home.homeDirectory = "/home/test";
                   home.stateVersion = "26.05";
                   programs.k4.monitors.enable = true;
+                  programs.k4.nightLight.enable = true;
                   wayland.windowManager.hyprland = {
                     enable = true;
                     configType = "lua";

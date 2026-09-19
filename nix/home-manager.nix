@@ -125,6 +125,7 @@ in
     };
 
     monitors.enable = lib.mkEnableOption "persistent, confirmed k4 monitor overrides (Lua Hyprland only)";
+    nightLight.enable = lib.mkEnableOption "the Hyprland-session night-light backend controlled by k4";
 
     hyprland = {
       writeConfig = lib.mkOption {
@@ -177,6 +178,18 @@ in
       message = "programs.k4.monitors.enable requires Home Manager-managed Lua Hyprland.";
     }];
     home.packages = [ cfg.package ];
+
+    # One backend instance, independent of bar reloads. k4 owns the schedule;
+    # hyprsunset starts neutral and only applies the requested transformation.
+    services.hyprsunset = lib.mkIf cfg.nightLight.enable {
+      enable = true;
+      package = cfg.package.hyprsunset;
+      systemdTarget = "hyprland-session.target";
+      extraArgs = [ "--identity" ];
+      settings.max-gamma = 100;
+    };
+    systemd.user.services.hyprsunset.Unit.PartOf = lib.mkIf cfg.nightLight.enable
+      (lib.mkForce [ "hyprland-session.target" ]);
 
     #  Only the matching flavor gets a file when Home Manager manages
     #  Hyprland; a stray k4.conf next to a Lua configuration is confusion

@@ -16,6 +16,11 @@ Rectangle {
     signal activated()
     signal forgotten()
 
+    Connections {
+        target: row
+        function onActivated() { K4.Feedback.click() }
+    }
+
     height: 60
     radius: 12
     color: pointer.containsMouse ? Theme.surfaceHi : active ? Theme.surface : "transparent"

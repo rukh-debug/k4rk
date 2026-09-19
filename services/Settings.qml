@@ -64,6 +64,14 @@ Singleton {
     // player estado.json; afterwards this is the single owner.
     property bool playerPeekOnChange: true
 
+    // Shared controls and custom host actions use services/UiSounds.qml.
+    property bool uiSoundsEnabled: true
+    property int uiSoundVolume: 35
+    onUiSoundVolumeChanged: {
+        const volume = Math.max(0, Math.min(100, uiSoundVolume))
+        if (uiSoundVolume !== volume) uiSoundVolume = volume
+    }
+
     // ── the at-rest pill ──────────────────────────────────────
     // The folded pill is one ordered row of coherent native blocks. The
     // preference says whether a block may appear; runtime data says whether
@@ -172,8 +180,16 @@ Singleton {
     property bool panelTileWifi: true
     property bool panelTileBluetooth: true
     property bool panelTileSound: true
+    property bool panelTileBrightness: true
     property bool panelShowMedia: true
     property bool panelShowShortcuts: true
+    property bool panelShowPowerDisplay: true
+    // Native night-light service and Control Center detail share these preferences.
+    property bool nightLightEnabled: false
+    property int nightLightTemperature: 4000
+    property string nightLightMode: "manual"
+    property var nightLightLocation: ({})
+    property var nightLightOverride: ({})
     property bool panelShowWorkspaces: true
     //  How the workspaces are told apart, in the centre's header and in the
     //  pill's flash when you switch: a dot per desk, or each desk's number.
@@ -184,19 +200,19 @@ Singleton {
     property bool panelShowClock: true
     //  Block ids top to bottom: "toggles", "media", "shortcuts", plus
     //  every registered card as "<plugin>.<name>".
-    property var panelOrder: ["toggles", "media", "shortcuts"]
+    property var panelOrder: ["toggles", "power-display", "media", "shortcuts"]
 
     //  Cards the user has hidden with the editor's eye — Settings owns
     //  a card's visibility, the plugin does not (the native blocks'
     //  own switches are the same deal, each in its own key).
     property var panelHiddenBlocks: []
 
-    //  The universe of block ids the centre obeys: the native three
+    //  The universe of block ids the centre obeys: the native blocks
     //  plus whatever the registry holds. One source — the two copies
     //  of the hardcoded list were the old disease (an id accepted by
     //  one branch and dropped by the other).
     readonly property var idsBloques: {
-        const todos = ["toggles", "media", "shortcuts"]
+        const todos = ["toggles", "power-display", "media", "shortcuts"]
         const cards = Enganches.idsCards
         for (let i = 0; i < cards.length; ++i)
             if (todos.indexOf(cards[i]) < 0)
@@ -232,9 +248,11 @@ Singleton {
         if (id === "toggles")
             return panelShowToggles
                    && (panelTileWifi || panelTileBluetooth
-                       || panelTileSound)
+                        || panelTileSound || panelTileBrightness)
         if (id === "media")
             return panelShowMedia
+        if (id === "power-display")
+            return panelShowPowerDisplay
         if (id === "shortcuts")
             return panelShowShortcuts
         if (String(id).indexOf(".") > 0) {
@@ -445,6 +463,15 @@ Singleton {
                   desc: "Recent ones, under the clock and player", glifo: 0xF009A },
                 { id: "notificationsOnFocus", nombre: "Dismiss when you switch to the app",
                   desc: "Switching to its window already counts as having attended to them", glifo: 0xF039F },
+                { tipo: "titulo", nombre: "Interaction sounds" },
+                { id: "uiSoundsEnabled", nombre: "UI sounds",
+                  desc: "Soft clicks and slider ticks in k4. Respects system mute.",
+                  glifo: 0xF057E },
+                { id: "uiSoundVolume", tipo: "numero", min: 0, max: 100,
+                  paso: 5, unidad: "%", requiere: "uiSoundsEnabled",
+                  nombre: "UI sound volume",
+                  desc: "Feedback loudness relative to system volume. Slider ticks are quieter.",
+                  glifo: 0xF057E },
                 { tipo: "titulo", nombre: "This window" },
                 { id: "settingsIslandWidth", tipo: "numero",
                   min: 720, max: 1400, paso: 20, unidad: "px",
@@ -489,7 +516,7 @@ Singleton {
                   desc: "How wide the control centre opens",
                   glifo: 0xF084E },   // md-arrow_expand_horizontal
                 { id: "panelShowToggles", nombre: "Quick toggles row",
-                  desc: "Wi‑Fi, Bluetooth and sound, as tiles",
+                  desc: "Wi‑Fi, Bluetooth, sound and brightness, as tiles",
                   glifo: 0xF056E },   // md-view_dashboard
                 { id: "panelTileWifi", requiere: "panelShowToggles",
                   nombre: "Wi‑Fi tile",
@@ -503,6 +530,10 @@ Singleton {
                   nombre: "Sound tile",
                   desc: "The volume slider and its output",
                   glifo: 0xF057E },   // md-volume_high
+                { id: "panelTileBrightness", requiere: "panelShowToggles",
+                  nombre: "Brightness tile",
+                  desc: "Per-display brightness for laptop and external screens",
+                  glifo: 0xF00E0 },   // md-brightness_7
                 { id: "panelShowMedia", nombre: "Media row",
                   desc: "What is playing, with its controls",
                   glifo: 0xF0387 },   // md-music_note
@@ -682,16 +713,19 @@ Singleton {
         "trayInPill", "notificationsOnHover", "notificationsOnFocus",
         "notificationPopupPosition",
         "playerPeekOnChange",
+        "uiSoundsEnabled", "uiSoundVolume",
         "pillOrder", "pillHiddenItems", "pillMigrated",
         "pillTrayMax", "pillMinimizedMax", "pillIndicatorsMax",
         "pillIndicatorIconSize",
         "settingsIslandWidth", "settingsIslandHeight",
         "shellFont", "wallpaperPalette",
         "panelWidth", "panelShowToggles", "panelTileWifi",
-        "panelTileBluetooth", "panelTileSound", "panelShowMedia",
+        "panelTileBluetooth", "panelTileSound", "panelTileBrightness", "panelShowMedia",
         "panelShowShortcuts", "panelShowWorkspaces", "panelWorkspaceStyle",
         "panelShowClock", "panelShowScratchpad",
         "panelOrder", "panelHiddenBlocks",
+        "panelShowPowerDisplay", "nightLightEnabled", "nightLightTemperature",
+        "nightLightMode", "nightLightLocation", "nightLightOverride",
         "islandPlacements",
         "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
         "quickAccess"
@@ -806,6 +840,12 @@ Singleton {
                     })
                 if (s.playerPeekOnChange !== undefined)
                     _peekDesdeHost = true
+                // Introduce the new native card after quick controls without
+                // disturbing the relative order of existing user blocks.
+                if (Array.isArray(s.panelOrder) && s.panelShowPowerDisplay === undefined
+                        && s.panelOrder.indexOf("power-display") < 0) {
+                    s.panelOrder.splice(Math.max(0, s.panelOrder.indexOf("toggles") + 1), 0, "power-display")
+                }
                 for (let i = 0; i < claves.length; ++i)
                     if (s[claves[i]] !== undefined)
                         ajustes[claves[i]] = s[claves[i]]

@@ -11,6 +11,15 @@ Item {
     property int requests: 0
     property real sliderValue: 15
     property int navigations: 0
+    property bool disableOnAction: false
+
+    QtObject {
+        id: feedback
+        property int clicks: 0
+        property int ticks: 0
+        function click() { clicks++ }
+        function tick() { ticks++ }
+    }
 
     K4.Interruptor {
         id: toggle
@@ -23,7 +32,10 @@ Item {
         id: action
         x: 16; y: 60
         text: "Apply"
-        onClicked: fixture.requests++
+        onClicked: {
+            fixture.requests++
+            if (fixture.disableOnAction) enabled = false
+        }
     }
     K4.Boton {
         id: icon
@@ -75,8 +87,12 @@ Item {
         name: "SharedControls"
         when: fixture.Window.window !== null && fixture.Window.window.visible
 
-        function initTestCase() { wait(100) }
+        function initTestCase() {
+            K4.Puente.feedback = feedback
+            wait(100)
+        }
         function cleanupTestCase() {
+            K4.Puente.feedback = null
             console.log("UI controls: " + qtest_results.passCount + " passed, "
                 + qtest_results.failCount + " failed")
             if (qtest_results.failCount > 0) Qt.exit(1)
@@ -92,11 +108,15 @@ Item {
             fixture.requests = 0
             fixture.navigations = 0
             scroll.contentY = 0
+            feedback.clicks = 0
+            feedback.ticks = 0
+            fixture.disableOnAction = false
         }
 
         function test_switchRequestsOwnerUpdate() {
             mouseClick(toggle, toggle.width / 2, toggle.height / 2)
             compare(fixture.requests, 1)
+            compare(feedback.clicks, 1)
             compare(toggle.marcado, false)
             fixture.switchValue = true
             compare(toggle.marcado, true)
@@ -104,6 +124,7 @@ Item {
             keyClick(Qt.Key_Space)
             compare(fixture.requests, 2)
             compare(toggle.marcado, true)
+            compare(feedback.clicks, 2)
         }
 
         function test_disabledActionsRejectInput() {
@@ -114,6 +135,7 @@ Item {
             mouseClick(action, 12, 12)
             mouseClick(icon, 12, 12)
             compare(fixture.requests, 0)
+            compare(feedback.clicks, 0)
             compare(toggle.activeFocusOnTab, false)
             compare(icon.enabled, false)
         }
@@ -127,12 +149,14 @@ Item {
             icon.forceActiveFocus()
             keyClick(Qt.Key_Return)
             compare(fixture.requests, 3)
+            compare(feedback.clicks, 3)
         }
 
         function test_nestedActionDoesNotNavigate() {
             mouseClick(nestedAction, 12, 12)
             compare(fixture.requests, 1)
             compare(fixture.navigations, 0)
+            compare(feedback.clicks, 1)
             nestedAction.forceActiveFocus()
             keyClick(Qt.Key_Return)
             compare(fixture.requests, 2)
@@ -140,6 +164,7 @@ Item {
             tile.forceActiveFocus()
             keyClick(Qt.Key_Return)
             compare(fixture.navigations, 1)
+            compare(feedback.clicks, 3)
         }
 
         function test_sliderKeyboardAndBounds() {
@@ -154,6 +179,7 @@ Item {
             compare(fixture.sliderValue, 25)
             keyClick(Qt.Key_Right)
             compare(fixture.sliderValue, 25)
+            compare(feedback.ticks, 3)
         }
 
         function test_sliderPointerAndDisabledState() {
@@ -170,6 +196,35 @@ Item {
             slider.enabled = false
             mouseClick(slider, 6, slider.height - 14)
             compare(fixture.sliderValue, 25)
+        }
+
+        function test_backgroundUpdatesAreSilent() {
+            fixture.switchValue = true
+            fixture.sliderValue = 21
+            action.selected = true
+            tile.activa = true
+            wait(120)
+            compare(feedback.clicks, 0)
+            compare(feedback.ticks, 0)
+            action.selected = false
+            tile.activa = false
+        }
+
+        function test_actionThatDisablesItselfStillClicks() {
+            fixture.disableOnAction = true
+            mouseClick(action, 12, 12)
+            compare(action.enabled, false)
+            compare(feedback.clicks, 1)
+        }
+
+        function test_sliderPointerFeedback() {
+            mouseClick(slider, 6, slider.height - 14)
+            compare(feedback.ticks, 1)
+            mouseClick(slider, 6, slider.height - 14)
+            compare(feedback.ticks, 1)
+            slider.enabled = false
+            mouseClick(slider, slider.width - 6, slider.height - 14)
+            compare(feedback.ticks, 1)
         }
 
         function test_focusRevealsScrolledControl() {

@@ -24,6 +24,11 @@ Item {
     property int targetIndex: -1
     property string focusedId: ""
 
+    function openShortcut(id) {
+        K4.Feedback.click()
+        abrir(id)
+    }
+
     function slot(index) {
         if (dragIndex < 0 || targetIndex < 0) return index
         if (index === dragIndex) return targetIndex
@@ -40,6 +45,7 @@ Item {
             return ids.indexOf(id) < 0
         }))
         Settings.guardar()
+        K4.Feedback.tick()
         Qt.callLater(function () {
             for (let i = 0; i < cells.count; ++i) {
                 const cell = cells.itemAt(i)
@@ -102,9 +108,10 @@ Item {
                 Accessible.role: Accessible.Button
                 Accessible.name: modelData.nombre
                 Accessible.description: "Open application. Use Control and Left or Right to reorder."
-                Accessible.onPressAction: strip.abrir(modelData.id)
-                Keys.onReturnPressed: strip.abrir(modelData.id)
-                Keys.onSpacePressed: strip.abrir(modelData.id)
+                Accessible.onPressAction: strip.openShortcut(modelData.id)
+                Keys.onReturnPressed: strip.openShortcut(modelData.id)
+                Keys.onEnterPressed: strip.openShortcut(modelData.id)
+                Keys.onSpacePressed: strip.openShortcut(modelData.id)
                 Keys.onPressed: function (event) {
                     if (!(event.modifiers & Qt.ControlModifier)) return
                     if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
@@ -169,7 +176,7 @@ Item {
                         strip.dragIndex = -1
                         strip.targetIndex = -1
                         if (reorder) strip.move(from, to)
-                        else strip.abrir(id)
+                        else strip.openShortcut(id)
                     }
                     onCanceled: { strip.dragIndex = -1; strip.targetIndex = -1 }
                     onWheel: function (event) {

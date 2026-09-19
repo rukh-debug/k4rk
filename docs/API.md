@@ -167,13 +167,43 @@ also controls its default enabled state.
 
 `K4.Deslizador` supports arrows to change by `paso`, Home/End for bounds, and
 accessible increase/decrease actions. Read-only `dragging` reports pointer
-manipulation. An empty `etiqueta` hides its heading/value row (28 px total);
-a labelled slider is 48 px high. Set `Accessible.name` explicitly when hiding
+manipulation. An empty `etiqueta` hides its heading/value row;
+a labelled slider is 60 px high (32 px without a label), with a thick filled
+track and an inset grip. Set `Accessible.name` explicitly when hiding
 the heading. Pointer feedback is immediate while dragging; external updates
 ease into place. Quantization starts at `desde` and respects both bounds.
 
 `K4.Rodillo` also reveals focused descendant controls during keyboard traversal
 and accepts pixel-based trackpad scrolling.
+
+### Interaction sounds: `K4.Feedback`
+
+The host preloads bundled WAV samples for short, low-latency interaction cues.
+`K4.Boton`, `K4.ActionButton`, pressable `K4.Baldosa`, and `K4.Interruptor`
+request a click on activation, including keyboard and accessible actions.
+`K4.Deslizador` requests a quieter tick only when user input requests a changed
+value; bound/background value updates and attempts beyond its bounds are silent.
+Disabled controls do not request feedback. A child button inside a card produces
+only its own cue.
+
+For custom controls, the singleton provides two argument-free methods:
+
+| Method | Behavior |
+|---|---|
+| `K4.Feedback.click()` | Request the standard button click |
+| `K4.Feedback.tick()` | Request a quieter adjustment tick, limited to one per 80 ms |
+
+Call these only for user activation or adjustment, never from polling, hover,
+or property-change handlers. Shared controls already call them; do not add a
+second call in their action handlers. These fixed UI cues require no plugin
+permission. Arbitrary samples still use `K4.Sonido` and its permission.
+
+**Settings → Island → Interaction sounds** controls `uiSoundsEnabled` (default
+true) and `uiSoundVolume` (0–100%, default 35%). Gain is relative to system
+volume; ticks use 55% of the click gain. The service follows the default audio
+output and stays silent while muted, at zero volume, without an output, or
+before settings/samples are ready. Suppressed ticks are dropped, never queued.
+There is no desktop-wide input listener: feedback covers k4 controls.
 
 From the repository root, run the pointer, keyboard, controlled-state and
 focus-scrolling regression tests with Quickshell's static QML modules loaded:

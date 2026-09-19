@@ -425,7 +425,7 @@ bar's directory, not yours.
 | `K4.Icono` | a desktop-theme icon, by name |
 | `K4.Miniatura` | the live thumbnail of an open window, by its address |
 | `K4.Interruptor` | the bar's switch; it notifies, it does not flip itself |
-| `K4.Deslizador` | slider with label and value |
+| `K4.Deslizador` | filled slider with label and value; 60 px labelled, 32 px unlabelled |
 | `K4.Medidor` | a bar that measures and is not touched: volume, progress, how much of a quota is gone |
 | `K4.Baldosa` | the control center's pressable card |
 | `K4.Boton` | round one-glyph button |
@@ -441,6 +441,7 @@ bar's directory, not yours.
 | `K4.Process` | external processes — requires the `procesos` permission |
 | `K4.Terminal` | the house terminal: run a script where it best fits, open a window, or register an island provider through its host adapter — process launches require `procesos`; see [the provider reference](API.md#terminal-access-and-providers) |
 | `K4.Sonido` | a short sound — requires the `sound` permission |
+| `K4.Feedback` | Standard UI cues: `click()` for activation, rate-limited `tick()` for adjustment; host settings govern playback |
 | `K4.Fichero` | reading and writing files — requires `ficheros` |
 | `K4.Pildora` | an indicator on the folded pill |
 | `K4.Capsule` | the capsule growing toward a screen edge with your text |
@@ -465,11 +466,20 @@ Use the shared controls for consistent keyboard focus and disabled states.
 Give icon buttons, cards and switches an `Accessible.name`. Switches and choice
 buttons report activation; keep the displayed value bound to its owner.
 `K4.Deslizador` supports arrows and Home/End, exposes read-only `dragging`, and
-uses a compact 28 px layout when `etiqueta` is empty (supply an accessible name).
+uses a compact 32 px layout when `etiqueta` is empty (supply an accessible name).
 `K4.Rodillo` brings focused descendants into view during Tab traversal.
 Text fields need a persistent visible label and an explicit commit/cancel
 policy; do not persist password drafts. See the control reference in
 [API.md](API.md#controls-keyboard-and-focus).
+
+Shared buttons, switches and pressable cards already provide click sounds;
+sliders provide quieter, throttled ticks for user changes. Do not duplicate
+those calls in your handlers. Custom controls may call `K4.Feedback.click()` or
+`K4.Feedback.tick()` for user interaction, without an additional permission.
+These fixed cues obey **Settings → Island → Interaction sounds**, system mute,
+and the default output device. Background changes and hover stay silent.
+Arbitrary sound playback still uses `K4.Sonido` and its declared permission.
+See [interaction sounds](API.md#interaction-sounds-k4feedback).
 
 And what you need when yours grows past the island:
 

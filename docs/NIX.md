@@ -61,6 +61,12 @@ same inside a Hyprland session on NixOS as on any other distro:
 
 ## Home Manager
 
+For Control Center power profiles and city-based night light, see
+[Power & display](POWER-DISPLAY.md). Enable `services.power-profiles-daemon`
+in NixOS and `programs.k4.nightLight.enable` in Home Manager. The latter manages
+one neutral-starting hyprsunset backend bound to the Hyprland session; k4 owns
+the live schedule. The package includes Astral for offline solar calculations.
+
 ```nix
 # flake.nix
 inputs.k4.url = "github:rukh-debug/k4rk";

@@ -58,6 +58,11 @@ xdg-open	xdg-utils	base	Abrir un fichero con su programa
 xdg-user-dir	xdg-user-dirs	base	Encontrar tus carpetas de Vídeos e Imágenes
 update-desktop-database	desktop-file-utils	base	Mantener el índice del lanzador
 curl	curl	base	El tiempo y las consultas al asistente
+powerprofilesctl	power-profiles-daemon	base	Select and confirm system power profiles
+busctl	systemd	base	Read power-profile capabilities and application holds
+brightnessctl	brightnessctl	base	Control laptop screen brightness
+ddcutil	ddcutil	base	Control external monitor brightness over DDC/CI
+pkg:python-astral	python-astral	base	Calculate night-light sunrise and sunset locally
 
 #  ── Optional ───────────────────────────────────────────────────────────────
 #  None of these are installed unless --opcionales is requested.
@@ -67,3 +72,4 @@ yay	yay	opcional	Buscar e instalar paquetes de AUR desde el lanzador
 nvidia-smi	nvidia-utils	opcional	Temperatura y uso de la GPU NVIDIA
 claude	-	opcional	Usage limits in the Agents plugin
 codex	-	opcional	Usage limits in the Agents plugin
+hyprsunset	hyprsunset	opcional	Night-light session backend (version 0.4 or newer)

@@ -4,6 +4,8 @@ singleton Extensions 1.0 Extensions.qml
 singleton Clock 1.0 Clock.qml
 singleton Workspaces 1.0 Workspaces.qml
 singleton Audio 1.0 Audio.qml
+singleton Brightness 1.0 Brightness.qml
+singleton UiSounds 1.0 UiSounds.qml
 singleton Media 1.0 Media.qml
 singleton Wifi 1.0 Wifi.qml
 singleton Bt 1.0 Bt.qml
@@ -37,3 +39,5 @@ singleton Consola 1.0 Consola.qml
 singleton Binarios 1.0 Binarios.qml
 singleton Fullscreen 1.0 Fullscreen.qml
 singleton Monitors 1.0 Monitors.qml
+singleton PowerMode 1.0 PowerMode.qml
+singleton NightLight 1.0 NightLight.qml

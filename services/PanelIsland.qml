@@ -1,7 +1,7 @@
 pragma Singleton
 
 // Native control centre: toggles, media, shortcuts, notifications, wifi,
-// bluetooth, sound and system tabs plus contributed plugin cards.
+// bluetooth, sound, power/display and system tabs plus contributed plugin cards.
 //
 // Summoned via k4.panel and the compat k4 togglePanel/wifi/bluetooth/sound.
 // Background and right clicks on the island open the controls tab.
@@ -29,20 +29,27 @@ Singleton {
     property bool open: false
     property bool interactionActive: false
 
+    // These native services must run even before their detail page is opened.
+    Component.onCompleted: { NightLight.refresh(); PowerMode.refresh() }
+
     // The launcher, injected by SurfaceRegistry like PluginManager did.
     property var launcher: null
 
     readonly property int islandWidth: Math.max(640, Math.min(1100, Settings.panelWidth))
     readonly property int islandHeight: tab === "controls" ? alturaControles()
-        : tab === "system" ? (islandWidth < 800 ? 720 : 600) : 404
-    readonly property bool stackedControls: islandWidth < 780
-        && Settings.panelTileWifi && Settings.panelTileBluetooth && Settings.panelTileSound
+        : tab === "system" ? (islandWidth < 800 ? 720 : 600)
+        : tab === "night-light" && Settings.nightLightMode === "solar" ? 560 : 404
+    readonly property int radioCount: Number(Settings.panelTileWifi) + Number(Settings.panelTileBluetooth)
+    readonly property int sliderCount: Number(Settings.panelTileSound) + Number(Settings.panelTileBrightness)
+    readonly property bool stackedControls: radioCount > 0 && sliderCount > 0
 
     function altoDe(id) {
         if (id === "toggles")
-            return stackedControls ? 204 : 96
+            return (radioCount ? 96 : 0) + (sliderCount ? 120 : 0) + (stackedControls ? 12 : 0)
         if (id === "media")
             return 72
+        if (id === "power-display")
+            return 80
         if (id === "shortcuts")
             return 40
         return Enganches.altoDeCard(id)
@@ -79,7 +86,7 @@ Singleton {
     }
 
     function openTab(wanted) {
-        const nativeTab = ["controls", "notifications", "wifi", "bluetooth", "sound", "system"].indexOf(wanted) >= 0
+        const nativeTab = ["controls", "notifications", "wifi", "bluetooth", "sound", "system", "power-mode", "night-light"].indexOf(wanted) >= 0
         const contributed = wanted.indexOf("card:") === 0 && Enganches.cardDetail(wanted.slice(5))
         if (!nativeTab && !contributed)
             return
@@ -102,6 +109,8 @@ Singleton {
         if (tab === "bluetooth") return "Bluetooth"
         if (tab === "sound") return "Sound"
         if (tab === "system") return "System"
+        if (tab === "power-mode") return "Power mode"
+        if (tab === "night-light") return "Night light"
         return "Control centre"
     }
 
@@ -120,6 +129,12 @@ Singleton {
         open = false
     }
     onOpenChanged: if (!open) Wifi.cancelPsk()
+
+    Binding {
+        target: Brightness
+        property: "watching"
+        value: self.open && self.tab === "controls" && Settings.panelShowToggles && Settings.panelTileBrightness
+    }
 
     Binding {
         target: Wifi
@@ -148,6 +163,8 @@ Singleton {
         function bluetooth(): void { self.openTab("bluetooth") }
         function sound(): void { self.openTab("sound") }
         function system(): void { self.openTab("system") }
+        function powerMode(): void { self.openTab("power-mode") }
+        function nightLight(): void { self.openTab("night-light") }
         function close(): void { self.close() }
     }
 

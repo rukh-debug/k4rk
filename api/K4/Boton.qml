@@ -12,6 +12,11 @@ Item {
 
     signal pulsado()
 
+    Connections {
+        target: control
+        function onPulsado() { Feedback.click() }
+    }
+
     implicitWidth: tamano + 16
     implicitHeight: tamano + 12
     enabled: activo

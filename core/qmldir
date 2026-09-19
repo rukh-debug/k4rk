@@ -37,3 +37,5 @@ Grafica 1.0 Grafica.qml
 VistaSistema 1.0 VistaSistema.qml
 MonitorPage 1.0 MonitorPage.qml
 MonitorChoice 1.0 MonitorChoice.qml
+PowerDisplayDetail 1.0 PowerDisplayDetail.qml
+BrightnessControl 1.0 BrightnessControl.qml

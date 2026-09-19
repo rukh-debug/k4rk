@@ -9,6 +9,11 @@
   makeFontsConf,
   quickshell,
   hyprland,
+  hyprsunset,
+  power-profiles-daemon,
+  brightnessctl,
+  ddcutil,
+  systemd,
   python3,
   git,
   curl,
@@ -42,6 +47,11 @@ mkShell {
   packages = [
     quickshell
     hyprland
+    hyprsunset
+    power-profiles-daemon
+    brightnessctl
+    ddcutil
+    systemd
     #  tools/ beyond the standard library: spritesheet wants PIL and numpy,
     #  glifos wants fontTools (and skips itself without it)
     (python3.withPackages (
@@ -49,6 +59,8 @@ mkShell {
         numpy
         pillow
         fonttools
+        astral
+        tzdata
       ]
     ))
     git

@@ -18,6 +18,11 @@
   #  the engine and the compositor it integrates with
   quickshell,
   hyprland,
+  hyprsunset,
+  power-profiles-daemon,
+  brightnessctl,
+  ddcutil,
+  systemd,
 
   #  helpers the bar shells out to
   coreutils,
@@ -78,7 +83,11 @@ let
     coreutils # the launcher itself: cp, mkdir, mv…
     quickshell
     hyprland
-    python3
+    (python3.withPackages (ps: [ ps.astral ps.tzdata ]))
+    power-profiles-daemon
+    brightnessctl
+    ddcutil
+    systemd # busctl: authoritative power-profile reads, including availability
     git
     curl
     grim
@@ -141,7 +150,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     #  Where the launcher materializes the writable copy. Home Manager uses
     #  it to point Hyprland's IPC shortcuts at the running instance's path.
     mirrorPath = ".local/share/k4/code";
-    inherit quickshell;
+    inherit quickshell hyprsunset;
   };
 
   meta = {

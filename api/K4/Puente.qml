@@ -11,6 +11,7 @@ QtObject {
 
     // Explicit service references keep each platform dependency visible.
     property var audio: null
+    property var feedback: null
     property var medios: null
     property var notificaciones: null
     property var wifi: null

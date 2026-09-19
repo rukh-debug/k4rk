@@ -13,6 +13,11 @@ Rectangle {
 
     signal pulsada()
 
+    Connections {
+        target: baldosa
+        function onPulsada() { Feedback.click() }
+    }
+
     activeFocusOnTab: enabled && pulsable
     Accessible.role: pulsable ? Accessible.Button : Accessible.Grouping
     Accessible.onPressAction: if (enabled && pulsable) pulsada()

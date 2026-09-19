@@ -19,7 +19,7 @@ ColumnLayout {
     spacing: 12
 
     //  Every block the centre can show, with what the list rows and the
-    //  sketch need to draw them. The native three, plus every card the
+    //  sketch need to draw them. The native blocks, plus every card the
     //  registry holds — the list is a binding, so a card born later
     //  shows up the moment its plugin registers it. Ids are the ones
     //  `panelOrder` stores and PanelView looks up — one list, two
@@ -27,8 +27,10 @@ ColumnLayout {
     //  which is the sketch's own scale.
     readonly property var bloques: {
         const nativos = [
-            { id: "toggles", nombre: "Quick controls", altura: PanelIsland.altoDe("toggles") / 2, desc: "Wi-Fi, Bluetooth and sound",
-              glifo: 0xF056E },     // md-view_dashboard
+            { id: "toggles", nombre: "Quick controls", altura: PanelIsland.altoDe("toggles") / 2, desc: "Wi-Fi, Bluetooth, sound and brightness",
+               glifo: 0xF056E },     // md-view_dashboard
+            { id: "power-display", nombre: "Power & display", altura: PanelIsland.altoDe("power-display") / 2,
+              desc: "Power profiles and scheduled night light", glifo: 0xF0425 },
             { id: "media", nombre: "Media", altura: PanelIsland.altoDe("media") / 2, desc: "Now playing and playback controls",
               glifo: 0xF0387 },     // md-music_note
             { id: "shortcuts", nombre: "Shortcuts", altura: PanelIsland.altoDe("shortcuts") / 2, desc: "Pinned applications",
@@ -67,6 +69,10 @@ ColumnLayout {
     //  card ("<plugin>.<name>") joins or leaves `panelHiddenBlocks` —
     //  Settings owns a card's visibility, the plugin does not.
     function alternarBloque(id, encendido) {
+        if (id === "power-display") {
+            Settings.poner("panelShowPowerDisplay", encendido)
+            return
+        }
         if (id === "toggles") {
             Settings.poner("panelShowToggles", encendido)
             return
@@ -275,15 +281,25 @@ ColumnLayout {
 
                         Item { Layout.fillWidth: true }
 
+                        IconGlyph {
+                            visible: hueco.modelData === "power-display"
+                            text: String.fromCodePoint(0xF0425) + "  " + String.fromCodePoint(0xF0594)
+                            color: Theme.muted
+                            font.pixelSize: 10
+                        }
+
                         // The quick-control sketch follows the live wrapping rule.
                         GridLayout {
                             visible: hueco.modelData === "toggles"
-                            columns: PanelIsland.stackedControls ? 2 : 3
+                            columns: 2
                             columnSpacing: 4
                             rowSpacing: 4
                             Layout.alignment: Qt.AlignVCenter
                             Rectangle {
                                 visible: Settings.panelTileWifi
+                                Layout.row: 0
+                                Layout.column: 0
+                                Layout.columnSpan: PanelIsland.radioCount === 1 ? 2 : 1
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 26
                                 Layout.preferredHeight: 24
@@ -292,6 +308,9 @@ ColumnLayout {
                             }
                             Rectangle {
                                 visible: Settings.panelTileBluetooth
+                                Layout.row: 0
+                                Layout.column: Settings.panelTileWifi ? 1 : 0
+                                Layout.columnSpan: PanelIsland.radioCount === 1 ? 2 : 1
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 26
                                 Layout.preferredHeight: 24
@@ -300,7 +319,9 @@ ColumnLayout {
                             }
                             Rectangle {
                                 visible: Settings.panelTileSound
-                                Layout.columnSpan: PanelIsland.stackedControls ? 2 : 1
+                                Layout.row: PanelIsland.radioCount ? 1 : 0
+                                Layout.column: 0
+                                Layout.columnSpan: PanelIsland.sliderCount === 1 ? 2 : 1
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 40
                                 Layout.preferredHeight: 24
@@ -312,6 +333,23 @@ ColumnLayout {
                                     height: 2
                                     radius: 1
                                     color: Theme.muted
+                                }
+                            }
+                            Rectangle {
+                                visible: Settings.panelTileBrightness
+                                Layout.row: PanelIsland.radioCount ? 1 : 0
+                                Layout.column: Settings.panelTileSound ? 1 : 0
+                                Layout.columnSpan: PanelIsland.sliderCount === 1 ? 2 : 1
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 24
+                                radius: 5
+                                color: Theme.surface
+                                IconGlyph {
+                                    anchors.centerIn: parent
+                                    text: String.fromCodePoint(0xF00E0)
+                                    color: Theme.muted
+                                    font.pixelSize: 10
                                 }
                             }
                         }

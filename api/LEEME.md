@@ -80,13 +80,14 @@ not be declared inside the view.
 | `K4.Pildora` | Small indicators in the folded pill; host **Island → Indicator icon size** controls all status glyphs (8–20 px, default 14 px). Optional seventh `registrar` argument `slots: [{ text, samples, prefix }]` reserves stable numeric widths. Prefixed values align left beside the prefix; other values align right. Update the whole array via `actualizar`; keep samples/prefixes fixed. See [pill indicators](../docs/API.md#pill-indicators) |
 | `K4.Capsule` | Flank extensions: the capsule growing with your text |
 | `K4.Sonido` | Short sound effect (permission `sonido`) |
+| `K4.Feedback` | Fixed UI cues: `click()` and rate-limited `tick()`; no permission, governed by host UI sound settings and system mute |
 | `K4.Tema` | Palette, fonts, island geometry — `tintar()` to tint the bar ambience, plus the current tint owner and colour |
 | `K4.Guardado` | Plugin state as JSON, in its own directory |
 | `K4.Etiqueta` | Text with the bar's defaults |
 | `K4.Glifo` | Nerd Font glyph |
 | `K4.IconoPlugin` | A plugin's icon: its image, or its glyph |
 | `K4.Interruptor` | The bar's switch |
-| `K4.Deslizador` | Labelled slider |
+| `K4.Deslizador` | Filled slider with an inset grip; 60 px labelled, 32 px unlabelled |
 | `K4.Medidor` | Read-only bar: `valor` out of `maximo`, house track and easing |
 | `K4.Baldosa` | Pressable card |
 | `K4.Boton` | Round single-glyph button |
@@ -115,9 +116,16 @@ not be declared inside the view.
 
 Shared buttons and switches support Tab and Enter/Space. Set `Accessible.name`
 on icon-only actions and switches. Sliders support arrows and Home/End;
-`dragging` is read-only, and an empty `etiqueta` selects a compact 28 px layout.
+`dragging` is read-only, and an empty `etiqueta` selects a compact 32 px layout.
 `K4.Rodillo` reveals focused controls automatically. Keep values owner-controlled
 and password drafts transient; see [control details](../docs/API.md#controls-keyboard-and-focus).
+
+Shared buttons, switches and pressable cards automatically request click sounds;
+sliders tick only on user changes, at most once per 80 ms. Custom controls can
+use `K4.Feedback.click()` / `K4.Feedback.tick()` for the same cues. Do not repeat
+calls already made by shared controls or play feedback for background updates.
+**Settings → Island → Interaction sounds** supplies the enable switch (default
+on) and gain (default 35%). Playback follows the default output and system mute.
 
 ## Catalog and registration
 

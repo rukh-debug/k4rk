@@ -7,6 +7,12 @@ Controls.AbstractButton {
 
     property bool selected: false
 
+    Connections {
+        target: control
+        // Input already checked enabled; the action may disable itself immediately.
+        function onClicked() { Feedback.click() }
+    }
+
     implicitWidth: Math.max(32, contentItem.implicitWidth + 24)
     implicitHeight: 32
     leftPadding: 12

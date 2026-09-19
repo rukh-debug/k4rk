@@ -57,7 +57,10 @@ Rectangle {
         anchors.fill: parent
         enabled: !opcion.modelData.tipo && opcion.disponible
         cursorShape: Qt.PointingHandCursor
-        onClicked: Settings.alternar(opcion.modelData.id)
+        onClicked: {
+            Settings.alternar(opcion.modelData.id)
+            K4.Feedback.click()
+        }
     }
 
     GridLayout {

@@ -20,17 +20,10 @@ import "widgets"
 Scope {
     id: root
 
-    // ── los módulos ───────────────────────────────────────────────
-    //
-    //  Ya no se instancian aquí: los crea PluginManager desde el catálogo,
-    //  cada uno en su try. La diferencia no es de estilo — con la
-    //  instanciación estática, un plugin con un error de sintaxis dejaba
-    //  «Type X unavailable» y CERO barras, y pasó esta semana. Con la carga
-    //  dinámica, el roto se apunta en Ajustes y los demás arrancan.
-    //
-    //  Las referencias cruzadas (`panel`, `tray`…) también las
-    //  reparte el gestor: cualquier plugin que declare la propiedad la
-    //  recibe, venga del repo o de ~/.config/k4/plugins.
+    // Modules load individually through PluginManager, so one syntax error
+    // is reported in Settings instead of preventing the entire bar from loading.
+    // The registry also injects declared cross-module references into both
+    // repository plugins and those in ~/.config/k4/plugins.
 
     // ── the native surfaces ─────────────────────────────────────
     //
@@ -63,9 +56,8 @@ Scope {
             p.close()
     }
 
-    // ── quién se queda la island ──────────────────────────────────
-    // Gana el activo de mayor prioridad. El binding se recalcula solo cuando
-    // cualquier plugin cambia su `active`.
+    // The highest-priority active surface wins the island. The binding
+    // re-evaluates when any surface changes its active state.
     readonly property var activePlugin: {
         if (Island.debugMode.length > 0) {
             const l = root.surfaces
@@ -102,24 +94,10 @@ Scope {
         return bestCargado !== null ? bestCargado : best
     }
 
-    //  ── lo que se va solo se aparta ───────────────────────────────
-    //
-    //  Una vista transitoria —un aviso, la confirmación de un ajuste rápido—
-    //  aparece sin que nadie la pida y se cierra sola a los pocos segundos. Si
-    //  en esos segundos el usuario abre algo, lo que quiere es lo que ha
-    //  abierto: el aviso ya ha dicho lo suyo.
-    //
-    //  Antes se quedaba, y no por prioridad sino por su reloj: un aviso tiene
-    //  cinco segundos y no cede hasta que vencen, así que pulsar el atajo del
-    //  lanzador enseñaba el aviso hasta el final y el
-    //  lanzador después. Y cerrarlo no basta con que otro le gane la prioridad:
-    //  su temporizador se rearma mientras el ratón esté sobre la island —que es
-    //  donde está, si acabas de abrir algo— así que volvería a salir al cerrar
-    //  lo de encima.
-    //
-    //  Aquí y no en cada plugin: `Notifs.dismissToast()` a mano en cada sitio
-    //  que abre algo era lo que había, y es exactamente lo que se olvida — solo
-    //  lo llamaban dos.
+    // A summoned view dismisses transients centrally. Priority alone is not
+    // enough: a notification's hover timer could keep it alive and make it
+    // reappear after the summoned view closes. Individual openers must not
+    // have to remember to dismiss notifications themselves.
     function apartarTransitorios() {
         const gana = activePlugin
         if (!gana || gana.transitorio)
@@ -235,15 +213,13 @@ Scope {
         })
     }
 
-    //  Lo que decide el reparto, publicado para que lo lean los plugins por
-    //  K4.Isla: quién la tiene y si está desplegada.
+    // Publish the winning surface and expanded state through K4.Isla.
     onActivePluginChanged: {
         apartarTransitorios()
         const anterior = Island.ocupante
         if (activePlugin && activePlugin.name !== SurfaceRegistry.pillId) {
-            // Desde reposo, el origen explícito del clic; sin él, el monitor
-            // con foco. Entre dos vistas abiertas se conserva la pantalla para
-            // que navegar por el panel no haga saltar la island.
+            // From rest, use the click's explicit monitor or the focused one.
+            // Keep the monitor between open views so panel navigation stays put.
             if (Island.pantallaPedida.length > 0
                     || anterior.length === 0 || anterior === SurfaceRegistry.pillId)
                 Island.pantallaActiva = Island.tomarPantallaPedida()
@@ -251,16 +227,13 @@ Scope {
             Island.pantallaPedida = ""
         }
         Island.ocupante = activePlugin ? activePlugin.name : ""
-        //  «Abierta» es DESPLEGADA, no «hay alguien»: la píldora también
-        //  ocupa la island y siempre está, así que con `activePlugin !== null`
-        //  esto valía true a todas horas y no le servía a nadie. Desplegada es
-        //  pedir más alto que la píldora.
+        // Expanded means taller than the pill, not merely occupied: the pill
+        // itself always occupies the island.
         Island.abierta = activePlugin !== null
             && activePlugin.islandHeight > Theme.baseHeight
     }
 
-    // Clic en el fondo: lo atiende el plugin activo si lo pide; si no, abre el
-    // centro de control.
+    // Background taps go to the active surface if requested, otherwise the panel.
     function abrirPanelEn(pantalla) {
         Island.pedirPantalla(pantalla)
         Island.pantallaActiva = pantalla
@@ -276,16 +249,14 @@ Scope {
             abrirPanelEn(pantalla)
     }
 
-    // Los singletons de QML son perezosos: sin tocarlos no arrancan sus
-    // procesos ni registran nada (el servidor de notificaciones, por ejemplo).
+    // QML singletons are lazy: access them to start processes and registrations.
     Component.onCompleted: {
-        //  El puente de la API, lo PRIMERO: los ficheros del módulo K4 no
-        //  pueden importar la barra por ruta relativa —cargarían una segunda
-        //  copia entera de services/, ver api/K4/Puente.qml— así que el host
-        //  les inyecta aquí lo que necesitan.
+        // Inject the API bridge first. Relative host imports inside K4 would
+        // create a second service graph; see api/K4/Puente.qml.
         K4.Puente.tema = Theme
         K4.Puente.indicadores = Indicadores
         K4.Puente.audio = Audio
+        K4.Puente.feedback = UiSounds
         K4.Puente.medios = Media
         K4.Puente.notificaciones = Notifs
         K4.Puente.wifi = Wifi
@@ -322,11 +293,9 @@ Scope {
     // ── IPC ───────────────────────────────────────────────────────
     // Each module publishes its own target (k4.panel, k4.openwebui,
     // k4.launcher).
-    // Esto es la capa de compatibilidad: mantiene el target `k4` con los
-    // nombres de siempre para no romper los atajos ya configurados.
-    //  Atajo del registro: el plugin vivo con ese id, o null si está
-    //  deshabilitado o roto. Con `?.` detrás, llamar a uno apagado no hace
-    //  nada, que es exactamente lo que debe hacer.
+    // Keep the legacy k4 target so existing shortcuts continue to work.
+    // Registry lookups return null for disabled or broken plugins; optional
+    // chaining makes calls to those plugins harmless.
     function _p(id) { return SurfaceRegistry.instance(id) }
 
     IpcHandler {
@@ -371,11 +340,7 @@ Scope {
             PluginManager.recargar(id)
         }
         function pluginRefresh(): void { PluginManager.releerCatalogo() }
-        //  Devuelve, no imprime. Lo de antes hacía `console.log`, así que el
-        //  JSON acababa en el log de Quickshell y quien lo había pedido por
-        //  IPC no recibía nada: se podía leer, pero solo si además ibas a
-        //  buscar el log. Con tipo de retorno, `quickshell ipc call` lo
-        //  escribe en tu terminal, que es lo que uno espera al preguntar.
+        // Return JSON to the IPC caller rather than printing it into the shell log.
         function pluginStatus(): string {
             return JSON.stringify(PluginManager.catalogo.map(function (m) {
                 return { id: m.id, enabled: PluginManager.estaHabilitado(m.id),
@@ -384,9 +349,7 @@ Scope {
         }
         function hostStatus(): string { return SurfaceRegistry.hostStatus() }
 
-        //  Pregunta al registro qué hay más nuevo. Contesta al momento y el
-        //  resultado llega después a `PluginManager.novedades`: la respuesta
-        //  útil la enseña la barra, aquí solo se dispara.
+        // Start an asynchronous update check; Settings shows novedades when ready.
         function pluginCheck(): void { PluginManager.comprobarNovedades() }
         function wifi(): void { _p("panel")?.openTab("wifi") }
         function bluetooth(): void { _p("panel")?.openTab("bluetooth") }
@@ -425,9 +388,8 @@ Scope {
         function theme(): void { _p("settings")?.toggle("wallpaper") }
         function tray(): void { TrayIsland.toggle() }
         function settings(): void { _p("settings")?.toggle() }
-        //  Ajustes abierto en una página concreta, para atarlo a un atajo:
-        //  `k4 settingsSection wallpaper`, `… island`, `… effects`, … El
-        //  nombre de la sección o su id, como lo entienda la vista.
+        // Open Settings at a section name or id, for example:
+        // k4 settingsSection wallpaper, island, or effects.
         function settingsSection(section: string): void {
             _p("settings")?.abrirPagina(section)
         }
@@ -473,11 +435,10 @@ Scope {
                 && pluginVisible === idlePlugin
                 ? WlrLayer.Bottom : WlrLayer.Overlay
 
-            //  La barra vive en el borde que diga Ajustes. El resto del
-            //  fichero pregunta `abajo` en vez de repetir la comparación.
+            // Resolve the configured bar edge once for the rest of this window.
             readonly property bool abajo: Settings.barPosition === "bottom"
 
-            //  ── dónde está la island AHORA ──────────────────────────
+            //  ── the island's current position ───────────────────────
             //
             //  The bar has its edge; every view that OPENS can have its own
             //  — the control centre from the left, Settings from the bottom
@@ -508,8 +469,7 @@ Scope {
                 : (Island.colocacionPedida >= 0 ? Island.colocacionPedida
                                                 : lugar.align / 100)
 
-            // Solo la pantalla propietaria enseña la acción global. Las demás
-            // siguen con su píldora, que sí pertenece a todos los monitores.
+            // Only the owning monitor shows the global action; others keep the pill.
             readonly property var idlePlugin: SurfaceRegistry.instance(SurfaceRegistry.pillId)
             readonly property bool esPantallaActiva: root.activePlugin
                 && root.activePlugin.name !== SurfaceRegistry.pillId
@@ -648,20 +608,9 @@ Scope {
                 && !root.activePlugin.transitorio
                 && root.activePlugin.islandHeight > Theme.baseHeight
 
-            //  ── la barra apartada de UNA pantalla ─────────────────────
-            //
-            //  `activePlugin` es uno solo y global: gana el de más prioridad y
-            //  mientras esté activo NADIE más puede activarse, en ninguna
-            //  pantalla. Eso vale para un módulo que se abre y se cierra, pero
-            //  no para uno que se queda —una escena puede llevarse la barra al
-            //  borde de abajo y ahí sigue— porque deja la island de los otros
-            //  monitores muerta: ni se despliega ni responde.
-            //
-            //  Así que apartar la barra deja de ser cosa de ocupar la island.
-            //  Un módulo declara `barraApartada` con la pantalla que se lleva y
-            //  el sitio que hay que seguir guardándole, y esa pantalla se queda
-            //  sin barra sin que el resto se entere. Quien no la declare da
-            //  `undefined` y todo sigue como siempre.
+            // Moving the bar aside is per-monitor, independent of the global
+            // active surface. A module's optional barraApartada names its
+            // monitor and reserved space without disabling other monitors.
             readonly property var apartada: {
                 const lista = root.surfaces
                 for (let i = 0; i < lista.length; ++i) {
@@ -675,19 +624,9 @@ Scope {
                 return null
             }
 
-            //  Apartada es apartada, ocupe la island quien la ocupe.
-            //
-            //  Antes se hacía la excepción de dejarla salir en cuanto un módulo
-            //  se activaba —el lanzador, el portapapeles—, para que su atajo no
-            //  pareciese roto. El precio era que la barra REAPARECÍA DE GOLPE
-            //  en el sitio donde ya no estaba, sin recorrido y con el dock aún
-            //  abajo: dos barras a la vez.
-            //
-            //  Quien aparta la barra es quien tiene que devolverla, y con su
-            //  animación. El contrato de `barraApartada` es ese: si te la
-            //  llevas, mira `K4.Isla.ocupadaPor` y tráela cuando alguien la
-            //  pida. Un módulo que se abre mientras tanto espera lo que dure el
-            //  regreso, y entonces sale con ella.
+            // The module that moves the bar aside must animate its return when
+            // K4.Isla.ocupadaPor requests it. Opening another surface must not
+            // make the bar reappear abruptly or leave two bars visible.
             readonly property bool sinBarra: apartada !== null
 
             readonly property int anchoIsla: sinBarra ? 0
@@ -695,71 +634,29 @@ Scope {
             readonly property int altoIsla: sinBarra ? 0
                 : (pluginVisible ? pluginVisible.islandHeight : Theme.baseHeight)
 
-            //  ── qué hace la barra con el sitio del escritorio ─────────
-            //
-            //  Tres maneras, y las elige el usuario en Ajustes. «reserva» es
-            //  lo de siempre: la franja plegada se le quita al escritorio y
-            //  ninguna ventana se mete debajo. «encima» no le quita nada —la
-            //  píldora flota sobre las ventanas— y «escondida» además la
-            //  retira por el borde hasta que hay algo que enseñar.
-            //
-            //  Y una cuarta que no es un modo sino una REGLA, y por eso se
-            //  resuelve a uno de los tres: «completa» reserva como siempre y se
-            //  esconde solo mientras una ventana llena esta pantalla. Que es la
-            //  queja de verdad —que la barra estorbe cuando estás usando la
-            //  pantalla entera— sin perderla el resto del día.
-            //
-            //  Por pantalla y no global: con dos monitores, el vídeo a pantalla
-            //  completa está en uno, y en el otro la barra no molesta a nadie.
+            // Reserve keeps desktop space, onTop floats, and hidden retreats
+            // past the edge. Auto resolves to reserve or hidden per monitor,
+            // depending on whether that monitor has a fullscreen window.
             readonly property string modoSitio: Settings.islandSpace === "auto"
                 ? (Workspaces.lleno(panelWindow.screen.name) ? "hidden" : "reserve")
                 : Settings.islandSpace
             readonly property bool flotante: modoSitio !== "reserve"
             readonly property bool seEsconde: modoSitio === "hidden"
 
-            //  Qué cuenta como «está pasando algo»: que la island la tenga
-            //  alguien que no sea el reposo. No hay que inventarse un aviso
-            //  nuevo — un módulo se activa EXACTAMENTE cuando tiene algo que
-            //  enseñar.
-            //
-            //  Cuáles salen solos, mirado uno a uno y no de memoria: el aviso
-            //  de notificación (`Notifs.toastOpen`), el volumen
-            //  (`Audio.overlayOpen`), y
-            //  cualquier módulo que abras con su atajo. El reproductor y el
-            //  reloj NO: los dos piden `Island.hovered`, así que una canción
-            //  que cambia sola no saca la barra — se ve al asomarse, como
-            //  siempre.
-            //
-            //  Y el ratón en el borde cuenta igual: ir a buscarla es pedirla.
-            //  Franjas incluidas — el toque de una franja dura lo que su flag
-            //  (`zonaToque`, más abajo), y entretanto es un ratón más encima.
+            // Any non-idle surface or pointer at an activation edge reveals
+            // the bar. Edge touches hold zonaToque until their grace expires.
             readonly property bool ratonEncima: sobreIsla.hovered
                 || sobreFilo.hovered || zonaToque
             readonly property bool hayQueEnsenar: ratonEncima
                 || (!!pluginVisible && pluginVisible.name !== SurfaceRegistry.pillId)
 
-            //  Vuelve al instante y se va con retraso. Al revés —irse en cuanto
-            //  se cierra lo que había— la barra parpadea cada vez que cruzas el
-            //  borde, y quedarse un segundo de más no le estorba a nadie.
+            // Return immediately and retreat after a grace period to avoid flicker.
             property bool retirada: false
 
-            //  ── la franja que la trae de vuelta ─────────────────────
-            //
-            //  Escondida y retirada, el filo de la píldora es el único camino
-            //  de vuelta — y solo si recuerdas en qué borde estaba. Mientras
-            //  no está, las OTRAS tres franjas de la pantalla también la
-            //  llaman: una tira fina a lo largo de cada borde que no es el
-            //  suyo. De 1 px por defecto, que es la promesa más fina que un
-            //  borde puede hacer: cada píxel por encima es un píxel de clics
-            //  ajenos que la tira se queda. Y solo existe mientras la barra
-            //  NO está: puesta, no cobra nada.
-            //
-            //  El toque se lleva un FLAG y no el hover: en cuanto la barra
-            //  vuelve, las franjas salen de la máscara y su hover se queda
-            //  cojo —el puntero no se ha movido, nadie garantiza que llegue
-            //  un hovered nuevo—. Con el flag, la barra asoma lo que dura el
-            //  toque (y su segundo de cortesía), y si el puntero la alcanza,
-            //  la retiene el hover de siempre.
+            // While hidden, the other three screen edges also summon the bar.
+            // Remember the touch in a flag: returning removes those strips
+            // from the input mask, so their hover state is no longer reliable.
+            // Normal island hover takes over if the pointer reaches the bar.
             property bool zonaToque: false
 
             function tocarZona() {
@@ -773,8 +670,7 @@ Scope {
                 && seEsconde && retirada && !sinBarra && !Island.apartada
 
             function repensarRetirada() {
-                //  Sin modo escondite no hay nada que retirar, y con la barra
-                //  apartada tampoco: ahí manda quien se la llevó.
+                // Only hidden mode retreats; a displaced bar belongs to its mover.
                 if (!seEsconde || sinBarra) {
                     retiroTimer.stop()
                     retirada = false
@@ -786,21 +682,9 @@ Scope {
                 }
             }
 
-            //  ── asomarse no es abrir, y quién cuenta el tiempo ────────
-            //
-            //  Rozar el filo trae la barra de vuelta y el ratón queda encima de
-            //  la píldora, así que con la regla de siempre —el reloj se activa
-            //  al pasar— el roce la abría del todo. Rozar un borde sin querer
-            //  no es pedir nada: la píldora asoma, y para que se ABRA hay que
-            //  quedarse.
-            //
-            //  Y quien cuenta ese medio segundo es `ratonEncima`, que incluye
-            //  el filo, y NO el hover de la island. Atado solo a la island no
-            //  se abría NUNCA dejando el ratón quieto: la barra vuelve y se
-            //  mete bajo un puntero que no se ha movido, y sin movimiento Qt no
-            //  tiene por qué entregarle un `hovered` nuevo a nadie. El filo, en
-            //  cambio, ya estaba debajo del ratón antes de que la barra
-            //  volviera, así que su `hovered` es de fiar.
+            // Brushing an edge reveals the pill; dwelling opens the hover view.
+            // Time the combined edge/island hover because a stationary pointer
+            // may not produce a new island hover event as the bar returns.
             onRatonEncimaChanged: {
                 if (!seEsconde)
                     return
@@ -814,10 +698,8 @@ Scope {
             onSeEscondeChanged: repensarRetirada()
             onSinBarraChanged: repensarRetirada()
 
-            //  ── cambiar de dueño no es viajar ───────────────
-            //
-            //  Y se cuenta, que hay animaciones que no se paran solas: ver
-            //  `aLaVista` en services/Island.qml.
+            // Publish visibility so off-screen animations can stop; see
+            // aLaVista in services/Island.qml.
             onRetiradaChanged: Island.publicarVista(screen.name, !retirada)
 
             Component.onCompleted: {
@@ -831,25 +713,18 @@ Scope {
                 Island.publicarVista(screen.name, !retirada)
             }
 
-            //  Un monitor que se va deja de contar. Si no, su «sí la veo» se
-            //  quedaría puesto para siempre y las animaciones seguirían
-            //  corriendo por una pantalla que ya no está.
+            // Removed monitors must not keep animations running indefinitely.
             Component.onDestruction: Island.publicarVista(screen.name, false)
 
             Timer {
                 id: retiroTimer
                 interval: 1600
-                //  Se vuelve a preguntar al vencer, y no se da por hecho lo que
-                //  era verdad al armarlo: entre medias ha podido volver el
-                //  ratón, o una escena llevarse la barra abajo.
+                // Recheck at expiry: the pointer or bar owner may have changed.
                 onTriggered: panelWindow.retirada = panelWindow.seEsconde
                     && !panelWindow.sinBarra && !panelWindow.hayQueEnsenar
             }
 
-            //  Cuánto dura el asomo que pide una franja: lo que tarda en
-            //  llegar quien iba de verdad a por la barra, y no mucho más.
-            //  Si el puntero la alcanza antes, la retiene el hover de
-            //  siempre; si no, se va con la misma cortesía de siempre.
+            // Allow time to reach the revealed bar; normal hover then keeps it up.
             Timer {
                 id: zonaTimer
                 interval: 1600
@@ -865,16 +740,9 @@ Scope {
             //  and would fight the layer binding above on this surface.
             focusable: true
 
-            //  Exclusivo solo para lo que se escribe; el resto, bajo demanda.
-            //  Poner Exclusive en todos los módulos abribles dejaba el teclado
-            //  secuestrado mientras tuvieras cualquiera abierto: no se podía
-            //  escribir en ninguna ventana.
+            // Only typing-oriented views grab exclusive focus; others opt in.
             WlrLayershell.keyboardFocus: {
-                //  Con un diálogo del sistema delante, el teclado es suyo.
-                //
-                //  Apartar la island de la vista no bastaba: seguía teniendo el
-                //  foco en exclusiva, así que el selector de ficheros se veía
-                //  pero no se podía ni escribir en él ni cerrarlo con Escape.
+                // System dialogs need the keyboard as well as an unobstructed view.
                 if (Island.apartada)
                     return WlrKeyboardFocus.None
                 const p = panelWindow.pluginVisible
@@ -882,11 +750,8 @@ Scope {
                     return WlrKeyboardFocus.None
                 if (p.grabKeyboard)
                     return WlrKeyboardFocus.Exclusive
-                //  El punto medio para los juegos: exclusivo mientras el ratón
-                //  esté encima —que es donde se juega— y devuelto al salir.
-                //  Wayland no tiene un modo «al pasar», así que se conmuta con
-                //  `Island.hovered`, que ya trae su margen de 240 ms y por eso
-                //  no parpadea al rozar un borde.
+                // Games can grab only while hovered. Island.hovered includes
+                // a 240 ms grace period to prevent focus flicker at the edge.
                 if (p.tecladoAlPasar && Island.hovered)
                     return WlrKeyboardFocus.Exclusive
                 if (p.tecladoOpcional)
@@ -894,33 +759,10 @@ Scope {
                 return WlrKeyboardFocus.None
             }
 
-            //  Se reserva solo la franja plegada: las ventanas nunca se meten
-            //  bajo la píldora, y todo lo que crece por encima flota.
-            //
-            //  Salvo que no haya píldora. Un módulo puede pedir la island de
-            //  alto CERO, que es como se dice «ahora mismo aquí no hay barra»
-            //  —lo usa quien se lleva la barra al borde de abajo—,
-            //  y entonces seguir quitándole 34 px al escritorio sería cobrar
-            //  por una franja que no se ve.
-            //  Y quien lo decide es el módulo, no su altura.
-            //
-            //  Atado a `altoIsla > 0`, la franja se soltaba en el instante en
-            //  que un módulo pedía la island a cero, y el escritorio entero
-            //  pegaba un salto ANTES de que hubiera pasado nada. Quien manda la
-            //  barra de viaje sabe cuándo ya no hace falta guardarle el sitio;
-            //  la barra, no.
-            //
-            //  Se lee sin que el contrato la declare: un plugin que no la
-            //  define da `undefined`, que no es `false`, así que reserva —el
-            //  comportamiento de siempre para los otros veintisiete—.
-            //  En PÍXELES, para que quien la mande pueda soltarla poco a poco
-            //  y el escritorio acompañe en vez de pegar un salto.
-            //  Y por encima de todo eso manda Ajustes: quien ha dicho que la
-            //  barra no le quite sitio no lo ha dicho a medias, así que
-            //  «encima» y «escondida» le ganan también a lo que pida un módulo.
-            //  Incluida la franja que se guarda para el viaje al borde: si
-            //  nunca se reservó nada, empezar a reservarlo justo al bajar la
-            //  barra sería un salto del escritorio salido de la nada.
+            // Reserve only the folded strip; expanded content floats. A moving
+            // module owns its reservation in pixels so it can release space
+            // gradually, independently of the island's requested height.
+            // Floating/hidden preferences override every module reservation.
             exclusiveZone: panelWindow.flotante ? 0
                 : (panelWindow.sinBarra
                    ? (panelWindow.apartada.reserva || 0)
@@ -947,26 +789,10 @@ Scope {
             //  and input is decided by the MASK below — outside the input
             //  region, clicks pass through as if the surface wasn't there.
             implicitHeight: panelWindow.screen.height
-            //  Sin la island, la ventana no acepta ni un clic.
-            //
-            //  No basta con dejar de dibujarla: la región de entrada seguía
-            //  siendo la suya, así que un selector de ficheros que le quedara
-            //  debajo perdía todos los clics de esa franja sin que se viera por
-            //  qué. Con la región vacía, el ratón pasa de largo.
-            //  Y escondida, lo que recibe el ratón es el filo y no la island.
-            //  La island NO se ha movido —lo que se desplaza es su dibujo—, así
-            //  que dejarla de región de entrada sería seguir tragándose los
-            //  clics de una barra que no se ve.
-            //
-            //  Pero el filo entra SIEMPRE que la barra se esconda, no solo
-            //  mientras está fuera, y eso es lo que arregla el agujero de los
-            //  360 ms del regreso: la región de una `Region { item }` sigue a
-            //  la TRANSFORMADA del item, así que mientras la island vuelve su
-            //  región todavía está fuera de la pantalla. En ese rato la
-            //  superficie no recibía nada: el puntero se lo quedaba la ventana
-            //  de debajo —salía su cursor de redimensionar, pegado al borde— y
-            //  la barra que acababa de volver no se enteraba de tener el ratón
-            //  encima. Con el filo dentro, el puntero no se va nunca.
+            // An absent island must also release its input region. Hidden mode
+            // always keeps the activation edge in the mask, including during
+            // the return animation: Region follows the item's transform, so
+            // the island itself may still be outside the screen on that frame.
             mask: Region {
                 item: Island.apartada ? null : island
 
@@ -1051,16 +877,8 @@ Scope {
                 }
             }
 
-            //  ── el filo: por dónde se la llama cuando no está ─────────
-            //
-            //  Retirada, no hay pastilla que rozar para traerla de vuelta. Esta
-            //  tira invisible del borde es lo que se roza.
-            //
-            //  Del ANCHO DE LA PÍLDORA y no de la pantalla entera, que es la
-            //  diferencia entre un escondite y una barra que estorba sin verse:
-            //  una tira de punta a punta se traga los clics de todo el borde
-            //  —las pestañas del navegador, la cruz de una ventana maximizada—
-            //  y eso no lo ha pedido nadie.
+            // A pill-width activation strip reveals the hidden bar without
+            // stealing clicks along the entire screen edge.
             Item {
                 id: filo
                 x: island.x
@@ -1068,15 +886,11 @@ Scope {
                 height: 4
                 anchors.top: panelWindow.abajo ? undefined : parent.top
                 anchors.bottom: panelWindow.abajo ? parent.bottom : undefined
-                //  Invisible, pero NO `visible: false`: un item oculto no
-                //  recibe ratón, y recibirlo es para lo único que existe.
+                // Transparent rather than hidden so it can receive pointer events.
                 opacity: 0
 
-                //  Sigue contando con la barra ya fuera, a propósito. Al
-                //  volver, la island tapa el filo sin que el ratón se haya
-                //  movido —y sin movimiento nadie garantiza que le llegue un
-                //  `hovered` nuevo—, así que si el filo dejase de contar en ese
-                //  instante la barra se iría otra vez con el ratón encima.
+                // Keep counting edge hover after the island covers it: a
+                // stationary pointer may never send the island a new hover event.
                 HoverHandler { id: sobreFilo }
             }
 
@@ -1104,7 +918,7 @@ Scope {
             //  comes back for as long as the touch lasts, carried by a flag
             //  and not by the hover: in the moment the bar returns, the
             //  strips leave the input mask, and a hover whose item stopped
-            //  receiving cannot be trusted to say anything. Ver `zonaToque`.
+            //  receiving cannot be trusted to say anything. See `zonaToque`.
             Shape {
                 id: aro
                 visible: Settings.edgeZoneEnabled
@@ -1215,25 +1029,10 @@ Scope {
             Item {
                 id: island
 
-                //  Ya no siempre al centro: la island vive en el punto del
-                //  borde que digan Ajustes, o donde la coloque temporalmente
-                //  un plugin (services/Island.qml).
-                //
-                //  Se anima la FRACCIÓN y no la x: la x es cálculo directo,
-                //  así que al cambiar el ancho se recoloca en el mismo frame
-                //  —como hacía el ancla al centro— y no va a remolque con su
-                //  propia animación, que era lo que descentraba la island al
-                //  abrir y cerrar módulos.
-                //
-                //  Con vistas que abren en cualquier borde hacen falta DOS
-                //  fracciones, una por eje: el del borde queda clavado a su
-                //  lado (0 o 1) y el libre lleva la alineación. Una vista que
-                //  abre en otro borde se DESLIZA hasta él con la misma curva
-                //  que siempre tuvo la alineación, ahora en los dos ejes.
-                //  Y sin anclas: la y también es cálculo directo, con lo que
-                //  crecer hacia fuera del borde —el de siempre hacia abajo,
-                //  el nuevo hacia la derecha— sale solo de que la fracción
-                //  clavada no se mueve mientras la isla engorda.
+                // Animate alignment fractions, not coordinates, so resizing
+                // stays centered within the same frame. Each axis has a
+                // fraction: the attached edge fixes one to 0 or 1, while the
+                // other carries alignment. This also supports edge-to-edge moves.
                 property real fxSuave: panelWindow.fraccionX
                 property real fySuave: panelWindow.fraccionY
 
@@ -1253,20 +1052,9 @@ Scope {
                     }
                 }
 
-                //  ── crecimiento hacia UN solo lado ───────────────
-                //
-                //  Mientras la píldora lleva extensiones de flanco (lo que
-                //  los plugins declaran por K4.Capsule), la island crece
-                //  hacia el borde que toque y NO hacia los dos a la vez
-                //  como de costumbre: si no, el cuerpo de la píldora se
-                //  deslizaría medio ancho de extensión cada vez que una
-                //  entra o sale.
-                //
-                //  La cuenta mantiene la PÍLDORA donde estaba —su ancho sin
-                //  extensiones, alas incluidas— y lo que crece por cada
-                //  lado se suma por ese lado solo. Sigue siendo cálculo
-                //  directo, sin animación propia, para que el cuerpo no vaya
-                //  a remolque del ancho mientras este crece con su Behavior.
+                // Capsules grow on their own side while the original pill stays
+                // fixed. Compute this directly so positioning never trails the
+                // width animation by a separate animation frame.
                 readonly property int extDerecha: pluginVisible
                     && pluginVisible.name === SurfaceRegistry.pillId
                     ? Extensions.rightWidth : 0
@@ -1274,12 +1062,8 @@ Scope {
                     && pluginVisible.name === SurfaceRegistry.pillId
                     ? Extensions.leftWidth : 0
 
-                //  La x que dejaría la píldora clavada, y la de verdad con
-                //  tope: una extensión larga con la island muy pegada a un
-                //  borde no puede salirse de la pantalla. Si el tope actúa,
-                //  la píldora cede unos píxeles —solo pasa en los extremos
-                //  de la alineación— y el contenido viaja con la silueta,
-                //  que es lo que importa: contenido y dibujo no se separan.
+                // Clamp the ideal pill position to keep long extensions on
+                // screen. Content and silhouette move together when clamped.
                 readonly property real xQuerida: (parent.width - width) * fxSuave
                     + extDerecha * fxSuave
                     - extIzquierda * (1 - fxSuave)
@@ -1302,43 +1086,19 @@ Scope {
                 height: Math.min(parent.height, panelWindow.altoIsla
                     + (vertical ? Theme.wing * 2 : 0))
 
-                // Ver services/Island.qml: apartarse mientras haya un
-                // diálogo del sistema abierto.
+                // Step aside while a system dialog is open; see services/Island.qml.
                 opacity: Island.apartada ? 0 : 1
 
                 readonly property real bodyRadius: Math.min(32, height / 2)
 
-                // ESC cierra el módulo que esté abierto, sea cual sea.
-                //
-                // Va aquí y no en cada vista por dos razones: los módulos que
-                // vengan después lo heredan sin hacer nada, y las vistas que ya
-                // tratan la tecla —el lanzador, el portapapeles, la clave de
-                // wifi— la consumen antes de llegar hasta aquí, que es
-                // justamente lo que se quiere: primero cancela lo de dentro y
-                // solo después cierra el módulo.
+                // Escape closes any open surface. Child views may consume it
+                // first to cancel a local operation before closing the surface.
                 focus: true
 
-                //  Y pedirlo de verdad una vez, que `focus: true` a secas no
-                //  basta: hasta que ALGUIEN dentro de esta ventana toma el
-                //  foco activo, no hay foco activo, y las teclas que llegan a
-                //  la capa no las recibe nadie. Se veía así: el ESC no cerraba
-                //  ningún módulo hasta que abrías el lanzador —que sí lo pide,
-                //  para su campo de texto— y a partir de ahí funcionaba para
-                //  siempre. Un atajo que empieza a ir cuando has usado otra
-                //  cosa es peor que uno que no va: parece cosa tuya.
-                //
-                //  Va una vez al crearse —en el `Component.onCompleted` de
-                //  abajo, que uno por objeto o el QML no carga— y antes de que
-                //  exista ninguna vista, así que no le quita el foco a nadie:
-                //  quien lo quiera lo pide después y gana.
-                //
-                //  Y hay que RECUPERARLO, que es la otra mitad. Cuando el que
-                //  lo tenía se va sin devolverlo —un campo que se oculta al
-                //  cerrar su buscador, una vista que se destruye— la ventana
-                //  se queda sin foco activo y a partir de ahí el ESC no lo
-                //  recibe nadie otra vez. Se vigila quién lo tiene y, cuando
-                //  no lo tiene nadie, vuelve aquí. Solo cuando no hay nadie:
-                //  si alguien lo pidió, es suyo.
+                // Request active focus on completion; focus:true alone does not
+                // establish the window's first active focus item. Reclaim it
+                // when a focused view disappears, but never steal it from a
+                // live child that explicitly requested it.
                 readonly property var focoVentana: island.Window.activeFocusItem
 
                 onFocoVentanaChanged: if (!focoVentana) Qt.callLater(reclamarFoco)
@@ -1374,20 +1134,15 @@ Scope {
                     }
                 }
 
-                // ── geometría publicada, para pintar fuera de la island ──
-                //
-                //  K4.Isla.rect: coordenadas de pantalla, solo la principal.
-                //  Un plugin con K4.Ventana ancla aquí lo que asoma. La x y
-                //  la y son las de verdad —la island ya no va anclada a
-                //  ningún borde— así que una vista que se desliza a su borde
-                //  nuevo arrastra consigo lo que le cuelgue.
+                // Publish real screen coordinates through K4.Isla.rect on the
+                // primary monitor so external windows follow the island's moves.
                 onXChanged: publicarRect()
                 onYChanged: publicarRect()
                 onWidthChanged: publicarRect()
                 onHeightChanged: publicarRect()
                 Component.onCompleted: {
                     publicarRect()
-                    forceActiveFocus()      // el ESC de arriba; ver por qué
+                    forceActiveFocus()      // Establish the Escape fallback above.
                 }
 
                 function publicarRect() {
@@ -1397,18 +1152,12 @@ Scope {
                     }, panelWindow.modelData === Quickshell.screens[0])
                 }
 
-                // ── gestos: el plugin pide (services/Island.qml), esto anima ──
-                //
-                //  Un desplazamiento del contenido, nunca de la ventana: mover
-                //  una layer surface reajustaría el escritorio entero.
+                // Animate requested gestures on content, never the layer surface:
+                // moving the latter would rearrange the desktop.
                 transform: [
                     Translate { id: gestoTr },
-                    //  ── y el escondite, por el mismo camino ──────────
-                    //
-                    //  La que se retira se va POR EL BORDE, y también
-                    //  desplazando su dibujo: encoger la superficie o soltar el
-                    //  ancla movería el escritorio entero cada vez, que es
-                    //  justo lo que este modo viene a no hacer.
+                    // Hiding also translates content past the edge without
+                    // resizing or unanchoring the layer surface.
                     Translate {
                         id: retiroTr
                         y: panelWindow.retirada
@@ -1416,20 +1165,9 @@ Scope {
                                                  : -(island.height + 6))
                             : 0
 
-                        //  La misma curva en los dos sentidos, y no una por
-                        //  sentido atada a `retirada`: la `y` se recalcula
-                        //  ANTES que la duración y la curva —el binding es más
-                        //  viejo, se conecta primero— así que cada tránsito
-                        //  habría salido con los valores del anterior.
-                        //
-                        //  Y SIN rebote, que aquí el rebote de la casa está
-                        //  mal. `OutBack` se pasa del destino y vuelve, y el
-                        //  destino es cero: pasarse de cero es separarse del
-                        //  borde. La silueta lleva esquinas invertidas para
-                        //  FUNDIRSE con el canto de la pantalla, así que ese
-                        //  píxel de aire al llegar no se lee como un rebote
-                        //  sino como un salto y una raya. Comprobado a ojo: se
-                        //  veía. Lo que se quiere es que frene, no que bote.
+                        // Use the same curve both ways to avoid binding-order
+                        // races. No overshoot: passing zero would detach the
+                        // silhouette from the screen edge and expose a gap.
                         Behavior on y {
                             NumberAnimation {
                                 duration: 360
@@ -1452,8 +1190,7 @@ Scope {
                     NumberAnimation { target: gestoTr; property: "x"; to: 0; duration: 60; easing.type: Easing.OutQuad }
                 }
 
-                //  Los gestos verticales empujan hacia DENTRO de la pantalla:
-                //  con la barra abajo, el empujón y el tirón van hacia arriba.
+                // Vertical gestures point into the screen, upward for a bottom bar.
                 readonly property real gestoDir: panelWindow.abajo ? -1 : 1
 
                 SequentialAnimation {
@@ -1475,8 +1212,7 @@ Scope {
                 Connections {
                     target: Island
                     function onGesto(nombre, fuerza) {
-                        //  Corta el que hubiera: dos gestos a la vez son un
-                        //  temblor sin forma.
+                        // Stop the previous gesture before starting another.
                         aniSacudida.stop(); aniEmpujon.stop(); aniTiron.stop()
                         gestoTr.x = 0; gestoTr.y = 0
                         if (nombre === "sacudida") { aniSacudida.f = fuerza; aniSacudida.start() }
@@ -1485,11 +1221,8 @@ Scope {
                     }
                 }
 
-                //  ── asomarse no es abrir ──────────────────────────
-                //
-                //  Lo que hace que pasar el ratón despliegue la island: el
-                //  reloj se activa con `Island.hovered`. Se separa del gesto
-                //  para poder retrasarlo, que es lo único que cambia aquí.
+                // Set hover independently of motion so hidden-mode opening can
+                // wait for a deliberate dwell. Clock activation reads this flag.
                 function abrirPorRaton() {
                     if (!root.activePlugin || root.activePlugin.name === SurfaceRegistry.pillId)
                         Island.pedirPantalla(panelWindow.screen.name)
@@ -1503,26 +1236,15 @@ Scope {
                     id: sobreIsla
                     onHoveredChanged: {
                         if (hovered) {
-                            //  Esto va SIEMPRE al instante: no abre nada, solo
-                            //  impide que se cierre lo que ya estaba. Retrasarlo
-                            //  dejaría irse un aviso mientras vas hacia él.
+                            // Hold existing views immediately so a notification
+                            // cannot expire while the pointer approaches it.
                             hoverExitTimer.stop()
                             root.holdHoverExit()
                             Notifs.holdToast()
 
-                            //  Escondida, el reloj de la espera no lo lleva
-                            //  esto: lo lleva `ratonEncima` en panelWindow, que
-                            //  cuenta también el filo. Ver por qué allí.
-                            //
-                            //  Salvo que ya haya algo puesto. La espera existe
-                            //  para que rozar un borde VACÍO no despliegue el
-                            //  reloj; si la island ya está fuera enseñando algo
-                            //  —un aviso, el asomo del reproductor—, ir hacia
-                            //  ella es ir a por eso, y hacerte esperar medio
-                            //  segundo es perder el tiempo justo cuando lo que
-                            //  quieres se está yendo. Con asomos de tres
-                            //  segundos, ese medio segundo era la diferencia
-                            //  entre alcanzarlo y verlo desaparecer.
+                            // Hidden idle views use panelWindow's combined edge
+                            // dwell timer. An already visible transient is held
+                            // immediately; delaying would waste its short lifetime.
                             const enReposo = !panelWindow.pluginVisible
                                 || panelWindow.pluginVisible.name === SurfaceRegistry.pillId
                             if (!panelWindow.seEsconde || !enReposo)
@@ -1535,14 +1257,14 @@ Scope {
                     }
                 }
 
-                //  Medio segundo: más que un roce, menos que una espera.
+                // Half a second distinguishes a deliberate dwell from a brush.
                 Timer {
                     id: quedarseTimer
                     interval: 500
                     onTriggered: island.abrirPorRaton()
                 }
 
-                // clic derecho en cualquier parte → centro de control
+                // Right-click anywhere opens the control centre.
                 TapHandler {
                     acceptedButtons: Qt.RightButton
                     gesturePolicy: TapHandler.ReleaseWithinBounds
@@ -1609,10 +1331,8 @@ Scope {
                     function onYChanged() { island.reevaluarEsquina() }
                 }
 
-                // ── la silueta: cuerpo + esquinas invertidas que funden con el borde
-                //  La forma vive en `core/SiluetaIsla.qml`: la dibujan la barra y
-                //  la previsualización de Ajustes, y una previsualización que
-                //  dibujara otra cosa no previsualizaría nada.
+                // The bar and Settings preview share core/SiluetaIsla.qml,
+                // including the inverted corners that join the screen edge.
                 SiluetaIsla {
                     id: silueta
                     anchors.fill: parent
@@ -1684,7 +1404,7 @@ Scope {
                     }
                 }
 
-                // ── zona de contenido (dentro del cuerpo, sin las alas)
+                // ── content inside the body, excluding the wings
                 //
                 //  The wings sit on the axis the island RUNS along: left and
                 //  right margins for a horizontal one, and for a VERTICAL one
@@ -1699,8 +1419,7 @@ Scope {
                     anchors.bottomMargin: island.vertical ? Theme.wing : 0
                     clip: true
 
-                    // Debajo de toda vista: los botones y sliders se quedan sus
-                    // clics, lo que no coja nadie cae aquí.
+                    // Under every view: controls take their clicks; unused space lands here.
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton
@@ -1709,15 +1428,9 @@ Scope {
                                                       panelWindow.pluginVisible)
                     }
 
-                    // Se dispone al tamaño final y se destapa con el clip, así
-                    // que no hay recálculo de layout durante la animación.
-                    //
-                    //  Sin desplazamiento propio: el ancho de esta caja ES el
-                    //  de la vista que la llena —extensiones de flanco
-                    //  incluidas cuando la píldora las lleva— y su centro ya
-                    //  es el sitio. Correrla aquí separaba el contenido de la
-                    //  silueta media extensión: los iconos del otro extremo
-                    //  se iban por fuera de la cápsula.
+                    // Lay out at final size and reveal by clipping, avoiding
+                    // relayout during animation. No independent offset: this
+                    // box already includes capsules and matches the silhouette.
                     Item {
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -2009,9 +1722,7 @@ Scope {
         onTriggered: Island.hovered = false
     }
 
-    // ── salida del ratón ──────────────────────────────────────────
-    // Los módulos que se abren con el ratón se van al sacarlo, pero cada uno
-    // decide qué hacer: aquí solo se cuenta el tiempo y se avisa al activo.
+    // Time pointer departure and notify the active surface; it owns dismissal.
     function armHoverExit() {
         const p = activePlugin
         if (!p || !p.closeOnHoverExit)

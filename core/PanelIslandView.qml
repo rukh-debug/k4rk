@@ -29,6 +29,7 @@ FadeIn {
             const first = view.findTile(dashboard.contentItem, "tile-wifi")
                 || view.findTile(dashboard.contentItem, "tile-bluetooth")
                 || view.findTile(dashboard.contentItem, "tile-sound")
+                || view.findTile(dashboard.contentItem, "tile-power-mode")
             if (first && first.visible) first.forceActiveFocus(Qt.TabFocusReason)
             else bellButton.forceActiveFocus(Qt.TabFocusReason)
         }
@@ -117,8 +118,14 @@ FadeIn {
                             activeFocusOnTab: true
                             Accessible.role: Accessible.Button
                             Accessible.name: "Workspace " + Workspaces.label(modelData)
-                            Keys.onReturnPressed: modelData.activate()
-                            Keys.onSpacePressed: modelData.activate()
+                            function activateWorkspace() {
+                                K4.Feedback.click()
+                                modelData.activate()
+                            }
+                            Accessible.onPressAction: activateWorkspace()
+                            Keys.onReturnPressed: activateWorkspace()
+                            Keys.onEnterPressed: activateWorkspace()
+                            Keys.onSpacePressed: activateWorkspace()
                             onActiveFocusChanged: if (activeFocus)
                                 workspaceStrip.revealWorkspace(x)
                             onCurrentWorkspaceChanged: if (currentWorkspace)
@@ -146,7 +153,7 @@ FadeIn {
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { workspace.forceActiveFocus(); workspace.modelData.activate() }
+                                onClicked: { workspace.forceActiveFocus(); workspace.activateWorkspace() }
                                 onWheel: function (event) {
                                     workspaceStrip.contentX = Math.max(0, Math.min(
                                         workspaceStrip.contentWidth - workspaceStrip.width,
@@ -208,6 +215,7 @@ FadeIn {
                         visible: active
                         active: view.plugin.tab === "controls" && Settings.bloqueVisible(modelData)
                         sourceComponent: modelData === "toggles" ? quickControls
+                            : modelData === "power-display" ? powerDisplay
                             : modelData === "media" ? media
                             : modelData === "shortcuts" ? shortcuts
                             : String(modelData).indexOf(".") > 0
@@ -348,6 +356,7 @@ FadeIn {
         DetalleBluetooth { view: view }
         DetalleSonido { view: view }
         DetalleSistema { view: view }
+        PowerDisplayDetail { view: view }
         Loader {
             visible: active
             active: view.plugin.tab.indexOf("card:") === 0
@@ -383,7 +392,7 @@ FadeIn {
                 Accessible.role: Accessible.CheckBox
                 Accessible.checked: radio.checked
                 Accessible.name: (radio.checked ? "Turn off " : "Turn on ") + radio.label
-                Accessible.onToggleAction: if (radio.available) radio.toggled()
+                Accessible.onToggleAction: if (radio.available) pulsado()
                 onPulsado: radio.toggled()
                 Rectangle {
                     anchors.fill: parent
@@ -419,18 +428,17 @@ FadeIn {
     Component {
         id: quickControls
         GridLayout {
-            columns: view.plugin.stackedControls ? 2 : 3
+            columns: 2
             columnSpacing: 12
             rowSpacing: 12
-            readonly property real unitWidth: (width - columnSpacing * (visibleCount - 1))
-                / Math.max(1, visibleCount + (Settings.panelTileSound ? 0.5 : 0))
-            readonly property int visibleCount: Number(Settings.panelTileWifi)
-                + Number(Settings.panelTileBluetooth) + Number(Settings.panelTileSound)
             RadioTile {
                 objectName: "tile-wifi"
                 visible: Settings.panelTileWifi
                 Layout.fillWidth: true
-                Layout.preferredWidth: parent.unitWidth
+                Layout.preferredWidth: 1
+                Layout.row: 0
+                Layout.column: 0
+                Layout.columnSpan: view.plugin.radioCount === 1 ? 2 : 1
                 Layout.preferredHeight: 96
                 Layout.minimumWidth: 0
                 label: "Wi-Fi"
@@ -445,7 +453,10 @@ FadeIn {
                 objectName: "tile-bluetooth"
                 visible: Settings.panelTileBluetooth
                 Layout.fillWidth: true
-                Layout.preferredWidth: parent.unitWidth
+                Layout.preferredWidth: 1
+                Layout.row: 0
+                Layout.column: Settings.panelTileWifi ? 1 : 0
+                Layout.columnSpan: view.plugin.radioCount === 1 ? 2 : 1
                 Layout.preferredHeight: 96
                 Layout.minimumWidth: 0
                 label: "Bluetooth"
@@ -457,12 +468,15 @@ FadeIn {
                 onPulsada: view.plugin.openTab("bluetooth")
             }
             IslandTile {
+                objectName: "sound-card"
                 visible: Settings.panelTileSound
                 Layout.fillWidth: true
-                Layout.preferredWidth: parent.unitWidth * 1.5
-                Layout.preferredHeight: 96
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 120
                 Layout.minimumWidth: 0
-                Layout.columnSpan: view.plugin.stackedControls ? 2 : 1
+                Layout.row: view.plugin.radioCount ? 1 : 0
+                Layout.column: 0
+                Layout.columnSpan: view.plugin.sliderCount === 1 ? 2 : 1
                 radius: 14
                 pulsable: false
                 ColumnLayout {
@@ -477,10 +491,14 @@ FadeIn {
                         activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: "Open sound details"
-                        Accessible.onPressAction: view.plugin.openTab("sound")
-                        Keys.onReturnPressed: view.plugin.openTab("sound")
-                        Keys.onEnterPressed: view.plugin.openTab("sound")
-                        Keys.onSpacePressed: view.plugin.openTab("sound")
+                        function openDetails() {
+                            K4.Feedback.click()
+                            view.plugin.openTab("sound")
+                        }
+                        Accessible.onPressAction: openDetails()
+                        Keys.onReturnPressed: openDetails()
+                        Keys.onEnterPressed: openDetails()
+                        Keys.onSpacePressed: openDetails()
                         Rectangle {
                             anchors.fill: parent
                             anchors.margins: -4
@@ -509,7 +527,7 @@ FadeIn {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 soundHeader.forceActiveFocus(Qt.MouseFocusReason)
-                                view.plugin.openTab("sound")
+                                soundHeader.openDetails()
                             }
                         }
                     }
@@ -518,6 +536,8 @@ FadeIn {
                         spacing: 6
                         K4.Boton {
                             glifo: Audio.muted ? Theme.ico.volOff : Theme.ico.volMed
+                            implicitWidth: 28
+                            implicitHeight: 28
                             tamano: 14
                             color: Audio.muted ? Theme.muted : Theme.ink
                             activo: !!Audio.salidaActiva && !!Audio.salidaActiva.audio
@@ -525,6 +545,7 @@ FadeIn {
                             onPulsado: Audio.toggleMute()
                         }
                         K4.Deslizador {
+                            objectName: "sound-slider"
                             Layout.fillWidth: true
                             enabled: !!Audio.salidaActiva && !!Audio.salidaActiva.audio
                             Accessible.name: "Output volume"
@@ -542,11 +563,95 @@ FadeIn {
                             horizontalAlignment: Text.AlignRight
                         }
                     }
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: Audio.muted ? "Output muted" : "Output volume"
+                        color: Theme.muted
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                    }
                 }
+            }
+            BrightnessControl {
+                objectName: "brightness-card"
+                panel: view.plugin
+                visible: Settings.panelTileBrightness
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 120
+                Layout.minimumWidth: 0
+                Layout.row: view.plugin.radioCount ? 1 : 0
+                Layout.column: Settings.panelTileSound ? 1 : 0
+                Layout.columnSpan: view.plugin.sliderCount === 1 ? 2 : 1
             }
         }
     }
 
+    component DetailTile: IslandTile {
+        id: detailTile
+        property string title
+        property string status
+        property string glyph
+        property string destination
+        objectName: "tile-" + destination
+        radius: 14
+        Accessible.name: "Open " + title + " details"
+        Accessible.description: status
+        onPulsada: view.plugin.openTab(destination)
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 14
+            anchors.rightMargin: 14
+            spacing: 12
+            Rectangle {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                radius: 12
+                color: Qt.rgba(Theme.blue.r, Theme.blue.g, Theme.blue.b, 0.14)
+                IconGlyph { anchors.centerIn: parent; text: detailTile.glyph; color: Theme.blue; font.pixelSize: 18 }
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                IslandLabel { text: detailTile.title; font.pixelSize: 13; font.weight: Font.Medium }
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: detailTile.status
+                    color: Theme.muted
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                }
+            }
+            IconGlyph { text: Theme.ico.forward; color: Theme.muted; font.pixelSize: 14 }
+        }
+    }
+    Component {
+        id: powerDisplay
+        RowLayout {
+            spacing: 12
+            DetailTile {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                Layout.minimumWidth: 0
+                title: "Power mode"
+                status: PowerMode.summary
+                glyph: PowerMode.state.profile === "power-saver" ? String.fromCodePoint(0xF032A)
+                    : PowerMode.state.profile === "performance" ? String.fromCodePoint(0xF0463) : String.fromCodePoint(0xF05D1)
+                destination: "power-mode"
+            }
+            DetailTile {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                Layout.minimumWidth: 0
+                title: "Night light"
+                status: NightLight.summary.replace("Night light ", "")
+                glyph: String.fromCodePoint(0xF0594)
+                destination: "night-light"
+            }
+        }
+    }
     Component {
         id: media
         Item {
