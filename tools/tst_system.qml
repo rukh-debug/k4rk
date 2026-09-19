@@ -91,7 +91,7 @@ Item {
             Core.Theme.chosenFont = ""
             plugin.tarjetaCpu = true; plugin.tarjetaRam = true; plugin.tarjetaRed = true
             Services.PanelIsland.openTab("controls")
-            Services.Settings.panelWidth = 860
+            Services.Settings.setPopupDimension("panel", "width", 860, false)
             wait(40)
         }
         function cleanup() {
@@ -377,7 +377,7 @@ Item {
             return rows
         }
         function test_geometry(data) {
-            Services.Settings.panelWidth = data.width
+            Services.Settings.setPopupDimension("panel", "width", data.width, false)
             plugin.tarjetaCpu = !!(data.mask & 1)
             plugin.tarjetaRam = !!(data.mask & 2)
             plugin.tarjetaRed = !!(data.mask & 4)
@@ -433,7 +433,7 @@ Item {
         }
         function test_alternateFont() {
             Core.Theme.chosenFont = "DejaVu Sans Mono"
-            Services.Settings.panelWidth = 640
+            Services.Settings.setPopupDimension("panel", "width", 640, false)
             Services.PanelIsland.openTab("system")
             wait(100)
             bounds(panel, panel)

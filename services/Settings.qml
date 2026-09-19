@@ -154,28 +154,22 @@ Singleton {
     property bool pillMigrated: false
 
     //  ── the Settings island ────────────────────
-    //  plugins/Settings/SettingsPlugin.qml sizes its island with these. They
-    //  are here —and not constants there— because the Island page lets the
-    //  user set them, and a value nobody can read back is a setting that lies.
-    //  The plugin clamps to the same bounds the steppers use, so a hand-edited
-    //  file cannot open a window bigger than the screen or smaller than the
-    //  sidebar.
-    property int settingsIslandWidth: 940    // 720–1400, steps of 20
-    property int settingsIslandHeight: 620    // 420–900, steps of 20
+    // Derived compatibility readers for the Settings surface. Popups & Layout
+    // owns the stored dimensions; missing overrides use the original defaults.
+    readonly property int settingsIslandWidth: popupDimension("settings", "width") || 940
+    readonly property int settingsIslandHeight: popupDimension("settings", "height") || 620
 
     //  The native wallpaper palette tints the bar's neutral scaffold; the
     //  wallpaper page turns it off and on.
     property bool wallpaperPalette: true
 
     //  ── the control centre ──────────────────
-    //  The native control centre dresses itself with these. The WIDTH is a number you
-    //  turn; the height is not, and on purpose: it is derived from what is
-    //  on show (each block brings its own height), so hiding the media row
-    //  makes the centre shorter instead of leaving a hole. Blocks can be
+    //  The control centre's automatic height follows its visible blocks.
+    //  Popups & Layout can override either dimension. Blocks can be
     //  turned off (`panelShow*`, and the tiles one by one) and re-ordered
     //  (`panelOrder`, top to bottom). The header keeps its bells and
     //  whistles always; its two decorations are optional.
-    property int panelWidth: 860              // 640–1100, steps of 20
+    readonly property int panelWidth: popupDimension("panel", "width") || 860
     property bool panelShowToggles: true
     property bool panelTileWifi: true
     property bool panelTileBluetooth: true
@@ -275,6 +269,97 @@ Singleton {
     //  says and drags its hover views with it. What is here is what OPENS:
     //  the views you summon.
     property var islandPlacements: {}
+
+    // A missing dimension follows the surface's live size request. Both hosts
+    // and Settings use this resolver; plugins retain their original bindings.
+    property var popupSizes: ({})
+
+    function popupSizeLimits(id, dimension) {
+        const width = dimension === "width"
+        const minimum = id === "settings" ? (width ? 720 : 420)
+            : id === "panel" ? (width ? 640 : 240)
+            : id === "hyprland-submap" ? (width ? 160 : 40)
+            : (width ? 240 : 100)
+        return { min: minimum, max: width ? 3840 : 2160 }
+    }
+
+    function normalizePopupDimension(id, dimension, value) {
+        if (typeof value !== "number" || !isFinite(value) || value <= 0)
+            return 0
+        const limits = popupSizeLimits(id, dimension)
+        return Math.max(limits.min, Math.min(limits.max, Math.round(value)))
+    }
+
+    function popupDimension(id, dimension) {
+        const entry = (popupSizes || {})[id]
+        return normalizePopupDimension(id, dimension, entry ? entry[dimension] : 0)
+    }
+
+    function popupSizeFor(surface, dimension) {
+        if (!surface)
+            return 0
+        const requested = dimension === "width" ? surface.islandWidth : surface.islandHeight
+        return (surface.colocable ? popupDimension(surface.name, dimension) : 0) || requested
+    }
+
+    function setPopupDimension(id, dimension, value, persist) {
+        if (dimension !== "width" && dimension !== "height")
+            return
+        const sizes = Object.assign({}, popupSizes || {})
+        const entry = Object.assign({}, sizes[id] || {})
+        const normalized = normalizePopupDimension(id, dimension, value)
+        if (normalized)
+            entry[dimension] = normalized
+        else
+            delete entry[dimension]
+        if (Object.keys(entry).length)
+            sizes[id] = entry
+        else
+            delete sizes[id]
+        popupSizes = sizes
+        if (persist !== false)
+            guardar()
+    }
+
+    function resetPopupSize(id) {
+        const sizes = Object.assign({}, popupSizes || {})
+        delete sizes[id]
+        popupSizes = sizes
+        guardar()
+    }
+
+    function loadPopupSizes(saved) {
+        const sizes = {}
+        const source = saved.popupSizes
+        if (source && typeof source === "object" && !Array.isArray(source)) {
+            for (const id in source) {
+                const entry = source[id]
+                if (!entry || typeof entry !== "object" || Array.isArray(entry))
+                    continue
+                const clean = {}
+                for (const dimension of ["width", "height"]) {
+                    const value = normalizePopupDimension(id, dimension, entry[dimension])
+                    if (value) clean[dimension] = value
+                }
+                if (Object.keys(clean).length) sizes[id] = clean
+            }
+        } else if (source === undefined) {
+            // Preserve legacy sizes once. Default values remain automatic.
+            const legacy = [
+                { key: "settingsIslandWidth", id: "settings", dimension: "width", initial: 940 },
+                { key: "settingsIslandHeight", id: "settings", dimension: "height", initial: 620 },
+                { key: "panelWidth", id: "panel", dimension: "width", initial: 860 }
+            ]
+            for (const setting of legacy) {
+                const value = normalizePopupDimension(setting.id, setting.dimension, saved[setting.key])
+                if (value && value !== setting.initial) {
+                    if (!sizes[setting.id]) sizes[setting.id] = {}
+                    sizes[setting.id][setting.dimension] = value
+                }
+            }
+        }
+        popupSizes = sizes
+    }
 
     // Cross-cutting host presentation overrides. An absent key follows the
     // plugin's default; explicit false must survive a restart as well as true.
@@ -490,32 +575,8 @@ Singleton {
                   paso: 5, unidad: "%", requiere: "uiSoundsEnabled",
                   nombre: "UI sound volume",
                   desc: "Feedback loudness relative to system volume. Slider ticks are quieter.",
-                  glifo: 0xF057E },
-                { tipo: "titulo", nombre: "This window" },
-                { id: "settingsIslandWidth", tipo: "numero",
-                  min: 720, max: 1400, paso: 20, unidad: "px",
-                  nombre: "Settings window width",
-                  desc: "How wide these pages open",
-                  glifo: 0xF084E },   // md-arrow_expand_horizontal
-                { id: "settingsIslandHeight", tipo: "numero",
-                  min: 420, max: 900, paso: 20, unidad: "px",
-                  nombre: "Settings window height",
-                  desc: "How tall these pages open",
-                  glifo: 0xF084F }    // md-arrow_expand_vertical
+                  glifo: 0xF057E }
             ]
-        },
-        {
-            grupo: "Placement",
-            claves: ["placement", "position", "posicion", "side",
-                     "lado", "lados", "edge", "corner", "esquina",
-                     "donde", "abrir", "abre", "sale"],
-            glifo: 0xF09BB,        // md-arrow_decision
-            desc: "Which side each view opens from, and where along that side — drag the dot to any point, corners included. The pill keeps its own home — see Island.",
-            //  One card per openable view: wrapping side controls with
-            //  Follow bar first, plus a draggable monitor that previews the
-            //  actual edge or corner attachment.
-            vista: "placement",
-            opciones: []
         },
         {
             grupo: "Control Centre",
@@ -524,16 +585,11 @@ Singleton {
                      "accesos", "widgets", "workspace", "workspaces",
                      "dots", "numbers", "scratchpad", "special"],
             glifo: 0xF1947,        // md-view_dashboard_edit
-            desc: "What the control centre shows, in what order, and how wide it opens.",
+            desc: "What the control centre shows, and in what order. Change its size in Popups & Layout.",
             //  The page carries a sketch of the centre and the block order
             //  as a custom view; the simple knobs are plain option rows.
             vista: "panel",
             opciones: [
-                { id: "panelWidth", tipo: "numero", min: 640, max: 1100,
-                  paso: 20, unidad: "px",
-                  nombre: "Width",
-                  desc: "How wide the control centre opens",
-                  glifo: 0xF084E },   // md-arrow_expand_horizontal
                 { id: "panelShowToggles", nombre: "Quick toggles row",
                   desc: "Wi‑Fi, Bluetooth, sound and brightness, as tiles",
                   glifo: 0xF056E },   // md-view_dashboard
@@ -576,6 +632,15 @@ Singleton {
                   desc: "In the centre's header",
                   glifo: 0xF0150 }    // md-clock_outline
             ]
+        },
+        {
+            grupo: "Popups & Layout",
+            claves: ["placement", "position", "side", "edge", "corner", "popup",
+                     "width", "height", "size", "resize", "separate", "independent", "layout"],
+            glifo: 0xF09BB,
+            desc: "Choose how each popup opens, how much room it uses, and where it lives.",
+            vista: "placement",
+            opciones: []
         },
         {
             grupo: "Display",
@@ -736,16 +801,15 @@ Singleton {
         "pillOrder", "pillHiddenItems", "pillMigrated",
         "pillTrayMax", "pillMinimizedMax", "pillIndicatorsMax",
         "pillIndicatorIconSize",
-        "settingsIslandWidth", "settingsIslandHeight",
         "shellFont", "wallpaperPalette",
-        "panelWidth", "panelShowToggles", "panelTileWifi",
+        "panelShowToggles", "panelTileWifi",
         "panelTileBluetooth", "panelTileSound", "panelTileBrightness", "panelShowMedia",
         "panelShowShortcuts", "panelShowWorkspaces", "panelWorkspaceStyle",
         "panelShowClock", "panelShowScratchpad",
         "panelOrder", "panelHiddenBlocks",
         "panelShowPowerDisplay", "nightLightEnabled", "nightLightTemperature",
         "nightLightMode", "nightLightLocation", "nightLightOverride",
-        "islandPlacements", "independentIslands",
+        "islandPlacements", "independentIslands", "popupSizes",
         "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
         "quickAccess"
     ]
@@ -868,6 +932,7 @@ Singleton {
                 for (let i = 0; i < claves.length; ++i)
                     if (s[claves[i]] !== undefined)
                         ajustes[claves[i]] = s[claves[i]]
+                loadPopupSizes(s)
                 const independent = {}
                 if (s.independentIslands && typeof s.independentIslands === "object"
                         && !Array.isArray(s.independentIslands)) {

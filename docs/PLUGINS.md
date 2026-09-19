@@ -237,7 +237,7 @@ still happens — while its view fades out under the arriving one and
 the island glides to the newcomer. `priority` still arbitrates
 everything else: the pill, the hover views, the transients. The view
 deploys on the edge and at the point its placement says (Settings →
-Placement). The ends of an edge are corners: a placement flush at
+Popups & Layout). The ends of an edge are corners: a placement flush at
 either end attaches the view to two walls — flush along its edge and
 the side wall. The bar can live in a corner itself (Settings → Island
 → alignment), where the rim carries its material into the turn. The
@@ -262,10 +262,10 @@ keyboard flags and `close()` implementation; no custom window is required.
 The main island stays in place and existing views remain open. This property
 defaults to false; Hyprland Submap enables it by default.
 
-For a `colocable` surface, **Settings → Placement → Open as a separate island**
+For a `colocable` surface, **Settings → Popups & Layout → Separate popup**
 lets the user enable or disable this behavior regardless of your default. The
 override survives restarts and position changes, including **Follow bar**.
-Transients may opt in through the API without receiving a Placement card.
+Transients may opt in through the API without receiving a popup settings card.
 
 The configured edge and alignment are the preferred position. If occupied, the
 host tries corners clockwise (top-left → top-right → bottom-right → bottom-left),
@@ -358,7 +358,7 @@ one — so your priority only places you against the resting views and
 the transients. Be findable in the map anyway; the number still says
 what you are.
 
-### The size is yours
+### Requested and user-configured size
 
 You ask for `islandWidth` and `islandHeight`, and **you can change them
 live**: a plugin can be a 200×150 strip and turn into a big screen
@@ -369,11 +369,18 @@ islandWidth:  modo === "mini" ? 200 : 980
 islandHeight: modo === "mini" ? 150 : K4.Isla.altoMaximo
 ```
 
-The height ceiling is `K4.Isla.altoMaximo` (880 today). Asking for more
-breaks nothing but does not grow either: the excess is clipped, and a
-screen that cannot be seen whole is worse than a smaller one. If your
-content can grow without limit, put it in a `K4.Rodillo` and keep the
-height fixed.
+For `colocable` surfaces, **Settings → Popups & Layout** offers width and
+height overrides independently. **Auto** follows the corresponding live
+request; a custom pixel value takes precedence in both the main island and
+separate-popup hosts without changing the plugin's property bindings.
+Overrides persist by surface ID in the host's `popupSizes` setting. Each
+card provides size and position resets; cards start collapsed and retain
+their disclosure state while navigating the current Settings session.
+
+The host constrains the actual view to the available screen. Lay out against
+the view's actual width and height rather than assuming the requested size
+was granted. `K4.Isla.altoMaximo` remains a useful height budget. If content
+can grow without limit, put it in a `K4.Rodillo`.
 
 Rules the bar enforces:
 
@@ -965,7 +972,7 @@ content and action buttons. **Settings → Island → Notification popups** sele
 separate surface's preferred corner (bottom-right by default). It appears on
 the open island's monitor, stays within the screen, and uses another corner
 when necessary to avoid the island where space allows. This native transient
-setting is separate from summoned surfaces' `colocable` Placement cards.
+setting is separate from summoned surfaces' `colocable` popup settings cards.
 
 Contributing any other module to the bar itself follows the plugin
 contract, with three differences: the directory goes in `plugins/`, it is

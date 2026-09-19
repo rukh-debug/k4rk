@@ -32,15 +32,9 @@ K4Plugin {
     //  replaces was 1040x700 of card; the island trims the frame and the
     //  margins the card carried, and the search field absorbs the rest.
     //
-    //  These are user settings, not constants: the Island page carries
-    //  steppers for both, and the island grows and shrinks while you turn
-    //  them — the same live resize the control centre does between its tabs.
-    //  Clamped to the steppers' bounds so a hand-edited settings file cannot
-    //  open a window bigger than the screen or thinner than the sidebar.
-    islandWidth: Math.max(720, Math.min(1400,
-                  Settings.settingsIslandWidth))
-    islandHeight: Math.max(420, Math.min(900,
-                   Settings.settingsIslandHeight))
+    // Shared with the popup editor and resolved by both island hosts.
+    islandWidth: Settings.settingsIslandWidth
+    islandHeight: Settings.settingsIslandHeight
 
     //  ── a page to land on ─────────────────────────────
     //
@@ -62,6 +56,9 @@ K4Plugin {
     //  on close so a fresh open at the top cannot be mistaken for
     //  still standing on a page.
     property string currentPage: ""
+    // Session state survives moving Settings between the main and separate hosts.
+    property var popupExpandedCards: ({})
+    property var settingsScrollPositions: ({})
 
     //  ── is there a newer k4? ────────────────────────────────────
     //
@@ -97,6 +94,8 @@ K4Plugin {
     function close() {
         open = false
         currentPage = ""
+        popupExpandedCards = ({})
+        settingsScrollPositions = ({})
     }
 
     //  The background glance, so the news does not depend on Settings being

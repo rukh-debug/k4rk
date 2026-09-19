@@ -5,6 +5,7 @@ import K4 as K4
 import "../core"
 import "../services"
 import "../services/PopupPlacement.js" as Placement
+import "../plugins/Settings" as SettingsUi
 
 Item {
     id: fixture
@@ -27,6 +28,30 @@ Item {
         function close() { active = false }
     }
     Component { id: popupFactory; IndependentIsland { owner: firstOwner } }
+    Component {
+        id: settingsPageFactory
+        SettingsUi.PlacementPage {
+            width: 620
+            onExpansionChanged: function (cards) { expandedCards = cards }
+        }
+    }
+    QtObject {
+        id: settingsOwner
+        property string paginaPedida: "placement"
+        property string currentPage: ""
+        property var popupExpandedCards: ({})
+        property var settingsScrollPositions: ({})
+        property var version: ({ commit: "test", hayNovedad: false, sucio: false, detras: 0 })
+        function close() {
+            currentPage = ""
+            popupExpandedCards = ({})
+            settingsScrollPositions = ({})
+        }
+    }
+    Component {
+        id: settingsViewFactory
+        SettingsUi.AjustesView { width: 940; height: 620; plugin: settingsOwner }
+    }
     QtObject {
         id: firstWindow
         property var owner: firstOwner
@@ -58,17 +83,22 @@ Item {
         name: "IndependentIslands"
         when: fixture.Window.window !== null
         property int previousFailures: 0
+        property string checkpoint: ""
 
         function initTestCase() {
             tryCompare(Settings, "cargado", true)
         }
 
         function init() {
+            checkpoint = "setup"
             PopupLayout.windows = []
             PopupLayout.placements = ({})
             PopupLayout.previousRequests = ({})
             Island.rects = ({})
             Settings.independentIslands = ({})
+            Settings.popupSizes = ({})
+            firstOwner.islandWidth = 300
+            firstOwner.islandHeight = 160
             firstWindow.visible = true
             firstWindow.placementRequest = fixture.request("top", 0, "first")
             secondWindow.placementRequest = fixture.request("top", 0, "second")
@@ -191,6 +221,13 @@ Item {
             verify(loader !== null)
             verify(loader.item !== null)
             const item = loader.item
+            Settings.setPopupDimension("first", "width", 560)
+            Settings.setPopupDimension("first", "height", 320)
+            tryVerify(function () { return window.placementRequest.width === Math.min(560, window.width) })
+            compare(window.placementRequest.height, Math.min(320, window.height))
+            compare(loader.item, item)
+            Settings.resetPopupSize("first")
+            tryVerify(function () { return window.placementRequest.width === 300 })
             window.preferredPlacement = { side: "bottom", align: 100 }
             tryVerify(function () { return window.allocated.side === "bottom" })
             compare(loader.item, item)
@@ -224,6 +261,13 @@ Item {
             Settings.setIndependentIsland("first", false)
             tryCompare(secondOwner, "active", false)
             tryCompare(host, "activePlugin", firstOwner)
+            Settings.setPopupDimension("first", "width", 500)
+            Settings.setPopupDimension("first", "height", 300)
+            checkpoint = "main host dimensions"
+            tryVerify(function () {
+                const rect = Island.rects[Island.pantallaActiva]
+                return rect && rect.ancho >= 500 && rect.alto === 300
+            })
             tryVerify(function () { return PopupLayout.windows.length === 0 })
             Settings.setIndependentIsland("first", true)
             tryVerify(function () { return PopupLayout.windows.length === 1 })
@@ -251,6 +295,131 @@ Item {
             compare(PopupLayout.outsideOwner("test"), firstOwner)
         }
 
+        function test_sizeDefaultsValidationAndMigration() {
+            checkpoint = "automatic size"
+            compare(Settings.popupSizeFor(firstOwner, "width"), 300)
+            Settings.setPopupDimension("first", "width", 520)
+            firstOwner.islandWidth = 480
+            firstOwner.islandHeight = 200
+            compare(Settings.popupSizeFor(firstOwner, "width"), 520)
+            compare(Settings.popupSizeFor(firstOwner, "height"), 200)
+            Settings.setPopupDimension("first", "width", 0)
+            compare(Settings.popupSizeFor(firstOwner, "width"), 480)
+            Settings.loadPopupSizes({ settingsIslandWidth: 1100, settingsIslandHeight: 700, panelWidth: 900 })
+            checkpoint = "legacy migration"
+            compare(Settings.settingsIslandWidth, 1100)
+            compare(Settings.settingsIslandHeight, 700)
+            compare(Settings.panelWidth, 900)
+            Settings.loadPopupSizes({ popupSizes: {}, settingsIslandWidth: 1100 })
+            checkpoint = "explicit automatic size"
+            compare(Settings.settingsIslandWidth, 940)
+            Settings.loadPopupSizes({ popupSizes: { first: { width: "broken", height: -1 },
+                settings: { width: 2, height: 100000 }, invalid: [] } })
+            checkpoint = "invalid data"
+            compare(Settings.popupDimension("first", "width"), 0)
+            compare(Settings.popupDimension("first", "height"), 0)
+            compare(Settings.settingsIslandWidth, 720)
+            compare(Settings.settingsIslandHeight, 2160)
+            Settings.setPopupDimension("first", "width", 640)
+            checkpoint = "persist and reload"
+            wait(100)
+            Settings.cargar()
+            compare(Settings.popupDimension("first", "width"), 640)
+        }
+
+        function test_popupEditorDisclosureAndSizing() {
+            checkpoint = "page creation"
+            PluginManager.instancias = [firstOwner, secondOwner]
+            PluginManager._porId = ({ first: firstOwner, second: secondOwner })
+            const page = createTemporaryObject(settingsPageFactory, fixture)
+            verify(page !== null)
+            compare(page.expandedCount, 0)
+            const card = findChild(page, "popup-card-first")
+            verify(card !== null)
+            verify(!card.expanded)
+            const disclosure = findChild(page, "popup-disclosure-first")
+            disclosure.clicked()
+            checkpoint = "expand one"
+            tryCompare(card, "expanded", true)
+            const field = findChild(page, "popup-first-width")
+            verify(field !== null)
+            field.text = "640"
+            field.editingFinished()
+            checkpoint = "edit width: " + field.text + ", valid=" + field.acceptableInput
+            compare(Settings.popupDimension("first", "width"), 640)
+            compare(card.expanded, true)
+            const toggle = findChild(page, "popup-separate-first")
+            toggle.alternado()
+            checkpoint = "toggle independently"
+            compare(card.expanded, true)
+            page.width = 420
+            wait(50)
+            checkpoint = "narrow layout"
+            verify(field.width > 0)
+            const point = field.mapToItem(card, 0, 0)
+            verify(point.x >= 0 && point.x + field.width <= card.width)
+            verify(findChild(page, "popup-position-preview-first").width > 0)
+            page.expandAll(true)
+            checkpoint = "expand all"
+            compare(page.expandedCount, page.surfaces.length)
+            page.expandAll(false)
+            checkpoint = "collapse all"
+            compare(page.expandedCount, 0)
+            verify(findChild(page, "popup-first-width") === null)
+            page.destroy()
+            PluginManager.instancias = []
+            PluginManager._porId = ({})
+        }
+
+        function test_settingsNavigationPreservesDisclosure() {
+            checkpoint = "settings page order"
+            const pages = Settings.definicion.map(function (page) { return page.grupo })
+            const index = pages.indexOf("Popups & Layout")
+            compare(pages[index - 1], "Control Centre")
+            compare(pages[index + 1], "Display")
+            verify(!Settings.definicion[0].opciones.some(function (option) {
+                return option.id === "settingsIslandWidth" || option.id === "settingsIslandHeight"
+            }))
+            PluginManager.instancias = [firstOwner]
+            PluginManager._porId = ({ first: firstOwner })
+            settingsOwner.paginaPedida = "placement"
+            const view = createTemporaryObject(settingsViewFactory, fixture)
+            verify(view !== null)
+            checkpoint = "settings disclosure"
+            tryCompare(view, "selectedPage", "placement")
+            findChild(view, "popup-disclosure-first").clicked()
+            compare(view.popupExpandedCards.first, true)
+            checkpoint = "navigate away and return"
+            view.irASeccion("island")
+            view.irASeccion("placement")
+            tryVerify(function () {
+                const card = findChild(view, "popup-card-first")
+                return card && card.expanded
+            })
+            view.width = 720
+            wait(100)
+            const card = findChild(view, "popup-card-first")
+            const input = findChild(card, "popup-first-width")
+            const point = input.mapToItem(card, 0, 0)
+            verify(point.x >= 0 && point.x + input.width <= card.width)
+            view.destroy()
+            wait(10)
+            checkpoint = "rehost the open settings session"
+            const rehosted = createTemporaryObject(settingsViewFactory, fixture)
+            tryCompare(rehosted, "selectedPage", "placement")
+            compare(rehosted.popupExpandedCards.first, true)
+            settingsOwner.close()
+            rehosted.destroy()
+            wait(10)
+            settingsOwner.paginaPedida = "placement"
+            const reopened = createTemporaryObject(settingsViewFactory, fixture)
+            checkpoint = "fresh settings session"
+            compare(Object.keys(reopened.popupExpandedCards).length, 0)
+            reopened.destroy()
+            PluginManager.instancias = []
+            PluginManager._porId = ({})
+        }
+
         function cleanupTestCase() {
             PopupLayout.windows = []
             console.log("Popup tests: " + qtest_results.passCount + " passed, "
@@ -260,7 +429,7 @@ Item {
 
         function cleanup() {
             if (qtest_results.failCount > previousFailures)
-                console.error("Popup test failed:", qtest_results.functionName)
+                console.error("Popup test failed:", qtest_results.functionName, checkpoint)
             previousFailures = qtest_results.failCount
         }
     }

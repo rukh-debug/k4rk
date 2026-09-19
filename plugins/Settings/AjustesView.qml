@@ -41,7 +41,8 @@ FadeIn {
     property string busqueda: ""
     readonly property string query: busqueda.trim().toLowerCase()
     readonly property bool searching: query.length > 0
-    property var scrollPositions: ({})
+    readonly property var scrollPositions: plugin.settingsScrollPositions
+    readonly property var popupExpandedCards: plugin.popupExpandedCards
     property string highlightedSetting: ""
 
     function pageKey(group) {
@@ -124,9 +125,12 @@ FadeIn {
     Component.onCompleted: {
         campo.forceActiveFocus()
         foco.start()
+        if (plugin.currentPage)
+            irASeccion(plugin.currentPage)
         aterrizar()
         reportPage()
     }
+    Component.onDestruction: if (plugin.currentPage) saveScroll()
 
     //  The landing note can also arrive while the view is open: Super+W on
     //  another page switches to Wallpaper through it, rather than being
@@ -783,8 +787,6 @@ FadeIn {
                             : (vista.contenido.length > 0
                                ? (vista.contenido[0].vista === "display"
                                   ? "Wallpaper, palette, fonts and monitor layout."
-                                  : vista.contenido[0].vista === "placement"
-                                  ? "Choose where each view opens. Follow the bar or set its own position."
                                   : vista.contenido[0].desc || "") : "")
                         textFormat: Text.PlainText
                         color: Theme.muted
@@ -1071,7 +1073,13 @@ FadeIn {
                                 active: bloque.modelData.vista === "placement"
                                         && !vista.searching
                                         && bloque.modelData.atajo === undefined
-                                sourceComponent: Component { PlacementPage {} }
+                                sourceComponent: Component {
+                                    PlacementPage {
+                                        expandedCards: vista.popupExpandedCards
+                                        onExpansionChanged: function (cards) { vista.plugin.popupExpandedCards = cards }
+                                        onCollapseAllRequested: pageScroll.contentY = 0
+                                    }
+                                }
                             }
 
                             //  The control centre editor: a sketch of the

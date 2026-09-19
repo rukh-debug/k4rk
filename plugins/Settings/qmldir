@@ -15,3 +15,6 @@ SelectorFuentes 1.0 SelectorFuentes.qml
 PanelEditor 1.0 PanelEditor.qml
 PillEditor 1.0 PillEditor.qml
 PlacementPage 1.0 PlacementPage.qml
+PopupCard 1.0 PopupCard.qml
+PopupDimensionControl 1.0 PopupDimensionControl.qml
+PopupPositionEditor 1.0 PopupPositionEditor.qml

@@ -93,8 +93,8 @@ K4.Ventana {
         id: card
         x: window.allocated ? window.allocated.x : 0
         y: window.allocated ? window.allocated.y : 0
-        width: Math.max(0, Math.min(window.owner.islandWidth, window.width))
-        height: Math.max(0, Math.min(window.owner.islandHeight, window.height))
+        width: Math.max(0, Math.min(Settings.popupSizeFor(window.owner, "width"), window.width))
+        height: Math.max(0, Math.min(Settings.popupSizeFor(window.owner, "height"), window.height))
         visible: !!window.allocated
         focus: true
         Keys.onEscapePressed: function (event) { window.close(); event.accepted = true }

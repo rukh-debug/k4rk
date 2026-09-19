@@ -85,16 +85,16 @@ CPU; the summary CPU percentage is normalized across all logical CPUs.
 | `active` | Requests presentation right now, in the main island or an independent island |
 | `priority` | Main-island arbitration priority — against the resting views and the transients; among main-island summoned views the one just opened supersedes the previous (the host closes it). Independent islands do not compete in this arbitration |
 | `transitorio` | View that appears unasked and expires on its own; in the main island it closes when another plugin takes over. Independent transients keep their own lifetime |
-| `islandWidth`, `islandHeight` | Requested island size |
+| `islandWidth`, `islandHeight` | Requested island size. For `colocable` surfaces, per-dimension user overrides in Settings → Popups & Layout take precedence in both hosts; Auto follows these live requests. The host fits the result to the screen. Size the view from its actual parent, not these requests |
 | `view` | Component rendered by the host |
 | `viewLoaded` | Keep the size while the view closes |
 | `grabKeyboard` | Exclusive keyboard focus |
 | `tecladoOpcional` | On-demand keyboard focus |
 | `tecladoAlPasar` | Exclusive keyboard focus only while the pointer is over the island (for games) |
 | `closeOnHoverExit` | Enable hover-exit timeout |
-| `colocable` | Your surface is a summoned view: it gets a card in Settings → Placement, where the user draws the edge and point it deploys from. Only what OPENS gets placed — the pill's wings, transients and indicators do not |
-| `independentIsland` | Boolean, default `false`. Present `view` in a separate host-managed island while leaving the main island and other views open. Settings → Placement can override this default for any placeable surface. Applies to the plugin's `view`, not its own `K4.Ventana` windows; no extra manifest surface or permission is needed |
-| `summonCommand` | The IPC call that opens the surface — everything after `call` (`"k4.launcher toggle"`), which the copy button on the Placement card hands out as a full command line. Only the plugin can say it for sure: the `k4.<id>` target and the `toggle` verb are conventions, and conventions break (the terminal lives at `k4.term`, and its toggle is `island`). Empty (default) hides the button |
+| `colocable` | Your surface is a summoned view: it gets a card in Settings → Popups & Layout, where the user chooses its size, edge and alignment. Only what OPENS gets placed — the pill's wings, transients and indicators do not |
+| `independentIsland` | Boolean, default `false`. Present `view` in a separate host-managed island while leaving the main island and other views open. Settings → Popups & Layout can override this default for any placeable surface. Applies to the plugin's `view`, not its own `K4.Ventana` windows; no extra manifest surface or permission is needed |
+| `summonCommand` | The IPC call that opens the surface — everything after `call` (`"k4.launcher toggle"`), which the copy button on the expanded popup card hands out as a full command line. Only the plugin can say it for sure: the `k4.<id>` target and the `toggle` verb are conventions, and conventions break (the terminal lives at `k4.term`, and its toggle is `island`). Empty (default) hides the button |
 
 ### Independent island presentation
 
@@ -456,7 +456,7 @@ The target is `k4.<id>`. One house plugin carries an older name — `k4.term`
 follows the convention.
 
 Declare the call your surface answers in `summonCommand` (everything after
-`call`): the Placement card's copy button hands out the whole command line,
+`call`): the popup card's copy button hands out the whole command line,
 prefix included, and only the plugin knows both halves for sure — the target
 and the verb are yours, the path belongs to the running instance.
 

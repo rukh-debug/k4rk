@@ -58,11 +58,16 @@ Timer { running: self.habilitado && self.abierto }
 ```
 
 By default, the view deploys from the bar, one at a time, at its position in
-Settings → Placement. Set `K4.Plugin.independentIsland` to `true` to open the
+Settings → Popups & Layout. Set `K4.Plugin.independentIsland` to `true` to open the
 same `view` independently, leaving the main island and existing views open.
 The default is `false`; Hyprland Submap enables it. Every `colocable` surface
-gets an **Open as a separate island** switch in Placement, whose persisted
+gets a **Separate popup** switch in Popups & Layout, whose persisted
 override takes precedence over the plugin's default.
+
+Expand a popup card to set width and height independently, position it, or
+copy its opening command. **Auto** follows `islandWidth` / `islandHeight`
+live; a custom dimension overrides that request in either host. The host
+fits the view to the screen, so lay out against the actual parent size.
 
 Independent islands try their configured position, then corners clockwise
 (top-left → top-right → bottom-right → bottom-left), avoiding the main island,

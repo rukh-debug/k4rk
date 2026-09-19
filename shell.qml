@@ -652,9 +652,12 @@ Scope {
             readonly property bool sinBarra: apartada !== null
 
             readonly property int anchoIsla: sinBarra ? 0
-                : (pluginVisible ? pluginVisible.islandWidth : 176)
+                : Math.max(0, Math.min(panelWindow.width - Theme.wing * 2,
+                    pluginVisible ? Settings.popupSizeFor(pluginVisible, "width") : 176))
             readonly property int altoIsla: sinBarra ? 0
-                : (pluginVisible ? pluginVisible.islandHeight : Theme.baseHeight)
+                : Math.max(0, Math.min(panelWindow.height
+                    - ((lugar.side === "left" || lugar.side === "right") ? Theme.wing * 2 : 0),
+                    pluginVisible ? Settings.popupSizeFor(pluginVisible, "height") : Theme.baseHeight))
 
             // Reserve keeps desktop space, onTop floats, and hidden retreats
             // past the edge. Auto resolves to reserve or hidden per monitor,
@@ -1104,9 +1107,7 @@ Scope {
                     silueta.lado === "left" || silueta.lado === "right"
 
                 width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
-                //  Clamped to the parent as the width is: a view taller than
-                //  the screen (none today, the ceiling is Theme's 880) must
-                //  not push the island past the surface it lives in.
+                // Custom sizes must not push the island past its screen.
                 height: Math.min(parent.height, panelWindow.altoIsla
                     + (vertical ? Theme.wing * 2 : 0))
 

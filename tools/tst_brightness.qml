@@ -49,7 +49,7 @@ Item {
             return rows
         }
         function test_layout(data) {
-            Services.Settings.panelWidth = data.width
+            Services.Settings.setPopupDimension("panel", "width", data.width, false)
             Services.Settings.panelTileWifi = !!(data.mask & 1)
             Services.Settings.panelTileBluetooth = !!(data.mask & 2)
             Services.Settings.panelTileSound = !!(data.mask & 4)

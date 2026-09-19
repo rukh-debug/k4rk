@@ -39,7 +39,7 @@ Item {
                 ]
             }
             function test_layout(data) {
-                Services.Settings.panelWidth = data.width
+                Services.Settings.setPopupDimension("panel", "width", data.width, false)
                 Services.Settings.nightLightMode = data.mode
                 Services.PanelIsland.openTab("night-light")
                 wait(100)
@@ -76,7 +76,7 @@ Item {
                 editor.alternarBloque("power-display", true)
             }
             function test_power_profile_layout() {
-                Services.Settings.panelWidth = 640
+                Services.Settings.setPopupDimension("panel", "width", 640, false)
                 Services.PanelIsland.openTab("power-mode")
                 wait(100)
                 const scroll = find(panel, "power-display-scroll")

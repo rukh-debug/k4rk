@@ -35,7 +35,7 @@ Singleton {
     // The launcher, injected by SurfaceRegistry like PluginManager did.
     property var launcher: null
 
-    readonly property int islandWidth: Math.max(640, Math.min(1100, Settings.panelWidth))
+    readonly property int islandWidth: Settings.panelWidth
     readonly property int islandHeight: tab === "controls" ? alturaControles()
         : tab === "system" ? (islandWidth < 800 ? 720 : 600)
         : tab === "night-light" && Settings.nightLightMode === "solar" ? 560 : 404
