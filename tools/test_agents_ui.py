@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from test_config_helpers import write_settings
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -28,17 +29,15 @@ def main():
     with tempfile.TemporaryDirectory(prefix="k4-agents-ui-") as directory:
         root = Path(directory)
         home = root / "home"
-        for ident, state in (("agents", {"providers": [], "warn": False, "threshold": 95,
-                                          "live": False, "pinnedQuota": "codex:weekly"}),
-                             ("agentes", {"avisar": True, "umbral": 70, "enVivo": True})):
-            path = home / ".local/state/k4/plugins" / ident / "estado.json"
-            path.parent.mkdir(parents=True)
-            path.write_text(json.dumps(state))
+        write_settings(home, {"agents": {"providers": [], "warn": False, "threshold": 95,
+                                         "live": False, "pinnedQuota": "codex:weekly"}})
         (root / "shell.qml").write_text((ROOT / "tools/agents-test.qml").read_text())
         (root / "tools").mkdir()
         (root / "tools/agents.py").write_text(WORKER)
-        env = dict(os.environ, HOME=str(home), XDG_CACHE_HOME=str(root / "cache"),
-                   XDG_DATA_HOME=str(root / "data"), QT_QPA_PLATFORM="offscreen",
+        for helper in (ROOT / "tools").glob("*.py"):
+            if helper.name != "agents.py": (root / "tools" / helper.name).symlink_to(helper)
+        env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"), XDG_STATE_HOME=str(home / ".local/state"), XDG_CACHE_HOME=str(root / "cache"),
+                   XDG_DATA_HOME=str(root / "data"), QT_QPA_PLATFORM="wayland",
                    QML_IMPORT_PATH=str(ROOT / "api"),
                    K4_AGENTS_TEST_SUITE=str(ROOT / "tools/tst_agents.qml"),
                    K4_REAL_AGENTS_HELPER=str(ROOT / "tools/agents.py"))

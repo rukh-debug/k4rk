@@ -44,6 +44,7 @@
   networkmanager,
   bluez,
   libnotify,
+  libsecret,
   xdg-utils,
   xdg-user-dirs,
   desktop-file-utils,
@@ -105,6 +106,7 @@ let
     networkmanager
     bluez
     libnotify
+    libsecret
     xdg-utils
     xdg-user-dirs
     desktop-file-utils

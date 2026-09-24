@@ -22,6 +22,10 @@ root=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 QML_IMPORT_PATH="$root/api${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
 export QML_IMPORT_PATH
 
+# Complete the one-shot migration before any settings reader starts.
+python3 "$root/tools/config_store.py" init >/dev/null || exit 1
+python3 "$root/tools/config_outputs.py" all || exit 1
+
 #  The log, without which everything said at runtime goes nowhere:
 #  started through `setsid -f ./launch` — which is how autostart runs
 #  it — stdout has no terminal to land in (`readlink /proc/<pid>/fd/1`

@@ -28,15 +28,16 @@ Enable the Home Manager option:
 programs.k4.monitors.enable = true;
 ```
 
-This requires Home Manager-managed Lua Hyprland. It writes
-`$XDG_CONFIG_HOME/k4/monitors.json` and appends a monitor-only include at order 1500,
+This requires Home Manager-managed Lua Hyprland. It appends a monitor-only hook at order 1500,
 after ordinary declarative output defaults. Put any other output defaults before
 that hook. It is independent of `programs.k4.hyprland.hookIntoConfig`.
 
-The include uses `dofile` on `$XDG_STATE_HOME/k4/monitors/confirmed.lua`; the generated
-file is not a Nix-store file and is not a watched `require` dependency. Only explicit
-Keep writes it, atomically. It is loaded at the next compositor start/reload without
-a shell process being required. Existing configurations without this option offer
+The hook runs the packaged generator and loads its Lua output from
+`outputs` in `$XDG_STATE_HOME/k4/monitors/profile.json`. Hardware-specific profiles
+are local data and are not part of the shareable configuration. Only explicit
+Keep writes that section, atomically. It is loaded at compositor start/reload
+before the bar needs to be running. A runtime capability marker tells the preview
+helper that this integration is installed. Configurations without this option offer
 session-only Keep. Activate Home Manager and reload Hyprland after enabling it.
 
 The generated rules own mode, position, scale, transform, disabled state and mirror
@@ -45,7 +46,7 @@ mirror rules are conditional on a saved source being present; if enumeration is
 empty during startup they fail open, preserving fallback outputs. Connector names
 are used in this first version; port-independent profile matching is future work.
 
-To return to declarative defaults, remove or rename `confirmed.lua`, then reload
+To return to declarative defaults, remove `outputs` from the local monitor profile, then reload
 Hyprland. This is currently a manual operation; the page does not provide a reset
 button. Disabling the module option stops loading overrides on subsequent reloads.
 

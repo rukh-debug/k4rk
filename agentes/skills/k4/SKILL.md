@@ -29,7 +29,7 @@ is available to an external plugin.
 ```
 ~/.config/quickshell/k4/          the bar itself (the repository)
 ~/.config/k4/plugins/<id>/        plugins the user installed or wrote
-~/.local/state/k4/plugins.json    which plugins are on
+~/.config/k4/config.json         shareable preferences and plugin enablement
 ~/.local/state/k4/k4.log          the log — read this first when something breaks
 ```
 

@@ -24,7 +24,7 @@ import "../core"
 Singleton {
     id: ajustes
 
-    readonly property string ruta: Quickshell.env("HOME") + "/.local/state/k4/ajustes.json"
+    readonly property string ruta: ConfigStore.path
 
     // ── bar ───────────────────────────────────────────────────────
     //  The edge the bar lives on. shell.qml anchors the window, flips the
@@ -47,13 +47,6 @@ Singleton {
     //  Where the summoned views — control centre, settings, launcher… —
     //  open: deployed from the island, one at a time. shell.qml reads
     //  each view's placement for the island deployment.
-    // widgets/TrayRow.qml: tray icons in the pill.
-    // Off by default: tray icons in the pill are usually noise, and hovering
-    // already opens the island where they are visible — and clickable,
-    // unlike in the pill.
-    // Kept for one-time migration into pillHiddenItems; new code reads
-    // pillItemEnabled("tray") instead.
-    property bool trayInPill: false
     // widgets/NotifStrip.qml: recent notifications on hover.
     property bool notificationsOnHover: true
     // services/Notifs.qml: dismiss an app's notifications when switching to it.
@@ -115,9 +108,6 @@ Singleton {
 
     function pillItemEnabled(id) {
         const ocultos = pillHiddenItems || []
-        // Legacy switch still wins until migration runs once.
-        if (id === "tray" && !pillMigrated && !trayInPill)
-            return false
         return ocultos.indexOf(id) < 0
     }
 
@@ -148,10 +138,6 @@ Singleton {
         pillOrder = lista.concat(missing)
         guardar()
     }
-
-    // One-shot migration marker: true once trayInPill has been folded into
-    // pillHiddenItems. Persisted so the fold runs exactly once.
-    property bool pillMigrated: false
 
     //  ── the Settings island ────────────────────
     // Derived compatibility readers for the Settings surface. Popups & Layout
@@ -273,6 +259,7 @@ Singleton {
     // A missing dimension follows the surface's live size request. Both hosts
     // and Settings use this resolver; plugins retain their original bindings.
     property var popupSizes: ({})
+    property var popupSizePreview: ({})
 
     function popupSizeLimits(id, dimension) {
         const width = dimension === "width"
@@ -291,7 +278,7 @@ Singleton {
     }
 
     function popupDimension(id, dimension) {
-        const entry = (popupSizes || {})[id]
+        const entry = (popupSizePreview || {})[id] || (popupSizes || {})[id]
         return normalizePopupDimension(id, dimension, entry ? entry[dimension] : 0)
     }
 
@@ -305,6 +292,17 @@ Singleton {
     function setPopupDimension(id, dimension, value, persist) {
         if (dimension !== "width" && dimension !== "height")
             return
+        if (persist === false) {
+            const previews = Object.assign({}, popupSizePreview)
+            const preview = Object.assign({}, popupSizes[id] || {}, previews[id] || {})
+            preview[dimension] = normalizePopupDimension(id, dimension, value)
+            previews[id] = preview
+            popupSizePreview = previews
+            return
+        }
+        const previews = Object.assign({}, popupSizePreview)
+        delete previews[id]
+        popupSizePreview = previews
         const sizes = Object.assign({}, popupSizes || {})
         const entry = Object.assign({}, sizes[id] || {})
         const normalized = normalizePopupDimension(id, dimension, value)
@@ -322,6 +320,9 @@ Singleton {
     }
 
     function resetPopupSize(id) {
+        const previews = Object.assign({}, popupSizePreview)
+        delete previews[id]
+        popupSizePreview = previews
         const sizes = Object.assign({}, popupSizes || {})
         delete sizes[id]
         popupSizes = sizes
@@ -342,20 +343,6 @@ Singleton {
                     if (value) clean[dimension] = value
                 }
                 if (Object.keys(clean).length) sizes[id] = clean
-            }
-        } else if (source === undefined) {
-            // Preserve legacy sizes once. Default values remain automatic.
-            const legacy = [
-                { key: "settingsIslandWidth", id: "settings", dimension: "width", initial: 940 },
-                { key: "settingsIslandHeight", id: "settings", dimension: "height", initial: 620 },
-                { key: "panelWidth", id: "panel", dimension: "width", initial: 860 }
-            ]
-            for (const setting of legacy) {
-                const value = normalizePopupDimension(setting.id, setting.dimension, saved[setting.key])
-                if (value && value !== setting.initial) {
-                    if (!sizes[setting.id]) sizes[setting.id] = {}
-                    sizes[setting.id][setting.dimension] = value
-                }
             }
         }
         popupSizes = sizes
@@ -456,7 +443,7 @@ Singleton {
     //  IDs rather than copies of names and icons: renaming a plugin or
     //  changing its icon updates the shortcut automatically, and one
     //  pointing to an uninstalled plugin simply is not drawn.
-    property var quickAccess: ["game", "settings", "system", "clipboard"]
+    property var quickAccess: ["settings", "system", "clipboard"]
 
     function esAccesoDirecto(id) {
         return (quickAccess || []).indexOf(id) >= 0
@@ -484,6 +471,14 @@ Singleton {
     }
 
     readonly property var definicion: [
+        {
+            grupo: "General",
+            claves: ["configuration", "config", "json", "copy", "file", "preferences", "backup"],
+            glifo: 0xF0493,
+            desc: "Your configuration and saved preferences.",
+            vista: "general",
+            opciones: []
+        },
         {
             grupo: "Island",
             claves: ["pill", "at rest", "clock", "media", "workspace",
@@ -792,187 +787,60 @@ Singleton {
     //  and another for loading: fifteen preferences meant thirty places to
     //  forget one. Use a list rather than walking the entire object because
     //  a singleton has dozens of internal properties that are not settings.
-    readonly property var claves: [
-        "barPosition", "barAlignment", "islandSpace",
-        "trayInPill", "notificationsOnHover", "notificationsOnFocus",
-        "notificationPopupPosition",
-        "playerPeekOnChange",
-        "uiSoundsEnabled", "uiSoundVolume",
-        "pillOrder", "pillHiddenItems", "pillMigrated",
-        "pillTrayMax", "pillMinimizedMax", "pillIndicatorsMax",
-        "pillIndicatorIconSize",
-        "shellFont", "wallpaperPalette",
-        "panelShowToggles", "panelTileWifi",
-        "panelTileBluetooth", "panelTileSound", "panelTileBrightness", "panelShowMedia",
-        "panelShowShortcuts", "panelShowWorkspaces", "panelWorkspaceStyle",
-        "panelShowClock", "panelShowScratchpad",
-        "panelOrder", "panelHiddenBlocks",
-        "panelShowPowerDisplay", "nightLightEnabled", "nightLightTemperature",
-        "nightLightMode", "nightLightLocation", "nightLightOverride",
-        "islandPlacements", "independentIslands", "popupSizes",
-        "edgeZoneEnabled", "edgeZoneSize", "rimRadius",
-        "quickAccess"
-    ]
+    readonly property var claves: Object.keys(ConfigStore.shellDefaults).concat(Object.keys(ConfigStore.localDefaults))
 
     function guardar() {
-        if (!cargado)
+        if (!cargado || loadingConfig)
             return
-        const d = {}
-        for (let i = 0; i < claves.length; ++i)
-            d[claves[i]] = ajustes[claves[i]]
-        vista.setText(JSON.stringify(d, null, 1))
+        const operations = []
+        for (const key of claves) {
+            if (JSON.stringify(ajustes[key]) !== JSON.stringify(savedConfig[key]))
+                operations.push({ path: ["shell", key], value: ajustes[key] })
+        }
+        if (operations.length && ConfigStore.transact(operations) > 0) {
+            const desired = {}
+            for (const key of claves) desired[key] = ajustes[key]
+            savedConfig = JSON.parse(JSON.stringify(desired))
+        }
     }
 
     property bool cargado: false
 
-    FileView { id: vista; path: ajustes.ruta; blockLoading: true }
-
-    Process {
-        command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/state/k4"]
-        running: true
-        onExited: ajustes.cargar()
-    }
-
-    //  One-shot migration from the Spanish-era settings file: old key
-    //  names, old stored values and old plugin ids become their English
-    //  equivalents on load, so nobody loses their bar by updating.
-    readonly property var clavesViejas: ({
-        posicionBarra: "barPosition",
-        alineacionBarra: "barAlignment",
-        reservaIsla: "islandSpace",
-        bandejaEnPildora: "trayInPill",
-        notificacionesAlPasar: "notificationsOnHover",
-        notificacionesAlEnfocar: "notificationsOnFocus",
-        accesosDirectos: "quickAccess"
-    })
-    readonly property var valoresViejos: ({
-        barPosition: { "arriba": "top", "abajo": "bottom" },
-        islandSpace: { "reserva": "reserve", "completa": "auto",
-                       "encima": "onTop", "escondida": "hidden" }
-    })
-    readonly property var idsViejos: ({
-        sonido: "sound", agentes: "agents"
-    })
-
-    function migrarPildora() {
-        if (pillMigrated)
-            return
-        // Fold the legacy tray switch into the new hidden-items list once.
-        // An explicit new-model value wins; otherwise the old switch decides.
-        const ocultos = (pillHiddenItems || []).slice()
-        const at = ocultos.indexOf("tray")
-        if (trayInPill && at >= 0)
-            ocultos.splice(at, 1)
-        else if (!trayInPill && at < 0)
-            ocultos.push("tray")
-        pillHiddenItems = ocultos
-        pillMigrated = true
-        guardar()
-    }
-
-    function migrarPlayerPeek() {
-        // The host setting wins when already present. Otherwise read the
-        // legacy per-plugin file; the migrated value is then persisted.
-        if (_peekDesdeHost)
-            return
-        lectorPlayerPeek.cargar()
-        guardar()
-    }
-
-    property var lectorPlayerPeek: FileView {
-        path: (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins/player/estado.json"
-        blockLoading: true
-        function cargar() {
-            if (ajustes.playerPeekOnChange !== undefined && ajustes._peekDesdeHost)
-                return
-            try {
-                const bruto = text()
-                if (!bruto || bruto.length === 0)
-                    return
-                const d = JSON.parse(bruto)
-                if (!ajustes._peekDesdeHost) {
-                    if (d && d.peekOnChange !== undefined)
-                        ajustes.playerPeekOnChange = d.peekOnChange === true
-                    else if (d && d.asomarAlCambiar !== undefined)
-                        ajustes.playerPeekOnChange = d.asomarAlCambiar === true
-                }
-            } catch (e) {
-            }
+    property bool loadingConfig: false
+    property var savedConfig: ({})
+    property var defaults: ({})
+    property bool settingsConnected: false
+    function connectSettings() {
+        if (settingsConnected || !Object.keys(ConfigStore.shellDefaults).length || !Object.keys(ConfigStore.localDefaults).length) return
+        defaults = Object.assign({}, ConfigStore.shellDefaults, ConfigStore.localDefaults)
+        for (const key of claves) {
+            ajustes[key + "Changed"].connect(function () { ajustes.guardar() })
         }
+        settingsConnected = true
+        if (ConfigStore.ready) cargar()
     }
-    // Tracks whether playerPeekOnChange came from ajustes.json this boot,
-    // so the legacy file cannot overwrite an explicit host value.
-    property bool _peekDesdeHost: false
+    Component.onCompleted: connectSettings()
+    Connections {
+        target: ConfigStore
+        function onShellDefaultsChanged() { ajustes.connectSettings() }
+        function onLocalDefaultsChanged() { ajustes.connectSettings() }
+        function onLocalDataChanged() { if (ConfigStore.ready) ajustes.cargar() }
+        function onReadyChanged() { if (ConfigStore.ready) ajustes.cargar() }
+        function onDataChanged() { if (ConfigStore.ready) ajustes.cargar() }
+        function onSettled() { ajustes.cargar() }
+    }
 
     function cargar() {
-        const bruto = vista.text()
-
-        if (bruto.length > 0) {
-            try {
-                let s = JSON.parse(bruto)
-                for (const vieja in clavesViejas)
-                    if (s[vieja] !== undefined && s[clavesViejas[vieja]] === undefined)
-                        s[clavesViejas[vieja]] = s[vieja]
-                for (const clave in valoresViejos)
-                    if (typeof s[clave] === "string"
-                        && valoresViejos[clave][s[clave]] !== undefined)
-                        s[clave] = valoresViejos[clave][s[clave]]
-                if (Array.isArray(s.quickAccess))
-                    s.quickAccess = s.quickAccess.map(function (id) {
-                        return idsViejos[id] !== undefined ? idsViejos[id] : id
-                    })
-                if (s.playerPeekOnChange !== undefined)
-                    _peekDesdeHost = true
-                // Introduce the new native card after quick controls without
-                // disturbing the relative order of existing user blocks.
-                if (Array.isArray(s.panelOrder) && s.panelShowPowerDisplay === undefined
-                        && s.panelOrder.indexOf("power-display") < 0) {
-                    s.panelOrder.splice(Math.max(0, s.panelOrder.indexOf("toggles") + 1), 0, "power-display")
-                }
-                for (let i = 0; i < claves.length; ++i)
-                    if (s[claves[i]] !== undefined)
-                        ajustes[claves[i]] = s[claves[i]]
-                loadPopupSizes(s)
-                const independent = {}
-                if (s.independentIslands && typeof s.independentIslands === "object"
-                        && !Array.isArray(s.independentIslands)) {
-                    for (const id in s.independentIslands)
-                        if (typeof s.independentIslands[id] === "boolean")
-                            independent[id] = s.independentIslands[id]
-                }
-                ajustes.independentIslands = independent
-                //  Retired keys are simply not copied: an old file's
-                //  `popupMode` and `openOnHoverEnabled` stay on the disk
-                //  it came from and never reach memory. The hover flag
-                //  travels INSIDE `islandPlacements`, so it needs its
-                //  own sweep: entries are rewritten as { side, align }.
-                if (s.islandPlacements !== undefined
-                        && s.islandPlacements !== null
-                        && typeof s.islandPlacements === "object") {
-                    const limpio = {}
-                    for (const id in s.islandPlacements) {
-                        const p = s.islandPlacements[id]
-                        if (p && (p.side === "top" || p.side === "bottom"
-                                  || p.side === "left"
-                                  || p.side === "right")) {
-                            let a = Number(p.align)
-                            if (!isFinite(a))
-                                a = 50
-                            limpio[id] = {
-                                side: p.side,
-                                align: Math.max(0, Math.min(100, a))
-                            }
-                        }
-                    }
-                    ajustes.islandPlacements = limpio
-                }
-            } catch (e) {
-                // Unreadable preferences: keep the defaults.
-            }
+        if (!ConfigStore.ready || ConfigStore.pendingCount || !Object.keys(defaults).length) return
+        loadingConfig = true
+        const s = ConfigStore.value(["shell"], {})
+        savedConfig = JSON.parse(JSON.stringify(s))
+        for (const key of claves) {
+            const value = s[key] !== undefined ? s[key] : defaults[key]
+            if (JSON.stringify(ajustes[key]) !== JSON.stringify(value)) ajustes[key] = value
         }
-
+        loadPopupSizes(s)
         cargado = true
-        migrarPildora()
-        migrarPlayerPeek()
+        loadingConfig = false
     }
 }

@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from test_config_helpers import write_settings
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -19,12 +20,7 @@ def main():
         home = root / "home"
         config = home / ".config/hypr"
         config.mkdir(parents=True)
-        state = home / ".local/state/k4"
-        state.mkdir(parents=True)
-        catalog = json.loads((ROOT / "plugins/catalog.json").read_text())
-        (state / "plugins.json").write_text(json.dumps({
-            "habilitados": {plugin["id"]: False for plugin in catalog["plugins"]},
-        }))
+        write_settings(home)
         (config / "hyprland.lua").write_text(
             '-- Windows\n'
             'hl.bind("SUPER + Q", hl.dsp.window.close())\n'
@@ -33,6 +29,8 @@ def main():
             'hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"))\n')
         (root / "tools").mkdir()
         (root / "tools/shortcuts.py").symlink_to(ROOT / "tools/shortcuts.py")
+        for name in ("config_store.py", "config_schema.py", "migrate_config.py", "config_outputs.py", "credentials.py", "monitors.py"):
+            (root / "tools" / name).symlink_to(ROOT / "tools" / name)
         (root / "shell.qml").write_text((ROOT / "tools/shortcuts-test.qml").read_text())
         env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"),
                    XDG_STATE_HOME=str(root / "state"), XDG_CACHE_HOME=str(root / "cache"),

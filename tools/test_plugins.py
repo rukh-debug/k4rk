@@ -13,6 +13,7 @@ plugins installed on the machine.
 import contextlib
 import io
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -420,7 +421,7 @@ def prueba_ancla_instala_el_commit_pedido():
     with DestinoAparte("pedido") as destino:
         igual("installation succeeds",
               plugins.instalar(str(repo), True, None, viejo), 0)
-        o = json.loads((destino / "pedido" / plugins.ORIGEN).read_text())
+        o = plugins.leer_origen("pedido")
         igual("records the requested commit", o["commit"], viejo)
         man = json.loads((destino / "pedido" / "plugin.json").read_text())
         igual("contents match THAT commit rather than the tip",
@@ -431,7 +432,7 @@ def prueba_ancla_sin_pedir_commit_va_a_la_punta():
     repo, viejo, nuevo = repo_con_dos_commits("punta")
     with DestinoAparte("punta") as destino:
         igual("installs", plugins.instalar(str(repo), True), 0)
-        o = json.loads((destino / "punta" / plugins.ORIGEN).read_text())
+        o = plugins.leer_origen("punta")
         igual("records the tip", o["commit"], nuevo)
         igual("records the commit even without an explicit pin",
               plugins.RE_SHA.fullmatch(o["commit"]) is not None, True)
@@ -443,7 +444,7 @@ def prueba_ancla_actualizar_lleva_al_commit_dado():
         plugins.instalar(str(repo), True, None, viejo)
         igual("updates to the requested commit",
               plugins.actualizar("subir", True, nuevo), 0)
-        o = json.loads((destino / "subir" / plugins.ORIGEN).read_text())
+        o = plugins.leer_origen("subir")
         igual("records that commit", o["commit"], nuevo)
         man = json.loads((destino / "subir" / "plugin.json").read_text())
         igual("with the new contents", man["version"], "2.0.0")
@@ -463,7 +464,7 @@ def prueba_ancla_actualizar_conserva_la_subcarpeta():
     with DestinoAparte("dentro") as destino:
         igual("installs with an explicit folder",
               plugins.instalar(str(repo), True, "ejemplos/dentro"), 0)
-        o = json.loads((destino / "dentro" / plugins.ORIGEN).read_text())
+        o = plugins.leer_origen("dentro")
         igual("the folder is recorded", o["folder"], "ejemplos/dentro")
         igual("legacy folder output is absent", "carpeta" in o, False)
         igual("updates find the folder automatically",
@@ -478,9 +479,10 @@ def prueba_ancla_mismo_commit_mismo_arbol():
     with DestinoAparte("gemelo-b") as b:
         plugins.instalar(str(repo), True, None, viejo)
         dos = arbol(b / "gemelo")
+    # Installation time is local provenance, not part of the checked-out tree.
+    uno.pop(".installation.json", None)
+    dos.pop(".installation.json", None)
     #  Provenance contains a timestamp, so exclude it: the CODE must match.
-    uno.pop(plugins.ORIGEN, None)
-    dos.pop(plugins.ORIGEN, None)
     igual("the same commit produces the same tree twice", uno, dos)
     igual("the tree is not empty", len(uno) > 0, True)
 
@@ -503,16 +505,14 @@ def prueba_ancla_rechaza_un_commit_inexistente():
         igual("nothing was installed", list(destino.iterdir()), [])
 
 
-def prueba_ancla_lee_el_origen_de_antes():
-    #  Preserve older installations: their source is known even if their
-    #  commit is not.
+def prueba_ancla_ignores_retired_origin_files():
+    # Historical formats belong exclusively to the transition tool.
     with DestinoAparte("viejo") as destino:
         d = destino / "antiguo"
         d.mkdir()
         (d / ".origen").write_text("https://ejemplo/repo\n")
         o = plugins.leer_origen("antiguo")
-        igual("reads the repository", o["repo"], "https://ejemplo/repo")
-        igual("does not invent a commit", o.get("commit", ""), "")
+        igual("does not read legacy metadata at runtime", o, None)
 
 
 # ── requests from the bar ─────────────────────────────────────────────
@@ -933,11 +933,32 @@ def prueba_publicar_dice_que_no_es_una_auditoria():
     contiene("the report states its scope", texto, "not a security audit")
 
 
+def test_uninstall_cleans_preferences_and_retains_local_state():
+    repo, _, commit = repo_con_dos_commits("cleanup")
+    with DestinoAparte("cleanup") as destination:
+        igual("installs cleanup fixture", plugins.instalar(str(repo), True, None, commit), 0)
+        store = plugins.config_store
+        store.put(["plugins", "cleanup", "settings"], {"compact": True})
+        store.put(["plugins", "cleanup", "state"], {"visits": 4})
+        store.put(["shell", "quickAccess"], ["cleanup", "settings"])
+        igual("metadata stays with the plugin", (destination / "cleanup/.installation.json").exists(), True)
+        igual("metadata is absent from shared settings", "installation" in store.read()["plugins"]["cleanup"], False)
+        igual("uninstalls cleanup fixture", plugins.quitar("cleanup", True), 0)
+        igual("removes plugin preference namespace", "cleanup" in store.read()["plugins"], False)
+        igual("cleans pins", store.get(["shell", "quickAccess"]), ["settings"])
+        igual("preserves private state", store.get(["plugins", "cleanup", "state", "visits"]), 4)
+        igual("removes metadata with the plugin", (destination / "cleanup").exists(), False)
+
+
 def main():
     pruebas = [v for k, v in sorted(globals().items())
-               if k.startswith("prueba_")]
-    for p in pruebas:
-        p()
+               if k.startswith(("prueba_", "test_"))]
+    with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": str(BORRADOR / "config"),
+                                     "XDG_STATE_HOME": str(BORRADOR / "state"),
+                                     "XDG_CACHE_HOME": str(BORRADOR / "cache"),
+                                     "XDG_RUNTIME_DIR": str(BORRADOR / "run")}):
+        for p in pruebas:
+            p()
 
     if fallos:
         print("%d failed checks across %d tests:\n" % (len(fallos), len(pruebas)))

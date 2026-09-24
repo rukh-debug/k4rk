@@ -356,23 +356,10 @@ K4.Plugin {
 
     // ── what the user decides ─────────────────────────────────────
 
-    property var guardado: K4.Guardado {
+    property var guardado: K4.PluginSettings {
         plugin: "agents"
-        onCargado: function (d) {
-            // Read the legacy state only after the current state has loaded.
-            // Asynchronous competing readers used to let the old file win.
-            let migrated = false
+        onLoaded: function (d) {
             if (!d || typeof d !== "object" || Array.isArray(d)) d = {}
-            if (Object.keys(d).length === 0) {
-                try {
-                    legacyState.path = K4.Paths.estadoDe("agentes") + "/estado.json"
-                    const old = JSON.parse(legacyState.text() || "{}")
-                    if (old && typeof old === "object" && !Array.isArray(old)) {
-                        d = old
-                        migrated = Object.keys(old).length > 0
-                    }
-                } catch (e) {}
-            }
             //  Keys are English now; the Spanish pair is the pre-rename
             //  file saying something — both are honored, new wins.
             if (d.warn !== undefined) self.avisar = d.warn === true
@@ -388,25 +375,14 @@ K4.Plugin {
                 self.pinnedQuota = d.pinnedQuota
             self.settingsReady = true
             self.cargado = !self.enabledProviders.length
-            if (migrated) self.apuntar()
             if (self.abierto || self.providersPageOpen) self.refrescar()
         }
     }
 
     function apuntar() {
         if (settingsReady)
-            guardado.guardar({ warn: avisar, threshold: umbral, live: enVivo,
+            guardado.save({ warn: avisar, threshold: umbral, live: enVivo,
                                providers: enabledProviders, pinnedQuota: pinnedQuota })
-    }
-
-    //  The one-shot move from the pre-rename home: the state lived under
-    //  `agentes` and the sweeps that clean up after a dead plugin match
-    //  the CATALOG id, not the one written here — a reload would orphan
-    //  the pill and the launcher row. Adopted once, saved in the new
-    //  home and the new keys; the old file stays as a fossil.
-    property var _legacyState: K4.Fichero {
-        id: legacyState
-        blockLoading: true
     }
 
     K4.Ajustes {

@@ -87,9 +87,11 @@ Item {
 
         function initTestCase() {
             tryCompare(Settings, "cargado", true)
+            tryCompare(PluginManager, "listo", true)
         }
 
         function init() {
+            tryCompare(ConfigStore, "pendingCount", 0)
             checkpoint = "setup"
             PopupLayout.windows = []
             PopupLayout.placements = ({})
@@ -109,6 +111,7 @@ Item {
             firstOwner.closeOnClickOutside = true
             firstOwner.active = false
             secondOwner.active = false
+            tryCompare(ConfigStore, "pendingCount", 0)
         }
 
         function test_clockwiseFromEveryCorner() {
@@ -168,8 +171,8 @@ Item {
             compare(Settings.independentIslandFor(secondOwner), false)
             Settings.setIndependentIsland("first", false)
             Settings.setIndependentIsland("second", true)
-            wait(100)
-            Settings.independentIslands = ({})
+            tryCompare(ConfigStore, "pendingCount", 0)
+            compare(ConfigStore.value(["shell", "independentIslands", "first"], null), false)
             Settings.cargar()
             compare(Settings.independentIslandFor(firstOwner), false)
             compare(Settings.independentIslandFor(secondOwner), true)
@@ -295,7 +298,7 @@ Item {
             compare(PopupLayout.outsideOwner("test"), firstOwner)
         }
 
-        function test_sizeDefaultsValidationAndMigration() {
+        function test_sizeDefaultsValidationAndPersistence() {
             checkpoint = "automatic size"
             compare(Settings.popupSizeFor(firstOwner, "width"), 300)
             Settings.setPopupDimension("first", "width", 520)
@@ -305,8 +308,8 @@ Item {
             compare(Settings.popupSizeFor(firstOwner, "height"), 200)
             Settings.setPopupDimension("first", "width", 0)
             compare(Settings.popupSizeFor(firstOwner, "width"), 480)
-            Settings.loadPopupSizes({ settingsIslandWidth: 1100, settingsIslandHeight: 700, panelWidth: 900 })
-            checkpoint = "legacy migration"
+            Settings.loadPopupSizes({ popupSizes: { settings: { width: 1100, height: 700 }, panel: { width: 900 } } })
+            checkpoint = "canonical sizes"
             compare(Settings.settingsIslandWidth, 1100)
             compare(Settings.settingsIslandHeight, 700)
             compare(Settings.panelWidth, 900)
@@ -322,7 +325,7 @@ Item {
             compare(Settings.settingsIslandHeight, 2160)
             Settings.setPopupDimension("first", "width", 640)
             checkpoint = "persist and reload"
-            wait(100)
+            tryCompare(ConfigStore, "pendingCount", 0)
             Settings.cargar()
             compare(Settings.popupDimension("first", "width"), 640)
         }

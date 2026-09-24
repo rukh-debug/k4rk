@@ -20,6 +20,7 @@ import sys
 import tempfile
 import time
 import uuid
+import config_store
 
 
 MODE = re.compile(r"^(\d+)x(\d+)@([\d.]+)(?:Hz)?$")
@@ -62,7 +63,7 @@ def locations():
     if not runtime:
         raise ValueError("XDG_RUNTIME_DIR is required for monitor recovery.")
     key = hashlib.sha256(session.encode()).hexdigest()[:12]
-    state = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "k4/monitors"
+    state = config_store.state_root() / "monitors"
     run = Path(runtime) / ("k4-monitors-" + key)
     run.mkdir(mode=0o700, parents=True, exist_ok=True)
     return state, run
@@ -237,12 +238,14 @@ def inspect():
     status["remaining"] = max(0, math.ceil(status.get("deadline", 0) - time.monotonic()))
     return {"outputs": outputs, "fingerprint": fingerprint(outputs), "transaction": status,
             "persistent": managed(),
-            "saved": (state / "confirmed.lua").exists()}
+            "saved": bool(config_store.get(["features", "monitors", "outputs"], []))}
 
 
 def managed():
-    config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "k4/monitors.json"
-    return read_json(config, {}).get("managed", False) is True
+    runtime = Path(os.environ.get("XDG_RUNTIME_DIR", "/nonexistent"))
+    return (os.environ.get("K4_MONITORS_MANAGED") == "1"
+            or (runtime / "k4/monitors-managed").is_file()
+            or config_store.get(["features", "monitors", "integration"]) == "lua")
 
 
 def begin(request):
@@ -346,18 +349,7 @@ def worker(lock):
                     break
                 publish("saving")
                 if managed():
-                    destination = state / "confirmed.lua"
-                    previous = destination.read_text() if destination.exists() else None
-                    try:
-                        atomic(destination, confirmed_lua(record["target"]))
-                    except OSError:
-                        # A directory fsync can fail after rename. Restore the old
-                        # persistent state as well as rolling back the live preview.
-                        if previous is None:
-                            destination.unlink(missing_ok=True)
-                        else:
-                            atomic(destination, previous)
-                        raise
+                    config_store.put(["features", "monitors", "outputs"], record["target"])
                 committed = True
                 publish("kept")
                 try:

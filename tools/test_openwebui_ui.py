@@ -74,7 +74,8 @@ def main():
         clipboard.write_text(f'#!{sys.executable}\nimport pathlib, sys\npathlib.Path({str(root / "copied.txt")!r}).write_text(sys.stdin.read())\n')
         clipboard.chmod(0o755)
         (root / 'shell.qml').write_text((ROOT / 'tools/openwebui-test.qml').read_text())
-        env = dict(os.environ, HOME=str(root), XDG_CACHE_HOME=str(root / 'cache'),
+        (root / 'tools').symlink_to(ROOT / 'tools')
+        env = dict(os.environ, HOME=str(root), XDG_CONFIG_HOME=str(root / '.config'), XDG_STATE_HOME=str(root / '.local/state'), XDG_CACHE_HOME=str(root / 'cache'),
                    PATH=str(root) + os.pathsep + os.environ['PATH'],
                    XDG_DATA_HOME=str(root / 'data'), QT_QPA_PLATFORM='wayland',
                    QML_IMPORT_PATH=str(ROOT / 'api'),

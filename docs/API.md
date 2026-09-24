@@ -292,8 +292,10 @@ K4.Interruptor {
 
 ## Plugin state that survives: `K4.Guardado`
 
-For game saves, counters, anything that must outlive a restart. It owns a
-JSON file under the plugin's own state directory:
+For game saves, counters, and non-secret state that must outlive a restart.
+The existing `nombre` values `estado`/`state` address owner-local state, while
+`ajustes`/`settings` address shareable preferences in `config.json`. Other names
+are local documents under the plugin's state directory. The host handles writes.
 
 ```qml
 property var guardado: K4.Guardado {
@@ -306,8 +308,62 @@ function apuntar() {
 }
 ```
 
-Prefer it over raw `K4.Fichero` for plugin state: the path, the directory
-and the load signal are handled for you.
+Existing plugins can retain this contract. New code should explicitly choose
+`K4.PluginSettings` or `K4.PluginState` according to the data's purpose.
+
+### `K4.PluginSettings`
+
+Shareable preference values only: required `plugin`, `value`, `ready`, `error`,
+`loaded(data)`, `save(data)`, and `saveSections(objects)` use the same interface as
+PluginState below, with the name fixed by convention to `settings`. Preferences
+live at `plugins.<id>.settings` in config.json. Personal connection profiles,
+server-specific model selections, history, caches and migration bookkeeping do
+not belong here.
+
+### `K4.PluginState`
+
+Required `plugin` identifies the owner. `name` defaults to `state`; other English
+names select separate files under `$XDG_STATE_HOME/k4/plugins/<id>/`. Existing
+callers using `name: "settings"` still address shareable preferences, but new code
+should use PluginSettings explicitly. `value` is the
+current object, `ready` indicates initial loading, and `error` reports a storage
+error. `loaded(data)` fires after initial load and subsequent external committed
+changes. Acknowledgements of a component's own saves update `value` without
+reloading its live game/chat state.
+`save(data)` patches changed/deleted top-level fields in this namespace, preserving
+unrelated plugin and host state. It returns a request id, zero for no change, or
+-1 when the store is not ready. The host handles atomic writes and notifications.
+Call `save` for committed changes, not from the `loaded` handler.
+`saveSections({settings: preferences, state: state})` transactionally replaces
+related objects belonging to the same plugin, including across settings/local
+files; `enabled` and `installation` are reserved for the host. A private journal
+recovers interrupted writes before readers see them. Use this for changes such
+as disabling history and clearing the saved conversation together.
+
+```qml
+K4.PluginSettings {
+    id: saved
+    plugin: "hello"
+    onLoaded: function (data) { notificationsEnabled = data.notificationsEnabled !== false }
+}
+```
+
+The host injects the shared service before plugins load. A standalone test host
+must also supply that bridge. Never write `config.json` through `K4.Fichero` or
+invent another preferences file. Use PluginState for local JSON state so writes
+participate in recovery and notifications. Credential fields are rejected in all
+storage domains.
+
+### `K4.Credential`
+
+Required `plugin` and `account` identify a system-keyring entry. `value` is a
+memory-only string, `ready` indicates loading has finished, `busy` indicates a
+request is active, and `error` reports keyring unavailability. `load()` retrieves
+the current entry; `save(secret)` stores it, and `save("")` deletes it. Changing
+`account` clears the previous value and loads the new account. An older lookup
+cannot overwrite a newer save or another account's value. Failed persistence
+leaves a newly entered value session-only. Never pass `value` to PluginState.
+The host owns queued keyring requests, so a save survives unloading its plugin.
 
 ## Processes: `K4.Process`
 
@@ -344,21 +400,18 @@ Properties include `command`, `running`, `workingDirectory`, `environment`,
 `K4.Paths` keeps plugins independent from filesystem layout:
 
 ```qml
-readonly property string statePath: K4.Paths.estado + "/hello.json"
-K4.Fichero { id: state; path: statePath; blockLoading: true }
-
-function save() {
-    state.setText(JSON.stringify({ count: count }, null, 2))
-}
+readonly property string configurationLocation: K4.Paths.config
 ```
 
-- `K4.Paths.estado`: `~/.local/state/k4`, for persistent state.
+- `K4.Paths.config`: the resolved shared `config.json` location, for display.
+- `K4.Paths.estado` and `estadoDe(id)`: XDG-aware local state locations. Prefer
+  PluginState for coordinated JSON writes; other local assets may use these paths.
 - `K4.Paths.raiz`: the k4 installation root.
 - `K4.Paths.guion(name)`: a file inside `tools/`.
 - `K4.Paths.enRaiz(relative)`: any repository asset.
 
 `K4.Fichero` provides `path`, `text()`, `setText()`, `blockLoading` and
-`onLoaded`. Use it for small JSON/text files, not media assets.
+`onLoaded`. Use it for external files, not k4 configuration or saved state.
 
 ## System and applications
 

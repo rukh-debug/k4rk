@@ -275,6 +275,8 @@ Scope {
     Component.onCompleted: {
         // Inject the API bridge first. Relative host imports inside K4 would
         // create a second service graph; see api/K4/Puente.qml.
+        K4.Puente.config = ConfigStore
+        K4.Puente.credentials = Credentials
         K4.Puente.tema = Theme
         K4.Puente.indicadores = Indicadores
         K4.Puente.audio = Audio

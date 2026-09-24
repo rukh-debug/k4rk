@@ -25,6 +25,9 @@ Desplazador 1.0 Desplazador.qml
 Estela 1.0 Estela.qml
 FocoInicial 1.0 FocoInicial.qml
 Guardado 1.0 Guardado.qml
+PluginState 1.0 PluginState.qml
+PluginSettings 1.0 PluginSettings.qml
+Credential 1.0 Credential.qml
 
 singleton Paths 1.0 Paths.qml
 singleton Pildora 1.0 Pildora.qml

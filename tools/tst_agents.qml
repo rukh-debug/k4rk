@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import K4 as K4
 import "../plugins/Agents" as Agents
+import "../services" as Services
 
 Item {
     id: fixture
@@ -41,6 +42,7 @@ Item {
         when: fixture.Window.window !== null && fixture.Window.window.visible
 
         function initTestCase() {
+            K4.Puente.config = Services.ConfigStore
             K4.Puente.enganches = hooks
             fixture.owner = pluginFactory.createObject(fixture, {
                 carpeta: Qt.resolvedUrl("../plugins/Agents").toString().replace("file://", "")

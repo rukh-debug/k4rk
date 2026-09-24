@@ -3,19 +3,9 @@
 //  You type three letters and you are in. Nothing more — but with two
 //  decisions behind it worth having clear:
 //
-//  **Hosts live in `~/.ssh/config`, not in a database of ours.**
-//  That is what makes saving here serve bare `ssh`, `scp`,
-//  `git`, `rsync` and anything that speaks ssh too. A vault of our own would
-//  be easier to write and would leave you a prisoner of k4.
-//
-//  **Passwords, none.** Not in the clear, not encrypted by us: you connect
-//  with keys and agent, which is how it is done. If you have no key, this
-//  creates one for you and sends it to the server — ssh carries the rest,
-//  that is what it is there for.
-//
-//  What IS ours goes in `~/.config/k4term/hosts.json`: what the ssh file
-//  cannot say —favourites, when you last went in, tags— and that has no
-//  business dirtying a configuration other programs read.
+//  k4-managed hosts and metadata use owner-local state. A generated SSH include
+//  keeps them usable by ssh/scp/git. User-authored SSH configuration remains
+//  external. Passwords use the system keyring; private keys stay with SSH.
 
 import QtQuick
 import K4 as K4
@@ -72,10 +62,7 @@ K4Plugin {
         { id: "alias",      nombre: "Name",     ayuda: "what you are going to call it",          suyo: false },
         { id: "host",       nombre: "Typewriter",    ayuda: "domain or IP",                  suyo: false },
         { id: "usuario",    nombre: "User",    ayuda: "empty = yours",               suyo: false },
-        //  The password goes neither into `ssh_config` nor into `hosts.json`:
-        //  those two get opened and copied without thinking. It lives in
-        //  `claves.json` with 600, and on the card it is shown as dots unless
-        //  you ask to see it (ctrl+O).
+        // Passwords use Secret Service and are shown as dots unless revealed.
         { id: "contrasena", nombre: "Password", ayuda: "if it logs in with a password instead of a key", suyo: false, secreto: true },
         { id: "puerto",     nombre: "Port",     ayuda: "empty = 22",                    suyo: false },
         { id: "clave",      nombre: "Key",      ayuda: "path to the private key, if not the usual one", suyo: false },
@@ -143,7 +130,8 @@ K4Plugin {
 
     function open() {
         fSsh.reload()
-        fExtras.reload()
+        metadataStore.refresh()
+        hostStore.refresh()
         busqueda = ""
         indice = 0
         cerrando = false
@@ -159,14 +147,6 @@ K4Plugin {
 
     property K4.Process permisos: K4.Process {
         command: ["sh", "-c", "mkdir -p ~/.ssh && chmod 700 ~/.ssh"]
-        onTerminado: running = false
-    }
-
-    //  And the file, yours only. It carries no secrets, but it says which
-    //  machines you enter and as which user, which is nobody's business
-    //  either.
-    property K4.Process cerrarFichero: K4.Process {
-        command: ["sh", "-c", "chmod 600 ~/.ssh/config 2>/dev/null"]
         onTerminado: running = false
     }
 
@@ -199,21 +179,63 @@ K4Plugin {
         onTriggered: self.cerrando = false
     }
 
-    //  ── what ~/.ssh/config says ─────────────────────────────────
+    // External SSH configuration remains readable; k4-owned hosts and
+    // metadata live in owner-local state and generate a separate SSH include.
     //
     //  A small and deliberately tolerant parser: of the fifty options ssh
     //  admits, only the five that serve to show and connect get read. The
     //  rest is respected untouched — this file is the user's, not ours.
     readonly property string rutaSsh: K4.Sistema.entorno("HOME") + "/.ssh/config"
-    readonly property string rutaExtras: K4.Sistema.entorno("HOME") + "/.config/k4term/hosts.json"
 
     property var guardados: []
     property var extras: ({})
+    property var ownedHosts: ({})
+    property bool sshLoaded: false
+    property var credentialEntries: ({})
+    property var pendingConnection: null
+    property Component credentialFactory: Component { K4.Credential { plugin: "ssh" } }
+    function credentialFor(alias) {
+        if (!credentialEntries[alias]) {
+            const entry = credentialFactory.createObject(self, { account: alias })
+            credentialEntries[alias] = entry
+            entry.valueChanged.connect(function () {
+                if (self.modo === "editar" && self.borrador.original === alias && !self.borrador.contrasena)
+                    self.ponerCampo("contrasena", entry.value)
+            })
+            entry.readyChanged.connect(function () {
+                if (entry.ready && self.pendingConnection && self.pendingConnection.host.alias === alias) {
+                    const pending = self.pendingConnection
+                    self.pendingConnection = null
+                    self.connect(pending.host, pending.window)
+                }
+            })
+        }
+        return credentialEntries[alias]
+    }
+    function refreshHosts() {
+        const external = (sshLoaded ? leerSsh() : []).filter(h => !ownedHosts[h.alias])
+        for (const alias of Object.keys(ownedHosts)) {
+            const h = ownedHosts[alias]
+            external.push({ alias: alias, host: h.host || alias, usuario: h.user || "",
+                puerto: h.port || "", clave: h.identityFile || "", salto: h.jumpHost || "" })
+        }
+        guardados = external
+        for (const h of guardados) credentialFor(h.alias)
+    }
+    K4.PluginState {
+        id: hostStore
+        plugin: "ssh"
+        name: "hosts"
+        onLoaded: function (data) { self.ownedHosts = data; self.refreshHosts() }
+    }
 
     property K4.Fichero fSsh: K4.Fichero {
         path: self.rutaSsh
+        watchChanges: true
+        onFileChanged: reload()
         onLoaded: {
-            self.guardados = self.leerSsh()
+            self.sshLoaded = true
+            self.refreshHosts()
             //  The script-side `connect` waits for this signal: its alias
             //  is looked up here, with the list already in memory.
             if (self._conectarTrasCargar) {
@@ -223,7 +245,7 @@ K4Plugin {
         }
         //  Without a file there is nothing to read, and that is the normal
         //  thing the first time.
-        onLoadFailed: self.guardados = []
+        onLoadFailed: { self.sshLoaded = false; self.refreshHosts() }
     }
 
     //  What the script-side `connect` leaves on order until the list
@@ -231,45 +253,34 @@ K4Plugin {
     property string _conectarTrasCargar: ""
     property string _aliasPendiente: ""
 
-    property K4.Fichero fExtras: K4.Fichero {
-        path: self.rutaExtras
-        onLoaded: {
-            try {
-                self.extras = JSON.parse(fExtras.text() || "{}")
-            } catch (e) {
-                self.extras = ({})
+    readonly property var metadataNames: ({ favorito: "favorite", etiquetas: "tags", ultimo: "lastVisited",
+        alConectar: "onConnect", tinte: "color", tuneles: "tunnels" })
+    K4.PluginState {
+        id: metadataStore
+        plugin: "ssh"
+        onLoaded: function (data) {
+            const result = {}
+            for (const alias of Object.keys(data)) {
+                result[alias] = Object.assign({}, data[alias])
+                for (const key of Object.keys(self.metadataNames))
+                    if (data[alias][self.metadataNames[key]] !== undefined)
+                        result[alias][key] = data[alias][self.metadataNames[key]]
             }
+            self.extras = result
         }
-        onLoadFailed: self.extras = ({})
     }
-
-    //  ── the passwords ───────────────────────────────────────────
-    //
-    //  In their own file and with 600, like in the window: `claves.json`
-    //  never leaves here, and neither `ssh_config` nor `hosts.json` touches
-    //  it. They go in the clear, with the same treatment as a private key
-    //  without a passphrase — on this machine there is no secrets service
-    //  that works, and the day there is one, this is the only thing that
-    //  changes.
-    readonly property string rutaClaves: K4.Sistema.entorno("HOME") + "/.config/k4term/claves.json"
-
-    property var contrasenas: ({})
-
-    property K4.Fichero fClaves: K4.Fichero {
-        path: self.rutaClaves
-        onLoaded: {
-            try {
-                self.contrasenas = JSON.parse(fClaves.text() || "{}")
-            } catch (e) {
-                self.contrasenas = ({})
-            }
+    function saveMetadata() {
+        const result = {}
+        for (const alias of Object.keys(extras)) {
+            result[alias] = {}
+            for (const key of Object.keys(extras[alias]))
+                result[alias][metadataNames[key] || key] = extras[alias][key]
         }
-        onLoadFailed: self.contrasenas = ({})
+        metadataStore.save(result)
     }
 
     function claveDe(alias) {
-        const c = contrasenas[String(alias || "")]
-        return c ? String(c) : ""
+        return alias ? credentialFor(alias).value : ""
     }
 
     //  An empty password DELETES whatever one was there: it is the only way
@@ -278,22 +289,7 @@ K4Plugin {
         const nombre = String(alias || "")
         if (!nombre)
             return
-        const nuevo = Object.assign({}, contrasenas)
-        if (String(clave).length === 0)
-            delete nuevo[nombre]
-        else
-            nuevo[nombre] = String(clave)
-        contrasenas = nuevo
-        fClaves.setText(JSON.stringify(contrasenas, null, 2) + "\n")
-        cerrarClaves.running = true
-    }
-
-    //  The freshly written file comes out with everyone's permissions, and
-    //  this is not just any file.
-    property K4.Process cerrarClaves: K4.Process {
-        command: ["sh", "-c",
-                  "chmod 700 ~/.config/k4term 2>/dev/null; " +
-                  "chmod 600 ~/.config/k4term/claves.json 2>/dev/null"]
+        credentialFor(nombre).save(String(clave))
     }
 
     function leerSsh() {
@@ -362,6 +358,7 @@ K4Plugin {
         const salida = []
 
         for (let i = 0; i < guardados.length; ++i) {
+            if (extras[guardados[i].alias] && extras[guardados[i].alias].hidden) continue
             //  Agent aliases are not one more place to go: they are the back
             //  door of one that is already in the list. They show as a mark
             //  on its row, not as a row of their own.
@@ -445,6 +442,10 @@ K4Plugin {
     }
 
     function connect(h, enVentana) {
+        if (h && !h.rapido && enVentana !== true && !credentialFor(h.alias).ready) {
+            pendingConnection = { host: h, window: enVentana === true }
+            return
+        }
         let guion = mandato(h)
         if (!guion)
             return
@@ -486,7 +487,7 @@ K4Plugin {
         cerrar()
     }
 
-    function elegir(enVentana) { conectar(lista[indice], enVentana) }
+    function elegir(enVentana) { connect(lista[indice], enVentana) }
 
     //  ── ours: favourites and visits ───────────────────────────
     function tocar(alias, cambio) {
@@ -496,7 +497,7 @@ K4Plugin {
         const nuevo = Object.assign({}, extras)
         nuevo[alias] = Object.assign({}, nuevo[alias] || ({}), cambio)
         extras = nuevo
-        fExtras.setText(JSON.stringify(extras, null, 2) + "\n")
+        saveMetadata()
     }
 
     function apuntarVisita(alias) { tocar(alias, { ultimo: Date.now() }) }
@@ -516,42 +517,25 @@ K4Plugin {
     //  written, so that there are no two paths to keep up.
     function guardarBorrador() {
         const b = borrador
+        if (b.original && !credentialFor(b.original).ready) return false
         const alias = String(b.alias || b.host || "").trim()
         if (!alias || !String(b.host || "").trim())
             return false
 
-        let texto = fSsh.text() || ""
-        //  Out with the previous block: its own and, if it has been renamed,
-        //  the one that had the new name.
-        texto = sinBloque(texto, alias)
-        if (b.original && b.original !== alias)
-            texto = sinBloque(texto, b.original)
-
-        if (texto.length > 0 && texto.slice(-1) !== "\n")
-            texto += "\n"
-
-        let bloque = "\nHost " + alias + "\n"
-        bloque += "    HostName " + String(b.host).trim() + "\n"
-        //  The fingerprint of a new machine is accepted on its own; one that
-        //  CHANGES still stops the connection. Same as in the window, and
-        //  for the same reason: this way the question never comes up, and
-        //  nobody has to answer it in front of anyone.
-        bloque += "    StrictHostKeyChecking accept-new\n"
-        const deSsh = [["User", b.usuario], ["Port", b.puerto],
-                       ["IdentityFile", b.clave], ["ProxyJump", b.salto]]
-        for (let i = 0; i < deSsh.length; ++i) {
-            const valor = String(deSsh[i][1] || "").trim()
-            if (valor)
-                bloque += "    " + deSsh[i][0] + " " + valor + "\n"
-        }
-
-        fSsh.setText(texto + bloque)
-        cerrarFichero.running = true
-        relee.restart()
+        if (!/^[A-Za-z0-9_.-]+$/.test(alias)) return false
+        const hosts = Object.assign({}, ownedHosts)
+        if (b.original && b.original !== alias) delete hosts[b.original]
+        hosts[alias] = { host: String(b.host).trim(), user: String(b.usuario || "").trim(),
+            port: String(b.puerto || "").trim(), identityFile: String(b.clave || "").trim(),
+            jumpHost: String(b.salto || "").trim() }
+        ownedHosts = hosts
+        hostStore.save(hosts)
+        refreshHosts()
 
         //  And ours, which ssh does not know how to save.
         const etiquetas = String(b.etiquetas || "").trim()
         tocar(alias, {
+            hidden: false,
             favorito: b.favorito === true,
             etiquetas: etiquetas ? etiquetas.split(/\s+/) : [],
             alConectar: String(b.alConectar || "").trim(),
@@ -560,7 +544,7 @@ K4Plugin {
         })
         guardarClave(alias, String(b.contrasena || ""))
         if (b.original && b.original !== alias) {
-            olvidarExtra(b.original)
+            tocar(b.original, { hidden: true })
             guardarClave(b.original, "")
         }
 
@@ -571,43 +555,11 @@ K4Plugin {
         return true
     }
 
-    //  The file without that host's block. «Host» and then a separator:
-    //  neither `HostName` nor `HostKeyAlias` starts a block, and taking them
-    //  for good leaves orphan lines in someone else's file.
-    function sinBloque(texto, alias) {
-        const lineas = String(texto).split("\n")
-        const salida = []
-        let dentro = false
-
-        for (let i = 0; i < lineas.length; ++i) {
-            const limpia = lineas[i].replace(/#.*$/, "").trim()
-            if (/^host[\s=]/i.test(limpia)) {
-                const nombres = limpia.slice(4).replace(/^[\s=]+/, "").split(/\s+/)
-                dentro = nombres.length > 0 && nombres[0] === alias
-            }
-            if (!dentro)
-                salida.push(lineas[i])
-        }
-
-        while (salida.length > 0 && salida[salida.length - 1].trim() === "")
-            salida.pop()
-        return salida.length > 0 ? salida.join("\n") + "\n" : ""
-    }
-
-    //  `text()` does not see what was just written with `setText`: it has to
-    //  reload and let `onLoaded` rebuild the list. Reading it right there
-    //  left the list at zero with the file already written.
-    Timer {
-        id: relee
-        interval: 120
-        onTriggered: self.fSsh.reload()
-    }
-
     function olvidarExtra(alias) {
         const nuevo = Object.assign({}, extras)
         delete nuevo[alias]
         extras = nuevo
-        fExtras.setText(JSON.stringify(extras, null, 2) + "\n")
+        saveMetadata()
     }
 
     //  Saving what was typed on the fly is not write-it-and-done: the form
@@ -625,13 +577,13 @@ K4Plugin {
         if (!h || h.rapido)
             return
 
-        fSsh.setText(sinBloque(fSsh.text() || "", h.alias))
-        relee.restart()
+        const hosts = Object.assign({}, ownedHosts)
+        delete hosts[h.alias]
+        ownedHosts = hosts
+        hostStore.save(hosts)
+        refreshHosts()
 
-        const nuevo = Object.assign({}, extras)
-        delete nuevo[h.alias]
-        extras = nuevo
-        fExtras.setText(JSON.stringify(extras, null, 2) + "\n")
+        tocar(h.alias, { hidden: true })
         //  And its password: keeping the secret of a machine you no longer
         //  go to is the worst of both worlds.
         guardarClave(h.alias, "")
@@ -642,7 +594,7 @@ K4Plugin {
     //  ── the key, if you have none ────────────────────────────
     //
     //  Without a key, getting in asks for a password every time. It can be
-    //  saved —the field is there, and it goes to `claves.json` with 600— but
+    //  saved in the system keyring, but
     //  a key is better: it does not travel, it does not expire, and it does
     //  not have to be typed. Creating one and sending it to the server is
     //  the step that fixes it for good, and it is done IN THE
@@ -721,12 +673,13 @@ K4Plugin {
             return
 
         const marca = marcaAgentes
-        let texto = fSsh.text() || ""
 
         if (tieneAgentes(h.alias)) {
-            fSsh.setText(sinBloque(texto, aliasAgentes(h.alias)))
-            cerrarFichero.running = true
-            relee.restart()
+            const hosts = Object.assign({}, ownedHosts)
+            delete hosts[aliasAgentes(h.alias)]
+            ownedHosts = hosts
+            hostStore.save(hosts)
+            refreshHosts()
             //  And over there: out with the line for that key. It is looked
             //  up by its mark, which is why it carries one.
             K4.Terminal.ejecutar("ssh " + h.alias
@@ -735,29 +688,12 @@ K4Plugin {
             return
         }
 
-        texto = sinBloque(texto, aliasAgentes(h.alias))
-        if (texto.length > 0 && texto.slice(-1) !== "\n")
-            texto += "\n"
-
-        let bloque = "\nHost " + aliasAgentes(h.alias) + "\n"
-        bloque += "    HostName " + String(h.host || h.alias) + "\n"
-        if (h.usuario)
-            bloque += "    User " + h.usuario + "\n"
-        if (h.puerto)
-            bloque += "    Port " + h.puerto + "\n"
-        bloque += "    IdentityFile " + claveAgentes + "\n"
-        //  Without `IdentitiesOnly` ssh offers your keys too, and the agent
-        //  would get in as you: just what this door is here to prevent.
-        bloque += "    IdentitiesOnly yes\n"
-        //  And that it asks NOTHING: this door is for what has nobody in
-        //  front of it, so a key that is no good has to fail on the spot,
-        //  not leave the agent waiting for a prompt it cannot see.
-        bloque += "    BatchMode yes\n"
-        bloque += "    StrictHostKeyChecking accept-new\n"
-
-        fSsh.setText(texto + bloque)
-        cerrarFichero.running = true
-        relee.restart()
+        const hosts = Object.assign({}, ownedHosts)
+        hosts[aliasAgentes(h.alias)] = { host: String(h.host || h.alias), user: h.usuario || "",
+            port: h.puerto || "", identityFile: claveAgentes, identitiesOnly: "yes", batchMode: "yes" }
+        ownedHosts = hosts
+        hostStore.save(hosts)
+        refreshHosts()
 
         K4.Terminal.ejecutar(
             "[ -f " + claveAgentes + " ] || ssh-keygen -t ed25519 -N '' -C '"
@@ -961,6 +897,6 @@ K4Plugin {
     function buscarParaConectar(alias) {
         const h = guardados.find(function (x) { return x.alias === alias })
         if (h)
-            conectar(conExtras(h), false)
+            connect(conExtras(h), false)
     }
 }

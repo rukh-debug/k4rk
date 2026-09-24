@@ -43,6 +43,7 @@ from datetime import datetime
 from pathlib import Path
 
 from agents_catalog import atomic_json, cache_directory, load_catalog, read_json, request_json
+import config_store
 
 # Each tool lets an environment variable move its state directory. People
 # using that option arrange their disks deliberately: assuming ~/.claude.json
@@ -70,9 +71,6 @@ CLAUDE_USO_URL = "https://api.anthropic.com/api/oauth/usage"
 # The open view polls every 20 seconds. Asking the server that often would be
 # impolite and pointless: percentages do not move that quickly. Reuse a recent
 # response so repeated helper invocations make at most one request per minute.
-CLAUDE_CACHE = os.path.join(
-    os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
-    "k4", "agentes-uso.json")
 CLAUDE_CACHE_SEGUNDOS = 60
 CLAUDE_ESPERA = 6
 
@@ -194,10 +192,9 @@ def uso_en_vivo():
     """
     # Check the cache first to avoid unnecessary credential reads.
     try:
-        with open(CLAUDE_CACHE, encoding="utf-8") as f:
-            guardado = json.load(f)
-        if time.time() - guardado.get("cuando", 0) < CLAUDE_CACHE_SEGUNDOS:
-            return guardado.get("uso"), guardado.get("cuando")
+        guardado = config_store.get(["cache", "agents", "claude-usage"], {})
+        if time.time() - guardado.get("time", 0) < CLAUDE_CACHE_SEGUNDOS:
+            return guardado.get("usage"), guardado.get("time")
     except (OSError, ValueError):
         guardado = None
 
@@ -221,12 +218,8 @@ def uso_en_vivo():
 
     cuando = time.time()
     try:
-        os.makedirs(os.path.dirname(CLAUDE_CACHE), exist_ok=True)
-        with open(CLAUDE_CACHE, "w", encoding="utf-8") as f:
-            # Save only the response, never the token: this file need not
-            # be protected like a credential file.
-            json.dump({"cuando": cuando, "uso": uso}, f)
-    except OSError:
+        config_store.put(["cache", "agents", "claude-usage"], {"time": cuando, "usage": uso})
+    except (OSError, ValueError):
         pass
     return uso, cuando
 
@@ -441,9 +434,9 @@ def codex_app_server():
 
         identity_text = str(current.get("type", "")) + "\0" + str(current.get("email", ""))
         identity = hashlib.sha256(identity_text.encode()).hexdigest()
-        path = cache_directory() / "codex-usage.json"
+        path = ["cache", "agents", "codex-usage"]
         now = time.time()
-        cached = read_json(path) or {}
+        cached = config_store.get(path, {})
         if (cached.get("identity") == identity
                 and 0 <= now - cached.get("time", 0) < CODEX_CACHE_SECONDS
                 and isinstance(cached.get("result"), dict)):
@@ -478,8 +471,8 @@ def codex_app_server():
         else:
             result["status"] = "ok"
         try:
-            atomic_json(path, {"identity": identity, "time": now, "result": result})
-        except OSError:
+            config_store.put(path, {"identity": identity, "time": now, "result": result})
+        except (OSError, ValueError):
             pass
         return result
     finally:
@@ -624,9 +617,9 @@ def query_http(ident, key, url, parser):
     # Cache identity includes the account and regional URL. Never persist
     # credentials, and never reuse another account's quota after a key change.
     identity = hashlib.sha256((url + "\0" + key).encode()).hexdigest()
-    path = cache_directory() / (ident + "-usage.json")
+    path = ["cache", "agents", ident + "-usage"]
     now = time.time()
-    cached = read_json(path) or {}
+    cached = config_store.get(path, {})
     if cached.get("identity") == identity and 0 <= now - cached.get("time", 0) < cached.get("ttl", 60):
         return cached["result"]
     ttl = 60
@@ -648,8 +641,8 @@ def query_http(ident, key, url, parser):
     except (OSError, ValueError, TypeError, KeyError):
         result = no_data("error", "Could not read usage data — check your connection and retry")
     try:
-        atomic_json(path, {"identity": identity, "time": now, "ttl": ttl, "result": result})
-    except OSError:
+        config_store.put(path, {"identity": identity, "time": now, "ttl": ttl, "result": result})
+    except (OSError, ValueError):
         pass
     return result
 

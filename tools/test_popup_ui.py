@@ -6,9 +6,11 @@ The lifecycle checks briefly map test islands, then destroy them.
 """
 
 import os
+import json
 from pathlib import Path
 import subprocess
 import tempfile
+from test_config_helpers import write_settings
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -18,8 +20,11 @@ def main():
         root = Path(directory)
         home = root / "home"
         home.mkdir()
+        (root / "tools").symlink_to(ROOT / "tools")
+        write_settings(home)
         (root / "shell.qml").write_text((ROOT / "tools/popup-test.qml").read_text())
         env = dict(os.environ, HOME=str(home), XDG_CACHE_HOME=str(root / "cache"),
+                   XDG_CONFIG_HOME=str(home / ".config"), XDG_STATE_HOME=str(home / ".local/state"),
                    XDG_DATA_HOME=str(root / "data"), QT_QPA_PLATFORM="wayland",
                    QML_IMPORT_PATH=str(ROOT / "api") + ":" + os.environ.get("QML_IMPORT_PATH", ""),
                    K4_POPUP_TEST_SUITE=str(ROOT / "tools/tst_popup.qml"))

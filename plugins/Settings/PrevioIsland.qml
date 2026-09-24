@@ -10,11 +10,6 @@
 //  alignment, and a fake window that steps aside or not depending
 //  on what you choose. It updates on touching any of the three.
 //
-//  The dock too, if you have it up, because it shares the screen
-//  with the bar and a preview omitting it would be lying by
-//  omission. Its options are not here —they live in Plugins, inside
-//  «Dual mode»— and that is said below.
-
 import QtQuick
 import QtQuick.Layouts
 import K4 as K4

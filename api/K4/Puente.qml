@@ -5,6 +5,8 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    property var config: null
+    property var credentials: null
     // Shared theme and pill indicators.
     property var tema: null
     property var indicadores: null

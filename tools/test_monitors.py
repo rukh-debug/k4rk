@@ -170,13 +170,13 @@ class WorkerTests(unittest.TestCase):
         self.assertFalse((self.state / "confirmed.lua").exists())
 
     def test_confirm_persists_only_after_keep(self):
-        config = self.root / "config/k4/monitors.json"
-        m.atomic(config, '{"managed":true}')
+        os.environ["K4_MONITORS_MANAGED"] = "1"
         record = self.launch()
-        self.assertFalse((self.state / "confirmed.lua").exists())
+        self.assertIsNone(m.config_store.get(["features", "monitors", "outputs"]))
         self.assertTrue(m.decide("keep", record["token"])["ok"])
         self.wait_for("kept")
-        self.assertIn("74.97", (self.state / "confirmed.lua").read_text())
+        self.assertIn("74.97", json.dumps(m.config_store.get(["features", "monitors", "outputs"])))
+        self.assertFalse((self.state / "confirmed.lua").exists())
 
     def test_old_token_and_concurrent_preview_are_rejected(self):
         record = self.launch()
@@ -245,16 +245,17 @@ monitors.apply = partial_apply
         self.assertFalse((self.run / "status.json").exists())
 
     def test_failed_persistence_reverts_and_preserves_saved_rules(self):
-        m.atomic(self.root / "config/k4/monitors.json", '{"managed":true}')
-        m.atomic(self.state / "confirmed.lua", "-- previous confirmed layout\n")
+        os.environ["K4_MONITORS_MANAGED"] = "1"
+        previous = m.editable(m.normalize(RAW))
+        m.config_store.put(["features", "monitors", "outputs"], previous)
         injection = '''
-original_atomic = monitors.atomic
+original_atomic = monitors.config_store.atomic_write
 def fail_once(path, text):
-    if path.name == "confirmed.lua" and "74.97" in text:
+    if path.name == "profile.json" and "74.97" in text:
         original_atomic(path, text)
         raise OSError("Simulated directory fsync failure")
     return original_atomic(path, text)
-monitors.atomic = fail_once
+monitors.config_store.atomic_write = fail_once
 '''
         record = self.launch(injection=injection)
         try:
@@ -262,7 +263,7 @@ monitors.atomic = fail_once
         except (ValueError, OSError):
             pass
         self.wait_for("reverted")
-        self.assertEqual((self.state / "confirmed.lua").read_text(), "-- previous confirmed layout\n")
+        self.assertEqual(m.config_store.get(["features", "monitors", "outputs"]), previous)
         self.assertTrue(m.matches(m.editable(m.normalize(RAW)), m.discover()))
 
 

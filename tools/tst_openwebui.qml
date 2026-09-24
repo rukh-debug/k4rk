@@ -4,9 +4,11 @@ import Quickshell
 import K4 as K4
 import "../plugins/OpenWebUI" as Chat
 import "../plugins/OpenWebUI/Api.js" as Api
+import "../services" as Services
 
 Item {
     id: fixture
+    Component.onCompleted: K4.Puente.config = Services.ConfigStore
     Chat.OpenWebUIPlugin {
         id: engine
         open: true
@@ -39,6 +41,9 @@ Item {
     }
 
     TestCase {
+        function cleanup() {
+            if (qtest_results.failed) console.error("FAILED: " + qtest_results.functionName)
+        }
         name: "OpenWebUI"
         when: fixture.Window.window !== null && fixture.Window.window.visible
         function cleanupTestCase() {
@@ -90,6 +95,26 @@ Item {
         function test_largeClipboard() {
             engine.copyText("large code block\n".repeat(12000))
             wait(300)
+        }
+        function test_profileAndHistoryStayLocal() {
+            tryCompare(Services.ConfigStore, "ready", true)
+            engine.baseUrl = Quickshell.env("K4_OPENWEBUI_TEST_URL")
+            engine.draftEmail = "private-account@example.invalid"
+            engine.currentModel = "private-model"
+            engine.pinLists = [{ name: "Private models", models: ["private-model"] }]
+            engine.guardarAjustes()
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
+            compare(Services.ConfigStore.value(["plugins", "openwebui", "profile", "draftEmail"], ""), "private-account@example.invalid")
+            const shared = JSON.stringify(Services.ConfigStore.data)
+            verify(shared.indexOf("private-account") < 0)
+            verify(shared.indexOf("private-model") < 0)
+            verify(shared.indexOf(engine.baseUrl) < 0)
+            engine.messages = [{ id: "private-message", role: "user", content: "Local-only conversation" }]
+            engine.guardarEstado()
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
+            compare(JSON.stringify(Services.ConfigStore.data), shared)
+            compare(Services.ConfigStore.value(["plugins", "openwebui", "state", "messages"], [])[0].content, "Local-only conversation")
+            engine.newChat()
         }
         function test_streamStatesAndPartialFailure() {
             engine.newChat()

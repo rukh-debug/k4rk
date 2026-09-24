@@ -350,7 +350,7 @@ K4.Plugin {
     //  any color. It starts as k4term's settings say and turns on and
     //  off with the key, which is how it gets used: for a while, not
     //  forever.
-    property bool tranquilo: conf.tranquilo === "si" || conf.tranquilo === "1"
+    property bool tranquilo: conf.quiet === "yes" || conf.quiet === "1"
     function alternarTranquilo() { tranquilo = !tranquilo }
 
     //  ── running a house command in here ───────────────────────────
@@ -1221,47 +1221,14 @@ K4.Plugin {
                            cuerpo])
     }
 
-    //  ── k4term's settings, in the house's Settings ────────────────
-    //
-    //  k4term reads them from ~/.config/k4term/k4term.conf and follows
-    //  them live, so flipping a switch here shows in the open windows
-    //  without reopening anything. Written LINE BY LINE and not the
-    //  whole file on purpose: whoever hand-edited it has the right to
-    //  keep their comments and their keys.
-
-    readonly property string ficheroConf: (K4.Sistema.entorno("XDG_CONFIG_HOME")
-        || K4.Sistema.entorno("HOME") + "/.config") + "/k4term/k4term.conf"
-
-    property var conf: ({ tamaño: "13", opacidad: "0.92", estela: "si",
-                          tranquilo: "no" })
-    property string pendingConfig: ""
-
-    K4.Process {
-        id: configDirectory
-        command: ["mkdir", "-p", self.ficheroConf.slice(0, self.ficheroConf.lastIndexOf("/"))]
-        onTerminado: function (code) {
-            if (code === 0) {
-                fConf.setText(self.pendingConfig)
-                self.pendingConfig = ""
-            } else {
-                K4.Sistema.avisar("Terminal", "Could not create the terminal settings directory", false)
-            }
+    // Both backends share canonical English preferences in config.json.
+    property var conf: ({ size: "13", opacity: "0.92", trail: "yes", quiet: "no" })
+    K4.PluginSettings {
+        id: terminalSettings
+        plugin: "terminal"
+        onLoaded: function (data) {
+            self.conf = Object.assign({ size: "13", opacity: "0.92", trail: "yes", quiet: "no" }, data)
         }
-    }
-
-    function leerConf() {
-        const texto = fConf.text() || ""
-        const nuevo = Object.assign({}, conf)
-        texto.split("\n").forEach(function (linea) {
-            const limpia = linea.trim()
-            if (limpia.indexOf("#") === 0)
-                return
-            const corte = limpia.indexOf("=")
-            if (corte < 0)
-                return
-            nuevo[limpia.slice(0, corte).trim()] = limpia.slice(corte + 1).split(/\s+#/)[0].trim()
-        })
-        conf = nuevo
     }
 
     function poner(clave, valor) {
@@ -1269,22 +1236,7 @@ K4.Plugin {
         nuevo[clave] = String(valor)
         conf = nuevo
 
-        let texto = pendingConfig || fConf.text() || ""
-        const patron = new RegExp("^[ \\t]*" + clave + "[ \\t]*=.*$", "m")
-        if (patron.test(texto))
-            texto = texto.replace(patron, clave + " = " + valor)
-        else
-            texto = (texto.length && texto.slice(-1) !== "\n" ? texto + "\n" : texto)
-                  + clave + " = " + valor + "\n"
-        pendingConfig = texto
-        configDirectory.running = true
-    }
-
-    property K4.Fichero fConf: K4.Fichero {
-        path: self.ficheroConf
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: self.leerConf()
+        terminalSettings.save(nuevo)
     }
 
     K4.Ajustes {
@@ -1304,14 +1256,14 @@ K4.Plugin {
         //  what makes it appear later is K4.Ajustes registering again
         //  when `opciones` changes.
         opciones: !K4.Terminal.islandAvailable ? [] : [
-            { id: "tamaño", nombre: "Font size",
+            { id: "size", nombre: "Font size",
               desc: "The island and the windows both follow it",
               glifo: 0xF0207, tipo: "eleccion",
               alternativas: [{ codigo: "11", nombre: "11" },
                              { codigo: "13", nombre: "13" },
                              { codigo: "15", nombre: "15" },
                              { codigo: "18", nombre: "18" }] },
-            { id: "opacidad", nombre: "Glass",
+            { id: "opacity", nombre: "Glass",
               desc: "Native k4term window opacity",
               disponible: K4.Terminal.nativeWindowAvailable,
               glifo: 0xF00B5, tipo: "eleccion",
@@ -1319,21 +1271,21 @@ K4.Plugin {
                              { codigo: "0.94", nombre: "Soft" },
                              { codigo: "0.88", nombre: "Medium" },
                              { codigo: "0.8", nombre: "Strong" }] },
-            { id: "estela", nombre: "Cursor trail",
+            { id: "trail", nombre: "Cursor trail",
               desc: "Leaves a trail when moving", glifo: 0xF05D8 },
-            { id: "tranquilo", nombre: "Quiet mode",
+            { id: "quiet", nombre: "Quiet mode",
               desc: "Dims everything before the last command",
               glifo: 0xF0335 }
         ]
         valores: ({
-            "tamaño": self.conf["tamaño"] || "13",
-            opacidad: self.conf.opacidad || "0.94",
-            estela: self.conf.estela !== "no" && self.conf.estela !== "0",
-            tranquilo: self.conf.tranquilo === "si" || self.conf.tranquilo === "1"
+            size: self.conf.size || "13",
+            opacity: self.conf.opacity || "0.94",
+            trail: self.conf.trail !== "no" && self.conf.trail !== "0",
+            quiet: self.conf.quiet === "yes" || self.conf.quiet === "1"
         })
         onCambiado: function (id, valor) {
-            if (id === "estela" || id === "tranquilo")
-                self.poner(id, valor ? "si" : "no")
+            if (id === "trail" || id === "quiet")
+                self.poner(id, valor ? "yes" : "no")
             else
                 self.poner(id, valor)
         }

@@ -63,6 +63,14 @@
       checks = forAllSystems (pkgs: {
         k4 = mkK4 pkgs;
 
+        config = pkgs.runCommand "k4-config-tests" {
+          nativeBuildInputs = [ pkgs.python3 ];
+        } ''
+          python3 -B ${self}/tools/test_config_store.py
+          python3 -B ${self}/tools/config_check.py
+          touch "$out"
+        '';
+
         terminal = pkgs.runCommand "k4-terminal-tests" {
           nativeBuildInputs = [ pkgs.python3 pkgs.bash pkgs.zsh ];
         } ''

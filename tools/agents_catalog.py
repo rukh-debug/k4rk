@@ -16,6 +16,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 from xml.etree import ElementTree
+import config_store
 
 SOURCE = "https://models.dev/api.json"
 SNAPSHOT = Path(__file__).resolve().parent.parent / "plugins/Agents/assets/models-dev-providers.json"
@@ -148,9 +149,9 @@ def cache_logo(ident):
 
 
 def load_catalog(snapshot=None, refresh=False, logo=None):
-    cached_path = cache_directory() / "models-dev-providers.json"
+    cached_path = ["cache", "agents", "models-dev-providers"]
     bundled = valid_snapshot(read_json(snapshot or SNAPSHOT))
-    saved = valid_snapshot(read_json(cached_path))
+    saved = valid_snapshot(config_store.get(cached_path))
     data = saved or bundled
     origin = "cache" if saved else "bundled"
     error = ""
@@ -163,8 +164,8 @@ def load_catalog(snapshot=None, refresh=False, logo=None):
             data = {"version": 1, "source": SOURCE, "updated": time.time(), "providers": rows}
             origin = "live"
             try:
-                atomic_json(cached_path, data)
-            except OSError:
+                config_store.put(cached_path, data)
+            except (OSError, ValueError):
                 error = "Catalog loaded, but its cache could not be saved"
         except (OSError, ValueError, TypeError):
             error = "Catalog refresh failed; showing the last available snapshot"

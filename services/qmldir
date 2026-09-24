@@ -21,6 +21,8 @@ singleton SoundIsland 1.0 SoundIsland.qml
 singleton PanelIsland 1.0 PanelIsland.qml
 singleton SessionIsland 1.0 SessionIsland.qml
 singleton Settings 1.0 Settings.qml
+singleton ConfigStore 1.0 ConfigStore.qml
+singleton Credentials 1.0 Credentials.qml
 singleton Enganches 1.0 Enganches.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Sistema 1.0 Sistema.qml

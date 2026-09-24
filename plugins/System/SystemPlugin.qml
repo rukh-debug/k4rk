@@ -196,9 +196,9 @@ K4.Plugin {
 
     // ── settings, persisted ────────────────────────────────
 
-    property var guardado: K4.Guardado {
+    property var guardado: K4.PluginSettings {
         plugin: "system"
-        onCargado: function (d) {
+        onLoaded: function (d) {
             if (d.chipCpu !== undefined) self.enPildoraCpu = d.chipCpu === true
             else if (d.chip !== undefined) self.enPildoraCpu = d.chip === true
             if (d.chipRam !== undefined) self.enPildoraRam = d.chipRam === true
@@ -211,8 +211,7 @@ K4.Plugin {
     }
 
     function apuntar() {
-        guardado.guardar({ chip: (enPildoraCpu || enPildoraRam),
-                           chipCpu: enPildoraCpu, chipRam: enPildoraRam,
+        guardado.save({ chipCpu: enPildoraCpu, chipRam: enPildoraRam,
                            chipNet: enPildoraRed, cardCpu: tarjetaCpu,
                            cardRam: tarjetaRam, cardNet: tarjetaRed })
     }

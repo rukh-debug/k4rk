@@ -183,6 +183,19 @@ Full guide: [docs/PLUGINS.md](docs/PLUGINS.md) · API: [docs/API.md](docs/API.md
 ---
 
 <details>
+<summary><b>Configuration</b></summary>
+
+Shareable k4 appearance and behavior settings use `~/.config/k4/config.json`
+(`$XDG_CONFIG_HOME/k4/config.json` when configured). Open **Settings → General →
+Configuration** to copy the JSON contents in one click or copy its file path.
+Personal profiles, conversations, caches, and plugin installation metadata stay
+outside this file. Credentials use the system keyring; SSH keys and clipboard
+history retain their own storage.
+See [Configuration](docs/CONFIGURATION.md) for migration and storage ownership.
+
+</details>
+
+<details>
 <summary><b>Shortcuts</b></summary>
 
 Written to `~/.config/hypr/config/k4.lua` (or `k4.conf` on the legacy format).

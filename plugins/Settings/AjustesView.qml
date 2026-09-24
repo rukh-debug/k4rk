@@ -871,6 +871,13 @@ FadeIn {
                             }
 
                             //  ── the landing of a family ──────────────
+                            Loader {
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: active && item ? item.implicitHeight : 0
+                                active: bloque.modelData.vista === "general"
+                                sourceComponent: Component { GeneralPage { configuration: ConfigStore } }
+                            }
                             //
                             //  A parent's own page: the desktop at a glance,
                             //  and a card per child. The hero answers «what

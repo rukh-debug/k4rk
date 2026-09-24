@@ -6,10 +6,18 @@ import "../core" as Core
 import "../services" as Services
 import "../plugins/System" as System
 import "../plugins/Settings" as SettingsUI
+import "../plugins/Ssh" as Ssh
 import "../services/SystemMetrics.js" as Metrics
 
 Item {
     id: fixture
+    property int stateLoads: 0
+    K4.PluginState {
+        id: persisted
+        plugin: "persistence-test"
+        name: "settings"
+        onLoaded: fixture.stateLoads++
+    }
     System.SystemPlugin { id: plugin }
     Core.PanelIslandView {
         id: panel
@@ -24,6 +32,12 @@ Item {
         id: savedSettings
         FileView { path: Services.Settings.ruta; blockLoading: true }
     }
+    Component {
+        id: generalPage
+        SettingsUI.GeneralPage { configuration: Services.ConfigStore; width: 540 }
+    }
+    Component { id: credentialFactory; K4.Credential { plugin: "credential-test"; account: "first" } }
+    Component { id: sshFactory; Ssh.SshPlugin {} }
     Component {
         id: widthSpy
         SignalSpy { signalName: "widthChanged" }
@@ -72,6 +86,8 @@ Item {
         name: "SystemMonitor"
         when: fixture.Window.window !== null && Services.Settings.cargado
         function initTestCase() {
+            K4.Puente.config = Services.ConfigStore
+            K4.Puente.credentials = Services.Credentials
             K4.Puente.tema = Core.Theme
             K4.Puente.systemMonitor = Services.Sistema
             K4.Puente.enganches = Services.Enganches
@@ -88,6 +104,7 @@ Item {
             wait(100)
         }
         function init() {
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
             Core.Theme.chosenFont = ""
             plugin.tarjetaCpu = true; plugin.tarjetaRam = true; plugin.tarjetaRed = true
             Services.PanelIsland.openTab("controls")
@@ -207,15 +224,93 @@ Item {
                     }
                 }
                 // Read the saved preference from disk independently of Settings' cache.
+                tryCompare(Services.ConfigStore, "pendingCount", 0)
                 const saved = createTemporaryObject(savedSettings, fixture)
                 verify(saved !== null)
-                compare(JSON.parse(saved.text()).pillIndicatorIconSize, 20)
+                compare(JSON.parse(saved.text()).shell.pillIndicatorIconSize, 20)
                 Services.Settings.pillIndicatorIconSize = 8
+                tryCompare(Services.ConfigStore, "pendingCount", 0)
                 Services.Settings.cargar()
-                compare(Services.Settings.pillIndicatorIconSize, 20)
+                compare(Services.Settings.pillIndicatorIconSize, 8)
             } finally {
                 Services.Settings.poner("pillIndicatorIconSize", previousSize)
             }
+        }
+        function test_generalConfigurationCopy() {
+            const section = Services.Settings.definicion.find(g => g.vista === "general")
+            verify(section !== undefined)
+            compare(section.grupo, "General")
+            const page = createTemporaryObject(generalPage, fixture)
+            verify(page !== null)
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
+            const button = findChild(page, "copy-configuration")
+            verify(button !== null && button.enabled)
+            compare(findChild(page, "configuration-path").text, Services.ConfigStore.path)
+            button.clicked()
+            tryCompare(page, "copied", true)
+            compare(Services.ConfigStore.copyError, "")
+        }
+        function test_credentialLifecycle() {
+            const entry = credentialFactory.createObject(fixture)
+            verify(entry !== null)
+            entry.save("secret-after-reload")
+            wait(5)
+            entry.destroy()
+            tryVerify(() => Services.Credentials.active === null && Services.Credentials.queue.length === 0)
+            const reloaded = createTemporaryObject(credentialFactory, fixture)
+            tryCompare(reloaded, "ready", true)
+            compare(reloaded.value, "secret-after-reload")
+            verify(JSON.stringify(Services.ConfigStore.data).indexOf("secret-after-reload") < 0)
+            reloaded.account = "second"
+            reloaded.save("second-secret")
+            tryCompare(reloaded, "busy", false)
+            compare(reloaded.value, "second-secret")
+        }
+        function test_credentialRetryAfterUnlock() {
+            const entry = createTemporaryObject(credentialFactory, fixture, { account: "locked" })
+            tryCompare(entry, "ready", true)
+            verify(entry.error.length > 0)
+            entry.load()
+            tryCompare(entry, "ready", true)
+            compare(entry.error, "")
+            compare(entry.value, "old-secret")
+        }
+        function test_sshConfigurationAndCredentials() {
+            const ssh = sshFactory.createObject(fixture)
+            verify(ssh !== null)
+            wait(50)
+            ssh.open()
+            ssh.borrador = { alias: "fixture-host", host: "example.invalid", usuario: "tester",
+                puerto: "22", clave: "/tmp/test identity", contrasena: "ssh-test-secret" }
+            verify(ssh.guardarBorrador())
+            ssh.destroy()
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
+            compare(Services.ConfigStore.value(["plugins", "ssh", "hosts", "fixture-host", "host"], ""), "example.invalid")
+            compare(Services.ConfigStore.value(["plugins", "ssh", "hosts", "fixture-host", "identityFile"], ""), "/tmp/test identity")
+            tryVerify(() => Services.Credentials.active === null && Services.Credentials.queue.length === 0)
+            verify(JSON.stringify(Services.ConfigStore.data).indexOf("ssh-test-secret") < 0)
+        }
+        function test_rapidConfigurationChanges() {
+            tryCompare(persisted, "ready", true)
+            const loads = fixture.stateLoads
+            persisted.save({ selected: false })
+            persisted.save({ selected: true })
+            persisted.save({ selected: false })
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
+            compare(Services.ConfigStore.value(["plugins", "persistence-test", "settings", "selected"], null), false)
+            compare(fixture.stateLoads, loads)
+            Services.ConfigStore.setValue(["plugins", "persistence-test", "settings", "selected"], true)
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
+            compare(persisted.value.selected, true)
+            compare(fixture.stateLoads, loads + 1)
+            const previous = Services.Settings.notificationsOnHover
+            Services.Settings.notificationsOnHover = !previous
+            Services.Settings.notificationsOnHover = previous
+            Services.Settings.notificationsOnHover = !previous
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
+            compare(Services.ConfigStore.value(["shell", "notificationsOnHover"], null), !previous)
+            Services.Settings.notificationsOnHover = previous
+            tryCompare(Services.ConfigStore, "pendingCount", 0)
         }
         function test_stablePill_data() {
             const rows = []
@@ -243,11 +338,15 @@ Item {
                 plugin.enPildoraRed = true
                 plugin.pintarChips()
                 Services.PlayerIsland.asomando = false
+                tryCompare(Services.ConfigStore, "pendingCount", 0)
                 const views = createTemporaryObject(pillViews, fixture)
                 verify(views !== null)
                 wait(80)
                 const roots = [views.idle, views.clock, views.player]
                 function geometry() {
+                    // Layout positions are meaningful after scene polish, not
+                    // in the short interval between replacing model delegates.
+                    verify(waitForRendering(views))
                     const result = [Services.Indicadores.anchoAproximado, Services.IdleIsland.estimado]
                     for (const root of roots) {
                         result.push(root.width)
@@ -275,6 +374,7 @@ Item {
                     for (const child of item.children) checkText(child)
                 }
                 function checkIcons(size) {
+                    verify(waitForRendering(views))
                     for (const root of roots) {
                         for (const indicator of Services.Indicadores.reparto.muestra) {
                             const chip = find(root, "pill-" + indicator.id)
@@ -382,6 +482,7 @@ Item {
             plugin.tarjetaRam = !!(data.mask & 2)
             plugin.tarjetaRed = !!(data.mask & 4)
             wait(50)
+            verify(waitForRendering(panel))
             const card = find(panel, "tile-system")
             verify(card !== null, "System card must register")
             compare(card.height, 112)
@@ -389,6 +490,7 @@ Item {
             bounds(panel, panel)
             Services.PanelIsland.openTab("system")
             wait(50)
+            verify(waitForRendering(panel))
             bounds(panel, panel)
             const cpu = find(panel, "system-cpu")
             const gpu = find(panel, "system-gpu")

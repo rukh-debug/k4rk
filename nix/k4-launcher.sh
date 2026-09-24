@@ -134,6 +134,9 @@ export QT_MEDIA_BACKEND=ffmpeg
 export FONTCONFIG_FILE="@fontconf@"
 
 # ─── Start ───────────────────────────────────────────────────────────────────
+python3 "$mirror/tools/config_store.py" init >/dev/null
+python3 "$mirror/tools/config_outputs.py" all
+
 #  The log is rotated at every start: a crash that forces a restart would
 #  otherwise eat the one log that explains it. K4_LOG=0 opts out. A plain
 #  redirect, not `… | tee`: `exec` inside a pipeline does not replace the

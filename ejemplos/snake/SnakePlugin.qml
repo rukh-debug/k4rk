@@ -2,7 +2,7 @@
 //
 //  The game uses only K4 and QtQuick: board state lives in the plugin,
 //  a Timer advances it, arrow keys control it with exclusive keyboard
-//  access only during play, and K4.Guardado stores the high score.
+//  access only during play, and K4.PluginState stores the high score locally.
 //
 //      cp -r ejemplos/snake ~/.config/k4/plugins/
 //      quickshell ipc -p …/shell.qml call k4 pluginEnable snake
@@ -50,9 +50,9 @@ K4.Plugin {
 
     view: Component { SnakeView { plugin: self } }
 
-    property var guardado: K4.Guardado {
+    property var guardado: K4.PluginState {
         plugin: "snake"
-        onCargado: function (d) { self.record = d.record || 0 }
+        onLoaded: function (d) { self.record = d.record || 0 }
     }
 
     function empezar() {
@@ -102,7 +102,7 @@ K4.Plugin {
             muerto = true
             if (puntos > record) {
                 record = puntos
-                guardado.guardar({ record: record })
+                guardado.save({ record: record })
             }
             return
         }

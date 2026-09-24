@@ -116,71 +116,24 @@ Singleton {
     //  The scan results are rediscovered every time; the paths the user
     //  added by hand are not — without this file they were memory-only
     //  and every restart silently forgot them.
-    readonly property string rutaEstado:
-        casa + "/.local/state/k4/fondos.json"
-
     function persistir() {
-        estado.setText(JSON.stringify({ extras: extras }, null, 1))
+        ConfigStore.setValue(["features", "wallpaper", "extras"], extras)
     }
 
-    FileView {
-        id: estado
-        path: fondos.rutaEstado
-        blockLoading: true
-        onLoaded: fondos.cargarEstado()
+    Connections {
+        target: ConfigStore
+        function onReadyChanged() { fondos.cargarEstado() }
+        function onSettled() { fondos.cargarEstado() }
     }
+    Component.onCompleted: cargarEstado()
 
     function cargarEstado() {
-        try {
-            const d = JSON.parse(estado.text())
-            if (d.extras && d.extras.length !== undefined)
-                extras = d.extras
-        } catch (e) {
-            //  A half-written state is not an emergency: the extras stay
-            //  empty and the next change writes the file whole.
-            migrar()
-        }
-        if (extras.length === 0)
-            migrar()
+        if (!ConfigStore.ready || ConfigStore.pendingCount) return
+        extras = ConfigStore.value(["features", "wallpaper", "extras"], [])
     }
-
-    //  One shot, from the state the deleted theme plugin used to own:
-    //  the paths its picker had added. Old key, read once, kept ours.
-    FileView {
-        id: antiguo
-        path: fondos.casa + "/.local/state/k4/hyprtheme.json"
-        blockLoading: true
-        onLoaded: fondos.migrar()
-    }
-
-    function migrar() {
-        if (migrado || extras.length > 0)
-            return
-        migrado = true
-        try {
-            const s = JSON.parse(antiguo.text())
-            const leidos = (s.extras && s.extras.length !== undefined)
-                ? s.extras : []
-            const d = extras.slice()
-            for (let i = 0; i < leidos.length; ++i)
-                if (admitido(leidos[i]) && d.indexOf(leidos[i]) < 0)
-                    d.push(leidos[i])
-            if (d.length !== extras.length) {
-                extras = d
-                persistir()
-            }
-            if (s.gapsOut !== undefined)
-                huecos = parseInt(s.gapsOut, 10) || 8
-        } catch (e) {
-            //  Nothing to migrate from: first run, or never used the old
-            //  picker. Either way the answer is the same — start empty.
-        }
-    }
-
-    property bool migrado: false
 
     // ── how they look ─────────────────────────────────────────────
-    readonly property string cache: casa + "/.cache/k4/fondos"
+    readonly property string cache: (Quickshell.env("XDG_CACHE_HOME") || casa + "/.cache") + "/k4/fondos"
 
     //  `gif|webp|apng` counts as STILL even when it moves: an
     //  AnimatedImage paints it and not the player, so for thumbnails the

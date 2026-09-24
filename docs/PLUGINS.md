@@ -483,7 +483,10 @@ bar's directory, not yours.
 | `K4.Estela` | the house caret, with the trail k4term leaves — use it as `cursorDelegate` |
 | `K4.Aparicion` | enters with a fade instead of popping |
 | `K4.FocoInicial` | moves the cursor to your text field on open |
-| `K4.Guardado` | your state as JSON, in YOUR directory, with `cargado`/`guardar` |
+| `K4.Guardado` | Existing `cargado`/`guardar` contract; settings are shared, other state is local |
+| `K4.PluginSettings` | Shareable preference values in `config.json`; `loaded`/`save` |
+| `K4.PluginState` | Owner-local named state files; `loaded`/`save`, recoverable `saveSections` |
+| `K4.Credential` | Memory-only credential value backed by the system keyring |
 | `K4.Ipc` | your IPC target (`k4.<id>`) |
 | `K4.Process` | external processes — requires the `procesos` permission |
 | `K4.Terminal` | the house terminal: run a script where it best fits, open a window, or register an island provider through its host adapter — process launches require `procesos`; see [the provider reference](API.md#terminal-access-and-providers) |
@@ -493,7 +496,7 @@ bar's directory, not yours.
 | `K4.Pildora` | an indicator on the folded pill |
 | `K4.Capsule` | the capsule growing toward a screen edge with your text |
 | `K4.Submaps` | the submap Hyprland is in right now ("" for none). Names follow the parseable standard — `Title: (k)Label (command)` — which the house hyprland-submap plugin turns into its key-chip island; anything else shows as plain text |
-| `K4.Paths` | paths: `estadoDe(id)` is your state directory |
+| `K4.Paths` | Asset/helper paths and the display-only `config` location |
 | `K4.IconoPlugin` | a plugin's icon: its image if it brings one, its glyph if not |
 
 For live numeric pill indicators, pass an optional seventh `slots` argument to
@@ -584,7 +587,7 @@ a warning that saves you an afternoon: if you put your list in a plain
 a MouseArea accepts the wheel whether it handles it or not — and no error
 will be raised. That is why `K4.Rodillo` exists.
 
-For a game: `K4.Guardado` is the save and the high score,
+For a game: `K4.PluginState` is the local save and the high score,
 `tecladoAlPasar: true` gives you the keys while the pointer is over the
 island and hands them back when it leaves, and a `Timer` is the tick. Use
 `grabKeyboard` only for something you open, look at and close: a game stays

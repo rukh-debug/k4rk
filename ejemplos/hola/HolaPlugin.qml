@@ -24,19 +24,21 @@ K4.Plugin {
 
     view: Component { HolaView { plugin: self } }
 
-    //  The plugin's own state survives a bar restart.
-    property var guardado: K4.Guardado {
+    // Counters and personal names stay local; only the behavior toggle is shared.
+    property var preferences: K4.PluginSettings {
         plugin: "hola"
-        onCargado: function (d) {
-            self.visitas = d.visitas || 0
-            self.saludar = d.saludar !== false
-            self.aQuien = d.aQuien || ""
+        onLoaded: function (data) { self.saludar = data.greetOnOpen !== false }
+    }
+    property var guardado: K4.PluginState {
+        plugin: "hola"
+        onLoaded: function (d) {
+            self.visitas = d.visits || 0
+            self.aQuien = d.recipient || ""
         }
     }
 
     function apuntar() {
-        guardado.guardar({ visitas: visitas, saludar: saludar,
-                           aQuien: aQuien })
+        guardado.save({ visits: visitas, recipient: aQuien })
     }
 
     //  Plugin settings inside the bar's Settings. The plugin stores the
@@ -48,8 +50,8 @@ K4.Plugin {
             { id: "saludar", nombre: "Greet on open",
               desc: "Otherwise just show the counter",
               glifo: 0xF1821 },
-            //  A free-text field: a name here; in a real plugin, a service
-            //  URL or its key with `secreto: true`.
+            // A personal name is local profile data. Real credentials use
+            // K4.Credential, even when a text field masks their display.
             { id: "aQuien", tipo: "texto",
               nombre: "Who to greet",
               desc: "Shows up in the island greeting",
@@ -57,8 +59,10 @@ K4.Plugin {
         ]
         valores: ({ saludar: self.saludar, aQuien: self.aQuien })
         onCambiado: function (id, valor) {
-            if (id === "saludar")
+            if (id === "saludar") {
                 self.saludar = valor
+                self.preferences.save({ greetOnOpen: self.saludar })
+            }
             if (id === "aQuien")
                 self.aQuien = String(valor).trim()
             self.apuntar()

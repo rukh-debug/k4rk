@@ -111,6 +111,11 @@ an English-only codebase.
 
 ### 3. Durable state and transition tooling
 
+The settings-only configuration batch uses `config.json`, `K4.PluginSettings`,
+`K4.PluginState`, and `K4.Credential`. The v1→v2 transition is isolated in `tools/migrate_config.py`;
+native format generation is isolated in `tools/config_outputs.py`. See
+`docs/CONFIGURATION.md` for the cutover, credential boundary, and retirement rules.
+
 - [ ] Host settings filename and legacy key/value readers.
 - [ ] Plugin enablement envelope, catalog cache and origin metadata.
 - [ ] Default per-plugin state basename.

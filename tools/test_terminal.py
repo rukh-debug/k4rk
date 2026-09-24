@@ -197,8 +197,9 @@ class ScreenTests(unittest.TestCase):
 
     def test_config_preserves_hex_colors(self):
         with tempfile.TemporaryDirectory(prefix="k4-terminal-") as directory:
-            path = Path(directory) / "k4term.conf"
-            path.write_text("# Comment\nfondo = #112233\ntinta = #abcdef # Comment\n")
+            path = Path(directory) / "config.json"
+            path.write_text(json.dumps({"plugins": {"terminal": {"settings": {
+                "background": "#112233", "ink": "#abcdef"}}}}))
             settings = Settings()
             settings.path = str(path)
             settings.read()

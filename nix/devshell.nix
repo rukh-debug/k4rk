@@ -31,6 +31,7 @@
   networkmanager,
   bluez,
   libnotify,
+  libsecret,
   xdg-utils,
   xdg-user-dirs,
   desktop-file-utils,
@@ -81,6 +82,7 @@ mkShell {
     networkmanager
     bluez
     libnotify
+    libsecret
     xdg-utils
     xdg-user-dirs
     desktop-file-utils

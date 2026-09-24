@@ -70,7 +70,7 @@ Zen credit tracking is not advertised as supported.
 ## Polling, persistence and offline behavior
 
 - Provider choices, warning preferences and live mode belong to the plugin's
-  `K4.Guardado` state under `~/.local/state/k4/plugins/agents/estado.json`.
+  `K4.PluginSettings` preferences under `plugins.agents.settings` in `~/.config/k4/config.json`.
   Existing warning/live settings are preserved. Current state takes precedence
   over the one-shot legacy-state migration.
 - Settings load before any usage query. Disabled adapters perform no detection,

@@ -133,7 +133,8 @@ K4Plugin {
 
     //  Turning memory off also empties what it holds: a knob that
     //  says «do not keep this» cannot leave yesterday's chat on disk.
-    onRememberHistoryChanged: if (!rememberHistory) guardarEstado()
+    onRememberHistoryChanged: if (!rememberHistory && ajustes.ready && !loadingPreferences) guardarAjustes()
+    property bool loadingPreferences: false
 
     readonly property string dir: "/tmp/k4-openwebui"
 
@@ -150,46 +151,56 @@ K4Plugin {
 
     // ── persistence ───────────────────────────────────────────────
     //
-    //  Two files under the plugin's state dir: the knobs (`ajustes`)
-    //  and the conversation left half-done (`estado`). The token
-    //  lives in the first one — local, like the web client's cookie.
+    // Shareable behavior preferences use config.json. Server profiles and
+    // conversations are owner-local state; tokens are keyring entries.
+    K4.Credential {
+        id: credential
+        plugin: "openwebui"
+        account: self.baseUrl.replace(/\/+$/, "")
+        onValueChanged: self.apiToken = value
+        onErrorChanged: if (error) self.signInError = error
+    }
 
-    K4.Guardado {
+    K4.PluginSettings {
         id: ajustes
         plugin: "openwebui"
-        nombre: "ajustes"
-        onCargado: function (d) {
-            self.baseUrl = d.baseUrl || ""
-            self.apiToken = d.apiToken || ""
-            self.currentModel = d.currentModel || ""
+        onLoaded: function (d) {
+            self.loadingPreferences = true
             self.rememberHistory = d.rememberHistory !== false
             self.openAfterResponse = d.openAfterResponse === true
+            self.loadingPreferences = false
+            if (!self.rememberHistory) {
+                self.messages = []
+                self.currentChatId = ""
+                self.chatTitle = ""
+            } else if (estado.ready) self.restoreHistory(estado.value)
+        }
+    }
+    K4.PluginState {
+        id: profile
+        plugin: "openwebui"
+        name: "profile"
+        onErrorChanged: if (error) self.signInError = error
+        onLoaded: function (d) {
+            self.baseUrl = d.baseUrl || ""
+            self.currentModel = d.currentModel || ""
             self.draftServer = d.draftServer || d.baseUrl || ""
             self.draftEmail = d.draftEmail || ""
             self.draftPassword = ""
             self.draftApiKey = ""
             self.pinLists = Array.isArray(d.pinLists) ? d.pinLists : []
-            //  The two files load in any order: if this one lands
-            //  after the conversation, its verdict on remembering is
-            //  the one that counts.
-            if (!self.rememberHistory) {
-                self.messages = []
-                self.currentChatId = ""
-                self.chatTitle = ""
-            }
-            if (d.draftPassword !== undefined || d.draftApiKey !== undefined)
-                Qt.callLater(self.guardarAjustes)
         }
     }
 
     function guardarAjustes() {
-        ajustes.guardar({ baseUrl: baseUrl, apiToken: apiToken,
-                          currentModel: currentModel,
-                          rememberHistory: rememberHistory,
-                          openAfterResponse: openAfterResponse,
-                          draftServer: draftServer,
-                          draftEmail: draftEmail,
-                          pinLists: pinLists })
+        if (!ajustes.ready || loadingPreferences) return
+        const sections = {
+            settings: { rememberHistory: rememberHistory, openAfterResponse: openAfterResponse }
+        }
+        if (profile.ready) sections.profile = { baseUrl: baseUrl, currentModel: currentModel,
+            draftServer: draftServer, draftEmail: draftEmail, pinLists: pinLists }
+        if (!rememberHistory) sections.state = {}
+        ajustes.saveSections(sections)
     }
 
     // ── pin lists, from the Settings page ─────────────────────────
@@ -244,6 +255,10 @@ K4Plugin {
 
     // Apply a server explicitly. Credentials belong to the server that issued them.
     function confirmarBorradores() {
+        if (!profile.ready) {
+            signInError = profile.error || "The local server profile is still loading"
+            return false
+        }
         const nuevo = draftServer.trim().replace(/\/+$/, "")
         if (!/^https?:\/\/[^/\s]+(?:\/[^\s]*)?$/.test(nuevo)) {
             signInError = "Enter a complete http:// or https:// server address."
@@ -263,28 +278,27 @@ K4Plugin {
         return true
     }
 
-    K4.Guardado {
+    K4.PluginState {
         id: estado
         plugin: "openwebui"
-        nombre: "estado"
-        onCargado: function (d) {
-            if (!self.rememberHistory)
-                return
+        onLoaded: function (d) { self.restoreHistory(d) }
+    }
+    function restoreHistory(d) {
+            if (!ajustes.ready || !rememberHistory) return
             self.messages = Array.isArray(d.messages) ? d.messages : []
             self.currentChatId = d.currentChatId || ""
             self.chatTitle = d.chatTitle || ""
             self.sidebarVisible = d.sidebarVisible === true
             self.chatDocument = d.chatDocument || {}
-        }
     }
 
     function guardarEstado() {
         if (!rememberHistory) {
-            estado.guardar({})
+            estado.save({})
             return
         }
         // Keep the full active branch so a reopened chat retains its parent chain.
-        estado.guardar({ messages: messages,
+        estado.save({ messages: messages,
                          currentChatId: currentChatId,
                          chatTitle: chatTitle,
                          chatDocument: chatDocument,
@@ -831,6 +845,7 @@ K4Plugin {
                 if (epoch !== connectionEpoch) return
                 signingIn = false
                 apiToken = token
+                credential.save(token)
                 currentChatId = ""       // the token's account, not
                 chatList = []            // whoever was there before
                 models = []
@@ -850,6 +865,7 @@ K4Plugin {
         if (signingIn || clave.trim().length === 0 || !confirmarBorradores())
             return
         apiToken = clave.trim()
+        credential.save(apiToken)
         draftPassword = ""
         draftApiKey = ""
         guardarAjustes()
@@ -859,6 +875,7 @@ K4Plugin {
 
     function salir() {
         apiToken = ""
+        credential.save("")
         draftPassword = ""
         draftApiKey = ""
         modelsError = ""

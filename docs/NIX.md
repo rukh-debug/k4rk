@@ -32,7 +32,7 @@ change, starting the bar is one `stat`. Updating is `nix flake update` —
 the next launch rebuilds the mirror.
 
 Everything else lives outside the code, as it always has:
-`~/.local/state/k4` (settings, plugin state), `~/.config/k4/plugins`
+`~/.config/k4/config.json` (shareable settings), `~/.local/state/k4` (private state), `~/.config/k4/plugins`
 (user plugins). The mirror is only the code.
 
 **The built-in updater is out of the picture.** There is no `.git` in the
@@ -88,7 +88,7 @@ programs.k4.monitors.enable = true;
 
 This requires Home Manager-managed Lua Hyprland. It appends a monitor-only hook
 after the normal output defaults, independently of `hyprland.hookIntoConfig`.
-Only confirmed changes are saved, under `$XDG_STATE_HOME/k4/monitors/`; without
+Only confirmed changes are saved, in `$XDG_STATE_HOME/k4/monitors/profile.json`; without
 this option the page applies session-only changes. See [Monitor settings](MONITORS.md)
 for the apply/revert contract, supported controls, and recovery behavior.
 

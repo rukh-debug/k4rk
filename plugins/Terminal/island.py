@@ -152,13 +152,8 @@ def asks_about_fingerprint(text):
     return t.endswith("?") and "(yes/no" in t
 
 
-#  ── k4term's settings, read from its own file ─────────────────────
-#
-#  The bar's Settings page writes here line by line and k4term's
-#  windows follow it live; the island reads the same place so the two
-#  never disagree. Missing keys keep the defaults below. The file is
-#  k4term's format (Spanish keys among them) and is left untouched —
-#  it is an external binary's contract, like the wire protocol.
+# Canonical preferences. Native-terminal format conversion lives in the
+# host's compatibility adapter; the bundled backend reads config.json.
 
 class Settings:
     def __init__(self):
@@ -171,33 +166,28 @@ class Settings:
         self.ink = None
         self.paper = None
         self.path = os.path.join(os.environ.get(
-            "XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-            "k4term", "k4term.conf")
+            "XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "k4", "config.json")
 
     def read(self):
         try:
-            with open(self.path, "r", encoding="utf-8", errors="replace") as f:
-                for line in f:
-                    clean = line.strip()
-                    if clean.startswith("#") or "=" not in clean:
-                        continue
-                    key, value = (part.strip() for part in clean.split("=", 1))
-                    value = re.split(r"\s+#", value, maxsplit=1)[0].strip()
-                    self._apply(key.lower(), value)
-        except OSError:
+            with open(self.path, "r", encoding="utf-8") as f:
+                settings = json.load(f).get("plugins", {}).get("terminal", {}).get("settings", {})
+            for key, value in settings.items():
+                self._apply(key, str(value))
+        except (OSError, ValueError, AttributeError, TypeError):
             pass
 
     def _apply(self, key, value):
-        if key in ("fuente", "font"):
+        if key == "font":
             self.font = value
-        elif key in ("tamaño", "tamano", "size"):
+        elif key == "size":
             try:
                 self.size = min(72.0, max(6.0, float(value)))
             except ValueError:
                 pass
-        elif key in ("estela", "trail"):
+        elif key == "trail":
             v = value.lower()
-            if v in ("si", "sí", "yes", "true"):
+            if v in ("yes", "true"):
                 self.trail = 8
             elif v in ("no", "false"):
                 self.trail = 0
@@ -210,14 +200,14 @@ class Settings:
             self.shell = value
         elif key == "term":
             self.term = value
-        elif key in ("historial", "scrollback"):
+        elif key == "scrollback":
             try:
                 self.scrollback = max(100, min(100000, int(value)))
             except ValueError:
                 pass
-        elif key == "tinta" and hex_color(value):
+        elif key == "ink" and hex_color(value):
             self.ink = hex_color(value)
-        elif key == "fondo" and hex_color(value):
+        elif key == "background" and hex_color(value):
             self.paper = hex_color(value)
 
     def message(self):

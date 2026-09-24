@@ -15,26 +15,11 @@ import "../core"
 Singleton {
     id: manager
 
-    readonly property string rutaEstado:
-        (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins.json"
+    readonly property string rutaEstado: ConfigStore.path
 
-    //  Two recovery mechanisms ensure that updating the bar does not lose
-    //  the user's plugins.
-    //
-    //   · `rutaCopia` duplicates the last readable state. If plugins.json is
-    //     truncated by an interrupted write or a full disk, falling back to
-    //     defaults would disable user plugins, which default to OFF. The
-    //     next save would then make that loss permanent.
-    //
-    //   · `rutaCache` stores the last valid `tools/plugins.py --list` result.
-    //     A git pull can replace that script while the bar is running. One
-    //     failed call, caused by a partial file or a new dependency, used to
-    //     select the embedded emergency catalog containing only built-ins.
-    //     User plugins then disappeared from the list and were unloaded.
-    readonly property string rutaCopia:
-        (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins.json.bak"
-    readonly property string rutaCache:
-        (Quickshell.env("HOME") || "") + "/.local/state/k4/catalogo.json"
+    // The last valid catalog and enablement share the transactional store.
+    // A failed catalog query must not erase installed plugins from the view.
+    readonly property string rutaCache: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/k4/plugins/catalog.json"
     readonly property string rutaCatalogo:
         Quickshell.shellPath("plugins/catalog.json")
 
@@ -648,76 +633,24 @@ Singleton {
         alternar(String(id).replace(/^plugin_/, ""))
     }
 
-    //  Parse usable state into a map or return null. An empty map is valid
-    //  state with no saved overrides; null means unreadable state. Confusing
-    //  the two previously caused users' plugins to be disabled.
-    //  Plugin ids that were renamed when the bar went English-only;
-    //  old saved state is remapped on load instead of being thrown
-    //  away. `ask` is the newest: the Codex assistant became the
-    //  OpenWebUI chat, and whoever had it on keeps the chat on.
-    readonly property var idsViejos: ({ sonido: "sound",
-                                        agentes: "agents",
-                                        ask: "openwebui",
-                                        submap: "hyprland-submap" })
-
-    function _leerEstado(bruto) {
-        if (!bruto || bruto.length === 0)
-            return null
-        try {
-            const d = JSON.parse(bruto)
-            if (d.habilitados && typeof d.habilitados === "object") {
-                const m = {}
-                for (const k in d.habilitados)
-                    m[idsViejos[k] !== undefined ? idsViejos[k] : k] = d.habilitados[k]
-                return m
-            }
-        } catch (e) {
-            //  Fall through; the caller reports the failure.
-        }
-        return null
-    }
-
-    //  Record when the backup supplied state because the primary was
-    //  unreadable. Report recovery rather than hiding data loss until the
-    //  backup also becomes unavailable.
-    property bool estadoRepuesto: false
-
     function cargar() {
-        const bruto = estado.text()
-        let mapa = _leerEstado(bruto)
-
-        if (mapa === null) {
-            //  Check the backup before treating an unreadable primary as
-            //  empty state. This distinguishes first startup from a damaged
-            //  state file.
-            const deCopia = _leerEstado(copiaEstado.text())
-            if (deCopia !== null) {
-                mapa = deCopia
-                estadoRepuesto = true
-                console.warn("k4: plugins.json couldn't be read; restored from "
-                             + manager.rutaCopia)
-            }
-        }
-
-        if (mapa !== null) {
-            habilitados = mapa
-            //  Create the backup on startup rather than waiting for the
-            //  first setting change, so recovery is available immediately.
-            //  If state came FROM the backup, repair the primary with it.
-            const bueno = JSON.stringify({ habilitados: mapa }, null, 1)
-            if (estadoRepuesto)
-                estado.setText(bueno)
-            else if (copiaEstado.text() !== bueno)
-                copiaEstado.setText(bueno)
-        }
+        if (!ConfigStore.ready || ConfigStore.pendingCount) return
+        const entries = ConfigStore.value(["plugins"], {})
+        const mapa = {}
+        for (const id of Object.keys(entries))
+            if (typeof entries[id].enabled === "boolean") mapa[id] = entries[id].enabled
+        const changed = JSON.stringify(habilitados) !== JSON.stringify(mapa)
+        if (changed) habilitados = mapa
+        queuedEnabled = Object.assign({}, mapa)
 
         cargado = true
         //  With state loaded, start plugins if the catalog has arrived.
-        //  Starting here rather than in shell.qml avoids a race: state waits
-        //  for mkdir, while the catalog waits for the listing process.
+        //  Starting here rather than in shell.qml avoids a race between the
+        //  configuration bridge and the catalog listing process.
         //  Creating before both arrive could load disabled plugins or omit
         //  user plugins.
-        arrancar()
+        if (listo && changed) _sincronizar()
+        else arrancar()
     }
 
     //  `tools/plugins.py --list` emits repository and ~/.config/k4/plugins
@@ -774,13 +707,13 @@ Singleton {
             _intentosLista = 0
             //  Save the last valid list for when the script fails to answer;
             //  without it, startup would omit user plugins on that occasion.
-            if (cacheCatalogo.text() !== bruto)
-                cacheCatalogo.setText(bruto)
+            if (ConfigStore.ready)
+                ConfigStore.setValue(["cache", "pluginCatalog"], JSON.parse(bruto))
         } else if (catalogo.length === 0 || !catalogoListo) {
             //  An unreadable response does not mean the plugins disappeared.
             //  Try the last valid list before the emergency built-in catalog:
             //  the plugins may still exist even though listing failed.
-            if (_aplicarCatalogo(cacheCatalogo.text())) {
+            if (_aplicarCatalogo(JSON.stringify(ConfigStore.value(["cache", "pluginCatalog"], {})))) {
                 catalogoDe = "cache"
                 console.warn("k4: couldn't list the plugins; falling back to "
                              + manager.rutaCache)
@@ -851,6 +784,10 @@ Singleton {
                 if (_crear(m))
                     cambios = true
             }
+            if (!estaHabilitado(m.id) && _porId[m.id]) {
+                _destruir(m.id)
+                cambios = true
+            }
         }
         //  Remove live plugins that are no longer listed in the catalog.
         const ids = Object.keys(_porId)
@@ -882,29 +819,21 @@ Singleton {
         }
         if (Object.keys(limpio).length !== Object.keys(habilitados).length)
             habilitados = limpio
-        const texto = JSON.stringify({ habilitados: limpio }, null, 1)
-        estado.setText(texto)
-        //  Save a backup too. This small duplicate turns primary-file damage
-        //  into a logged recovery rather than losing every enabled plugin.
-        copiaEstado.setText(texto)
-        estadoRepuesto = false
+        const operations = []
+        for (const id of Object.keys(limpio))
+            if (queuedEnabled[id] !== limpio[id])
+                operations.push({ path: ["plugins", id, "enabled"], value: limpio[id] })
+        if (operations.length && ConfigStore.transact(operations) > 0)
+            queuedEnabled = Object.assign({}, limpio)
     }
 
-    FileView {
-        id: estado
-        path: manager.rutaEstado
-        blockLoading: true
-        //  Write a temporary file and rename it. Otherwise an interrupted
-        //  setText could leave truncated JSON, the unreadable state handled
-        //  by the recovery path above.
-        atomicWrites: true
-    }
+    property var queuedEnabled: ({})
 
-    FileView {
-        id: copiaEstado
-        path: manager.rutaCopia
-        blockLoading: true
-        atomicWrites: true
+    Connections {
+        target: ConfigStore
+        function onReadyChanged() { if (ConfigStore.ready) manager.cargar() }
+        function onSettled() { manager.cargar() }
+        function onDataChanged() { if (ConfigStore.ready) manager.cargar() }
     }
 
     Process {
@@ -942,13 +871,6 @@ Singleton {
             listador.running = false
             listador.running = true
         }
-    }
-
-    FileView {
-        id: cacheCatalogo
-        path: manager.rutaCache
-        blockLoading: true
-        atomicWrites: true
     }
 
     //  ── plugin store ─────────────────────────────────────────────────
@@ -1132,9 +1054,5 @@ Singleton {
         return null
     }
 
-    Process {
-        command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/state/k4"]
-        running: true
-        onExited: manager.cargar()
-    }
+    Component.onCompleted: if (ConfigStore.ready) cargar()
 }

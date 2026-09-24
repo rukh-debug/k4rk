@@ -110,7 +110,10 @@ not be declared inside the view.
 | `K4.Sonido` | Short sound effect (permission `sound`) |
 | `K4.Feedback` | Fixed UI cues: `click()` and rate-limited `tick()`; no permission, governed by host UI sound settings and system mute |
 | `K4.Tema` | Palette, fonts, island geometry — `tintar()` to tint the bar ambience, plus the current tint owner and colour |
-| `K4.Guardado` | Plugin state as JSON, in its own directory |
+| `K4.Guardado` | Existing contract: named settings in config, other state in local files |
+| `K4.PluginSettings` | Shareable preferences; `plugin`, `value`, `ready`, `error`, `loaded(data)` and `save(data)` |
+| `K4.PluginState` | `plugin`, `name`, `value`, `ready`, `error`; `loaded(data)`, `save(data)`, atomic `saveSections(objects)` |
+| `K4.Credential` | `plugin`, `account`, memory-only `value`; `load()` and `save(secret)` through the keyring |
 | `K4.Etiqueta` | Text with the bar's defaults |
 | `K4.Glifo` | Nerd Font glyph |
 | `K4.IconoPlugin` | A plugin's icon: its image, or its glyph |

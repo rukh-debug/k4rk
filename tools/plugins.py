@@ -24,11 +24,12 @@ import subprocess
 import sys
 import tempfile
 import time
+import config_store
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 CATALOGO = RAIZ / "plugins" / "catalog.json"
 CATALOGO_NATIVO = RAIZ / "features" / "catalog.json"
-DE_USUARIO = pathlib.Path.home() / ".config" / "k4" / "plugins"
+DE_USUARIO = config_store.config_path().parent / "plugins"
 
 # Native host features: always-on bar chrome, not plugins. External plugins
 # may not claim these ids or IPC targets.
@@ -740,45 +741,24 @@ def enlazar_externos():
         pass
 
 
-#  An installed plugin's provenance: its source and, crucially, ITS COMMIT.
-#  Previously `.origen` held only a URL, which could not answer "which version
-#  is installed?" or "has the repository changed since installation?". Keep
-#  reading the old format for compatibility; the first update writes the new
-#  format.
-ORIGEN = ".origen.json"
+# Installation provenance stays beside the installed plugin's manifest.
 
 
 def leer_origen(ident):
-    """Read an installed plugin's provenance in the current or legacy format."""
-    d = DE_USUARIO / ident
-    nuevo = d / ORIGEN
-    if nuevo.is_file():
-        try:
-            o = json.loads(nuevo.read_text())
-            if isinstance(o, dict) and o.get("repo"):
-                #  `folder` is the key of record now; papers written by
-                #  older installs say `carpeta`, and both are honored.
-                if "folder" not in o and "carpeta" in o:
-                    o["folder"] = o["carpeta"]
-                return o
-        except Exception:
-            pass
-    viejo = d / ".origen"
-    if viejo.is_file():
-        #  Legacy format: only a URL, with no commit or folder. Omitting the
-        #  folder was a bug: updates had to rediscover repository subfolders.
-        return {"repo": viejo.read_text().strip()}
-    return None
+    """Installation provenance belongs beside this plugin's manifest."""
+    return config_store.read_file(DE_USUARIO / ident / ".installation.json")
 
 
 def escribir_origen(destino, repo, subcarpeta, commit, item):
-    (destino / ORIGEN).write_text(json.dumps({
+    data = {
         "repo": repo,
         "folder": subcarpeta or "",
         "commit": commit or "",
         "version": item.get("version", "0"),
-        "cuando": int(time.time()),
-    }, ensure_ascii=False, indent=1) + "\n")
+        "installedAt": int(time.time()),
+    }
+    config_store.check_values(data)
+    config_store.atomic_write(destino / ".installation.json", config_store.encode(data))
 
 
 def _contexto():
@@ -1047,12 +1027,14 @@ def actualizar(ident, sin_preguntar=False, commit=None):
 
 def quitar(ident, sin_preguntar=False, con_estado=False):
     """Uninstall the folder and, if requested, its saved state."""
+    if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
+        print("Invalid plugin id.", file=sys.stderr)
+        return 1
     d = DE_USUARIO / ident
     if not d.is_dir():
         print(f"{ident} is not installed.", file=sys.stderr)
         return 1
-    estado = (pathlib.Path.home() / ".local" / "state" / "k4" / "plugins"
-              / ident)
+    estado = config_store.state_root() / "plugins" / ident
     print(f"will delete {d}")
     if con_estado and estado.is_dir():
         print(f"and its saved state in {estado}")
@@ -1065,8 +1047,11 @@ def quitar(ident, sin_preguntar=False, con_estado=False):
             print("no terminal for confirmation; use --yes.", file=sys.stderr)
             return 1
     shutil.rmtree(d)
+    config_store.remove_plugin_settings(ident)
     if con_estado:
         shutil.rmtree(estado, ignore_errors=True)
+        shutil.rmtree(config_store.cache_root() / "plugins" / ident, ignore_errors=True)
+        shutil.rmtree(config_store.cache_root() / ident, ignore_errors=True)
     print(f"removed: {ident}")
     return 0
 

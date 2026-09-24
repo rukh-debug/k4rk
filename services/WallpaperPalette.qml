@@ -12,8 +12,7 @@ import K4 as K4
 Singleton {
     id: root
 
-    readonly property string path: Quickshell.env("HOME")
-        + "/.local/state/k4/wallpaper-palette.json"
+    readonly property string path: ConfigStore.path
     property string source: ""
     readonly property string wallpaper: source
     property string wallTool: ""
@@ -153,39 +152,31 @@ Singleton {
     }
 
     function save() {
-        if (ready)
-            state.setText(JSON.stringify({ source: source,
-                                           transition: transicion,
-                                           scheme: scheme }, null, 1))
+        if (ready && !loadingConfig)
+            ConfigStore.transact([
+                { path: ["features", "wallpaper", "source"], value: source },
+                { path: ["features", "wallpaper", "transition"], value: transicion },
+                { path: ["features", "wallpaper", "scheme"], value: scheme }
+            ])
     }
 
+    property bool loadingConfig: false
     function load() {
-        try {
-            const saved = JSON.parse(state.text())
+        if (!ConfigStore.ready || ConfigStore.pendingCount) return
+        loadingConfig = true
+        const saved = ConfigStore.value(["features", "wallpaper"], {})
+        const previousSource = source
+        const previousScheme = scheme
+        const wasReady = ready
             source = String(saved.source || "")
             if (transiciones.indexOf(saved.transition) >= 0)
                 transicion = saved.transition
             if (schemeIdValido(saved.scheme))
                 scheme = String(saved.scheme)
-        } catch (error) {
-        }
-        //  First run after the theme plugin's removal: its state file
-        //  still says which wallpaper and transition were in force, and
-        //  an upgrade must not forget the desktop. Read once, keep ours.
-        if (source.length === 0) {
-            try {
-                const viejo = JSON.parse(anterior.text())
-                source = String(viejo.wallpaper || "")
-                if (transiciones.indexOf(viejo.transition) >= 0)
-                    transicion = viejo.transition
-                if (source.length > 0)
-                    save()
-            } catch (error) {
-            }
-        }
+        loadingConfig = false
         ready = true
-        apply()
-        extract()
+        if (!wasReady || previousSource !== source) apply()
+        if (!wasReady || previousSource !== source || previousScheme !== scheme) extract()
     }
 
     function hsv(color) {
@@ -356,24 +347,12 @@ Singleton {
         }
     }
 
-    FileView {
-        id: state
-        path: root.path
-        blockLoading: true
+    Connections {
+        target: ConfigStore
+        function onReadyChanged() { root.load() }
+        function onSettled() { root.load() }
     }
-
-    //  The retired theme plugin's state, read once for migration.
-    FileView {
-        id: anterior
-        path: Quickshell.env("HOME") + "/.local/state/k4/hyprtheme.json"
-        blockLoading: true
-    }
-
-    Process {
-        command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/state/k4"]
-        running: true
-        onExited: root.load()
-    }
+    Component.onCompleted: load()
 
     Process {
         id: toolScan

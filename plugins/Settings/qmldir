@@ -9,6 +9,7 @@ FilaPlugin 1.0 FilaPlugin.qml
 PrevioIsland 1.0 PrevioIsland.qml
 SettingsPlugin 1.0 SettingsPlugin.qml
 AjustesView 1.0 AjustesView.qml
+GeneralPage 1.0 GeneralPage.qml
 PortadaFamilia 1.0 PortadaFamilia.qml
 Version 1.0 Version.qml
 SelectorFuentes 1.0 SelectorFuentes.qml

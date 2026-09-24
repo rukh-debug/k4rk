@@ -10,20 +10,18 @@ import Quickshell
 
 Singleton {
     readonly property string hogar: Quickshell.env("HOME") || ""
+    readonly property string config: (Quickshell.env("XDG_CONFIG_HOME") || hogar + "/.config") + "/k4/config.json"
 
-    // State that survives restarts: saved games, histories and settings.
-    readonly property string estado: hogar + "/.local/state/k4"
+    // Private local data, separate from shareable preferences.
+    readonly property string estado: (Quickshell.env("XDG_STATE_HOME") || hogar + "/.local/state") + "/k4"
 
     // k4's own directory, containing its scripts and assets.
     readonly property string raiz: Quickshell.shellPath("")
 
     function guion(nombre) { return Quickshell.shellPath("tools/" + nombre) }
 
-    //  A plugin's OWN state: ~/.local/state/k4/plugins/<id>/.
-    //
-    //  Private rather than shared: two plugins using the same filename in
-    //  a common directory would silently overwrite each other. K4.Guardado
-    //  writes here and also creates the directory.
+    // Owner-local data. PluginState coordinates JSON writes here; other plugin
+    // assets may also use this directory. Preferences use PluginSettings.
     function estadoDe(id) { return estado + "/plugins/" + id }
 
     // Anything else located in k4's directory.

@@ -55,16 +55,18 @@ let
 
   mirror = "${dataHome}/k4/code";
 
-  stateHome = lib.replaceStrings [ "$HOME" ] [ config.home.homeDirectory ] config.xdg.stateHome;
   monitorInclude = ''
-    -- Confirmed k4 monitor overrides load after the declarative defaults.
+    -- Generate confirmed overrides from the local monitor profile before the bar starts.
     do
-      local path = ${builtins.toJSON "${stateHome}/k4/monitors/confirmed.lua"}
-      local file = io.open(path, "r")
-      if file then
-        file:close()
-        local ok, message = pcall(dofile, path)
-        if not ok then print("k4 monitor override: " .. tostring(message)) end
+      local pipe = io.popen(${builtins.toJSON "${pkgs.python3}/bin/python3 ${cfg.package}/share/k4/tools/config_outputs.py monitors"})
+      if pipe then
+        local source = pipe:read("*a")
+        local ok = pipe:close()
+        if ok then
+          local rules, message = load(source, "k4 monitor overrides")
+          if rules then ok, message = pcall(rules) else ok = false end
+          if not ok then print("k4 monitor override: " .. tostring(message)) end
+        end
       end
     end
   '';
@@ -195,9 +197,7 @@ in
     #  Only the matching flavor gets a file when Home Manager manages
     #  Hyprland; a stray k4.conf next to a Lua configuration is confusion
     #  waiting for someone to source it.
-    xdg.configFile = (lib.optionalAttrs cfg.monitors.enable {
-      "k4/monitors.json".text = builtins.toJSON { managed = true; };
-    }) // (lib.optionalAttrs cfg.hyprland.writeConfig (
+    xdg.configFile = (lib.optionalAttrs cfg.hyprland.writeConfig (
       if hypr.enable && hyprIsLua then
         {
           "hypr/config/k4.lua".text = substituteTemplate fuente;

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from test_config_helpers import write_settings
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -15,11 +16,9 @@ def main():
         for name in ("tools", "api", "core", "services", "plugins", "widgets"):
             (root / name).symlink_to(ROOT / name)
         (root / "shell.qml").write_text((ROOT / "tools/system-test.qml").read_text())
-        state = root / "home/.local/state/k4"
-        state.mkdir(parents=True)
-        catalog = json.loads((ROOT / "plugins/catalog.json").read_text())
-        (state / "plugins.json").write_text(json.dumps({"habilitados": {p["id"]: False for p in catalog["plugins"]}}))
+        write_settings(root / "home")
         env = dict(os.environ, HOME=str(root / "home"), XDG_CACHE_HOME=str(root / "cache"),
+                   XDG_CONFIG_HOME=str(root / "home/.config"), XDG_STATE_HOME=str(root / "home/.local/state"),
                    XDG_DATA_HOME=str(root / "data"), QT_QPA_PLATFORM="wayland",
                    QT_QUICK_BACKEND="software", HYPRLAND_INSTANCE_SIGNATURE="k4-test-no-compositor",
                    QT_NO_XDG_DESKTOP_PORTAL="1",
