@@ -29,6 +29,7 @@ Column {
             objectName: "configuration-path"
             anchors.fill: parent
             anchors.margins: 14
+            textFormat: Text.PlainText
             text: page.configuration.path
             readOnly: true
             selectByMouse: true
